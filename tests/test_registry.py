@@ -29,6 +29,7 @@ class RegistryTests(unittest.TestCase):
         ids = {agent.id for agent in agents}
         self.assertIn("policy-guardian", ids)
         self.assertIn("coding-worker-codex", ids)
+        self.assertIn("coding-worker-antigravity", ids)
         self.assertIn("validation-agent", ids)
 
     def test_explicit_config_directory_overrides_packaged_defaults(self):

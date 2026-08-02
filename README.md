@@ -1,8 +1,8 @@
 # Agent Factory
 
-**Run many AI agents as one traceable, human-controlled delivery system.**
+**Coordinate specialist AI agents as one traceable, human-controlled delivery system.**
 
-Agent Factory turns a work item into a reviewable chain of specialist artifacts across interchangeable AI providers. Agents can plan, implement, validate, and judge. Every real provider execution and external mutation remains bounded, recorded, and subject to explicit human approval.
+Agent Factory turns a work item into a sequential, reviewable chain of specialist artifacts across interchangeable AI providers. Agents can plan, propose implementations, validate, and issue evidence-backed verdicts. Every real provider execution and external mutation remains bounded, recorded, and subject to explicit human approval.
 
 The factory is project-neutral. Bring your own repository, requirements, roles, workflows, acceptance criteria, and provider accounts.
 
@@ -24,7 +24,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 |---|---|---|
 | Agent registry | Ready | List, enable, disable, and replace provider assignments. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
-| Provider runtime | Ready | Deterministic, Codex, Claude, Gemini, and Ollama adapters. |
+| Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, and Ollama adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |
 | Human approval gates | Ready | Provider gates are scoped to one provider, agent, and work item; final acceptance is separate. |
 | SQLite state and audit | Ready | Versioned migrations, WAL mode, integrity checks, backup support, and interrupted-attempt reconciliation. |
@@ -41,7 +41,7 @@ flowchart LR
     W --> E["Workflow engine"]
     E --> R["Agent registry"]
     R --> P["Provider runtime"]
-    P --> M["Codex / Claude / Gemini / Ollama / custom CLI"]
+    P --> M["Codex / Claude / Gemini / Antigravity / Ollama / custom CLI"]
     M --> A["Artifact, verdict, and evidence"]
     A --> E
     E --> F["Final human decision"]
@@ -54,35 +54,44 @@ flowchart LR
     GH -. "reports" .-> S
 ```
 
-## Sixty-second local demo
+## Local demo
 
 The demo is deterministic. It does not invoke an external model or mutate GitHub.
 
 ### Windows PowerShell
 
 ```powershell
-git clone https://github.com/<owner>/agent-factory.git
-Set-Location agent-factory
-py -3.11 -m venv .venv
+winget install --id Git.Git --exact --source winget
+winget install --id Python.Python.3.12 --exact --source winget
+# Close and reopen PowerShell after first-time installs, then continue:
+git --version
+py -3.12 --version
+git clone <repository-url> AgentFactory
+Set-Location AgentFactory
+py -3.12 -m venv .venv
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip
 & .\.venv\Scripts\python.exe -m pip install -e .
-& .\.venv\Scripts\python.exe -m agent_factory env check
-& .\.venv\Scripts\python.exe -m agent_factory demo
+& .\.venv\Scripts\agent-factory.exe env check
+& .\.venv\Scripts\agent-factory.exe demo
 ```
+
+Replace `<repository-url>` with the clone URL supplied by the publisher. If Git and Python 3.11+ are already installed, skip the two `winget install` commands. For a private repository, authenticate with its hosting service first; never embed an access token in the clone URL.
 
 ### macOS or Linux
 
 ```bash
-git clone https://github.com/<owner>/agent-factory.git
-cd agent-factory
+git clone <repository-url> AgentFactory
+cd AgentFactory
 python3.11 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -e .
-.venv/bin/python -m agent_factory env check
-.venv/bin/python -m agent_factory demo
+.venv/bin/agent-factory env check
+.venv/bin/agent-factory demo
 ```
 
-Activating the virtual environment is optional; the examples invoke its Python executable directly.
+Replace `<repository-url>` with the clone URL supplied by the publisher. Activating the virtual environment is optional; these examples invoke its entry point directly.
+
+Later examples shorten the command to `agent-factory`. Without activation, substitute `& .\.venv\Scripts\agent-factory.exe` on Windows PowerShell or `.venv/bin/agent-factory` on macOS and Linux.
 
 ## Docker demo
 
@@ -149,10 +158,13 @@ agent-factory approvals approve 1 --note "Evidence reviewed"
 | `codex` | Read-only sandbox | Implementation proposals, technical analysis, and validation. |
 | `claude` | Plan mode | Planning, review, decomposition, and independent judgment. |
 | `gemini` | Plan mode | Alternative planning, review, and implementation proposals. |
+| `antigravity` | Plan mode plus OS sandbox | Non-interactive implementation proposals, planning, and independent review. |
 | `ollama` | Local, no tools | Private local artifacts and low-cost review. |
 | `openclaw` | Disabled | Health probe only until a no-tools execution profile is available. |
 
-Provider authentication belongs to each CLI's own profile or operating-system keyring. Agent Factory does not accept credentials in prompts or persist them in artifacts. See [Provider setup](docs/providers.md).
+Antigravity CLI 1.1.9 requires its non-interactive prompt as a process argument. Agent Factory excludes that prompt from retained command metadata, but local process inspection may still see it while the provider runs. Use Antigravity only for non-secret work-item content.
+
+Provider authentication belongs to each CLI's own profile or operating-system keyring. Never put credentials in work-item or provider prompts. Agent Factory filters sensitive environment-variable names, but comprehensive value-aware output redaction is not implemented; inspect artifacts before sharing them. See [Provider setup](docs/providers.md).
 
 ## CLI map
 
@@ -182,7 +194,7 @@ Agent Factory treats every provider response and imported backlog as untrusted i
 - GitHub operations are dry-run by default and restricted to an allowlist.
 - Automatic merging, closing, deletion, and final approval are not supported.
 - Every important transition is recorded in the local audit stream.
-- Each consumed provider attempt records the provider-definition digest used for that execution.
+- Every provider approval stores immutable request and definition digests; task, agent, provider, or policy drift invalidates the gate before a subprocess starts.
 
 This is defense in depth, not a complete security boundary. Read the [security policy](SECURITY.md) and [architecture](docs/architecture.md) before enabling real providers.
 
@@ -219,7 +231,7 @@ python -m pip install build
 python -m build
 ```
 
-The repository CI runs the test suite on Windows, Ubuntu, and macOS, builds a wheel, tests a clean installation outside the checkout, and builds the Docker image.
+The repository CI runs Python 3.11 and 3.12 tests on Windows, Ubuntu, and macOS, builds a wheel, tests a clean installation outside the checkout, and builds the Docker image. CI validates deterministic execution and adapter/configuration portability; it does not authenticate providers or run live provider canaries.
 
 ## Alpha limitations
 

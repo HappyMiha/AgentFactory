@@ -27,6 +27,11 @@ class EnvironmentTests(unittest.TestCase):
             set(rows[0]), {"component", "status", "detail", "requirement"}
         )
 
+    def test_antigravity_is_an_optional_discoverable_component(self):
+        results = {item.component: item for item in checks()}
+        self.assertIn("Antigravity CLI", results)
+        self.assertEqual(results["Antigravity CLI"].requirement, "optional")
+
 
 if __name__ == "__main__":
     unittest.main()

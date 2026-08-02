@@ -10,6 +10,7 @@ Providers are replaceable execution backends. Agent roles and workflows refer to
 | `codex` | Codex CLI | Read-only sandbox | Implementation and validation artifacts. |
 | `claude` | Claude Code | Plan mode | Policy review, planning, implementation proposals, validation. |
 | `gemini` | Gemini CLI | Plan mode | Independent planning, implementation proposals, validation. |
+| `antigravity` | Antigravity CLI | Plan mode plus OS sandbox | Non-interactive implementation proposals, planning, and independent review. |
 | `ollama` | Ollama CLI | Local model, no tools | Private local artifacts and economical review. |
 | `openclaw` | OpenClaw CLI | Health-only | Version discovery; execution is intentionally disabled. |
 
@@ -72,8 +73,8 @@ claude
 On Windows PowerShell, use `npm.cmd` when script execution policy blocks `npm.ps1`:
 
 ```powershell
-& "C:\Program Files\nodejs\npm.cmd" install -g @anthropic-ai/claude-code
-claude doctor
+npm.cmd install -g @anthropic-ai/claude-code
+& "$env:APPDATA\npm\claude.cmd" doctor
 ```
 
 The shipped command contract is:
@@ -99,8 +100,9 @@ gemini --version
 Windows PowerShell alternative:
 
 ```powershell
-& "C:\Program Files\nodejs\npm.cmd" install -g @google/gemini-cli
-gemini
+npm.cmd install -g @google/gemini-cli
+& "$env:APPDATA\npm\gemini.cmd" --version
+& "$env:APPDATA\npm\gemini.cmd"
 ```
 
 Complete interactive authentication once. The factory then uses the non-interactive plan contract:
@@ -110,6 +112,59 @@ gemini --prompt "" --output-format text --approval-mode plan
 ```
 
 The actual task prompt travels over standard input.
+
+## Antigravity CLI
+
+Official Google documentation:
+
+- [Install the Antigravity CLI](https://antigravity.google/docs/cli/install)
+- [Get started with the Antigravity CLI](https://antigravity.google/docs/cli/getting-started)
+- [Understand plan mode](https://antigravity.google/docs/cli/modes)
+
+Windows PowerShell installation:
+
+```powershell
+irm https://antigravity.google/cli/install.ps1 | iex
+# Open a new PowerShell window after installation.
+agy --version
+agy
+```
+
+If the new terminal has not picked up `PATH`, the official installer uses a per-user native executable that can be launched without a PowerShell script shim:
+
+```powershell
+$Agy = "$env:LOCALAPPDATA\agy\bin\agy.exe"
+& $Agy --version
+& $Agy
+```
+
+macOS or Linux installation:
+
+```bash
+curl -fsSL https://antigravity.google/cli/install.sh | bash
+agy --version
+agy
+```
+
+On the first interactive launch, Antigravity attempts to use its operating-system secure-keyring session and otherwise starts Google's browser sign-in flow. Complete authentication outside Agent Factory. On a remote terminal, follow the URL-and-code flow shown by Antigravity, but never copy its URL, code, tokens, account details, or authentication output into work items, logs, Issues, or artifacts. Use `/logout` in the interactive CLI when the session must be removed.
+
+The shipped contract, verified against Antigravity CLI 1.1.9, is equivalent to:
+
+```text
+agy --output-format text --mode plan --sandbox --disable-slash-commands --print "<task prompt>"
+```
+
+These controls are complementary: `--mode plan` limits the agent to plan-oriented, read-only tooling, while `--sandbox` enables operating-system terminal restrictions. `--print` makes the call non-interactive, and slash-command expansion is disabled.
+
+Antigravity currently requires `prompt_transport: argument`. Agent Factory excludes the appended prompt from its own command metadata, but the task prompt is still part of the child-process command line and may be visible to local process inspection and operating-system diagnostics. Treat prompts as non-secret work-item content. Do not put credentials, private authentication material, or unnecessary sensitive data in them. Revalidate the fixed flags and a bounded live canary before adopting a newer CLI release.
+
+After authentication and `providers status`, use the same one-use gate as every real provider:
+
+```bash
+agent-factory providers request antigravity --agent coding-worker-antigravity --task-id 1
+agent-factory providers approve 1 --note "One bounded advisory artifact"
+agent-factory providers invoke 1
+```
 
 ## Ollama
 
@@ -216,6 +271,8 @@ Consequences:
 - do not include authentication output in artifacts or Issues;
 - do not mount broad credential directories into Docker;
 - re-authenticate the provider interactively outside Agent Factory when needed.
+
+Successful stdout and failure diagnostics can enter retained execution results and artifacts. Sensitive environment-variable names are filtered, but comprehensive value-aware redaction of provider output is not implemented. Review artifacts before publishing or attaching them to external systems.
 
 ## Future HTTP providers
 

@@ -6,6 +6,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 from abc import ABC, abstractmethod
 from contextlib import suppress
@@ -16,6 +17,63 @@ from .models import Agent, ExecutionApproval, ProviderResult, WorkItem
 
 SENSITIVE_ENV_MARKERS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "API_KEY", "AUTH")
 PASSING_VERDICTS = ("COMPLETE", "PASS", "ALIGNED", "CONDITIONALLY_ALIGNED")
+
+
+class _BoundedCapture:
+    """Drain both text streams concurrently while retaining a combined hard limit."""
+
+    def __init__(self, proc: subprocess.Popen[str], max_chars: int):
+        self.proc = proc
+        self.max_chars = max_chars
+        self.overflow = threading.Event()
+        self._lock = threading.Lock()
+        self._stdout: list[str] = []
+        self._stderr: list[str] = []
+        self._retained_chars = 0
+        self._observed_chars = 0
+        self._threads: list[threading.Thread] = []
+
+    def start(self) -> None:
+        for name, stream in (("stdout", self.proc.stdout), ("stderr", self.proc.stderr)):
+            if stream is None:
+                continue
+            thread = threading.Thread(
+                target=self._drain,
+                args=(name, stream),
+                daemon=True,
+                name=f"provider-{name}-capture",
+            )
+            thread.start()
+            self._threads.append(thread)
+
+    def _drain(self, name: str, stream: Any) -> None:
+        destination = self._stdout if name == "stdout" else self._stderr
+        with suppress(OSError, ValueError):
+            while chunk := stream.read(4096):
+                with self._lock:
+                    self._observed_chars += len(chunk)
+                    remaining = max(0, self.max_chars - self._retained_chars)
+                    if remaining:
+                        retained = chunk[:remaining]
+                        destination.append(retained)
+                        self._retained_chars += len(retained)
+                    if self._observed_chars > self.max_chars:
+                        self.overflow.set()
+
+    def join(self, timeout: float) -> bool:
+        deadline = time.monotonic() + max(0.0, timeout)
+        for thread in self._threads:
+            thread.join(max(0.0, deadline - time.monotonic()))
+        return all(not thread.is_alive() for thread in self._threads)
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return {
+                "stdout": "".join(self._stdout),
+                "stderr": "".join(self._stderr),
+                "retained_chars": self._retained_chars,
+                "observed_chars": self._observed_chars,
+            }
 
 
 class ProcessSupervisor:
@@ -228,6 +286,27 @@ class CLIProvider(Provider):
             raise ValueError(f"provider prompt exceeds {self.max_prompt_chars:,} character policy limit")
         return prompt
 
+    @staticmethod
+    def _launcher_failure(path: str, exc: OSError) -> dict[str, Any]:
+        """Return useful diagnostics without persisting paths or exception messages."""
+
+        return {
+            "launcher": Path(path).name,
+            "error_type": type(exc).__name__,
+            "errno": exc.errno,
+            "winerror": getattr(exc, "winerror", None),
+        }
+
+    @staticmethod
+    def _write_stdin(proc: subprocess.Popen[str], content: str) -> None:
+        if proc.stdin is None:
+            return
+        with suppress(BrokenPipeError, OSError, ValueError):
+            proc.stdin.write(content)
+            proc.stdin.flush()
+        with suppress(OSError, ValueError):
+            proc.stdin.close()
+
     def execute(
         self,
         agent: Agent,
@@ -237,21 +316,21 @@ class CLIProvider(Provider):
     ) -> ProviderResult:
         if error := self._approval_error(agent, item, approval):
             return ProviderResult(False, provider=self.name, error=error, metadata={"blocked": True})
-        path = self._executable_path()
-        if not path:
+        paths = self._executable_paths()
+        if not paths:
             return ProviderResult(False, provider=self.name, error="allowlisted executable not found")
         try:
             prompt = self._prompt(agent, item, context)
         except ValueError as exc:
             return ProviderResult(False, provider=self.name, error=str(exc), metadata={"blocked": True})
 
-        command = [path, *self.args]
+        command_suffix = list(self.args)
         stdin = None
         prompt_file: Path | None = None
         if self.prompt_transport == "stdin":
             stdin = prompt
         elif self.prompt_transport == "argument":
-            command.append(prompt)
+            command_suffix.append(prompt)
         elif self.prompt_transport == "file":
             prompt_dir = self.workspace / ".agent-factory" / "provider-prompts"
             prompt_dir.mkdir(parents=True, exist_ok=True)
@@ -260,7 +339,7 @@ class CLIProvider(Provider):
             ) as handle:
                 handle.write(prompt)
                 prompt_file = Path(handle.name)
-            command.extend([*self.prompt_file_args, str(prompt_file)])
+            command_suffix.extend([*self.prompt_file_args, str(prompt_file)])
         else:
             return ProviderResult(
                 False,
@@ -271,19 +350,89 @@ class CLIProvider(Provider):
         timeout = min(max(1, item.budget.max_seconds), self.max_timeout)
         started = time.monotonic()
         proc: subprocess.Popen[str] | None = None
+        path: str | None = None
+        launcher_failures: list[dict[str, Any]] = []
         try:
-            proc = self.supervisor.spawn(
-                command,
-                stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                cwd=self.workspace,
-                env=self._safe_environment(),
-            )
-            stdout, stderr = proc.communicate(input=stdin, timeout=timeout)
+            for candidate in paths:
+                try:
+                    proc = self.supervisor.spawn(
+                        [candidate, *command_suffix],
+                        stdin=subprocess.PIPE if stdin is not None else subprocess.DEVNULL,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        cwd=self.workspace,
+                        env=self._safe_environment(),
+                    )
+                except OSError as exc:
+                    launcher_failures.append(self._launcher_failure(candidate, exc))
+                    continue
+                path = candidate
+                break
+
+            if proc is None or path is None:
+                return ProviderResult(
+                    False,
+                    provider=self.name,
+                    error="all allowlisted launchers failed before process start",
+                    metadata={
+                        "gate_id": approval.gate_id if approval else None,
+                        "launcher_failures": launcher_failures,
+                    },
+                )
+
+            capture = _BoundedCapture(proc, self.max_output_chars)
+            capture.start()
+            writer: threading.Thread | None = None
+            if stdin is not None:
+                writer = threading.Thread(
+                    target=self._write_stdin,
+                    args=(proc, stdin),
+                    daemon=True,
+                    name="provider-stdin-writer",
+                )
+                writer.start()
+
+            deadline = started + timeout
+            cleanup: dict[str, Any] = {}
+            timed_out = False
+            output_limit_exceeded = False
+            while True:
+                if capture.overflow.is_set():
+                    output_limit_exceeded = True
+                    cleanup = self.supervisor.terminate_tree(proc)
+                    break
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
+                    cleanup = self.supervisor.terminate_tree(proc)
+                    break
+                try:
+                    proc.wait(timeout=min(0.05, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+
+            if timed_out or output_limit_exceeded:
+                with suppress(subprocess.TimeoutExpired, OSError):
+                    proc.wait(timeout=5)
+            capture_complete = capture.join(5)
+            if capture.overflow.is_set() and not output_limit_exceeded:
+                output_limit_exceeded = True
+                cleanup = self.supervisor.terminate_tree(proc)
+            if writer is not None:
+                writer.join(0.2)
+            if capture_complete:
+                for stream in (proc.stdout, proc.stderr):
+                    if stream is not None:
+                        with suppress(OSError, ValueError):
+                            stream.close()
+
+            captured = capture.snapshot()
+            stdout = captured["stdout"]
+            stderr = captured["stderr"]
             elapsed = round(time.monotonic() - started, 3)
             metadata = {
                 "gate_id": approval.gate_id if approval else None,
@@ -292,39 +441,46 @@ class CLIProvider(Provider):
                 "timeout_seconds": timeout,
                 "elapsed_seconds": elapsed,
                 "returncode": proc.returncode,
-                "output_truncated": len(stdout) > self.max_output_chars,
+                "output_truncated": output_limit_exceeded,
+                "output_limit_chars": self.max_output_chars,
+                "retained_output_chars": captured["retained_chars"],
+                "observed_output_chars": captured["observed_chars"],
+                "capture_complete": capture_complete,
                 "process_group_contained": True,
+                "launcher_failures": launcher_failures,
             }
+            if output_limit_exceeded:
+                return ProviderResult(
+                    False,
+                    provider=self.name,
+                    error=f"provider output exceeded combined {self.max_output_chars} character limit",
+                    metadata={**metadata, "output_limit_exceeded": True, **cleanup},
+                )
+            if timed_out:
+                return ProviderResult(
+                    False,
+                    provider=self.name,
+                    error=f"provider timed out after {timeout}s",
+                    metadata={**metadata, "timed_out": True, **cleanup},
+                )
             if proc.returncode:
-                error = (stderr or f"exit {proc.returncode}").strip()[: self.max_output_chars]
+                error = (stderr or f"exit {proc.returncode}").strip()
                 return ProviderResult(False, provider=self.name, error=error, metadata=metadata)
             return ProviderResult(
                 True,
-                stdout[: self.max_output_chars].strip(),
+                stdout.strip(),
                 self.name,
                 metadata=metadata,
-            )
-        except subprocess.TimeoutExpired:
-            cleanup = self.supervisor.terminate_tree(proc) if proc is not None else {}
-            if proc is not None:
-                with suppress(subprocess.TimeoutExpired, OSError):
-                    proc.communicate(timeout=5)
-            return ProviderResult(
-                False,
-                provider=self.name,
-                error=f"provider timed out after {timeout}s",
-                metadata={
-                    "gate_id": approval.gate_id if approval else None,
-                    "timed_out": True,
-                    **cleanup,
-                },
             )
         except OSError as exc:
             return ProviderResult(
                 False,
                 provider=self.name,
-                error=str(exc),
-                metadata={"gate_id": approval.gate_id if approval else None},
+                error=f"provider process failed after start: {type(exc).__name__}",
+                metadata={
+                    "gate_id": approval.gate_id if approval else None,
+                    "launcher_failures": launcher_failures,
+                },
             )
         finally:
             if prompt_file:

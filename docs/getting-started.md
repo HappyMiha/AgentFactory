@@ -22,41 +22,75 @@ Provider subscriptions and API billing are external to Agent Factory.
 
 Open PowerShell in a directory where you keep source repositories.
 
-```powershell
-git clone https://github.com/<owner>/agent-factory.git
-Set-Location agent-factory
+On a machine without Git or Python, install the official Windows packages first:
 
-py -3.11 -m venv .venv
+```powershell
+winget install --id Git.Git --exact --source winget
+winget install --id Python.Python.3.12 --exact --source winget
+```
+
+Close and reopen PowerShell so the newly installed commands are visible, then verify and install Agent Factory. Replace `<repository-url>` with the clone URL supplied by the publisher.
+
+```powershell
+git --version
+py -3.12 --version
+git clone <repository-url> AgentFactory
+Set-Location AgentFactory
+
+py -3.12 -m venv .venv
 & .\.venv\Scripts\python.exe -m pip install --upgrade pip
 & .\.venv\Scripts\python.exe -m pip install -e .
 
 & .\.venv\Scripts\python.exe -m unittest discover -s tests -v
-& .\.venv\Scripts\python.exe -m agent_factory --help
+& .\.venv\Scripts\agent-factory.exe --help
 ```
 
-If the `py` launcher is unavailable, replace `py -3.11` with the full path to a Python 3.11+ executable.
+If `winget` is unavailable, install Git from [git-scm.com](https://git-scm.com/download/win) and Python 3.11 or newer from [python.org](https://www.python.org/downloads/windows/), including the Python launcher, then reopen PowerShell. If Python is already installed without `py`, use the full path to its `python.exe` only for the virtual-environment creation command.
 
-PowerShell activation is unnecessary. Calling `.venv\Scripts\python.exe` directly also avoids local script-execution-policy issues.
+PowerShell activation is unnecessary. Calling `.venv\Scripts\python.exe` and `.venv\Scripts\agent-factory.exe` directly also avoids local script-execution-policy issues.
+
+For a private repository hosted on GitHub, authenticate separately instead of embedding a token in the clone URL. Replace the earlier `git clone` line with this authenticated clone:
+
+```powershell
+winget install --id GitHub.cli --exact --source winget
+# Open a new PowerShell window after a first-time install.
+gh auth login
+gh repo clone OWNER/REPOSITORY AgentFactory
+```
+
+Use the repository identifier supplied by the publisher. The browser-based GitHub flow stores authentication outside Agent Factory.
 
 ## 3. Install on macOS or Linux
 
 ```bash
-git clone https://github.com/<owner>/agent-factory.git
-cd agent-factory
+git clone <repository-url> AgentFactory
+cd AgentFactory
 
 python3.11 -m venv .venv
 .venv/bin/python -m pip install --upgrade pip
 .venv/bin/python -m pip install -e .
 
 .venv/bin/python -m unittest discover -s tests -v
-.venv/bin/python -m agent_factory --help
+.venv/bin/agent-factory --help
 ```
 
-If your system names the interpreter `python3`, confirm that `python3 --version` reports 3.11 or newer before using it.
+Replace `<repository-url>` with the clone URL supplied by the publisher. If your system names the interpreter `python3`, confirm that `python3 --version` reports 3.11 or newer before using it.
 
 ## 4. Check the environment
 
-From here onward, `agent-factory` means the virtual-environment entry point. You may always substitute `python -m agent_factory` using the environment-specific Python path above.
+From here onward, examples use `agent-factory` for readability. Without activating the environment, use the exact platform entry point:
+
+```powershell
+& .\.venv\Scripts\agent-factory.exe env check
+& .\.venv\Scripts\agent-factory.exe providers status
+```
+
+```bash
+.venv/bin/agent-factory env check
+.venv/bin/agent-factory providers status
+```
+
+The remaining examples assume the virtual environment is active or that you substitute the exact entry point above.
 
 ```bash
 agent-factory env check
@@ -162,6 +196,8 @@ agent-factory providers invoke 1
 ```
 
 The gate authorizes exactly one logical attempt. Failure, timeout, or interruption does not make the gate reusable.
+
+Codex, Claude Code, Gemini CLI, Antigravity CLI, and Ollama are optional and authenticate through their own tools. CI and the deterministic demo do not sign in to them or execute live provider canaries.
 
 ## 11. Docker simulation
 

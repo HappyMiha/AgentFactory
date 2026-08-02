@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import sys
+from dataclasses import asdict
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
@@ -287,8 +288,36 @@ def _import_backlog(
     return {"created": created, "skipped": sorted(skipped), "source_sha256": proposal.source_sha256}
 
 
+def _canonical_hash(value: Any) -> str:
+    payload = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _provider_snapshot_hashes(
+    provider: str, agent: Any, item: WorkItem
+) -> tuple[str, str]:
+    """Bind an approval to canonical request and effective policy definitions."""
+
+    from .config import config_path, load_yaml
+
+    request = {
+        "provider": provider,
+        "agent": asdict(agent),
+        "task": item.to_dict(),
+    }
+    definitions = {
+        "providers": load_yaml(config_path("providers")),
+        "policy": load_yaml(config_path("policy")),
+    }
+    return _canonical_hash(request), _canonical_hash(definitions)
+
+
 def _provider_invoke(storage: SQLiteStorage, registry: Any, gate_id: int) -> int:
-    from .config import config_path
     from .runtime import AgentRuntime
 
     gate = storage.db.execute(
@@ -298,17 +327,13 @@ def _provider_invoke(storage: SQLiteStorage, registry: Any, gate_id: int) -> int
         raise KeyError(f"Unknown provider gate: {gate_id}")
     agent = registry.get(gate["agent_id"])
     item = storage.get_task(int(gate["task_id"]))
-    envelope = json.dumps(
-        {"provider": gate["provider"], "agent": agent.id, "task": item.to_dict()},
-        sort_keys=True,
-        separators=(",", ":"),
-        default=str,
+    request_hash, definition_hash = _provider_snapshot_hashes(
+        str(gate["provider"]), agent, item
     )
-    definition = config_path("providers").read_bytes()
     attempt = storage.claim_provider_execution(
         gate_id,
-        hashlib.sha256(envelope.encode()).hexdigest(),
-        hashlib.sha256(definition).hexdigest(),
+        request_hash,
+        definition_hash,
     )
     approval = ExecutionApproval(
         int(gate["id"]), gate["provider"], gate["agent_id"], int(gate["task_id"])
@@ -461,9 +486,16 @@ def _execute(args: argparse.Namespace) -> int:
                     raise ValueError(
                         f"Agent {agent.id} uses {agent.provider}, not {args.provider}"
                     )
-                storage.get_task(args.task_id)
+                item = storage.get_task(args.task_id)
+                request_hash, definition_hash = _provider_snapshot_hashes(
+                    args.provider, agent, item
+                )
                 gate_id = storage.request_provider_execution(
-                    args.provider, agent.id, args.task_id
+                    args.provider,
+                    agent.id,
+                    args.task_id,
+                    request_hash,
+                    definition_hash,
                 )
                 print(
                     f"Provider execution gate {gate_id} is pending human approval."

@@ -109,7 +109,38 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         SELECT provider,agent_id,task_id,MIN(id)
           FROM provider_execution_gates
          WHERE status='pending'
-         GROUP BY provider,agent_id,task_id;
+        GROUP BY provider,agent_id,task_id;
+    """),
+    (6, """
+        ALTER TABLE provider_execution_gates
+            ADD COLUMN request_hash TEXT
+            CHECK(request_hash IS NULL OR (length(request_hash)=64 AND request_hash NOT GLOB '*[^0-9a-f]*'));
+        ALTER TABLE provider_execution_gates
+            ADD COLUMN definition_hash TEXT
+            CHECK(definition_hash IS NULL OR (length(definition_hash)=64 AND definition_hash NOT GLOB '*[^0-9a-f]*'));
+        UPDATE provider_execution_gates
+           SET status='rejected',
+               decision_note=CASE
+                   WHEN decision_note='' THEN 'Approval predates immutable snapshot binding; request a new gate.'
+                   ELSE decision_note || char(10) || 'Approval predates immutable snapshot binding; request a new gate.'
+               END,
+               decided_at=COALESCE(decided_at,CURRENT_TIMESTAMP)
+         WHERE status IN ('pending','approved');
+        DELETE FROM pending_provider_gate_claims
+         WHERE gate_id IN (
+             SELECT id FROM provider_execution_gates WHERE status='rejected'
+         );
+        CREATE TRIGGER IF NOT EXISTS provider_gate_snapshot_no_update
+        BEFORE UPDATE OF provider,agent_id,task_id,request_hash,definition_hash
+        ON provider_execution_gates
+        WHEN OLD.provider IS NOT NEW.provider
+          OR OLD.agent_id IS NOT NEW.agent_id
+          OR OLD.task_id IS NOT NEW.task_id
+          OR OLD.request_hash IS NOT NEW.request_hash
+          OR OLD.definition_hash IS NOT NEW.definition_hash
+        BEGIN
+            SELECT RAISE(ABORT, 'provider approval snapshot is immutable');
+        END;
     """),
 )
 
@@ -117,6 +148,18 @@ RUN_TRANSITIONS = {
     "running": {"awaiting_approval", "failed"},
     "awaiting_approval": {"approved", "rejected"},
 }
+
+
+def _sha256_snapshot(value: str, field: str) -> str:
+    """Validate a caller-computed canonical SHA-256 approval snapshot."""
+
+    if (
+        not isinstance(value, str)
+        or len(value) != 64
+        or any(character not in "0123456789abcdef" for character in value)
+    ):
+        raise ValueError(f"{field} must be a lowercase SHA-256 digest")
+    return value
 
 
 class SQLiteStorage:
@@ -343,19 +386,44 @@ class SQLiteStorage:
                 raise ValueError(f"Artifact {artifact_id} is already {row['status']}")
             self._event(f"artifact.{status}", "artifact", artifact_id, {"note": note})
 
-    # Provider execution methods remain compatible; runtime-attempt hardening is Wave 2.
-    def request_provider_execution(self, provider: str, agent_id: str, task_id: int) -> int:
+    # Provider approvals bind immutable snapshots to durable, one-use attempts.
+    def request_provider_execution(
+        self,
+        provider: str,
+        agent_id: str,
+        task_id: int,
+        request_hash: str,
+        definition_hash: str,
+    ) -> int:
+        request_hash = _sha256_snapshot(request_hash, "request_hash")
+        definition_hash = _sha256_snapshot(definition_hash, "definition_hash")
         if not self.db.execute("SELECT id FROM work_items WHERE id=?", (task_id,)).fetchone():
             raise KeyError(f"Unknown task: {task_id}")
         with self.db:
             try:
-                cur = self.db.execute("INSERT INTO provider_execution_gates(provider,agent_id,task_id) VALUES(?,?,?)", (provider, agent_id, task_id))
+                cur = self.db.execute(
+                    """INSERT INTO provider_execution_gates(
+                           provider,agent_id,task_id,request_hash,definition_hash
+                       ) VALUES(?,?,?,?,?)""",
+                    (provider, agent_id, task_id, request_hash, definition_hash),
+                )
                 gate_id = int(cur.lastrowid)
                 self.db.execute(
                     "INSERT INTO pending_provider_gate_claims(provider,agent_id,task_id,gate_id) VALUES(?,?,?,?)",
                     (provider, agent_id, task_id, gate_id),
                 )
-                self._event("provider.execution.requested", "provider_gate", gate_id, {"provider": provider, "agent_id": agent_id, "task_id": task_id})
+                self._event(
+                    "provider.execution.requested",
+                    "provider_gate",
+                    gate_id,
+                    {
+                        "provider": provider,
+                        "agent_id": agent_id,
+                        "task_id": task_id,
+                        "request_hash": request_hash,
+                        "definition_hash": definition_hash,
+                    },
+                )
             except sqlite3.IntegrityError as exc:
                 raise ValueError(f"Pending provider gate already exists for {provider}/{agent_id}/task {task_id}") from exc
         return gate_id
@@ -408,21 +476,93 @@ class SQLiteStorage:
             )
 
     def claim_provider_execution(self, gate_id: int, request_hash: str, definition_hash: str):
+        request_hash = _sha256_snapshot(request_hash, "request_hash")
+        definition_hash = _sha256_snapshot(definition_hash, "definition_hash")
+        mismatch_error: str | None = None
+        attempt_id: int | None = None
         with self.db:
-            row = self.db.execute("SELECT * FROM provider_execution_gates WHERE id=?", (gate_id,)).fetchone()
+            updated = self.db.execute(
+                """UPDATE provider_execution_gates
+                      SET status='claimed'
+                    WHERE id=? AND status='approved'
+                      AND request_hash=? AND definition_hash=?""",
+                (gate_id, request_hash, definition_hash),
+            )
+            row = self.db.execute(
+                "SELECT * FROM provider_execution_gates WHERE id=?", (gate_id,)
+            ).fetchone()
             if not row:
                 raise KeyError(f"Unknown provider gate: {gate_id}")
-            if row["status"] != "approved":
-                raise PermissionError(f"Provider gate {gate_id} is {row['status']}, expected approved")
-            updated = self.db.execute("UPDATE provider_execution_gates SET status='claimed' WHERE id=? AND status='approved'", (gate_id,))
             if updated.rowcount != 1:
-                raise PermissionError(f"Provider gate {gate_id} was already claimed")
-            cur = self.db.execute(
-                "INSERT INTO provider_execution_attempts(gate_id,provider,agent_id,task_id,request_hash,definition_hash,status) VALUES(?,?,?,?,?,?,'claimed')",
-                (gate_id, row["provider"], row["agent_id"], row["task_id"], request_hash, definition_hash),
-            )
-            attempt_id = int(cur.lastrowid)
-            self._event("provider.execution.claimed", "provider_attempt", attempt_id, {"gate_id": gate_id, "request_hash": request_hash, "definition_hash": definition_hash})
+                if row["status"] != "approved":
+                    raise PermissionError(
+                        f"Provider gate {gate_id} is {row['status']}, expected approved"
+                    )
+                note = (
+                    "Approval snapshot no longer matches the current request or "
+                    "provider policy; request a new gate."
+                )
+                invalidated = self.db.execute(
+                    """UPDATE provider_execution_gates
+                          SET status='rejected',
+                              decision_note=CASE
+                                  WHEN decision_note='' THEN ?
+                                  ELSE decision_note || char(10) || ?
+                              END,
+                              decided_at=COALESCE(decided_at,CURRENT_TIMESTAMP)
+                        WHERE id=? AND status='approved'""",
+                    (note, note, gate_id),
+                )
+                if invalidated.rowcount != 1:
+                    raise PermissionError(
+                        f"Provider gate {gate_id} changed concurrently"
+                    )
+                self.db.execute(
+                    "DELETE FROM pending_provider_gate_claims WHERE gate_id=?",
+                    (gate_id,),
+                )
+                self._event(
+                    "provider.execution.snapshot_mismatch",
+                    "provider_gate",
+                    gate_id,
+                    {
+                        "expected_request_hash": row["request_hash"],
+                        "actual_request_hash": request_hash,
+                        "expected_definition_hash": row["definition_hash"],
+                        "actual_definition_hash": definition_hash,
+                    },
+                )
+                mismatch_error = note
+            else:
+                cur = self.db.execute(
+                    """INSERT INTO provider_execution_attempts(
+                           gate_id,provider,agent_id,task_id,request_hash,
+                           definition_hash,status
+                       ) VALUES(?,?,?,?,?,?,'claimed')""",
+                    (
+                        gate_id,
+                        row["provider"],
+                        row["agent_id"],
+                        row["task_id"],
+                        request_hash,
+                        definition_hash,
+                    ),
+                )
+                attempt_id = int(cur.lastrowid)
+                self._event(
+                    "provider.execution.claimed",
+                    "provider_attempt",
+                    attempt_id,
+                    {
+                        "gate_id": gate_id,
+                        "request_hash": request_hash,
+                        "definition_hash": definition_hash,
+                    },
+                )
+        if mismatch_error is not None:
+            raise PermissionError(mismatch_error)
+        if attempt_id is None:
+            raise RuntimeError("Provider gate claim did not create an attempt")
         return self.db.execute("SELECT * FROM provider_execution_attempts WHERE id=?", (attempt_id,)).fetchone()
 
     def consume_provider_execution(self, gate_id: int):

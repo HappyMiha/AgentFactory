@@ -4,6 +4,17 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ## [Unreleased]
 
+### Added
+
+- Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.
+- Immutable approval snapshots that bind each provider gate to the full work item, agent definition, provider catalog, and execution policy.
+
+### Changed
+
+- Provider launch now falls through to the next reviewed executable only when process creation fails before a provider starts, including Windows access-denied aliases.
+- Provider stdout and stderr are drained through a hard combined limit; overflowing processes are terminated and audited.
+- The test matrix now covers Python 3.11 and 3.12 on Windows, Ubuntu, and macOS.
+
 ### Planned
 
 - Native HTTP provider interface.

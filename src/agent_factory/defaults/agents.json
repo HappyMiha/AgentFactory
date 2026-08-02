@@ -46,6 +46,15 @@
       "permissions": ["read_project", "create_artifact", "propose_code"]
     },
     {
+      "id": "coding-worker-antigravity",
+      "name": "Implementation Worker (Antigravity)",
+      "role": "Implementation Worker",
+      "enabled": true,
+      "provider": "antigravity",
+      "instructions": "Produce a bounded implementation proposal in plan mode and return reviewable evidence without changing the workspace.",
+      "permissions": ["read_project", "create_artifact", "propose_code"]
+    },
+    {
       "id": "coding-worker-ollama",
       "name": "Implementation Worker (Ollama)",
       "role": "Implementation Worker",

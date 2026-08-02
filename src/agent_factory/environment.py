@@ -37,6 +37,13 @@ COMMANDS: dict[str, tuple[str, ...]] = {
         "claude",
     ),
     "Gemini CLI": ("%APPDATA%\\npm\\gemini.cmd", "gemini.cmd", "gemini"),
+    "Antigravity CLI": (
+        "%LOCALAPPDATA%\\agy\\bin\\agy.exe",
+        "%LOCALAPPDATA%\\antigravity\\staging\\agy.exe",
+        "~/.local/bin/agy",
+        "agy.exe",
+        "agy",
+    ),
     "Ollama": (
         "%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe",
         "ollama.exe",

@@ -8,6 +8,10 @@ from agent_factory.models import WorkItem
 from agent_factory.storage import SQLiteStorage
 
 
+REQUEST_HASH = "1" * 64
+DEFINITION_HASH = "2" * 64
+
+
 def seed_delivery(storage: SQLiteStorage) -> tuple[int, int]:
     project_id = storage.create_project("Example Project", "Concurrent delivery checks")
     task_id = storage.create_task(
@@ -79,7 +83,13 @@ class StorageConcurrencyTests(unittest.TestCase):
                     barrier.wait()
                     return (
                         "won",
-                        storage.request_provider_execution("ollama", "worker", task_id),
+                        storage.request_provider_execution(
+                            "ollama",
+                            "worker",
+                            task_id,
+                            REQUEST_HASH,
+                            DEFINITION_HASH,
+                        ),
                     )
                 except ValueError as exc:
                     return ("blocked", str(exc))
@@ -105,8 +115,70 @@ class StorageConcurrencyTests(unittest.TestCase):
             gate_id = int(next(result[1] for result in results if result[0] == "won"))
             check.decide_provider_execution(gate_id, "rejected", "Race check")
             self.assertGreater(
-                check.request_provider_execution("ollama", "worker", task_id), gate_id
+                check.request_provider_execution(
+                    "ollama",
+                    "worker",
+                    task_id,
+                    REQUEST_HASH,
+                    DEFINITION_HASH,
+                ),
+                gate_id,
             )
+            check.close()
+
+    def test_two_connections_racing_to_claim_snapshot_have_one_winner(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path, _, task_id = self._database(tmp)
+            setup = SQLiteStorage(path)
+            gate_id = setup.request_provider_execution(
+                "ollama",
+                "worker",
+                task_id,
+                REQUEST_HASH,
+                DEFINITION_HASH,
+            )
+            setup.decide_provider_execution(gate_id, "approved", "Exact snapshot")
+            setup.close()
+            barrier = threading.Barrier(2)
+
+            def claim():
+                storage = SQLiteStorage(path)
+                try:
+                    barrier.wait()
+                    attempt = storage.claim_provider_execution(
+                        gate_id, REQUEST_HASH, DEFINITION_HASH
+                    )
+                    return ("won", int(attempt["id"]))
+                except PermissionError as exc:
+                    return ("blocked", str(exc))
+                finally:
+                    storage.close()
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = [
+                    future.result()
+                    for future in [pool.submit(claim), pool.submit(claim)]
+                ]
+            self.assertEqual(
+                sorted(result[0] for result in results), ["blocked", "won"]
+            )
+            check = SQLiteStorage(path)
+            self.assertEqual(
+                check.db.execute(
+                    "SELECT count(*) FROM provider_execution_attempts WHERE gate_id=?",
+                    (gate_id,),
+                ).fetchone()[0],
+                1,
+            )
+            self.assertEqual(
+                check.db.execute(
+                    "SELECT status FROM provider_execution_gates WHERE id=?",
+                    (gate_id,),
+                ).fetchone()[0],
+                "claimed",
+            )
+            winner = int(next(result[1] for result in results if result[0] == "won"))
+            self.assertEqual(check.reconcile_provider_attempts(), [winner])
             check.close()
 
 
@@ -139,10 +211,16 @@ class StorageRecoveryTests(unittest.TestCase):
                 "UPDATE workflow_runs SET created_at=datetime('now','-2 hours') WHERE id=?",
                 (run_id,),
             )
-            gate_id = storage.request_provider_execution("ollama", "worker", task_id)
+            gate_id = storage.request_provider_execution(
+                "ollama",
+                "worker",
+                task_id,
+                REQUEST_HASH,
+                DEFINITION_HASH,
+            )
             storage.decide_provider_execution(gate_id, "approved", "Inspect")
             attempt = storage.claim_provider_execution(
-                gate_id, "request", "definition"
+                gate_id, REQUEST_HASH, DEFINITION_HASH
             )
             storage.db.execute(
                 "UPDATE provider_execution_attempts SET created_at=datetime('now','-2 hours') WHERE id=?",
