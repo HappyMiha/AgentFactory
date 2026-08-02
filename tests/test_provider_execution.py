@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import tempfile
@@ -87,7 +86,7 @@ class ProviderExecutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             native = Path(tmp) / "native-provider.exe"
             native.touch()
-            with patch.dict(os.environ, {"AGENT_FACTORY_TEST_BIN": tmp}), patch(
+            with patch(
                 "agent_factory.providers.shutil.which",
                 return_value=r"C:\Program Files\WindowsApps\provider.exe",
             ):
@@ -95,7 +94,7 @@ class ProviderExecutionTests(unittest.TestCase):
                     "test",
                     "provider.exe",
                     [],
-                    executable_candidates=[r"%AGENT_FACTORY_TEST_BIN%\native-provider.exe"],
+                    executable_candidates=[str(native)],
                 )
                 paths = provider._executable_paths()
             self.assertEqual(Path(paths[0]), native)
