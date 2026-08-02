@@ -1,0 +1,85 @@
+{
+  "providers": [
+    {
+      "id": "codex",
+      "type": "cli",
+      "enabled": true,
+      "executable": "codex",
+      "executable_candidates": [
+        "%USERPROFILE%\\.codex\\plugins\\.plugin-appserver\\codex.exe",
+        "%USERPROFILE%\\.codex\\.sandbox-bin\\codex.exe",
+        "codex.exe"
+      ],
+      "args": ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "-"],
+      "version_args": ["--version"],
+      "prompt_transport": "stdin",
+      "allow_execution": true,
+      "allowed_roles": ["Implementation Worker", "Validation Reviewer"],
+      "max_timeout": 180,
+      "max_output_chars": 100000
+    },
+    {
+      "id": "claude",
+      "type": "cli",
+      "enabled": true,
+      "executable": "claude",
+      "executable_candidates": [
+        "%USERPROFILE%\\.local\\bin\\claude.exe",
+        "%APPDATA%\\npm\\claude.cmd",
+        "claude.exe"
+      ],
+      "args": ["-p", "--output-format", "text", "--permission-mode", "plan", "--disable-slash-commands"],
+      "version_args": ["--version"],
+      "prompt_transport": "stdin",
+      "allow_execution": true,
+      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Validation Reviewer"],
+      "max_timeout": 180,
+      "max_output_chars": 100000
+    },
+    {
+      "id": "gemini",
+      "type": "cli",
+      "enabled": true,
+      "executable": "gemini",
+      "executable_candidates": ["%APPDATA%\\npm\\gemini.cmd", "gemini.cmd"],
+      "args": ["--prompt", "", "--output-format", "text", "--approval-mode", "plan"],
+      "version_args": ["--version"],
+      "prompt_transport": "stdin",
+      "allow_execution": true,
+      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Validation Reviewer"],
+      "max_timeout": 180,
+      "max_output_chars": 100000
+    },
+    {
+      "id": "ollama",
+      "type": "cli",
+      "enabled": true,
+      "executable": "ollama",
+      "executable_candidates": [
+        "%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe",
+        "ollama.exe"
+      ],
+      "args": ["run", "qwen2.5-coder:7b", "--think=false", "--nowordwrap"],
+      "version_args": ["--version"],
+      "prompt_transport": "stdin",
+      "allow_execution": true,
+      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Validation Reviewer"],
+      "max_timeout": 180,
+      "max_output_chars": 100000
+    },
+    {
+      "id": "openclaw",
+      "type": "health_only_cli",
+      "enabled": true,
+      "executable": "openclaw",
+      "executable_candidates": ["%APPDATA%\\npm\\openclaw.cmd", "openclaw.cmd"],
+      "args": [],
+      "version_args": ["--version"],
+      "prompt_transport": "stdin",
+      "allow_execution": false,
+      "allowed_roles": [],
+      "max_timeout": 30,
+      "max_output_chars": 10000
+    }
+  ]
+}

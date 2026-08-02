@@ -1,0 +1,71 @@
+{
+  "workflows": [
+    {
+      "id": "delivery",
+      "name": "Review-gated delivery",
+      "guardrails": {
+        "precheck_stage": "policy-precheck",
+        "postcheck_stage": "policy-postcheck",
+        "guardian_agent": "policy-guardian"
+      },
+      "stages": [
+        {
+          "id": "policy-precheck",
+          "name": "Policy and scope pre-check",
+          "agent": "policy-guardian",
+          "artifact": "policy_precheck.json",
+          "depends_on": [],
+          "acceptance_criteria": [
+            "The task is consistent with configured policy",
+            "The expected outcome is explicit and testable"
+          ],
+          "contract": {
+            "allowed_verdicts": ["ALIGNED", "CONDITIONALLY_ALIGNED", "NOT_ALIGNED"]
+          }
+        },
+        {
+          "id": "implementation",
+          "name": "Implementation proposal",
+          "agent": "coding-worker-codex",
+          "artifact": "implementation.json",
+          "depends_on": ["policy-precheck"],
+          "acceptance_criteria": [
+            "The proposal addresses the approved task",
+            "The result is independently reviewable"
+          ],
+          "contract": {
+            "allowed_verdicts": ["COMPLETE"]
+          }
+        },
+        {
+          "id": "validation",
+          "name": "Acceptance validation",
+          "agent": "validation-agent",
+          "artifact": "validation.json",
+          "depends_on": ["implementation"],
+          "acceptance_criteria": [
+            "Every task acceptance criterion has evidence",
+            "Known concerns and residual risks are explicit"
+          ],
+          "contract": {
+            "allowed_verdicts": ["PASS", "FAIL"]
+          }
+        },
+        {
+          "id": "policy-postcheck",
+          "name": "Policy and outcome post-check",
+          "agent": "policy-guardian",
+          "artifact": "policy_postcheck.json",
+          "depends_on": ["validation"],
+          "acceptance_criteria": [
+            "The delivered evidence matches the approved scope",
+            "The outcome remains consistent with configured policy"
+          ],
+          "contract": {
+            "allowed_verdicts": ["ALIGNED", "CONDITIONALLY_ALIGNED", "NOT_ALIGNED"]
+          }
+        }
+      ]
+    }
+  ]
+}

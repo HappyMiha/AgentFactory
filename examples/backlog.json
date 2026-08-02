@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "Example service requirements"
+  },
+  "items": [
+    {
+      "stable_id": "example:epic:service-readiness",
+      "kind": "epic",
+      "title": "Service readiness",
+      "description": "Provide a small service that operators can start, inspect, and stop predictably.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "A new operator can start the service from documented instructions.",
+        "The service exposes measurable health evidence.",
+        "A failed startup produces an actionable diagnostic."
+      ],
+      "source_references": [
+        "docs/requirements.md#service-readiness"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "example:story:health-endpoint",
+      "kind": "story",
+      "title": "Observable service health",
+      "description": "Allow an operator to determine whether the process is ready to serve requests.",
+      "parent_id": "example:epic:service-readiness",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "A health request returns a success response when dependencies are ready.",
+        "A health request returns a non-success response when a required dependency is unavailable.",
+        "The response contains no credentials or private configuration values."
+      ],
+      "source_references": [
+        "docs/requirements.md#health"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "example:task:implement-health-endpoint",
+      "kind": "task",
+      "title": "Implement the health endpoint",
+      "description": "Add the endpoint and automated evidence for healthy and unhealthy dependency states.",
+      "parent_id": "example:story:health-endpoint",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "The healthy case is covered by an automated test.",
+        "The unavailable-dependency case is covered by an automated test.",
+        "Static checks and the existing test suite pass."
+      ],
+      "source_references": [
+        "docs/requirements.md#health"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "example:task:document-operations",
+      "kind": "task",
+      "title": "Document service operations",
+      "description": "Document startup, health verification, shutdown, and the most likely failure modes.",
+      "parent_id": "example:epic:service-readiness",
+      "dependencies": [
+        "example:task:implement-health-endpoint"
+      ],
+      "acceptance_criteria": [
+        "A new operator can follow the instructions without unstated local setup.",
+        "Every command has an expected result.",
+        "Destructive cleanup actions contain an explicit warning."
+      ],
+      "source_references": [
+        "docs/requirements.md#operations"
+      ],
+      "review_notes": []
+    }
+  ]
+}

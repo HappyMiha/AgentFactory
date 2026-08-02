@@ -1,0 +1,83 @@
+name: Feature request
+description: Propose a project-neutral capability or contract improvement.
+title: "[Feature] "
+labels: ["type:feature", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Strong proposals describe the operator problem, measurable outcome, trust-boundary impact, and a small first increment.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Operator problem
+      description: What cannot be done safely or efficiently today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe observable behavior rather than an implementation preference.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Agent registry
+        - Workflow contracts
+        - Provider runtime
+        - Approval gates
+        - Storage and audit
+        - GitHub integration
+        - CLI and usability
+        - Packaging and deployment
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Provide measurable statements, one per line.
+      placeholder: |
+        - A new operator can ...
+        - A denied action leaves ...
+        - The audit record contains ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: safety
+    attributes:
+      label: Approval and security impact
+      description: Explain effects on provider authority, external mutations, credentials, or auditability.
+    validations:
+      required: true
+
+  - type: textarea
+    id: increment
+    attributes:
+      label: Smallest useful increment
+      description: Suggest a bounded first delivery that can be tested independently.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: The proposal is project-neutral.
+          required: true
+        - label: I searched existing Issues and the roadmap.
+          required: true
+        - label: The proposal does not weaken human approval by default.
+          required: true

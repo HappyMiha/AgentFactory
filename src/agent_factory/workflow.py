@@ -1,0 +1,106 @@
+"""Deterministic, review-gated workflow orchestration."""
+
+from __future__ import annotations
+
+import json
+
+from .config import config_path, load_yaml
+from .models import Budget, Status, WorkItem
+from .registry import AgentRegistry
+from .runtime import AgentRuntime, ExecutionMode
+from .storage import SQLiteStorage
+from .workflow_contracts import parse_stage_verdict, validate_workflow
+
+
+class WorkflowEngine:
+    def __init__(
+        self,
+        storage: SQLiteStorage,
+        registry: AgentRegistry | None = None,
+        runtime: AgentRuntime | None = None,
+    ):
+        self.storage = storage
+        self.registry = registry or AgentRegistry()
+        self.runtime = runtime or AgentRuntime()
+
+    def workflow(self, workflow_id: str) -> dict:
+        document = load_yaml(config_path("workflows"))
+        workflow = next(
+            (entry for entry in document.get("workflows", []) if entry.get("id") == workflow_id),
+            None,
+        )
+        if workflow is None:
+            raise KeyError(f"Unknown workflow: {workflow_id}")
+        validate_workflow(workflow)
+        return workflow
+
+    def run(
+        self,
+        workflow_id: str,
+        task: WorkItem,
+        mode: ExecutionMode | str = ExecutionMode.SIMULATION,
+    ) -> int:
+        mode = ExecutionMode(mode)
+        workflow = self.workflow(workflow_id)
+        stages = validate_workflow(workflow)
+        run_id = self.storage.start_run(task.project_id, task.id, workflow_id)
+        self.storage.event(
+            "workflow.mode.selected",
+            "run",
+            run_id,
+            {
+                "mode": mode.value,
+                "fallback_allowed": mode is ExecutionMode.SIMULATION,
+            },
+        )
+        context: dict[str, str] = {
+            "work_item": json.dumps(task.to_dict(), sort_keys=True, default=str)
+        }
+        completed: set[str] = set()
+        try:
+            for stage in stages:
+                missing = set(stage.get("depends_on", [])) - completed
+                if missing:
+                    raise RuntimeError(
+                        f"Stage {stage['id']} is missing dependencies: {sorted(missing)}"
+                    )
+                agent = self.registry.get(stage["agent"])
+                if not agent.enabled:
+                    raise RuntimeError(f"Required agent is disabled: {agent.id}")
+                child = WorkItem(
+                    id=task.id,
+                    title=f"{task.title}: {stage['name']}",
+                    description=task.description,
+                    project_id=task.project_id,
+                    inputs={
+                        **task.inputs,
+                        "stage": stage["id"],
+                        "stage_contract": stage["contract"],
+                        "artifact_name": stage["artifact"],
+                    },
+                    expected_outputs=[stage["artifact"]],
+                    acceptance_criteria=stage.get("acceptance_criteria", []),
+                    permissions=agent.permissions,
+                    budget=Budget(**stage.get("budget", {})),
+                    status=Status.RUNNING,
+                )
+                result = self.runtime.run(agent, child, context, mode=mode)
+                if not result.ok:
+                    raise RuntimeError(result.error or f"Provider failed at stage {stage['id']}")
+                verdict = parse_stage_verdict(stage, result)
+                labeled_content = f"[execution_mode={mode.value}]\n{result.content}"
+                self.storage.add_artifact(
+                    run_id,
+                    stage["id"],
+                    agent.id,
+                    result.provider,
+                    labeled_content,
+                )
+                context[stage["id"]] = result.content
+                context[f"{stage['id']}:verdict"] = verdict.verdict
+                completed.add(stage["id"])
+            self.storage.create_approval_gate(run_id)
+        except Exception as exc:
+            self.storage.finish_run(run_id, "failed", event_payload={"error": str(exc)})
+            raise
+        return run_id

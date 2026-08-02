@@ -1,0 +1,106 @@
+name: Bug report
+description: Report reproducible behavior that violates an Agent Factory contract.
+title: "[Bug] "
+labels: ["type:bug", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for a focused report. Remove credentials, personal data, local home paths, and private repository content before submitting. Report security issues privately as described in SECURITY.md.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Run `agent-factory --version` when available, or provide the commit SHA.
+      placeholder: 0.1.0 or abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Docker
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: Python 3.11.9
+    validations:
+      required: true
+
+  - type: dropdown
+    id: execution-mode
+    attributes:
+      label: Execution mode
+      options:
+        - Simulation
+        - Live provider invocation
+        - GitHub dry-run
+        - GitHub apply
+        - Installation or packaging
+    validations:
+      required: true
+
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+      description: Leave blank when the issue does not involve a provider.
+      placeholder: deterministic, codex, claude, gemini, ollama, or openclaw
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: State the contract or invariant you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Observed behavior
+      description: Include sanitized output and exit status. Do not paste auth status details.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Use synthetic project and work-item data.
+      placeholder: |
+        1. Run ...
+        2. Approve ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Add relevant event types, attempt status, or tracebacks after removing sensitive content.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched existing Issues for this behavior.
+          required: true
+        - label: I removed credentials, personal data, private content, and absolute home paths.
+          required: true
+        - label: This is not a security vulnerability that should be reported privately.
+          required: true

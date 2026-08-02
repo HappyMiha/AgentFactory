@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11"]
+    env:
+      PYTHONUTF8: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package
+        run: python -m pip install --disable-pip-version-check --no-input --no-deps -e .
+
+      - name: Compile sources
+        run: python -m compileall -q src tests
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Check CLI installation
+        run: agent-factory --help
+
+      - name: Run deterministic demo
+        run: agent-factory --workspace "${{ runner.temp }}/agent-factory-smoke" demo
+
+  package:
+    name: Build and clean-install wheel
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build frontend
+        run: python -m pip install --disable-pip-version-check --no-input build
+
+      - name: Build source and wheel distributions
+        run: python -m build
+
+      - name: Install wheel outside checkout
+        shell: bash
+        run: |
+          python -m venv "${RUNNER_TEMP}/clean-install"
+          "${RUNNER_TEMP}/clean-install/bin/python" -m pip install --disable-pip-version-check --no-input dist/*.whl
+          cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/clean-install/bin/agent-factory" --help
+          "${RUNNER_TEMP}/clean-install/bin/agent-factory" --workspace "${RUNNER_TEMP}/wheel-smoke" demo
+
+      - name: Verify packaged defaults
+        shell: bash
+        run: |
+          cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/clean-install/bin/python" - <<'PY'
+          from importlib.resources import files
+          defaults = files("agent_factory").joinpath("defaults")
+          expected = {"agents.json", "policy.json", "providers.json", "workflows.json"}
+          present = {item.name for item in defaults.iterdir() if item.is_file()}
+          missing = expected - present
+          if missing:
+              raise SystemExit(f"Missing packaged defaults: {sorted(missing)}")
+          PY
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: dist/*
+          if-no-files-found: error
+
+  docker:
+    name: Build simulation image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate Compose file
+        run: docker compose config --quiet
+
+      - name: Build image
+        run: docker build --tag agent-factory:ci .
+
+      - name: Run CLI smoke test
+        run: docker run --rm agent-factory:ci --help
+
+      - name: Run deterministic container demo
+        run: docker run --rm agent-factory:ci demo

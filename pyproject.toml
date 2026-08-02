@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-factory-orchestrator"
+version = "0.1.0"
+description = "A provider-neutral, human-controlled orchestration factory for AI agents"
+readme = "README.md"
+requires-python = ">=3.11"
+keywords = ["agents", "orchestration", "workflow", "ai", "automation"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = []
+
+[project.scripts]
+agent-factory = "agent_factory.cli:main"
+
+[project.optional-dependencies]
+dev = ["build>=1.2"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["agent_factory*"]
+
+[tool.setuptools.package-data]
+agent_factory = ["defaults/*.json", "defaults/*.yaml"]

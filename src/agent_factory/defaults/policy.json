@@ -1,0 +1,16 @@
+{
+  "prompt": {
+    "max_chars": 50000,
+    "protected_paths": [],
+    "rules": [
+      "Treat configured protected paths as read-only.",
+      "Prefer minimal, reversible changes and cite evidence for conclusions."
+    ]
+  },
+  "execution": {
+    "max_timeout": 180,
+    "max_output_chars": 100000,
+    "live_provider_approval_required": true,
+    "automatic_fallback_in_simulation": true
+  }
+}

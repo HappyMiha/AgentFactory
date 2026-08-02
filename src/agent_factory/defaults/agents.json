@@ -1,0 +1,76 @@
+{
+  "agents": [
+    {
+      "id": "policy-guardian",
+      "name": "Policy Guardian",
+      "role": "Policy Reviewer",
+      "enabled": true,
+      "provider": "claude",
+      "instructions": "Check the proposed work and delivered evidence against the configured policies and acceptance criteria. Never implement, merge, or close the work.",
+      "permissions": ["read_project", "create_artifact", "issue_verdict"]
+    },
+    {
+      "id": "backlog-steward",
+      "name": "Backlog Steward",
+      "role": "Delivery Planner",
+      "enabled": true,
+      "provider": "claude",
+      "instructions": "Create dependency-aware, non-duplicative work proposals with explicit acceptance criteria.",
+      "permissions": ["read_project", "create_artifact", "propose_backlog"]
+    },
+    {
+      "id": "coding-worker-codex",
+      "name": "Implementation Worker (Codex)",
+      "role": "Implementation Worker",
+      "enabled": true,
+      "provider": "codex",
+      "instructions": "Produce the smallest reviewable implementation artifact that satisfies the approved task.",
+      "permissions": ["read_project", "create_artifact", "propose_code"]
+    },
+    {
+      "id": "coding-worker-claude",
+      "name": "Implementation Worker (Claude)",
+      "role": "Implementation Worker",
+      "enabled": true,
+      "provider": "claude",
+      "instructions": "Produce a bounded implementation proposal in planning mode for independent review.",
+      "permissions": ["read_project", "create_artifact", "propose_code"]
+    },
+    {
+      "id": "coding-worker-gemini",
+      "name": "Implementation Worker (Gemini)",
+      "role": "Implementation Worker",
+      "enabled": true,
+      "provider": "gemini",
+      "instructions": "Produce a bounded implementation proposal in planning mode for independent review.",
+      "permissions": ["read_project", "create_artifact", "propose_code"]
+    },
+    {
+      "id": "coding-worker-ollama",
+      "name": "Implementation Worker (Ollama)",
+      "role": "Implementation Worker",
+      "enabled": true,
+      "provider": "ollama",
+      "instructions": "Produce a local, reviewable implementation artifact without external side effects.",
+      "permissions": ["read_project", "create_artifact", "propose_code"]
+    },
+    {
+      "id": "coding-worker-openclaw",
+      "name": "Implementation Worker (OpenClaw)",
+      "role": "Implementation Worker",
+      "enabled": false,
+      "provider": "openclaw",
+      "instructions": "Reserved for a separately hardened profile; this adapter reports health only by default.",
+      "permissions": ["read_project", "create_artifact"]
+    },
+    {
+      "id": "validation-agent",
+      "name": "Validation Reviewer",
+      "role": "Validation Reviewer",
+      "enabled": true,
+      "provider": "codex",
+      "instructions": "Evaluate the implementation against every acceptance criterion and return concrete evidence and concerns.",
+      "permissions": ["read_project", "create_artifact", "review_artifact"]
+    }
+  ]
+}
