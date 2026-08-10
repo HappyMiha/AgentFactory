@@ -11,6 +11,14 @@ python -m pip install -e ".[web]"
 agent-factory --workspace . web
 ```
 
+On Windows, this single PowerShell line installs the optional dependencies, starts the foreground loopback service, and opens the default browser after startup:
+
+```powershell
+python -m pip install -e ".[web]"; if ($LASTEXITCODE -eq 0) { python -m agent_factory --workspace . web --open }
+```
+
+Press `Ctrl+C` in that PowerShell window to stop Uvicorn cleanly. The command does not run a script file and does not require or change `Set-ExecutionPolicy`. `--open` only schedules the loopback URL in the default browser; the server remains attached to the terminal and still rejects non-loopback hosts.
+
 The default address is `http://127.0.0.1:8765`. Interactive API documentation is available at `http://127.0.0.1:8765/api/docs`. The CLI rejects non-loopback bind addresses; `127.0.0.1`, `localhost`, and `::1` are accepted.
 
 The dashboard refreshes its local snapshot every five seconds without reloading the page. It summarizes ready, active, blocked, failed, awaiting-review, and awaiting-approval work; recent workflow runs; provider health; pending decisions; and recent failures. A failed refresh retains the last successful snapshot and marks it stale. Initial connection failures, empty state, and loading state remain visually distinct.
@@ -38,7 +46,7 @@ The API exposes health, projects, work items, workflow runs, artifacts, agents, 
 
 ## Work-item and workflow controls
 
-The Work items workspace filters the current backlog by project, type, status, priority, dependency, and assignee. Selecting an item shows its description, acceptance criteria, expected outputs, dependencies, linked artifacts, and previous workflow runs.
+The Work items workspace can import a validated workspace-relative backlog into a named local project, then filters current work by project, type, status, priority, dependency, and assignee. Stable IDs make repeated imports safe: existing items are skipped. Selecting an item shows its description, acceptance criteria, expected outputs, dependencies, linked artifacts, and previous workflow runs.
 
 The following mutations are intentionally narrow:
 

@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 
 from agent_factory.application import AgentFactoryService
 from agent_factory.backlog import load_backlog
+from agent_factory.cli import _control_center_url, _schedule_browser_open, parser
 from agent_factory.providers import DeterministicProvider
 from agent_factory.runtime import AgentRuntime
 from agent_factory.storage import SQLiteStorage
@@ -53,6 +54,28 @@ def seed(workspace: Path, database: Path) -> tuple[int, int, int]:
 
 
 class WebHostTests(unittest.TestCase):
+    def test_web_open_flag_uses_loopback_url_without_blocking_shutdown(self):
+        arguments = parser().parse_args(["--workspace", ".", "web", "--open"])
+        self.assertTrue(arguments.open_browser)
+        opened: list[str] = []
+        timer = _schedule_browser_open(
+            _control_center_url("127.0.0.1", 8765), delay=0, opener=opened.append
+        )
+        timer.join(timeout=2)
+        self.assertEqual(opened, ["http://127.0.0.1:8765/"])
+        self.assertTrue(timer.daemon)
+        self.assertEqual(_control_center_url("::1", 8765), "http://[::1]:8765/")
+        documentation = (ROOT / "docs" / "local-control-center.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(
+            'python -m pip install -e ".[web]"; if ($LASTEXITCODE -eq 0) '
+            "{ python -m agent_factory --workspace . web --open }",
+            documentation,
+        )
+        self.assertIn("Press `Ctrl+C`", documentation)
+        self.assertIn("does not require or change `Set-ExecutionPolicy`", documentation)
+
     def test_documented_cli_command_starts_and_stops_cleanly(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
@@ -242,6 +265,7 @@ class WebHostTests(unittest.TestCase):
                         "/api/settings/{key}",
                         "/api/github/preview",
                         "/api/founder-decisions/{gate_id}",
+                        "/api/backlog/import",
                     },
                 )
 
@@ -695,6 +719,7 @@ class WebHostTests(unittest.TestCase):
                 self.assertIn('id="founder-dialog"', page.text)
                 self.assertIn("Only this separately confirmed Founder action", script.text)
                 self.assertIn("no merge, close, release, or GitHub mutation", script.text)
+                self.assertIn('id="backlog-import-form"', page.text)
                 self.assertNotIn("Available in AF-039", page.text)
                 self.assertIn("prefers-reduced-motion", styles.text)
 

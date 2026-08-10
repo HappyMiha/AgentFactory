@@ -6,6 +6,8 @@ import argparse
 import json
 import os
 import sys
+import threading
+import webbrowser
 from dataclasses import asdict
 from importlib.metadata import version
 from pathlib import Path
@@ -47,6 +49,12 @@ def parser() -> argparse.ArgumentParser:
     web = sub.add_parser("web", help="Start the loopback-only Local Control Center API.")
     web.add_argument("--host", default="127.0.0.1")
     web.add_argument("--port", default=8765, type=int)
+    web.add_argument(
+        "--open",
+        dest="open_browser",
+        action="store_true",
+        help="Open the Local Control Center in the default browser after startup.",
+    )
 
     project = sub.add_parser("project").add_subparsers(dest="action", required=True)
     project_init = project.add_parser("init")
@@ -171,6 +179,21 @@ def _paths(args: argparse.Namespace) -> tuple[Path, Path]:
     if not db.is_absolute():
         db = workspace / db
     return workspace, db.resolve()
+
+
+def _control_center_url(host: str, port: int) -> str:
+    display_host = f"[{host}]" if ":" in host else host
+    return f"http://{display_host}:{port}/"
+
+
+def _schedule_browser_open(
+    url: str, *, delay: float = 0.75, opener: Any | None = None
+) -> threading.Timer:
+    callback = opener or webbrowser.open
+    timer = threading.Timer(delay, callback, args=(url,))
+    timer.daemon = True
+    timer.start()
+    return timer
 
 
 def _workflow_approval_output(item: Any) -> dict[str, Any]:
@@ -312,6 +335,10 @@ def _execute(args: argparse.Namespace) -> int:
         host = validate_loopback_host(args.host)
         if args.port < 1 or args.port > 65_535:
             raise ValueError("--port must be between 1 and 65535")
+        if args.open_browser:
+            url = _control_center_url(host, args.port)
+            print(f"Opening Local Control Center at {url}")
+            _schedule_browser_open(url)
         uvicorn.run(create_app(workspace, db_path), host=host, port=args.port)
         return 0
 

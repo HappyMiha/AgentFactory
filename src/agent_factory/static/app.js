@@ -256,6 +256,19 @@ async function handleGitHubPreview(event) {
   if (result) { renderGitHubPreview(result); await loadAudit(); }
 }
 
+async function handleBacklogImport(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const projectName = String(form.get("project_name") || "").trim();
+  const backlogPath = String(form.get("backlog_path") || "").trim();
+  const result = await guardedCommand("/api/backlog/import", { project_name: projectName, project_description: "Imported through Local Control Center", backlog_path: backlogPath }, `Import validated backlog ${backlogPath} into local project ${projectName}; existing stable IDs will be skipped`);
+  if (!result) return;
+  state.projectsLoaded = false;
+  $("filter-project").innerHTML = '<option value="">All projects</option>';
+  $("notice").textContent = `Backlog import created ${result.created.length} and skipped ${result.skipped.length} work item(s)`;
+  await refresh();
+}
+
 async function handleFounderDecision(decision) {
   if (!state.selectedGate) return;
   const packet = state.founderPackets.find((item) => item.approval.id === state.selectedGate);
@@ -296,6 +309,7 @@ async function refresh() {
 
 $("refresh").addEventListener("click", refresh);
 $("work-filters").addEventListener("submit", (event) => { event.preventDefault(); loadWork().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("backlog-import-form").addEventListener("submit", (event) => { handleBacklogImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("clear-filters").addEventListener("click", () => { $("work-filters").reset(); loadWork(); });
 $("work-list").addEventListener("click", (event) => { const row = event.target.closest("[data-task-id]"); if (row) selectWorkItem(row.dataset.taskId).catch((error) => { $("work-detail").innerHTML = empty(error.message); }); });
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });

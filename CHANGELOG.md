@@ -14,6 +14,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - Workspace-local agent controls with role-compatible provider replacement, audited impact records, detailed provider health, assignment usage, and explainable independent-review routing.
 - Correlated audit explorer, immutable allowlisted runtime-setting history, and workspace-contained GitHub dry-run planning with SHA-256-bound approval gates.
 - Founder review inbox with complete decision packets, separate guarded authority, idempotent same-decision replay, conflicting-decision protection, and attributable audit receipts.
+- Windows `web --open` launch flow, guarded workspace backlog import, documented accessibility checklist, automated semantic/contrast checks, and fresh-state R0.2 end-to-end qualification.
 - Durable proxy-reviewer pools with model-aware author exclusion, least-used rotation, assignment history, and audit events.
 - Independent rotating policy post-checks that cannot reuse the implementation or validation producer models.
 - Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.

@@ -17,6 +17,7 @@ from .application import (
     ApprovalView,
     ArtifactView,
     AuditEventView,
+    BacklogFileImportResult,
     EventView,
     FounderDecisionPacket,
     FounderDecisionReceipt,
@@ -116,6 +117,12 @@ class FounderDecisionCommand(ConfirmedCommand):
     decision: Literal["approved", "rejected"]
     note: str = ""
     actor: Literal["Founder"] = "Founder"
+
+
+class BacklogImportCommand(ConfirmedCommand):
+    project_name: str
+    project_description: str = ""
+    backlog_path: str
 
 
 class RunDetail(BaseModel):
@@ -299,6 +306,19 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     @app.get("/api/work-items/{task_id}", response_model=WorkItemView)
     async def work_item(task_id: int, service: Service) -> WorkItemView:
         return service.work_item(task_id)
+
+    @app.post("/api/backlog/import", response_model=BacklogFileImportResult)
+    async def import_backlog(
+        command: BacklogImportCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> BacklogFileImportResult:
+        _require_confirmation(command, confirmation)
+        return service.import_backlog_file(
+            command.project_name,
+            command.backlog_path,
+            command.project_description,
+        )
 
     @app.get("/api/runs", response_model=Page[RunView])
     async def runs(

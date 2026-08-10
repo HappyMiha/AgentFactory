@@ -259,6 +259,16 @@ class BacklogImportResult:
 
 
 @dataclass(frozen=True)
+class BacklogFileImportResult:
+    project_id: int
+    project_created: bool
+    source_path: str
+    created: tuple[dict[str, Any], ...]
+    skipped: tuple[str, ...]
+    source_sha256: str
+
+
+@dataclass(frozen=True)
 class ProviderInvocationResult:
     ok: bool
     provider: str
@@ -1329,6 +1339,34 @@ class AgentFactoryService:
                 remaining.pop(item.stable_id)
         return BacklogImportResult(
             tuple(created), tuple(sorted(skipped)), proposal.source_sha256
+        )
+
+    def import_backlog_file(
+        self,
+        project_name: str,
+        backlog_path: str,
+        project_description: str = "",
+    ) -> BacklogFileImportResult:
+        if not project_name.strip():
+            raise ValueError("Backlog import requires a project name")
+        relative = Path(backlog_path)
+        if relative.is_absolute():
+            raise ValueError("Backlog import path must be workspace-relative")
+        source = (self.workspace / relative).resolve()
+        if not source.is_relative_to(self.workspace):
+            raise ValueError("Backlog import path escapes the workspace")
+        if not source.is_file():
+            raise ValueError(f"Backlog manifest does not exist: {backlog_path}")
+        proposal = load_backlog(source)
+        project = self.create_project(project_name.strip(), project_description.strip())
+        result = self.import_backlog(proposal, project.project_id)
+        return BacklogFileImportResult(
+            project_id=project.project_id,
+            project_created=project.created,
+            source_path=source.relative_to(self.workspace).as_posix(),
+            created=result.created,
+            skipped=result.skipped,
+            source_sha256=result.source_sha256,
         )
 
     def seed_example(self) -> tuple[int, int]:
