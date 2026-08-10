@@ -53,6 +53,14 @@ class Agent:
     provider: str
     instructions: str
     permissions: list[str] = field(default_factory=list)
+    model: str = ""
+
+    @property
+    def model_identity(self) -> str:
+        """Stable identity used to prevent a model from reviewing its own work."""
+
+        configured = self.model.strip()
+        return configured if configured else f"provider:{self.provider}"
 
 
 @dataclass

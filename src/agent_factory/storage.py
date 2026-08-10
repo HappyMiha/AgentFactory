@@ -142,6 +142,29 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
             SELECT RAISE(ABORT, 'provider approval snapshot is immutable');
         END;
     """),
+    (7, """
+        CREATE TABLE IF NOT EXISTS reviewer_assignments(
+            id INTEGER PRIMARY KEY,
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage TEXT NOT NULL,
+            reviewer_agent_id TEXT NOT NULL,
+            reviewer_provider TEXT NOT NULL,
+            reviewer_model TEXT NOT NULL,
+            reviewed_stages TEXT NOT NULL,
+            reviewed_artifact_ids TEXT NOT NULL,
+            producer_agents TEXT NOT NULL,
+            excluded_models TEXT NOT NULL,
+            excluded_candidates TEXT NOT NULL,
+            strategy TEXT NOT NULL,
+            review_artifact_id INTEGER REFERENCES artifacts(id),
+            verdict TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT,
+            UNIQUE(run_id,stage)
+        );
+        CREATE INDEX IF NOT EXISTS idx_reviewer_assignments_rotation
+            ON reviewer_assignments(stage,reviewer_agent_id,id);
+    """),
 )
 
 RUN_TRANSITIONS = {
@@ -370,6 +393,134 @@ class SQLiteStorage:
 
     def artifacts(self, run_id: int):
         return self.db.execute("SELECT * FROM artifacts WHERE run_id=? ORDER BY id", (run_id,)).fetchall()
+
+    def reviewer_assignments(self, run_id: int | None = None):
+        if run_id is None:
+            return self.db.execute(
+                "SELECT * FROM reviewer_assignments ORDER BY id"
+            ).fetchall()
+        return self.db.execute(
+            "SELECT * FROM reviewer_assignments WHERE run_id=? ORDER BY id",
+            (run_id,),
+        ).fetchall()
+
+    def reviewer_usage(
+        self, stage: str, candidate_ids: list[str]
+    ) -> dict[str, tuple[int, int]]:
+        if not candidate_ids:
+            return {}
+        placeholders = ",".join("?" for _ in candidate_ids)
+        rows = self.db.execute(
+            f"""SELECT reviewer_agent_id,COUNT(*) AS uses,MAX(id) AS last_id
+                   FROM reviewer_assignments
+                  WHERE stage=? AND reviewer_agent_id IN ({placeholders})
+                  GROUP BY reviewer_agent_id""",
+            (stage, *candidate_ids),
+        ).fetchall()
+        return {
+            str(row["reviewer_agent_id"]): (int(row["uses"]), int(row["last_id"]))
+            for row in rows
+        }
+
+    def latest_reviewer_assignment(self, stage: str):
+        return self.db.execute(
+            """SELECT * FROM reviewer_assignments
+                 WHERE stage=? ORDER BY id DESC LIMIT 1""",
+            (stage,),
+        ).fetchone()
+
+    def record_reviewer_assignment(
+        self,
+        *,
+        run_id: int,
+        stage: str,
+        reviewer: Any,
+        subjects: list[Any],
+        excluded_models: list[str],
+        excluded_candidates: dict[str, str],
+        strategy: str,
+    ) -> int:
+        producer_agents = [
+            {
+                "stage": subject.stage,
+                "agent_id": subject.producer.id,
+                "provider": subject.producer.provider,
+                "model": subject.producer.model_identity,
+            }
+            for subject in subjects
+        ]
+        with self.db:
+            cur = self.db.execute(
+                """INSERT INTO reviewer_assignments(
+                       run_id,stage,reviewer_agent_id,reviewer_provider,reviewer_model,
+                       reviewed_stages,reviewed_artifact_ids,producer_agents,
+                       excluded_models,excluded_candidates,strategy
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    run_id,
+                    stage,
+                    reviewer.id,
+                    reviewer.provider,
+                    reviewer.model_identity,
+                    json.dumps([subject.stage for subject in subjects]),
+                    json.dumps([subject.artifact_id for subject in subjects]),
+                    json.dumps(producer_agents, sort_keys=True),
+                    json.dumps(excluded_models),
+                    json.dumps(excluded_candidates, sort_keys=True),
+                    strategy,
+                ),
+            )
+            assignment_id = int(cur.lastrowid)
+            self._event(
+                "reviewer.assigned",
+                "review_assignment",
+                assignment_id,
+                {
+                    "run_id": run_id,
+                    "stage": stage,
+                    "reviewer_agent_id": reviewer.id,
+                    "reviewer_provider": reviewer.provider,
+                    "reviewer_model": reviewer.model_identity,
+                    "producer_agents": producer_agents,
+                    "strategy": strategy,
+                },
+            )
+        return assignment_id
+
+    def complete_reviewer_assignment(
+        self,
+        *,
+        run_id: int,
+        stage: str,
+        review_artifact_id: int,
+        verdict: str,
+    ) -> None:
+        with self.db:
+            updated = self.db.execute(
+                """UPDATE reviewer_assignments
+                      SET review_artifact_id=?,verdict=?,completed_at=CURRENT_TIMESTAMP
+                    WHERE run_id=? AND stage=? AND completed_at IS NULL""",
+                (review_artifact_id, verdict, run_id, stage),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(
+                    f"Reviewer assignment for run {run_id} stage {stage} is missing or complete"
+                )
+            assignment = self.db.execute(
+                "SELECT id,reviewer_agent_id,reviewer_model FROM reviewer_assignments WHERE run_id=? AND stage=?",
+                (run_id, stage),
+            ).fetchone()
+            self._event(
+                "reviewer.review.completed",
+                "review_assignment",
+                int(assignment["id"]),
+                {
+                    "review_artifact_id": review_artifact_id,
+                    "reviewer_agent_id": assignment["reviewer_agent_id"],
+                    "reviewer_model": assignment["reviewer_model"],
+                    "verdict": verdict,
+                },
+            )
 
     def review_artifact(self, artifact_id: int, status: str, note: str) -> None:
         if status not in {"approved", "rejected"}:

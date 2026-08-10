@@ -7,6 +7,7 @@ import json
 from .config import config_path, load_yaml
 from .models import Budget, Status, WorkItem
 from .registry import AgentRegistry
+from .reviewers import ReviewerRouter, ReviewSubject
 from .runtime import AgentRuntime, ExecutionMode
 from .storage import SQLiteStorage
 from .workflow_contracts import parse_stage_verdict, validate_workflow
@@ -22,6 +23,7 @@ class WorkflowEngine:
         self.storage = storage
         self.registry = registry or AgentRegistry()
         self.runtime = runtime or AgentRuntime()
+        self.reviewers = ReviewerRouter(storage, self.registry)
 
     def workflow(self, workflow_id: str) -> dict:
         document = load_yaml(config_path("workflows"))
@@ -57,6 +59,7 @@ class WorkflowEngine:
             "work_item": json.dumps(task.to_dict(), sort_keys=True, default=str)
         }
         completed: set[str] = set()
+        produced: dict[str, ReviewSubject] = {}
         try:
             for stage in stages:
                 missing = set(stage.get("depends_on", [])) - completed
@@ -64,7 +67,42 @@ class WorkflowEngine:
                     raise RuntimeError(
                         f"Stage {stage['id']} is missing dependencies: {sorted(missing)}"
                     )
-                agent = self.registry.get(stage["agent"])
+                reviewer_pool = stage.get("reviewer_pool")
+                if reviewer_pool:
+                    reviewed_stages = stage.get("review_of", [])
+                    if isinstance(reviewed_stages, str):
+                        reviewed_stages = [reviewed_stages]
+                    subjects = [produced[stage_id] for stage_id in reviewed_stages]
+                    placeholder = self.registry.get(stage["agent"])
+                    agent = self.reviewers.select(
+                        run_id=run_id,
+                        stage=stage["id"],
+                        candidate_ids=list(reviewer_pool),
+                        subjects=subjects,
+                        required_role=placeholder.role,
+                    )
+                    context[f"{stage['id']}:review_assignment"] = json.dumps(
+                        {
+                            "reviewer": {
+                                "agent_id": agent.id,
+                                "provider": agent.provider,
+                                "model": agent.model_identity,
+                            },
+                            "subjects": [
+                                {
+                                    "stage": subject.stage,
+                                    "artifact_id": subject.artifact_id,
+                                    "producer": subject.producer.id,
+                                    "provider": subject.producer.provider,
+                                    "model": subject.producer.model_identity,
+                                }
+                                for subject in subjects
+                            ],
+                        },
+                        sort_keys=True,
+                    )
+                else:
+                    agent = self.registry.get(stage["agent"])
                 if not agent.enabled:
                     raise RuntimeError(f"Required agent is disabled: {agent.id}")
                 child = WorkItem(
@@ -89,13 +127,23 @@ class WorkflowEngine:
                     raise RuntimeError(result.error or f"Provider failed at stage {stage['id']}")
                 verdict = parse_stage_verdict(stage, result)
                 labeled_content = f"[execution_mode={mode.value}]\n{result.content}"
-                self.storage.add_artifact(
+                artifact_id = self.storage.add_artifact(
                     run_id,
                     stage["id"],
                     agent.id,
                     result.provider,
                     labeled_content,
                 )
+                produced[stage["id"]] = ReviewSubject(
+                    stage=stage["id"], artifact_id=artifact_id, producer=agent
+                )
+                if reviewer_pool:
+                    self.storage.complete_reviewer_assignment(
+                        run_id=run_id,
+                        stage=stage["id"],
+                        review_artifact_id=artifact_id,
+                        verdict=verdict.verdict,
+                    )
                 context[stage["id"]] = result.content
                 context[f"{stage['id']}:verdict"] = verdict.verdict
                 completed.add(stage["id"])

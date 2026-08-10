@@ -76,6 +76,41 @@ def validate_workflow(workflow: dict[str, Any]) -> tuple[dict[str, Any], ...]:
             raise WorkflowContractError(
                 f"Stage {stage_id} references missing dependencies: {missing}"
             )
+        reviewer_pool = stage.get("reviewer_pool")
+        if reviewer_pool is not None:
+            if (
+                not isinstance(reviewer_pool, list)
+                or not reviewer_pool
+                or not all(isinstance(value, str) and value.strip() for value in reviewer_pool)
+                or len(set(reviewer_pool)) != len(reviewer_pool)
+            ):
+                raise WorkflowContractError(
+                    f"Stage {stage_id} reviewer_pool must contain unique agent ids"
+                )
+            if stage["agent"] not in reviewer_pool:
+                raise WorkflowContractError(
+                    f"Stage {stage_id} default agent must belong to reviewer_pool"
+                )
+            reviewed = stage.get("review_of")
+            reviewed_stages = [reviewed] if isinstance(reviewed, str) else reviewed
+            if (
+                not isinstance(reviewed_stages, list)
+                or not reviewed_stages
+                or not all(isinstance(value, str) and value for value in reviewed_stages)
+            ):
+                raise WorkflowContractError(
+                    f"Stage {stage_id} reviewer_pool requires review_of stage ids"
+                )
+            unavailable = sorted(set(reviewed_stages) - set(ids))
+            if unavailable:
+                raise WorkflowContractError(
+                    f"Stage {stage_id} reviews missing stages: {unavailable}"
+                )
+            not_dependencies = sorted(set(reviewed_stages) - _ancestors(stage_id, by_id))
+            if not_dependencies:
+                raise WorkflowContractError(
+                    f"Stage {stage_id} can only review ancestor stages: {not_dependencies}"
+                )
         contract = stage.get("contract")
         if not isinstance(contract, dict):
             raise WorkflowContractError(f"Stage {stage_id} requires a typed contract")

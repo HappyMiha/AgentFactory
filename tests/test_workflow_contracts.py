@@ -151,6 +151,25 @@ class WorkflowGraphContractTests(unittest.TestCase):
         with self.assertRaises(WorkflowContractError):
             validate_workflow(incomplete_postcheck)
 
+    def test_reviewer_pool_requires_default_member_and_ancestor_subject(self):
+        review = stage("review", "reviewer", ["policy-precheck"])
+        review["reviewer_pool"] = ["other-reviewer"]
+        review["review_of"] = ["policy-precheck"]
+        invalid_default = workflow(
+            [
+                stage("policy-precheck", "policy-guardian"),
+                review,
+                stage("policy-postcheck", "policy-guardian", ["review"]),
+            ]
+        )
+        with self.assertRaisesRegex(WorkflowContractError, "default agent"):
+            validate_workflow(invalid_default)
+
+        review["reviewer_pool"] = ["reviewer"]
+        review["review_of"] = ["policy-postcheck"]
+        with self.assertRaisesRegex(WorkflowContractError, "ancestor"):
+            validate_workflow(invalid_default)
+
 
 class WorkflowStageContractTests(unittest.TestCase):
     def run_with(self, provider):
@@ -165,7 +184,19 @@ class WorkflowStageContractTests(unittest.TestCase):
                 acceptance_criteria=["Evidence exists"],
             )
         )
-        runtime = AgentRuntime(providers={"claude": provider, "codex": provider})
+        runtime = AgentRuntime(
+            providers={
+                name: provider
+                for name in (
+                    "claude",
+                    "codex",
+                    "gemini",
+                    "antigravity",
+                    "ollama",
+                    "deterministic",
+                )
+            }
+        )
         callback = lambda: WorkflowEngine(storage, runtime=runtime).run(
             "delivery", storage.get_task(task_id)
         )

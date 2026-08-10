@@ -23,6 +23,10 @@ class RegistryTests(unittest.TestCase):
             agent.name = "Replacement"
             registry.replace(agent)
             self.assertEqual(registry.get("a").name, "Replacement")
+            registry.replace_provider("a", "other", "other:model")
+            self.assertEqual(registry.get("a").model_identity, "other:model")
+            registry.replace_provider("a", "third")
+            self.assertEqual(registry.get("a").model_identity, "provider:third")
 
     def test_packaged_default_agents_are_discoverable(self):
         agents = AgentRegistry().list()
@@ -31,6 +35,12 @@ class RegistryTests(unittest.TestCase):
         self.assertIn("coding-worker-codex", ids)
         self.assertIn("coding-worker-antigravity", ids)
         self.assertIn("validation-agent", ids)
+        self.assertIn("proxy-reviewer-claude", ids)
+        self.assertIn("proxy-reviewer-gemini", ids)
+        self.assertIn("proxy-reviewer-ollama", ids)
+        self.assertEqual(
+            AgentRegistry().get("validation-agent").role, "Proxy Reviewer"
+        )
 
     def test_explicit_config_directory_overrides_packaged_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:

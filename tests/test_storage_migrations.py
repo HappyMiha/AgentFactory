@@ -84,7 +84,7 @@ class StorageMigrationTests(unittest.TestCase):
                 "version INTEGER PRIMARY KEY, "
                 "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
             )
-            for version, script in MIGRATIONS[:-1]:
+            for version, script in MIGRATIONS[:5]:
                 db.executescript(script)
                 db.execute(
                     "INSERT INTO schema_migrations(version) VALUES(?)", (version,)

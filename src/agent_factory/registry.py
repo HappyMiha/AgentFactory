@@ -44,5 +44,9 @@ class AgentRegistry:
     def replace(self, agent: Agent) -> None:
         self.add(agent, replace=True)
 
-    def replace_provider(self, agent_id: str, provider: str) -> Agent:
-        agent = self.get(agent_id); agent.provider = provider; self.replace(agent); return agent
+    def replace_provider(self, agent_id: str, provider: str, model: str = "") -> Agent:
+        agent = self.get(agent_id)
+        agent.provider = provider
+        agent.model = model
+        self.replace(agent)
+        return agent

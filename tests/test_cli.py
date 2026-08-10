@@ -48,6 +48,9 @@ class CLITests(unittest.TestCase):
             approvals = self.run_cli(workspace, "approvals", "list")
             self.assertEqual(approvals.returncode, 0, approvals.stderr)
             self.assertEqual(json.loads(approvals.stdout)[0]["status"], "pending")
+            reviews = self.run_cli(workspace, "reviews", "list", "--run-id", "1")
+            self.assertEqual(reviews.returncode, 0, reviews.stderr)
+            self.assertEqual(len(json.loads(reviews.stdout)), 2)
 
     def test_project_and_work_item_commands(self):
         with tempfile.TemporaryDirectory() as tmp:

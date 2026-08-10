@@ -39,8 +39,16 @@
         },
         {
           "id": "validation",
-          "name": "Acceptance validation",
+          "name": "Rotating independent acceptance review",
           "agent": "validation-agent",
+          "reviewer_pool": [
+            "validation-agent",
+            "proxy-reviewer-claude",
+            "proxy-reviewer-gemini",
+            "proxy-reviewer-antigravity",
+            "proxy-reviewer-ollama"
+          ],
+          "review_of": ["implementation"],
           "artifact": "validation.json",
           "depends_on": ["implementation"],
           "acceptance_criteria": [
@@ -55,6 +63,13 @@
           "id": "policy-postcheck",
           "name": "Policy and outcome post-check",
           "agent": "policy-guardian",
+          "reviewer_pool": [
+            "policy-guardian",
+            "policy-guardian-codex",
+            "policy-guardian-gemini",
+            "policy-guardian-ollama"
+          ],
+          "review_of": ["implementation", "validation"],
           "artifact": "policy_postcheck.json",
           "depends_on": ["validation"],
           "acceptance_criteria": [

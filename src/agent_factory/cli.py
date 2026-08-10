@@ -93,6 +93,18 @@ def parser() -> argparse.ArgumentParser:
     replace = agents.add_parser("replace")
     replace.add_argument("agent_id")
     replace.add_argument("--provider", required=True)
+    replace.add_argument(
+        "--model",
+        default="",
+        help="Stable model identity used by independent-review routing.",
+    )
+
+    reviews = sub.add_parser("reviews").add_subparsers(
+        dest="review_action", required=True
+    )
+    review_list = reviews.add_parser("list")
+    review_list.add_argument("--run-id", type=int)
+    review_list.add_argument("--limit", type=int, default=100)
 
     backlog = sub.add_parser("backlog").add_subparsers(dest="action", required=True)
     validate = backlog.add_parser("validate")
@@ -212,6 +224,12 @@ def _show_run(storage: SQLiteStorage, run_id: int) -> None:
         print(
             f"\n--- {row['stage']} | {row['agent_id']} | {row['provider']} ---\n"
             f"{row['content']}"
+        )
+    for assignment in storage.reviewer_assignments(run_id):
+        print(
+            "\nREVIEW ROUTING: "
+            f"{assignment['stage']} -> {assignment['reviewer_agent_id']} "
+            f"({assignment['reviewer_model']})"
         )
     gate = storage.db.execute(
         "SELECT * FROM approval_gates WHERE run_id=?", (run_id,)
@@ -523,6 +541,7 @@ def _execute(args: argparse.Namespace) -> int:
                                 "role": agent.role,
                                 "enabled": agent.enabled,
                                 "provider": agent.provider,
+                                "model": agent.model_identity,
                             }
                             for agent in registry.list()
                         ],
@@ -530,14 +549,24 @@ def _execute(args: argparse.Namespace) -> int:
                     )
                 )
             elif args.action == "replace":
-                agent = registry.replace_provider(args.agent_id, args.provider)
+                agent = registry.replace_provider(
+                    args.agent_id, args.provider, args.model
+                )
                 storage.event(
                     "agent.provider.replaced",
                     "agent",
                     agent.id,
-                    {"provider": agent.provider},
+                    {"provider": agent.provider, "model": agent.model_identity},
                 )
-                print(json.dumps({"agent_id": agent.id, "provider": agent.provider}))
+                print(
+                    json.dumps(
+                        {
+                            "agent_id": agent.id,
+                            "provider": agent.provider,
+                            "model": agent.model_identity,
+                        }
+                    )
+                )
             else:
                 agent = registry.set_enabled(args.agent_id, args.action == "enable")
                 storage.event(
@@ -547,6 +576,11 @@ def _execute(args: argparse.Namespace) -> int:
                     {"enabled": agent.enabled},
                 )
                 print(json.dumps({"agent_id": agent.id, "enabled": agent.enabled}))
+        elif args.command == "reviews":
+            if args.limit < 1 or args.limit > 10_000:
+                raise ValueError("--limit must be between 1 and 10000")
+            rows = storage.reviewer_assignments(args.run_id)
+            print(json.dumps([dict(row) for row in rows[-args.limit :]], indent=2))
         elif args.command == "backlog":
             if args.action == "validate":
                 proposal = load_backlog(Path(args.path))

@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -97,6 +98,16 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(artifacts[0]["stage"], "policy-precheck")
             self.assertEqual(artifacts[-1]["stage"], "policy-postcheck")
             self.assertIn('"verdict": "ALIGNED"', artifacts[-1]["content"])
+            assignments = storage.reviewer_assignments(run_id)
+            self.assertEqual(len(assignments), 2)
+            for assignment in assignments:
+                self.assertIsNotNone(assignment["review_artifact_id"])
+                self.assertIsNotNone(assignment["completed_at"])
+                producer_models = {
+                    producer["model"]
+                    for producer in json.loads(assignment["producer_agents"])
+                }
+                self.assertNotIn(assignment["reviewer_model"], producer_models)
             self.assertEqual(storage.approvals()[0]["status"], "pending")
             self.assertGreater(
                 storage.db.execute("SELECT count(*) FROM events").fetchone()[0], 7
