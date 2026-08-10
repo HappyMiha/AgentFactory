@@ -1,6 +1,6 @@
 # Local Control Center
 
-The Local Control Center is a loopback-only, single-operator interface over the same application services used by the Agent Factory CLI. The current AF-037 milestone provides the read-only operations API; dashboard pages and guarded controls follow in later R0.2 tasks.
+The Local Control Center is a loopback-only, single-operator interface over the same application services used by the Agent Factory CLI. AF-037 provides the read-only operations API and AF-038 adds the live dashboard and navigation shell; guarded controls follow in later R0.2 tasks.
 
 ## Start the local API
 
@@ -12,6 +12,8 @@ agent-factory --workspace . web
 ```
 
 The default address is `http://127.0.0.1:8765`. Interactive API documentation is available at `http://127.0.0.1:8765/api/docs`. The CLI rejects non-loopback bind addresses; `127.0.0.1`, `localhost`, and `::1` are accepted.
+
+The dashboard refreshes its local snapshot every five seconds without reloading the page. It summarizes ready, active, blocked, failed, awaiting-review, and awaiting-approval work; recent workflow runs; provider health; pending decisions; and recent failures. A failed refresh retains the last successful snapshot and marks it stale. Initial connection failures, empty state, and loading state remain visually distinct.
 
 Use a different local port when needed:
 

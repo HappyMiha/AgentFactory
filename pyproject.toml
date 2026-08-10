@@ -38,4 +38,4 @@ where = ["src"]
 include = ["agent_factory*"]
 
 [tool.setuptools.package-data]
-agent_factory = ["defaults/*.json", "defaults/*.yaml"]
+agent_factory = ["defaults/*.json", "defaults/*.yaml", "static/*"]

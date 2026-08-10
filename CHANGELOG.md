@@ -9,6 +9,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - Shared typed application-service boundary for CLI and Local Control Center queries and guarded commands.
 - Contract tests proving equivalent CLI and service state transitions and audit events.
 - Loopback-only FastAPI host with typed, bounded, read-only Local Control Center endpoints and structured failures.
+- Live Local Control Center dashboard shell with delivery counts, workflow, approval, provider, and failure status that refreshes without navigation.
 - Durable proxy-reviewer pools with model-aware author exclusion, least-used rotation, assignment history, and audit events.
 - Independent rotating policy post-checks that cannot reuse the implementation or validation producer models.
 - Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.

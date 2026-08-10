@@ -33,7 +33,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
 | Docker | Simulation-only | The image runs as a non-root user with persistent `/data`; external provider CLIs are not bundled. |
 | HTTP model APIs | Planned | DeepSeek, OpenRouter, Mistral, Groq, and similar services require a future HTTP adapter. |
-| Local Control Center | In progress | Shared services and the loopback read API are ready; dashboard and guarded controls are next. |
+| Local Control Center | In progress | Shared services, loopback API, and live dashboard shell are ready; guarded controls are next. |
 
 ## How it works
 
@@ -60,7 +60,7 @@ flowchart LR
 
 The demo is deterministic. It does not invoke an external model or mutate GitHub.
 
-The read-only Local Control Center API can be started with `python -m pip install -e ".[web]"` followed by `agent-factory --workspace . web`. It binds to `127.0.0.1:8765` by default; see [Local Control Center](docs/local-control-center.md).
+The Local Control Center dashboard and read API can be started with `python -m pip install -e ".[web]"` followed by `agent-factory --workspace . web`. It binds to `127.0.0.1:8765` by default; see [Local Control Center](docs/local-control-center.md).
 
 ### Windows PowerShell
 

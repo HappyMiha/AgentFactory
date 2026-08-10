@@ -136,6 +136,19 @@ class WebHostTests(unittest.TestCase):
                     self.assertEqual(response.status_code, 200, response.text)
                     self.assertEqual(response.json()["items"], [])
                     self.assertEqual(response.json()["total"], 0)
+                dashboard = client.get("/api/dashboard")
+                self.assertEqual(dashboard.status_code, 200)
+                self.assertEqual(
+                    dashboard.json()["counts"],
+                    {
+                        "ready": 0,
+                        "active": 0,
+                        "blocked": 0,
+                        "failed": 0,
+                        "awaiting_review": 0,
+                        "awaiting_approval": 0,
+                    },
+                )
 
     def test_typed_resources_pagination_missing_and_malformed_requests(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -169,6 +182,11 @@ class WebHostTests(unittest.TestCase):
                     item["name"]: item for item in client.get("/api/integrations").json()
                 }
                 self.assertEqual(integrations["github"]["status"], "unconfigured")
+                dashboard = client.get("/api/dashboard").json()
+                self.assertEqual(dashboard["counts"]["ready"], 1)
+                self.assertEqual(dashboard["counts"]["awaiting_review"], 4)
+                self.assertEqual(dashboard["counts"]["awaiting_approval"], 1)
+                self.assertEqual(dashboard["runs"][0]["id"], run_id)
 
                 missing = client.get("/api/work-items/999")
                 self.assertEqual(missing.status_code, 404)
@@ -210,6 +228,27 @@ class WebHostTests(unittest.TestCase):
                 self.assertTrue(
                     all(set(operations).issubset({"get", "head"}) for operations in paths.values())
                 )
+
+    def test_dashboard_shell_has_live_navigation_and_explicit_ui_states(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            with TestClient(
+                create_app(workspace, workspace / ".agent-factory" / "state.db")
+            ) as client:
+                page = client.get("/")
+                self.assertEqual(page.status_code, 200)
+                self.assertIn("Local Control Center", page.text)
+                for target in ("#overview", "#work", "#runs", "#agents", "#reviews", "#audit"):
+                    self.assertIn(f'href="{target}"', page.text)
+                script = client.get("/assets/app.js")
+                styles = client.get("/assets/styles.css")
+                self.assertEqual(script.status_code, 200)
+                self.assertEqual(styles.status_code, 200)
+                self.assertIn("setInterval(refresh, 5000)", script.text)
+                self.assertIn("Showing the last successful local snapshot", script.text)
+                self.assertIn("Dashboard data is unavailable", script.text)
+                self.assertIn("No workflow runs yet", script.text)
+                self.assertIn("prefers-reduced-motion", styles.text)
 
 
 if __name__ == "__main__":

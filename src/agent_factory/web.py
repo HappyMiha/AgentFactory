@@ -7,7 +7,8 @@ from typing import Annotated, Any, Generic, TypeVar
 
 from fastapi import Depends, FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .application import (
@@ -47,6 +48,23 @@ class IntegrationStatus(BaseModel):
     detail: str
 
 
+class DashboardCounts(BaseModel):
+    ready: int
+    active: int
+    blocked: int
+    failed: int
+    awaiting_review: int
+    awaiting_approval: int
+
+
+class DashboardResponse(BaseModel):
+    counts: DashboardCounts
+    runs: list[RunView]
+    providers: list[ProviderView]
+    pending_approvals: list[ApprovalView]
+    recent_failures: list[EventView]
+
+
 Offset = Annotated[int, Query(ge=0, le=1_000_000)]
 Limit = Annotated[int, Query(ge=1, le=200)]
 
@@ -73,6 +91,8 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         redoc_url=None,
         openapi_url="/api/openapi.json",
     )
+    static_directory = Path(__file__).resolve().parent / "static"
+    app.mount("/assets", StaticFiles(directory=static_directory), name="assets")
 
     async def service_dependency() -> AsyncIterator[AgentFactoryService]:
         storage = SQLiteStorage(database)
@@ -131,6 +151,53 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             status="ready" if integrity["ok"] else "degraded",
             database=str(database),
             integrity=integrity,
+        )
+
+    @app.get("/api/dashboard", response_model=DashboardResponse)
+    async def dashboard(service: Service) -> DashboardResponse:
+        items = service.work_items()
+        runs = service.runs()
+        approvals = service.approvals()
+        artifacts = service.artifacts()
+        by_id = {item.id: item for item in items}
+        blocked = sum(
+            item.status == "pending"
+            and any(
+                dependency not in by_id
+                or by_id[dependency].status not in {"completed", "approved"}
+                for dependency in item.dependencies
+            )
+            for item in items
+        )
+        ready = sum(
+            item.status == "pending"
+            and all(
+                dependency in by_id
+                and by_id[dependency].status in {"completed", "approved"}
+                for dependency in item.dependencies
+            )
+            for item in items
+        )
+        failures = [
+            event
+            for event in service.events(limit=100)
+            if event.event_type.endswith(".failed")
+            or event.payload.get("ok") is False
+            or "error" in event.payload
+        ][:10]
+        return DashboardResponse(
+            counts=DashboardCounts(
+                ready=ready,
+                active=sum(run.status == "running" for run in runs),
+                blocked=blocked,
+                failed=sum(run.status == "failed" for run in runs),
+                awaiting_review=sum(artifact.status == "pending" for artifact in artifacts),
+                awaiting_approval=sum(item.status == "pending" for item in approvals),
+            ),
+            runs=runs[-10:][::-1],
+            providers=service.providers(),
+            pending_approvals=[item for item in approvals if item.status == "pending"],
+            recent_failures=failures,
         )
 
     @app.get("/api/projects", response_model=Page[ProjectView])
@@ -231,5 +298,9 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
                 detail="Repository context is supplied only to explicit dry-run sync requests",
             ),
         ]
+
+    @app.get("/", include_in_schema=False)
+    async def dashboard_shell() -> FileResponse:
+        return FileResponse(static_directory / "index.html")
 
     return app
