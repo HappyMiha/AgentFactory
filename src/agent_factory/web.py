@@ -3,9 +3,9 @@
 import sqlite3
 from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Annotated, Any, Generic, TypeVar
+from typing import Annotated, Any, Generic, Literal, TypeVar
 
-from fastapi import Depends, FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -65,8 +65,36 @@ class DashboardResponse(BaseModel):
     recent_failures: list[EventView]
 
 
+class ConfirmedCommand(BaseModel):
+    confirmed: bool
+
+
+class ClaimCommand(ConfirmedCommand):
+    agent_id: str
+
+
+class RunCommand(ConfirmedCommand):
+    workflow_id: str = "delivery"
+    mode: Literal["simulation"] = "simulation"
+
+
+class ReviewCommand(ConfirmedCommand):
+    task_id: int
+    decision: Literal["approved", "rejected"]
+    note: str = ""
+
+
+class RunDetail(BaseModel):
+    run: RunView
+    artifacts: list[ArtifactView]
+    reviews: list[ReviewView]
+    approval: ApprovalView | None
+    stopped_reason: str
+
+
 Offset = Annotated[int, Query(ge=0, le=1_000_000)]
 Limit = Annotated[int, Query(ge=1, le=200)]
+Confirmation = Annotated[str | None, Header(alias="X-Agent-Factory-Confirm")]
 
 
 def validate_loopback_host(host: str) -> str:
@@ -79,6 +107,11 @@ def validate_loopback_host(host: str) -> str:
 
 def _page(items: list[T], offset: int, limit: int) -> Page[T]:
     return Page(items=items[offset : offset + limit], offset=offset, limit=limit, total=len(items))
+
+
+def _require_confirmation(command: ConfirmedCommand, header: str | None) -> None:
+    if command.confirmed is not True or header != "true":
+        raise ValueError("Explicit confirmation is required")
 
 
 def create_app(workspace: Path, database: Path) -> FastAPI:
@@ -210,8 +243,24 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         offset: Offset = 0,
         limit: Limit = 50,
         project_id: int | None = None,
+        kind: str | None = None,
+        status: str | None = None,
+        priority: str | None = None,
+        dependency: int | None = None,
+        assignee: str | None = None,
     ) -> Page[WorkItemView]:
-        return _page(service.work_items(project_id), offset, limit)
+        rows = service.work_items(project_id)
+        if kind is not None:
+            rows = [item for item in rows if item.kind == kind]
+        if status is not None:
+            rows = [item for item in rows if item.status == status]
+        if priority is not None:
+            rows = [item for item in rows if item.priority == priority]
+        if dependency is not None:
+            rows = [item for item in rows if dependency in item.dependencies]
+        if assignee is not None:
+            rows = [item for item in rows if item.assignee == assignee]
+        return _page(rows, offset, limit)
 
     @app.get("/api/work-items/{task_id}", response_model=WorkItemView)
     async def work_item(task_id: int, service: Service) -> WorkItemView:
@@ -229,6 +278,61 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     @app.get("/api/runs/{run_id}", response_model=RunView)
     async def run(run_id: int, service: Service) -> RunView:
         return service.run(run_id)
+
+    @app.get("/api/runs/{run_id}/detail", response_model=RunDetail)
+    async def run_detail(run_id: int, service: Service) -> RunDetail:
+        run = service.run(run_id)
+        artifacts = service.artifacts(run_id)
+        reviews = service.reviews(run_id, limit=10_000)
+        approval = next(
+            (
+                item
+                for item in service.approvals()
+                if item.kind == "workflow" and item.target_id == run_id
+            ),
+            None,
+        )
+        reason = {
+            "awaiting_approval": "Founder decision required",
+            "failed": "Workflow failed; inspect stage evidence and audit events",
+            "approved": "Founder approved the accumulated evidence",
+            "rejected": "Founder rejected the accumulated evidence",
+            "running": "Workflow is still executing",
+        }.get(run.status, f"Workflow stopped in state {run.status}")
+        return RunDetail(
+            run=run,
+            artifacts=artifacts,
+            reviews=reviews,
+            approval=approval,
+            stopped_reason=reason,
+        )
+
+    @app.post("/api/work-items/{task_id}/claim", response_model=dict[str, Any])
+    async def claim_work_item(
+        task_id: int, command: ClaimCommand, service: Service, confirmation: Confirmation = None
+    ) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        result = service.claim_work_item(task_id, command.agent_id)
+        return {"task_id": result.task_id, "worker": result.worker}
+
+    @app.post("/api/work-items/{task_id}/runs", response_model=RunView)
+    async def start_workflow(
+        task_id: int, command: RunCommand, service: Service, confirmation: Confirmation = None
+    ) -> RunView:
+        _require_confirmation(command, confirmation)
+        return service.run_workflow(task_id, command.workflow_id, command.mode)
+
+    @app.post("/api/artifacts/{artifact_id}/review", response_model=ArtifactView)
+    async def review_artifact(
+        artifact_id: int,
+        command: ReviewCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> ArtifactView:
+        _require_confirmation(command, confirmation)
+        return service.review_artifact(
+            command.task_id, artifact_id, command.decision, command.note
+        )
 
     @app.get("/api/artifacts", response_model=Page[ArtifactView])
     async def artifacts(

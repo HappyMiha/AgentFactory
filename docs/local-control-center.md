@@ -1,6 +1,6 @@
 # Local Control Center
 
-The Local Control Center is a loopback-only, single-operator interface over the same application services used by the Agent Factory CLI. AF-037 provides the read-only operations API and AF-038 adds the live dashboard and navigation shell; guarded controls follow in later R0.2 tasks.
+The Local Control Center is a loopback-only, single-operator interface over the same application services used by the Agent Factory CLI. It combines the read API, live dashboard, backlog inspection, and guarded workflow controls without creating a second orchestration path.
 
 ## Start the local API
 
@@ -36,4 +36,16 @@ The API exposes health, projects, work items, workflow runs, artifacts, agents, 
 
 `limit` must be between 1 and 200. Missing resources return a structured `404`, malformed parameters return a structured `422`, and storage failures return `503`. Provider and GitHub integration states are explicit; missing or unhealthy integrations are not reported as successful execution.
 
-AF-037 deliberately exposes no mutation routes. Future controls must call `AgentFactoryService` guarded commands and preserve the existing approval and audit paths.
+## Work-item and workflow controls
+
+The Work items workspace filters the current backlog by project, type, status, priority, dependency, and assignee. Selecting an item shows its description, acceptance criteria, expected outputs, dependencies, linked artifacts, and previous workflow runs.
+
+The following mutations are intentionally narrow:
+
+- claim a work item for an enabled agent;
+- start the reviewed `delivery` workflow in simulation mode;
+- approve or reject an artifact through the existing review command.
+
+Every mutation displays a summary before execution and requires both `confirmed: true` in the JSON body and `X-Agent-Factory-Confirm: true` in the request header. Requests that omit either signal fail without changing state. The API delegates to `AgentFactoryService`, so agent eligibility, workflow gates, review ownership, and audit events remain identical to the CLI path.
+
+Run detail preserves stage order and displays the producing agent/provider, verdict, evidence, errors, artifact status, and exact stop reason. Cancellation and resume are shown as unavailable because the MVP has no reviewed service command for either operation. Real provider execution is not exposed by the web control; the run action is simulation-only.

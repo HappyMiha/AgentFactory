@@ -217,7 +217,7 @@ class WebHostTests(unittest.TestCase):
                     responses = list(pool.map(client.get, paths))
                 self.assertTrue(all(response.status_code == 200 for response in responses))
 
-    def test_openapi_exposes_read_only_api_routes(self):
+    def test_openapi_exposes_only_reviewed_guarded_mutations(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             with TestClient(
@@ -225,9 +225,97 @@ class WebHostTests(unittest.TestCase):
             ) as client:
                 paths = client.get("/api/openapi.json").json()["paths"]
                 self.assertIn("/api/projects", paths)
-                self.assertTrue(
-                    all(set(operations).issubset({"get", "head"}) for operations in paths.values())
+                mutation_routes = {
+                    path
+                    for path, operations in paths.items()
+                    if "post" in operations
+                }
+                self.assertEqual(
+                    mutation_routes,
+                    {
+                        "/api/work-items/{task_id}/claim",
+                        "/api/work-items/{task_id}/runs",
+                        "/api/artifacts/{artifact_id}/review",
+                    },
                 )
+
+    def test_guarded_work_item_run_and_review_controls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            database = workspace / ".agent-factory" / "state.db"
+            storage = SQLiteStorage(database)
+            service = AgentFactoryService(storage, workspace=workspace)
+            project = service.create_project("Controls")
+            item = service.create_work_item(
+                project_id=project.project_id,
+                title="Controlled task",
+                description="Confirm every mutation",
+                kind="feature",
+                inputs={"labels": ["priority:high"]},
+                acceptance_criteria=["Mutation is audited"],
+            )
+            dependent = service.create_work_item(
+                project_id=project.project_id,
+                title="Dependent task",
+                description="Exercise dependency filters",
+                dependencies=[item.id],
+            )
+            storage.close()
+            headers = {"X-Agent-Factory-Confirm": "true"}
+            with TestClient(create_app(workspace, database)) as client:
+                rejected = client.post(
+                    f"/api/work-items/{item.id}/claim",
+                    json={"confirmed": False, "agent_id": "coding-worker-codex"},
+                )
+                self.assertEqual(rejected.status_code, 400)
+                claimed = client.post(
+                    f"/api/work-items/{item.id}/claim",
+                    headers=headers,
+                    json={"confirmed": True, "agent_id": "coding-worker-codex"},
+                )
+                self.assertEqual(claimed.status_code, 200, claimed.text)
+                filtered = client.get(
+                    "/api/work-items", params={"assignee": "coding-worker-codex"}
+                ).json()
+                self.assertEqual(filtered["total"], 1)
+                for key, value, expected_id in (
+                    ("project_id", project.project_id, item.id),
+                    ("kind", "feature", item.id),
+                    ("status", "pending", item.id),
+                    ("priority", "high", item.id),
+                    ("dependency", item.id, dependent.id),
+                ):
+                    with self.subTest(filter=key):
+                        result = client.get(
+                            "/api/work-items", params={key: value}
+                        ).json()
+                        self.assertIn(expected_id, [row["id"] for row in result["items"]])
+                started = client.post(
+                    f"/api/work-items/{item.id}/runs",
+                    headers=headers,
+                    json={"confirmed": True, "workflow_id": "delivery", "mode": "simulation"},
+                )
+                self.assertEqual(started.status_code, 200, started.text)
+                run_id = started.json()["id"]
+                detail = client.get(f"/api/runs/{run_id}/detail").json()
+                self.assertEqual(
+                    [artifact["stage"] for artifact in detail["artifacts"]],
+                    ["policy-precheck", "implementation", "validation", "policy-postcheck"],
+                )
+                self.assertEqual(detail["stopped_reason"], "Founder decision required")
+                artifact_id = detail["artifacts"][0]["id"]
+                reviewed = client.post(
+                    f"/api/artifacts/{artifact_id}/review",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "task_id": item.id,
+                        "decision": "approved",
+                        "note": "Evidence checked",
+                    },
+                )
+                self.assertEqual(reviewed.status_code, 200, reviewed.text)
+                self.assertEqual(reviewed.json()["status"], "approved")
 
     def test_dashboard_shell_has_live_navigation_and_explicit_ui_states(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -248,6 +336,14 @@ class WebHostTests(unittest.TestCase):
                 self.assertIn("Showing the last successful local snapshot", script.text)
                 self.assertIn("Dashboard data is unavailable", script.text)
                 self.assertIn("No workflow runs yet", script.text)
+                self.assertIn('id="work-filters"', page.text)
+                self.assertIn('id="confirm-dialog"', page.text)
+                self.assertIn("Explicit confirmation", page.text)
+                self.assertIn('"X-Agent-Factory-Confirm": "true"', script.text)
+                self.assertIn("Run simulation", script.text)
+                self.assertIn("Resume unavailable", script.text)
+                self.assertIn("Cancel unavailable", script.text)
+                self.assertNotIn("Available in AF-039", page.text)
                 self.assertIn("prefers-reduced-motion", styles.text)
 
 

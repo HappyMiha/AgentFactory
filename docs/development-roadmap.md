@@ -64,7 +64,7 @@ The immediate operator-experience sequence is `AF-036 → AF-037 → AF-038/AF-0
 
 This MVP is intentionally loopback-only and single-operator. It uses current SQLite state and shared Python application services rather than becoming a second orchestration implementation. `AF-026`, `AF-029`, and `AF-030` later add the authenticated, multi-tenant, production service boundary without discarding this UI.
 
-**Progress:** AF-036, AF-037, and AF-038 are complete. CLI commands use the shared typed service boundary, the loopback-only FastAPI host exposes bounded read endpoints, and the live dashboard distinguishes healthy, empty, loading, stale, disconnected, and error states. AF-039, AF-040, and AF-042 are unblocked.
+**Progress:** AF-036 through AF-039 are complete. CLI commands use the shared typed service boundary, the loopback-only FastAPI host exposes bounded endpoints, the live dashboard distinguishes healthy, empty, loading, stale, disconnected, and error states, and guarded work-item controls preserve simulation, review, confirmation, and audit gates. AF-040 and AF-042 are unblocked.
 
 ## R1 — Durable Safe Core
 

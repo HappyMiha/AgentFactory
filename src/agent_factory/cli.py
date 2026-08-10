@@ -354,6 +354,8 @@ def _execute(args: argparse.Namespace) -> int:
             elif args.action == "show":
                 output = asdict(service.work_item(args.task_id))
                 output.pop("created_at")
+                output.pop("priority")
+                output.pop("assignee")
                 print(json.dumps(output, indent=2))
             else:
                 items = service.work_items(args.project_id)

@@ -49,6 +49,8 @@ class WorkItemView:
     artifacts: tuple[int, ...]
     github_number: int | None
     created_at: str
+    priority: str | None
+    assignee: str | None
 
 
 @dataclass(frozen=True)
@@ -288,6 +290,16 @@ class AgentFactoryService:
 
     def _work_item_view(self, task_id: int, created_at: str) -> WorkItemView:
         item = self.storage.get_task(task_id)
+        claim = self.storage.db.execute(
+            """SELECT payload FROM events WHERE entity_type='task' AND entity_id=?
+                 AND event_type='task.claimed' ORDER BY id DESC LIMIT 1""",
+            (str(task_id),),
+        ).fetchone()
+        labels = item.inputs.get("labels", [])
+        priority = next(
+            (str(label).split(":", 1)[1] for label in labels if str(label).startswith("priority:")),
+            None,
+        )
         return WorkItemView(
             id=task_id,
             project_id=item.project_id,
@@ -308,6 +320,8 @@ class AgentFactoryService:
             artifacts=tuple(item.artifacts),
             github_number=item.github_number,
             created_at=created_at,
+            priority=priority,
+            assignee=(str(_json_object(claim["payload"]).get("worker")) if claim else None),
         )
 
     def runs(self, task_id: int | None = None) -> list[RunView]:
@@ -839,6 +853,7 @@ class AgentFactoryService:
                             "source_sha256": proposal.source_sha256,
                             "source_references": list(item.source_references),
                             "review_notes": list(item.review_notes),
+                            "labels": list(item.labels),
                         },
                         acceptance_criteria=list(item.acceptance_criteria),
                         expected_outputs=[

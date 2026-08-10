@@ -44,9 +44,43 @@
         <section id="agents" class="panel wide" aria-labelledby="provider-title"><div class="panel-head"><div><p class="eyebrow">Runtime</p><h2 id="provider-title">Provider health</h2></div></div><div id="provider-list" class="provider-grid loading-block">Checking providers…</div></section>
         <section class="panel wide" aria-labelledby="failures-title"><div class="panel-head"><div><p class="eyebrow">Attention</p><h2 id="failures-title">Recent failures</h2></div></div><div id="failure-list" class="list loading-block">Checking the audit stream…</div></section>
       </div>
-      <section id="work" class="placeholder" aria-label="Work item controls"><strong>Work item controls</strong><span>Available in AF-039</span></section>
+      <section id="work" class="panel work-panel" aria-labelledby="work-title">
+        <div class="panel-head">
+          <div><p class="eyebrow">Backlog</p><h2 id="work-title">Work item controls</h2></div>
+          <p class="panel-copy">Explicit confirmation is required for every local action.</p>
+        </div>
+        <form id="work-filters" class="filter-grid" aria-label="Filter work items">
+          <label>Project<select id="filter-project" name="project_id"><option value="">All projects</option></select></label>
+          <label>Type<input id="filter-kind" name="kind" placeholder="feature"></label>
+          <label>Status<input id="filter-status" name="status" placeholder="pending"></label>
+          <label>Priority<input id="filter-priority" name="priority" placeholder="high"></label>
+          <label>Dependency<input id="filter-dependency" name="dependency" inputmode="numeric" placeholder="Task ID"></label>
+          <label>Assignee<input id="filter-assignee" name="assignee" placeholder="agent ID"></label>
+          <button type="submit">Apply filters</button>
+          <button id="clear-filters" class="secondary" type="button">Clear</button>
+        </form>
+        <div class="work-grid">
+          <div><p id="work-count" class="result-count">Loading work items...</p><div id="work-list" class="work-list loading-block">Loading backlog...</div></div>
+          <aside id="work-detail" class="detail-pane" aria-live="polite"><div class="empty">Select a work item to inspect its delivery contract</div></aside>
+        </div>
+      </section>
       <section id="audit" class="placeholder" aria-label="Audit and settings"><strong>Audit &amp; settings</strong><span>Available in AF-042</span></section>
     </main>
   </div>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog" class="dialog-card">
+      <p class="eyebrow">Guarded command</p>
+      <h2 id="confirm-title">Confirm local mutation</h2>
+      <p id="confirm-summary"></p>
+      <p class="guard-note">This command is recorded in the local audit trail. Provider execution remains simulation-only.</p>
+      <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="confirm-action" value="confirm">Confirm command</button></div>
+    </form>
+  </dialog>
+  <dialog id="run-dialog" aria-labelledby="run-detail-title">
+    <div class="dialog-card run-card">
+      <div class="panel-head"><div><p class="eyebrow">Workflow evidence</p><h2 id="run-detail-title">Run detail</h2></div><button id="close-run" class="secondary" type="button">Close</button></div>
+      <div id="run-detail" class="run-detail" aria-live="polite"></div>
+    </div>
+  </dialog>
 </body>
 </html>
