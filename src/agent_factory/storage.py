@@ -429,13 +429,17 @@ class SQLiteStorage:
     def approvals(self):
         return self.db.execute("SELECT * FROM approval_gates ORDER BY id").fetchall()
 
-    def decide_approval(self, gate_id: int, decision: str, note: str) -> None:
+    def decide_approval(
+        self, gate_id: int, decision: str, note: str, actor: str = "Founder"
+    ) -> bool:
         if decision not in {"approved", "rejected"}:
             raise ValueError(decision)
         with self.db:
             gate = self.db.execute("SELECT run_id,status FROM approval_gates WHERE id=?", (gate_id,)).fetchone()
             if not gate:
                 raise KeyError(f"Unknown approval: {gate_id}")
+            if gate["status"] == decision:
+                return False
             if gate["status"] != "pending":
                 raise ValueError(f"Approval {gate_id} is already {gate['status']}")
             updated = self.db.execute(
@@ -443,9 +447,30 @@ class SQLiteStorage:
                 (decision, note, gate_id),
             )
             if updated.rowcount != 1:
+                current = self.db.execute(
+                    "SELECT status FROM approval_gates WHERE id=?", (gate_id,)
+                ).fetchone()
+                if current and current["status"] == decision:
+                    return False
                 raise ValueError(f"Approval {gate_id} was decided concurrently")
             self._transition_run(int(gate["run_id"]), decision, event_payload={"approval_gate_id": gate_id})
-            self._event(f"approval.{decision}", "approval", gate_id, {"note": note, "approved_by": "Human"})
+            decided_at = self.db.execute(
+                "SELECT decided_at FROM approval_gates WHERE id=?", (gate_id,)
+            ).fetchone()[0]
+            self._event(
+                f"approval.{decision}",
+                "approval",
+                gate_id,
+                {
+                    "note": note,
+                    "actor": actor,
+                    "timestamp": decided_at,
+                    "target": {"type": "workflow_run", "id": int(gate["run_id"])},
+                    "previous_state": "pending",
+                    "resulting_state": decision,
+                },
+            )
+        return True
 
     def add_artifact(self, run_id: int, stage: str, agent_id: str, provider: str, content: str) -> int:
         with self.db:

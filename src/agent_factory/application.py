@@ -146,6 +146,28 @@ class ApprovalView:
 
 
 @dataclass(frozen=True)
+class FounderDecisionPacket:
+    approval: ApprovalView
+    run: RunView
+    work_item: WorkItemView
+    artifacts: tuple[ArtifactView, ...]
+    reviews: tuple[ReviewView, ...]
+    criterion_evidence: dict[str, tuple[str, ...]]
+    unresolved_findings: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class FounderDecisionReceipt:
+    approval: ApprovalView
+    idempotent: bool
+    actor: str
+    target: str
+    previous_state: str
+    resulting_state: str
+    timestamp: str
+
+
+@dataclass(frozen=True)
 class EventView:
     id: int
     event_type: str
@@ -302,6 +324,17 @@ def _redact_health_details(value: dict[str, Any]) -> dict[str, Any]:
         )
         for key, item in value.items()
     }
+
+
+def _artifact_document(content: str) -> dict[str, Any]:
+    source = content.strip()
+    if source.startswith("[execution_mode=") and "\n" in source:
+        source = source.split("\n", 1)[1]
+    try:
+        value = json.loads(source)
+    except json.JSONDecodeError:
+        return {}
+    return value if isinstance(value, dict) else {}
 
 
 class AgentFactoryService:
@@ -653,6 +686,78 @@ class AgentFactoryService:
         )
         return sorted(result, key=lambda item: (item.created_at, item.kind, item.id))
 
+    def founder_decisions(
+        self, *, pending_only: bool = True
+    ) -> list[FounderDecisionPacket]:
+        packets: list[FounderDecisionPacket] = []
+        for approval in self.approvals():
+            if approval.kind != "workflow":
+                continue
+            if pending_only and approval.status != "pending":
+                continue
+            run = self.run(approval.target_id)
+            work_item = self.work_item(run.task_id)
+            artifacts = tuple(self.artifacts(run.id))
+            reviews = tuple(self.reviews(run.id, limit=10_000))
+            evidence: dict[str, list[str]] = {
+                criterion: [] for criterion in work_item.acceptance_criteria
+            }
+            findings: list[str] = []
+            for artifact in artifacts:
+                document = _artifact_document(artifact.content)
+                criteria = document.get("criteria_evidence", {})
+                if isinstance(criteria, dict):
+                    for criterion, value in criteria.items():
+                        if str(value).strip():
+                            evidence.setdefault(str(criterion), []).append(
+                                f"{artifact.stage}: {value}"
+                            )
+                for field in ("concerns", "errors"):
+                    values = document.get(field, [])
+                    if isinstance(values, str):
+                        values = [values] if values.strip() else []
+                    if isinstance(values, list):
+                        findings.extend(
+                            f"{artifact.stage}: {value}"
+                            for value in values
+                            if str(value).strip()
+                        )
+                if artifact.status == "rejected":
+                    findings.append(
+                        f"Artifact #{artifact.id} ({artifact.stage}) was rejected"
+                    )
+            passing = {
+                "COMPLETE",
+                "PASS",
+                "ALIGNED",
+                "CONDITIONALLY_ALIGNED",
+                "APPROVED",
+                "CONDITIONALLY_APPROVED",
+            }
+            for review in reviews:
+                if not review.verdict or review.verdict.upper() not in passing:
+                    findings.append(
+                        f"{review.stage}: reviewer verdict {review.verdict or 'missing'}"
+                    )
+            for criterion, values in evidence.items():
+                if not values:
+                    findings.append(f"No recorded evidence for criterion: {criterion}")
+            packets.append(
+                FounderDecisionPacket(
+                    approval=approval,
+                    run=run,
+                    work_item=work_item,
+                    artifacts=artifacts,
+                    reviews=reviews,
+                    criterion_evidence={
+                        criterion: tuple(values)
+                        for criterion, values in evidence.items()
+                    },
+                    unresolved_findings=tuple(dict.fromkeys(findings)),
+                )
+            )
+        return packets
+
     def events(self, *, limit: int = 100) -> list[EventView]:
         if limit < 1 or limit > 10_000:
             raise ValueError("limit must be between 1 and 10000")
@@ -722,6 +827,9 @@ class AgentFactoryService:
         project_id = integer(payload.get("project_id"))
         task_id = integer(payload.get("task_id"))
         run_id = integer(payload.get("run_id"))
+        target = payload.get("target")
+        if isinstance(target, dict) and target.get("type") == "workflow_run":
+            run_id = run_id or integer(target.get("id"))
         agent_id = next(
             (
                 str(payload[key])
@@ -951,11 +1059,41 @@ class AgentFactoryService:
     def decide_workflow_approval(
         self, gate_id: int, decision: str, note: str = ""
     ) -> ApprovalView:
-        self.storage.decide_approval(gate_id, decision, note)
-        return next(
+        return self.founder_decide(gate_id, decision, note).approval
+
+    def founder_decide(
+        self,
+        gate_id: int,
+        decision: str,
+        note: str = "",
+        actor: str = "Founder",
+    ) -> FounderDecisionReceipt:
+        if actor != "Founder":
+            raise ValueError("Only the Founder actor can make a final workflow decision")
+        previous = next(
+            (
+                item
+                for item in self.approvals()
+                if item.kind == "workflow" and item.id == gate_id
+            ),
+            None,
+        )
+        if previous is None:
+            raise KeyError(f"Unknown workflow approval: {gate_id}")
+        changed = self.storage.decide_approval(gate_id, decision, note, actor)
+        current = next(
             item
             for item in self.approvals()
             if item.kind == "workflow" and item.id == gate_id
+        )
+        return FounderDecisionReceipt(
+            approval=current,
+            idempotent=not changed,
+            actor=actor,
+            target=f"workflow_run:{current.target_id}",
+            previous_state=previous.status,
+            resulting_state=current.status,
+            timestamp=current.decided_at or current.created_at,
         )
 
     def update_runtime_setting(self, key: str, value: int) -> RuntimeSettingView:

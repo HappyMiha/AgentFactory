@@ -241,7 +241,140 @@ class WebHostTests(unittest.TestCase):
                         "/api/agents/{agent_id}/provider",
                         "/api/settings/{key}",
                         "/api/github/preview",
+                        "/api/founder-decisions/{gate_id}",
                     },
+                )
+
+    def test_founder_decision_packet_and_idempotent_authority(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            database = workspace / ".agent-factory" / "state.db"
+            _, task_id, run_id = seed(workspace, database)
+            headers = {"X-Agent-Factory-Confirm": "true"}
+            with TestClient(create_app(workspace, database)) as client:
+                packets = client.get("/api/founder-decisions").json()
+                self.assertEqual(len(packets), 1)
+                packet = packets[0]
+                gate_id = packet["approval"]["id"]
+                self.assertEqual(packet["run"]["id"], run_id)
+                self.assertEqual(
+                    packet["work_item"]["acceptance_criteria"],
+                    ["Responses are bounded"],
+                )
+                self.assertIn("implementation", [item["stage"] for item in packet["artifacts"]])
+                self.assertIn("validation", [item["stage"] for item in packet["artifacts"]])
+                self.assertEqual(len(packet["reviews"]), 2)
+                self.assertIn("unresolved_findings", packet)
+                for review in packet["reviews"]:
+                    self.assertNotIn(
+                        review["reviewer_model"].casefold(),
+                        {
+                            producer["model"].casefold()
+                            for producer in review["producer_agents"]
+                        },
+                    )
+
+                artifact_review = client.post(
+                    f"/api/artifacts/{packet['artifacts'][0]['id']}/review",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "task_id": task_id,
+                        "decision": "approved",
+                        "note": "Reviewer evidence only",
+                    },
+                )
+                self.assertEqual(artifact_review.status_code, 200)
+                self.assertEqual(
+                    client.get("/api/founder-decisions").json()[0]["approval"]["status"],
+                    "pending",
+                )
+                reviewer_actor = client.post(
+                    f"/api/founder-decisions/{gate_id}",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "decision": "approved",
+                        "note": "Not authorized",
+                        "actor": "Proxy Reviewer",
+                    },
+                )
+                self.assertEqual(reviewer_actor.status_code, 422)
+                unconfirmed = client.post(
+                    f"/api/founder-decisions/{gate_id}",
+                    json={"confirmed": False, "decision": "approved", "actor": "Founder"},
+                )
+                self.assertEqual(unconfirmed.status_code, 400)
+
+                approved = client.post(
+                    f"/api/founder-decisions/{gate_id}",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "decision": "approved",
+                        "note": "Founder accepts evidence",
+                        "actor": "Founder",
+                    },
+                )
+                self.assertEqual(approved.status_code, 200, approved.text)
+                receipt = approved.json()
+                self.assertFalse(receipt["idempotent"])
+                self.assertEqual(receipt["actor"], "Founder")
+                self.assertEqual(receipt["previous_state"], "pending")
+                self.assertEqual(receipt["resulting_state"], "approved")
+                self.assertEqual(receipt["target"], f"workflow_run:{run_id}")
+                self.assertTrue(receipt["timestamp"])
+
+                replay = client.post(
+                    f"/api/founder-decisions/{gate_id}",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "decision": "approved",
+                        "note": "Replay does not rewrite note",
+                        "actor": "Founder",
+                    },
+                )
+                self.assertEqual(replay.status_code, 200, replay.text)
+                self.assertTrue(replay.json()["idempotent"])
+                self.assertEqual(replay.json()["previous_state"], "approved")
+                conflict = client.post(
+                    f"/api/founder-decisions/{gate_id}",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "decision": "rejected",
+                        "note": "Conflicting replay",
+                        "actor": "Founder",
+                    },
+                )
+                self.assertEqual(conflict.status_code, 400)
+                self.assertEqual(client.get("/api/founder-decisions").json(), [])
+                decided = client.get(
+                    "/api/founder-decisions", params={"include_decided": True}
+                ).json()[0]
+                self.assertEqual(decided["approval"]["decision_note"], "Founder accepts evidence")
+                events = client.get(
+                    "/api/events", params={"action": "approval.approved", "limit": 200}
+                ).json()["items"]
+                self.assertEqual(len(events), 1)
+                self.assertEqual(events[0]["payload"]["actor"], "Founder")
+                self.assertEqual(events[0]["payload"]["previous_state"], "pending")
+                self.assertEqual(events[0]["payload"]["resulting_state"], "approved")
+                self.assertEqual(
+                    events[0]["payload"]["target"],
+                    {"type": "workflow_run", "id": run_id},
+                )
+                all_event_types = {
+                    item["event_type"]
+                    for item in client.get("/api/events?limit=200").json()["items"]
+                }
+                self.assertFalse(
+                    any(
+                        token in event_type
+                        for event_type in all_event_types
+                        for token in ("merge", "close", "release", "github.apply")
+                    )
                 )
 
     def test_audit_settings_and_github_dry_run_controls(self):
@@ -559,6 +692,9 @@ class WebHostTests(unittest.TestCase):
                 self.assertIn("DRY RUN", script.text)
                 self.assertIn("unrestricted command arguments", script.text)
                 self.assertNotIn("Available in AF-042", page.text)
+                self.assertIn('id="founder-dialog"', page.text)
+                self.assertIn("Only this separately confirmed Founder action", script.text)
+                self.assertIn("no merge, close, release, or GitHub mutation", script.text)
                 self.assertNotIn("Available in AF-039", page.text)
                 self.assertIn("prefers-reduced-motion", styles.text)
 

@@ -69,3 +69,11 @@ The web UI accepts only `dashboard_refresh_seconds` (2–60) and `audit_page_siz
 GitHub preview accepts an `OWNER/REPOSITORY`, a workspace-relative backlog path, and a JSON array containing a previously obtained issue snapshot. It does not read the network. Paths outside the selected workspace are rejected. The existing backlog diff and GitHub allowlist generate only reviewed create/update operations.
 
 After explicit confirmation, a non-empty preview stores the existing immutable mutation plan, its SHA-256 digest, and a separate pending GitHub gate. `GitHubClient` remains in dry-run mode, so every result reports `executed: false`. The Local Control Center deliberately exposes no apply endpoint: an operator must separately inspect and approve the exact plan through the existing GitHub approval flow before the CLI can apply it. An empty diff receives a deterministic digest but no unnecessary gate.
+
+## Founder review inbox
+
+Each pending workflow approval opens as one decision packet containing the work-item contract, acceptance criteria and mapped evidence, ordered implementation/validation/policy artifacts, producing agents and providers, independent reviewer identities/models/verdicts, and derived unresolved findings. A missing direct mapping from a work-item criterion to recorded stage evidence is shown as an unresolved finding rather than silently treated as satisfied.
+
+Approve and reject are separate Founder-only commands. The dialog keeps the evidence visible, accepts an optional rationale, summarizes the exact target and unresolved-finding count, and then requires the standard body/header confirmation pair. Automated reviewer and artifact-review endpoints cannot call this command, and the API actor schema accepts only `Founder`. A decision changes only the workflow approval/run state; it does not merge, close, release, or run a GitHub operation.
+
+Repeating the same decision is idempotent and returns the original immutable result without rewriting its note or adding another decision event. A conflicting decision is rejected. The audit record and response include the actor, database timestamp, workflow-run target, previous state, resulting state, and note.

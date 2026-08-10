@@ -116,5 +116,13 @@
       <div id="run-detail" class="run-detail" aria-live="polite"></div>
     </div>
   </dialog>
+  <dialog id="founder-dialog" aria-labelledby="founder-title">
+    <div class="dialog-card founder-card">
+      <div class="panel-head"><div><p class="eyebrow">Separate human authority</p><h2 id="founder-title">Founder decision</h2></div><button id="close-founder" class="secondary" type="button">Close</button></div>
+      <div id="founder-detail" class="founder-detail" aria-live="polite"></div>
+      <label>Optional decision note<textarea id="founder-note" rows="3" placeholder="Record rationale, conditions, or rejection reason"></textarea></label>
+      <div class="dialog-actions"><button id="founder-reject" class="danger" type="button">Reject evidence</button><button id="founder-approve" type="button">Approve evidence</button></div>
+    </div>
+  </dialog>
 </body>
 </html>

@@ -18,6 +18,8 @@ from .application import (
     ArtifactView,
     AuditEventView,
     EventView,
+    FounderDecisionPacket,
+    FounderDecisionReceipt,
     ProjectView,
     ProviderView,
     ReviewView,
@@ -108,6 +110,12 @@ class GitHubPreviewCommand(ConfirmedCommand):
     repo: str
     backlog_path: str
     existing_issues: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class FounderDecisionCommand(ConfirmedCommand):
+    decision: Literal["approved", "rejected"]
+    note: str = ""
+    actor: Literal["Founder"] = "Founder"
 
 
 class RunDetail(BaseModel):
@@ -433,6 +441,26 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         service: Service, offset: Offset = 0, limit: Limit = 50
     ) -> Page[ApprovalView]:
         return _page(service.approvals(), offset, limit)
+
+    @app.get("/api/founder-decisions", response_model=list[FounderDecisionPacket])
+    async def founder_decisions(
+        service: Service, include_decided: bool = False
+    ) -> list[FounderDecisionPacket]:
+        return service.founder_decisions(pending_only=not include_decided)
+
+    @app.post(
+        "/api/founder-decisions/{gate_id}", response_model=FounderDecisionReceipt
+    )
+    async def founder_decide(
+        gate_id: int,
+        command: FounderDecisionCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> FounderDecisionReceipt:
+        _require_confirmation(command, confirmation)
+        return service.founder_decide(
+            gate_id, command.decision, command.note, command.actor
+        )
 
     @app.get("/api/events", response_model=Page[AuditEventView])
     async def events(

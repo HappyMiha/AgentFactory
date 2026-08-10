@@ -64,7 +64,7 @@ The immediate operator-experience sequence is `AF-036 → AF-037 → AF-038/AF-0
 
 This MVP is intentionally loopback-only and single-operator. It uses current SQLite state and shared Python application services rather than becoming a second orchestration implementation. `AF-026`, `AF-029`, and `AF-030` later add the authenticated, multi-tenant, production service boundary without discarding this UI.
 
-**Progress:** AF-036 through AF-040 and AF-042 are complete. The loopback Control Center now covers live state, guarded workflows, compatible agent routing, explainable independent reviews, correlated audit history, versioned allowlisted UI settings, and SHA-256-bound GitHub dry-run plans. AF-041 is unblocked; AF-043 follows its Founder-decision workspace.
+**Progress:** AF-036 through AF-042 are complete. The loopback Control Center covers live state, guarded workflows, compatible agent routing, explainable independent reviews, correlated audit history, versioned allowlisted UI settings, SHA-256-bound GitHub dry-run plans, and a separate idempotent Founder-decision workspace. AF-043 is unblocked for final Windows, accessibility, and end-to-end qualification.
 
 ## R1 — Durable Safe Core
 

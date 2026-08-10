@@ -1,4 +1,4 @@
-const state = { lastSuccess: null, timer: null, selectedTask: null, projectsLoaded: false, settingsLoaded: false, refreshSeconds: 5, auditPageSize: 50 };
+const state = { lastSuccess: null, timer: null, selectedTask: null, projectsLoaded: false, settingsLoaded: false, refreshSeconds: 5, auditPageSize: 50, founderPackets: [], selectedGate: null };
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
 
@@ -39,6 +39,28 @@ function renderRuntime(agents, providers, reviews) {
     const excluded = Object.entries(review.excluded_candidates).map(([id, reason]) => `<li><strong>${escapeHtml(id)}</strong>: ${escapeHtml(reason)}</li>`).join("");
     return `<article class="routing-card"><div class="stage-head"><h3>${escapeHtml(review.stage)} &middot; run #${review.run_id}</h3>${badge(independent ? "independent" : "conflict")}</div><p>Selected <strong>${escapeHtml(review.reviewer_agent_id)}</strong> via ${escapeHtml(review.reviewer_provider)} / ${escapeHtml(review.reviewer_model)}</p><p>Producer models: ${escapeHtml(producerModels.join(", ") || "none recorded")}</p><p>Strategy: ${escapeHtml(review.strategy)} &middot; verdict: ${escapeHtml(review.verdict || "pending")}</p><details><summary>Candidate exclusions</summary>${excluded ? `<ul>${excluded}</ul>` : `<p>No candidates were excluded.</p>`}</details></article>`;
   }).join("") : empty("No reviewer assignments yet. Run a simulation to create routing evidence.");
+}
+
+function renderFounderInbox(packets) {
+  state.founderPackets = packets;
+  $("approval-list").innerHTML = packets.length ? packets.map((packet) => `<button class="list-row row-button" type="button" data-founder-gate="${packet.approval.id}"><span><strong>${escapeHtml(packet.work_item.title)}</strong><small>Run #${packet.run.id} · ${packet.artifacts.length} artifacts · ${packet.reviews.length} independent reviews</small></span><span class="row-meta">${packet.unresolved_findings.length ? `<span class="finding-count">${packet.unresolved_findings.length} finding(s)</span>` : ""}${badge(packet.approval.status)}</span></button>`).join("") : empty("No Founder decisions are waiting");
+}
+
+function openFounderDecision(gateId) {
+  const packet = state.founderPackets.find((item) => item.approval.id === Number(gateId));
+  if (!packet) return;
+  state.selectedGate = packet.approval.id;
+  $("founder-title").textContent = `Founder decision · ${packet.work_item.title}`;
+  const artifactCards = packet.artifacts.map((artifact) => {
+    const document = parseArtifact(artifact.content);
+    return `<article class="decision-artifact"><div class="stage-head"><h4>${escapeHtml(artifact.stage)}</h4>${badge(artifact.status)}</div><p>${escapeHtml(artifact.agent_id)} via ${escapeHtml(artifact.provider)}</p><p>${escapeHtml(document.summary || document.output || "Structured evidence available in run detail")}</p></article>`;
+  }).join("");
+  const reviews = packet.reviews.map((review) => `<article class="decision-review"><div class="stage-head"><strong>${escapeHtml(review.reviewer_agent_id)}</strong>${badge(review.verdict || "missing")}</div><small>${escapeHtml(review.reviewer_provider)} / ${escapeHtml(review.reviewer_model)} · ${escapeHtml(review.strategy)}</small><p>Reviewed producer(s): ${escapeHtml(review.producer_agents.map((producer) => `${producer.agent_id} / ${producer.model}`).join(", "))}</p></article>`).join("");
+  const criteria = packet.work_item.acceptance_criteria.map((criterion) => `<li><strong>${escapeHtml(criterion)}</strong>${(packet.criterion_evidence[criterion] || []).length ? `<ul>${packet.criterion_evidence[criterion].map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : `<span>No direct criterion evidence recorded</span>`}</li>`).join("");
+  const findings = packet.unresolved_findings.map((finding) => `<li>${escapeHtml(finding)}</li>`).join("");
+  $("founder-detail").innerHTML = `<div class="authority-banner">Automated verdicts cannot make this decision. Only this separately confirmed Founder action changes the final workflow state.</div><dl class="facts"><div><dt>Work item</dt><dd>#${packet.work_item.id} · ${escapeHtml(packet.work_item.kind)}</dd></div><div><dt>Run</dt><dd>#${packet.run.id} · ${escapeHtml(packet.run.workflow_id)}</dd></div></dl><section class="decision-section"><h3>Acceptance criteria &amp; evidence</h3><ol class="criteria-list">${criteria || "<li>No work-item criteria recorded</li>"}</ol></section><section class="decision-section"><h3>Implementation &amp; validation artifacts</h3><div class="decision-grid">${artifactCards || empty("No artifacts")}</div></section><section class="decision-section"><h3>Independent reviewer verdicts</h3>${reviews || empty("No reviewer decisions")}</section><section class="decision-section findings"><h3>Unresolved findings</h3>${findings ? `<ul>${findings}</ul>` : `<p>No unresolved findings were derived from the recorded evidence.</p>`}</section>`;
+  $("founder-note").value = "";
+  $("founder-dialog").showModal();
 }
 
 function auditQuery() {
@@ -234,20 +256,35 @@ async function handleGitHubPreview(event) {
   if (result) { renderGitHubPreview(result); await loadAudit(); }
 }
 
+async function handleFounderDecision(decision) {
+  if (!state.selectedGate) return;
+  const packet = state.founderPackets.find((item) => item.approval.id === state.selectedGate);
+  if (!packet) return;
+  const note = $("founder-note").value.trim();
+  const result = await guardedCommand(`/api/founder-decisions/${state.selectedGate}`, { decision, note, actor: "Founder" }, `${decision === "approved" ? "Approve" : "Reject"} final evidence for run #${packet.run.id} as Founder; ${packet.unresolved_findings.length} unresolved finding(s) are displayed and no merge, close, release, or GitHub mutation will run`);
+  if (!result) return;
+  $("founder-dialog").close();
+  $("notice").hidden = false;
+  $("notice").textContent = `${result.actor} recorded ${result.resulting_state} for ${result.target} at ${result.timestamp}${result.idempotent ? " (idempotent replay)" : ""}`;
+  state.selectedGate = null;
+  await Promise.all([refresh(), loadAudit()]);
+}
+
 async function refresh() {
   $("refresh").disabled = true;
   try {
-    const [dashboard, agents, providers, reviews] = await Promise.all([
+    const [dashboard, agents, providers, reviews, founderPackets] = await Promise.all([
       fetchJson("/api/dashboard"),
       fetchJson("/api/agents?limit=200"),
       fetchJson("/api/providers?limit=200"),
       fetchJson("/api/reviews?limit=200"),
+      fetchJson("/api/founder-decisions"),
       loadProjects(),
       loadWork(),
       loadAudit(),
       loadSettings()
     ]);
-    renderDashboard(dashboard); renderRuntime(agents.items, providers.items, reviews.items); state.lastSuccess = new Date();
+    renderDashboard(dashboard); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
     $("updated").textContent = `Updated ${state.lastSuccess.toLocaleTimeString()}`; if (!$("notice").textContent.startsWith("Completed:")) $("notice").hidden = true;
   } catch (error) {
@@ -263,6 +300,7 @@ $("clear-filters").addEventListener("click", () => { $("work-filters").reset(); 
 $("work-list").addEventListener("click", (event) => { const row = event.target.closest("[data-task-id]"); if (row) selectWorkItem(row.dataset.taskId).catch((error) => { $("work-detail").innerHTML = empty(error.message); }); });
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("run-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
+$("approval-list").addEventListener("click", (event) => { const row = event.target.closest("[data-founder-gate]"); if (row) openFounderDecision(row.dataset.founderGate); });
 $("agent-list").addEventListener("click", (event) => { const action = event.target.closest("[data-agent-toggle],[data-agent-provider]"); if (action) handleAgentAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("audit-filters").addEventListener("submit", (event) => { event.preventDefault(); loadAudit().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("clear-audit").addEventListener("click", () => { $("audit-filters").reset(); loadAudit(); });
@@ -270,4 +308,7 @@ $("audit-list").addEventListener("click", (event) => { const row = event.target.
 $("settings-list").addEventListener("click", (event) => { const action = event.target.closest("[data-setting-save]"); if (action) handleSettingAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("github-preview-form").addEventListener("submit", (event) => { handleGitHubPreview(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("close-run").addEventListener("click", () => $("run-dialog").close());
+$("close-founder").addEventListener("click", () => $("founder-dialog").close());
+$("founder-approve").addEventListener("click", () => handleFounderDecision("approved").catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }));
+$("founder-reject").addEventListener("click", () => handleFounderDecision("rejected").catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }));
 refresh(); state.timer = window.setInterval(refresh, 5000);
