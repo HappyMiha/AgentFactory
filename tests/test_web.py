@@ -236,8 +236,92 @@ class WebHostTests(unittest.TestCase):
                         "/api/work-items/{task_id}/claim",
                         "/api/work-items/{task_id}/runs",
                         "/api/artifacts/{artifact_id}/review",
+                        "/api/agents/{agent_id}/enabled",
+                        "/api/agents/{agent_id}/provider",
                     },
                 )
+
+    def test_guarded_agent_provider_and_reviewer_routing_controls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            database = workspace / ".agent-factory" / "state.db"
+            _, _, run_id = seed(workspace, database)
+            headers = {"X-Agent-Factory-Confirm": "true"}
+            with TestClient(create_app(workspace, database)) as client:
+                agents = client.get("/api/agents", params={"limit": 200}).json()
+                guardian = next(
+                    item for item in agents["items"] if item["id"] == "policy-guardian"
+                )
+                self.assertIn("reviewer_assignment_count", guardian)
+                self.assertIn("last_claimed_task_id", guardian)
+
+                providers = client.get("/api/providers", params={"limit": 200}).json()
+                codex = next(
+                    item for item in providers["items"] if item["id"] == "codex"
+                )
+                self.assertIn("Policy Reviewer", codex["allowed_roles"])
+                self.assertIn("health_details", codex)
+
+                reviews = client.get(
+                    "/api/reviews", params={"run_id": run_id, "limit": 200}
+                ).json()["items"]
+                self.assertEqual(len(reviews), 2)
+                for review in reviews:
+                    producer_models = {
+                        producer["model"].casefold()
+                        for producer in review["producer_agents"]
+                    }
+                    self.assertNotIn(review["reviewer_model"].casefold(), producer_models)
+                    self.assertEqual(
+                        review["strategy"], "least-used-model-aware-round-robin"
+                    )
+
+                unconfirmed = client.post(
+                    "/api/agents/policy-guardian/enabled",
+                    json={"confirmed": False, "enabled": False},
+                )
+                self.assertEqual(unconfirmed.status_code, 400)
+                disabled = client.post(
+                    "/api/agents/policy-guardian/enabled",
+                    headers=headers,
+                    json={"confirmed": True, "enabled": False},
+                )
+                self.assertEqual(disabled.status_code, 200, disabled.text)
+                self.assertFalse(disabled.json()["agent"]["enabled"])
+                self.assertIn("existing evidence remains immutable", disabled.json()["impact_summary"])
+
+                incompatible = client.post(
+                    "/api/agents/policy-guardian/provider",
+                    headers=headers,
+                    json={"confirmed": True, "provider": "openclaw", "model": "x"},
+                )
+                self.assertEqual(incompatible.status_code, 400)
+                self.assertIn("incompatible", incompatible.json()["error"]["message"])
+
+                replaced = client.post(
+                    "/api/agents/policy-guardian/provider",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "provider": "codex",
+                        "model": "openai:independent-reviewer",
+                    },
+                )
+                self.assertEqual(replaced.status_code, 200, replaced.text)
+                self.assertEqual(replaced.json()["agent"]["provider"], "codex")
+                persisted = next(
+                    item
+                    for item in client.get("/api/agents?limit=200").json()["items"]
+                    if item["id"] == "policy-guardian"
+                )
+                self.assertFalse(persisted["enabled"])
+                self.assertEqual(persisted["model"], "openai:independent-reviewer")
+                event_names = {
+                    item["event_type"]
+                    for item in client.get("/api/events?limit=200").json()["items"]
+                }
+                self.assertIn("agent.disabled", event_names)
+                self.assertIn("agent.provider.replaced", event_names)
 
     def test_guarded_work_item_run_and_review_controls(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -343,6 +427,11 @@ class WebHostTests(unittest.TestCase):
                 self.assertIn("Run simulation", script.text)
                 self.assertIn("Resume unavailable", script.text)
                 self.assertIn("Cancel unavailable", script.text)
+                self.assertIn('id="agent-list"', page.text)
+                self.assertIn('id="routing-list"', page.text)
+                self.assertIn("Compatible provider", script.text)
+                self.assertIn("Candidate exclusions", script.text)
+                self.assertIn("prior approval snapshots will not be reused", script.text)
                 self.assertNotIn("Available in AF-039", page.text)
                 self.assertIn("prefers-reduced-motion", styles.text)
 

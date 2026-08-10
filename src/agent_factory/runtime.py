@@ -4,7 +4,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from .config import WORKSPACE, config_path, load_yaml
+from .config import WORKSPACE, config_path_for_workspace, load_yaml
 from .models import Agent, ExecutionApproval, ProviderResult, WorkItem
 from .providers import CLIProvider, DeterministicProvider, Provider
 
@@ -26,10 +26,14 @@ class AgentRuntime:
 
     def _from_config(self) -> dict[str, Provider]:
         result: dict[str, Provider] = {"deterministic": DeterministicProvider()}
-        policy: dict[str, Any] = load_yaml(config_path("policy"))
+        policy: dict[str, Any] = load_yaml(
+            config_path_for_workspace("policy", self.workspace)
+        )
         prompt_policy = policy.get("prompt", {})
         execution_policy = policy.get("execution", {})
-        provider_document = load_yaml(config_path("providers"))
+        provider_document = load_yaml(
+            config_path_for_workspace("providers", self.workspace)
+        )
         for cfg in provider_document.get("providers", []):
             if not cfg.get("enabled", True):
                 continue

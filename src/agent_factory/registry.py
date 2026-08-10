@@ -3,13 +3,25 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 
-from .config import config_path, load_yaml, save_yaml, writable_config_path
+from .config import (
+    config_path,
+    config_path_for_workspace,
+    load_yaml,
+    save_yaml,
+    writable_config_path,
+    writable_config_path_for_workspace,
+)
 from .models import Agent
 
 
 class AgentRegistry:
-    def __init__(self, path: Path | None = None):
-        self.path = path or config_path("agents")
+    def __init__(self, path: Path | None = None, *, workspace: Path | None = None):
+        self.workspace = workspace.expanduser().resolve() if workspace else None
+        self.path = path or (
+            config_path_for_workspace("agents", self.workspace)
+            if self.workspace
+            else config_path("agents")
+        )
         self._custom_path = path is not None
 
     def list(self, enabled_only: bool = False) -> list[Agent]:
@@ -38,7 +50,11 @@ class AgentRegistry:
         else:
             agents[existing] = agent
         if not self._custom_path:
-            self.path = writable_config_path("agents")
+            self.path = (
+                writable_config_path_for_workspace("agents", self.workspace)
+                if self.workspace
+                else writable_config_path("agents")
+            )
         save_yaml(self.path, {"agents": [asdict(a) for a in agents]})
 
     def replace(self, agent: Agent) -> None:

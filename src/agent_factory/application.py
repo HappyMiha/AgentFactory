@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .backlog import BacklogProposal
-from .config import config_path, load_yaml
+from .config import config_path, config_path_for_workspace, load_yaml
 from .models import Budget, ExecutionApproval, ProviderResult, WorkItem
 from .registry import AgentRegistry
 from .runtime import AgentRuntime, ExecutionMode
@@ -90,6 +90,9 @@ class AgentView:
     model: str
     instructions: str
     permissions: tuple[str, ...]
+    last_claimed_task_id: int | None
+    reviewer_assignment_count: int
+    last_reviewed_run_id: int | None
 
 
 @dataclass(frozen=True)
@@ -105,6 +108,7 @@ class ProviderView:
     version: str | None
     error: str | None
     health_details: dict[str, Any]
+    allowed_roles: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -208,7 +212,7 @@ def canonical_hash(value: Any) -> str:
 
 
 def provider_snapshot_hashes(
-    provider: str, agent: Any, item: WorkItem
+    provider: str, agent: Any, item: WorkItem, workspace: Path | None = None
 ) -> tuple[str, str]:
     """Bind a provider approval to its canonical request and effective policy."""
 
@@ -217,9 +221,14 @@ def provider_snapshot_hashes(
         "agent": asdict(agent),
         "task": item.to_dict(),
     }
+    resolver = (
+        (lambda name: config_path_for_workspace(name, workspace))
+        if workspace is not None
+        else config_path
+    )
     definitions = {
-        "providers": load_yaml(config_path("providers")),
-        "policy": load_yaml(config_path("policy")),
+        "providers": load_yaml(resolver("providers")),
+        "policy": load_yaml(resolver("policy")),
     }
     return canonical_hash(request), canonical_hash(definitions)
 
@@ -238,6 +247,18 @@ def _json_list(raw: str) -> list[Any]:
     return value
 
 
+def _redact_health_details(value: dict[str, Any]) -> dict[str, Any]:
+    sensitive = ("token", "secret", "password", "credential", "api_key")
+    return {
+        str(key): (
+            "[REDACTED]"
+            if any(fragment in str(key).casefold() for fragment in sensitive)
+            else item
+        )
+        for key, item in value.items()
+    }
+
+
 class AgentFactoryService:
     """Reusable query and guarded-command boundary for operator clients."""
 
@@ -250,8 +271,8 @@ class AgentFactoryService:
         workspace: Path | None = None,
     ):
         self.storage = storage
-        self.registry = registry or AgentRegistry()
         self.workspace = (workspace or storage.path.parent.parent).resolve()
+        self.registry = registry or AgentRegistry(workspace=self.workspace)
         self.runtime = runtime or AgentRuntime(workspace=self.workspace)
 
     # Queries return immutable typed values and never depend on terminal formatting.
@@ -400,6 +421,14 @@ class AgentFactoryService:
         ]
 
     def agents(self) -> list[AgentView]:
+        claims: dict[str, int] = {}
+        for row in self.storage.db.execute(
+            """SELECT entity_id,payload FROM events WHERE event_type='task.claimed'
+                 ORDER BY id DESC"""
+        ):
+            worker = str(_json_object(row["payload"]).get("worker", ""))
+            if worker and worker not in claims:
+                claims[worker] = int(row["entity_id"])
         return [
             AgentView(
                 id=agent.id,
@@ -410,12 +439,30 @@ class AgentFactoryService:
                 model=agent.model_identity,
                 instructions=agent.instructions,
                 permissions=tuple(agent.permissions),
+                last_claimed_task_id=claims.get(agent.id),
+                reviewer_assignment_count=int(
+                    self.storage.db.execute(
+                        "SELECT COUNT(*) FROM reviewer_assignments WHERE reviewer_agent_id=?",
+                        (agent.id,),
+                    ).fetchone()[0]
+                ),
+                last_reviewed_run_id=(
+                    int(review["run_id"])
+                    if (
+                        review := self.storage.db.execute(
+                            """SELECT run_id FROM reviewer_assignments
+                                 WHERE reviewer_agent_id=? ORDER BY id DESC LIMIT 1""",
+                            (agent.id,),
+                        ).fetchone()
+                    )
+                    else None
+                ),
             )
             for agent in self.registry.list()
         ]
 
     def providers(self) -> list[ProviderView]:
-        document = load_yaml(config_path("providers"))
+        document = load_yaml(config_path_for_workspace("providers", self.workspace))
         configured = list(document.get("providers", []))
         configured.insert(
             0,
@@ -425,6 +472,7 @@ class AgentFactoryService:
                 "enabled": True,
                 "executable": "",
                 "allow_execution": True,
+                "allowed_roles": [],
             },
         )
         try:
@@ -465,7 +513,8 @@ class AgentFactoryService:
                         str(report["version"]) if report and report.get("version") else None
                     ),
                     error=(str(report["error"]) if report and report.get("error") else None),
-                    health_details=dict(report) if report else {},
+                    health_details=_redact_health_details(dict(report)) if report else {},
+                    allowed_roles=tuple(str(role) for role in item.get("allowed_roles", [])),
                 )
             )
         return result
@@ -578,10 +627,12 @@ class AgentFactoryService:
         ]
 
     def settings(self) -> SettingsView:
-        policy = load_yaml(config_path("policy"))
+        policy = load_yaml(config_path_for_workspace("policy", self.workspace))
         execution = policy.get("execution", {})
         sources = tuple(
-            ConfigSourceView(name, str(config_path(name)))
+            ConfigSourceView(
+                name, str(config_path_for_workspace(name, self.workspace))
+            )
             for name in ("agents", "providers", "policy", "workflows")
         )
         return SettingsView(
@@ -689,24 +740,55 @@ class AgentFactoryService:
         )
 
     def set_agent_enabled(self, agent_id: str, enabled: bool) -> AgentView:
+        previous = self.registry.get(agent_id).enabled
         agent = self.registry.set_enabled(agent_id, enabled)
         self.storage.event(
             "agent.enabled" if agent.enabled else "agent.disabled",
             "agent",
             agent.id,
-            {"enabled": agent.enabled},
+            {
+                "previous_enabled": previous,
+                "enabled": agent.enabled,
+                "impact": "disabled agents cannot receive work or reviewer assignments",
+            },
         )
         return next(item for item in self.agents() if item.id == agent_id)
 
     def replace_agent_provider(
         self, agent_id: str, provider: str, model: str = ""
     ) -> AgentView:
+        current = self.registry.get(agent_id)
+        definitions = {
+            str(item["id"]): item
+            for item in load_yaml(
+                config_path_for_workspace("providers", self.workspace)
+            ).get("providers", [])
+        }
+        if provider == "deterministic":
+            definition = {"enabled": True, "allowed_roles": []}
+        else:
+            definition = definitions.get(provider)
+            if definition is None:
+                raise ValueError(f"Unknown provider: {provider}")
+            if not definition.get("enabled", True):
+                raise ValueError(f"Provider is disabled: {provider}")
+            allowed_roles = [str(role) for role in definition.get("allowed_roles", [])]
+            if current.role not in allowed_roles:
+                raise ValueError(
+                    f"Provider {provider} is incompatible with role {current.role}"
+                )
         agent = self.registry.replace_provider(agent_id, provider, model)
         self.storage.event(
             "agent.provider.replaced",
             "agent",
             agent.id,
-            {"provider": agent.provider, "model": agent.model_identity},
+            {
+                "previous_provider": current.provider,
+                "previous_model": current.model_identity,
+                "provider": agent.provider,
+                "model": agent.model_identity,
+                "impact": "new provider applies to future assignments and invalidates prior execution snapshots",
+            },
         )
         return next(item for item in self.agents() if item.id == agent_id)
 
@@ -719,7 +801,9 @@ class AgentFactoryService:
         if agent.provider != provider:
             raise ValueError(f"Agent {agent.id} uses {agent.provider}, not {provider}")
         item = self.storage.get_task(task_id)
-        request_hash, definition_hash = provider_snapshot_hashes(provider, agent, item)
+        request_hash, definition_hash = provider_snapshot_hashes(
+            provider, agent, item, self.workspace
+        )
         return self.storage.request_provider_execution(
             provider, agent.id, task_id, request_hash, definition_hash
         )
@@ -746,7 +830,7 @@ class AgentFactoryService:
         agent = self.registry.get(str(gate["agent_id"]))
         item = self.storage.get_task(int(gate["task_id"]))
         request_hash, definition_hash = provider_snapshot_hashes(
-            str(gate["provider"]), agent, item
+            str(gate["provider"]), agent, item, self.workspace
         )
         attempt = self.storage.claim_provider_execution(
             gate_id, request_hash, definition_hash

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from .config import config_path, load_yaml
+from .config import config_path_for_workspace, load_yaml
 from .models import Budget, Status, WorkItem
 from .registry import AgentRegistry
 from .reviewers import ReviewerRouter, ReviewSubject
@@ -26,7 +26,9 @@ class WorkflowEngine:
         self.reviewers = ReviewerRouter(storage, self.registry)
 
     def workflow(self, workflow_id: str) -> dict:
-        document = load_yaml(config_path("workflows"))
+        document = load_yaml(
+            config_path_for_workspace("workflows", self.runtime.workspace)
+        )
         workflow = next(
             (entry for entry in document.get("workflows", []) if entry.get("id") == workflow_id),
             None,

@@ -49,3 +49,11 @@ The following mutations are intentionally narrow:
 Every mutation displays a summary before execution and requires both `confirmed: true` in the JSON body and `X-Agent-Factory-Confirm: true` in the request header. Requests that omit either signal fail without changing state. The API delegates to `AgentFactoryService`, so agent eligibility, workflow gates, review ownership, and audit events remain identical to the CLI path.
 
 Run detail preserves stage order and displays the producing agent/provider, verdict, evidence, errors, artifact status, and exact stop reason. Cancellation and resume are shown as unavailable because the MVP has no reviewed service command for either operation. Real provider execution is not exposed by the web control; the run action is simulation-only.
+
+## Agent, provider, and reviewer controls
+
+The runtime workspace lists every agent's role, enabled state, provider/model identity, permissions, latest claimed work, and reviewer usage. Enable, disable, and compatible-provider replacement commands show their future-assignment impact before the same two-part confirmation used by work-item controls. Changes are persisted as a workspace-local agent override under `.agent-factory/config` and audited; packaged defaults and existing artifact attribution are never rewritten.
+
+Provider cards distinguish ready, unhealthy, unavailable, and disabled states. They include the reviewed executable path, version or sanitized error, execution capability, allowed roles, and redacted health detail. Provider replacement fails when the provider is unknown, disabled, or does not allow the agent's role. Selecting the deterministic provider remains available as a local simulation-safe assignment.
+
+The independent reviewer view displays each durable routing decision, selected reviewer/provider/model, producer models, verdict, rotation strategy, and the reason every rejected candidate was excluded. The UI independently marks a routing conflict if a recorded reviewer model matches any producer model; the workflow router itself continues to fail closed before recording such an assignment.

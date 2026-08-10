@@ -21,8 +21,24 @@ function renderDashboard(data) {
   ].join("");
   $("run-list").innerHTML = data.runs.length ? data.runs.map((run) => `<button class="list-row row-button" type="button" data-run-id="${run.id}"><span><strong>${escapeHtml(run.workflow_id)}</strong><small>Run #${run.id} &middot; Task #${run.task_id}</small></span>${badge(run.status)}</button>`).join("") : empty("No workflow runs yet");
   $("approval-list").innerHTML = data.pending_approvals.length ? data.pending_approvals.map((item) => `<div class="list-row"><span><strong>${escapeHtml(item.kind)} approval</strong><small>${escapeHtml(item.target_type)} #${item.target_id}</small></span>${badge(item.status)}</div>`).join("") : empty("No decisions are waiting");
-  $("provider-list").innerHTML = data.providers.length ? data.providers.map((item) => `<article class="provider"><span class="health health-${escapeHtml(item.status)}" aria-hidden="true"></span><span><strong>${escapeHtml(item.id)}</strong><small>${escapeHtml(item.type)} &middot; ${escapeHtml(item.status)}</small></span></article>`).join("") : empty("No providers configured");
+  $("provider-list").innerHTML = data.providers.length ? data.providers.map((item) => `<article class="provider"><span class="health health-${escapeHtml(item.status)}" aria-hidden="true"></span><span><strong>${escapeHtml(item.id)}</strong><small>${escapeHtml(item.type)} &middot; ${escapeHtml(item.status)}${item.version ? ` &middot; ${escapeHtml(item.version)}` : ""}</small><small>${escapeHtml(item.path || item.error || "No executable detail")}</small><small>Execution ${item.execution_enabled ? "enabled" : "disabled"} &middot; Roles: ${escapeHtml(item.allowed_roles.join(", ") || "simulation only")}</small><details><summary>Redacted health detail</summary><pre>${escapeHtml(JSON.stringify(item.health_details, null, 2))}</pre></details></span></article>`).join("") : empty("No providers configured");
   $("failure-list").innerHTML = data.recent_failures.length ? data.recent_failures.map((item) => `<div class="list-row"><span><strong>${escapeHtml(item.event_type)}</strong><small>${escapeHtml(item.entity_type)} #${escapeHtml(item.entity_id)}</small></span><time>${escapeHtml(item.created_at)}</time></div>`).join("") : empty("No recent failures");
+}
+
+function renderRuntime(agents, providers, reviews) {
+  $("agent-list").classList.remove("loading-block");
+  $("routing-list").classList.remove("loading-block");
+  $("agent-list").innerHTML = agents.length ? agents.map((agent) => {
+    const compatible = providers.filter((provider) => provider.enabled && (provider.id === "deterministic" || provider.allowed_roles.includes(agent.role)));
+    const options = compatible.map((provider) => `<option value="${escapeHtml(provider.id)}" ${provider.id === agent.provider ? "selected" : ""}>${escapeHtml(provider.id)} (${escapeHtml(provider.status)})</option>`).join("");
+    return `<article class="agent-card" data-agent-id="${escapeHtml(agent.id)}"><div class="agent-title"><span><strong>${escapeHtml(agent.name)}</strong><small>${escapeHtml(agent.id)} &middot; ${escapeHtml(agent.role)}</small></span>${badge(agent.enabled ? "enabled" : "disabled")}</div><dl class="agent-facts"><div><dt>Provider / model</dt><dd>${escapeHtml(agent.provider)} / ${escapeHtml(agent.model)}</dd></div><div><dt>Recent work</dt><dd>${agent.last_claimed_task_id ? `Task #${agent.last_claimed_task_id}` : "No claim"}</dd></div><div><dt>Reviewer use</dt><dd>${agent.reviewer_assignment_count}${agent.last_reviewed_run_id ? ` (last run #${agent.last_reviewed_run_id})` : ""}</dd></div><div><dt>Permissions</dt><dd>${escapeHtml(agent.permissions.join(", "))}</dd></div></dl><div class="agent-controls"><button type="button" data-agent-toggle="${agent.enabled ? "false" : "true"}" class="${agent.enabled ? "danger" : ""}">${agent.enabled ? "Disable" : "Enable"}</button><label>Compatible provider<select class="agent-provider">${options}</select></label><label>Model identity<input class="agent-model" value="${escapeHtml(agent.model)}"></label><button type="button" data-agent-provider>Replace provider</button></div></article>`;
+  }).join("") : empty("No agents configured");
+  $("routing-list").innerHTML = reviews.length ? [...reviews].reverse().map((review) => {
+    const producerModels = review.producer_agents.map((producer) => producer.model || producer.model_identity || producer.provider || "unknown");
+    const independent = !producerModels.some((model) => String(model).toLowerCase() === review.reviewer_model.toLowerCase());
+    const excluded = Object.entries(review.excluded_candidates).map(([id, reason]) => `<li><strong>${escapeHtml(id)}</strong>: ${escapeHtml(reason)}</li>`).join("");
+    return `<article class="routing-card"><div class="stage-head"><h3>${escapeHtml(review.stage)} &middot; run #${review.run_id}</h3>${badge(independent ? "independent" : "conflict")}</div><p>Selected <strong>${escapeHtml(review.reviewer_agent_id)}</strong> via ${escapeHtml(review.reviewer_provider)} / ${escapeHtml(review.reviewer_model)}</p><p>Producer models: ${escapeHtml(producerModels.join(", ") || "none recorded")}</p><p>Strategy: ${escapeHtml(review.strategy)} &middot; verdict: ${escapeHtml(review.verdict || "pending")}</p><details><summary>Candidate exclusions</summary>${excluded ? `<ul>${excluded}</ul>` : `<p>No candidates were excluded.</p>`}</details></article>`;
+  }).join("") : empty("No reviewer assignments yet. Run a simulation to create routing evidence.");
 }
 
 function filterQuery() {
@@ -132,17 +148,42 @@ async function handleWorkAction(target) {
   await Promise.all([refresh(), selectWorkItem(state.selectedTask)]);
 }
 
+async function handleAgentAction(target) {
+  const card = target.closest("[data-agent-id]");
+  if (!card) return;
+  const agentId = card.dataset.agentId;
+  if (target.dataset.agentToggle) {
+    const enabled = target.dataset.agentToggle === "true";
+    const action = enabled ? "Enable" : "Disable";
+    const result = await guardedCommand(`/api/agents/${encodeURIComponent(agentId)}/enabled`, { enabled }, `${action} ${agentId}; future work and reviewer routing may change`);
+    if (result) $("notice").textContent = result.impact_summary;
+  } else if (target.hasAttribute("data-agent-provider")) {
+    const provider = card.querySelector(".agent-provider").value;
+    const model = card.querySelector(".agent-model").value.trim();
+    const result = await guardedCommand(`/api/agents/${encodeURIComponent(agentId)}/provider`, { provider, model }, `Replace ${agentId} provider with ${provider} / ${model || `provider:${provider}`}; prior approval snapshots will not be reused`);
+    if (result) $("notice").textContent = result.impact_summary;
+  }
+  await refresh();
+}
+
 async function refresh() {
   $("refresh").disabled = true;
   try {
-    const [dashboard] = await Promise.all([fetchJson("/api/dashboard"), loadProjects(), loadWork()]);
-    renderDashboard(dashboard); state.lastSuccess = new Date();
+    const [dashboard, agents, providers, reviews] = await Promise.all([
+      fetchJson("/api/dashboard"),
+      fetchJson("/api/agents?limit=200"),
+      fetchJson("/api/providers?limit=200"),
+      fetchJson("/api/reviews?limit=200"),
+      loadProjects(),
+      loadWork()
+    ]);
+    renderDashboard(dashboard); renderRuntime(agents.items, providers.items, reviews.items); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
     $("updated").textContent = `Updated ${state.lastSuccess.toLocaleTimeString()}`; if (!$("notice").textContent.startsWith("Completed:")) $("notice").hidden = true;
   } catch (error) {
     $("connection-dot").className = "offline"; $("connection-text").textContent = "Service disconnected";
     $("notice").hidden = false; $("notice").textContent = state.lastSuccess ? "Live refresh failed. Showing the last successful local snapshot." : "Dashboard data is unavailable. Check the local service and retry.";
-    if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
+    if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
   } finally { $("refresh").disabled = false; }
 }
 
@@ -152,5 +193,6 @@ $("clear-filters").addEventListener("click", () => { $("work-filters").reset(); 
 $("work-list").addEventListener("click", (event) => { const row = event.target.closest("[data-task-id]"); if (row) selectWorkItem(row.dataset.taskId).catch((error) => { $("work-detail").innerHTML = empty(error.message); }); });
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("run-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
+$("agent-list").addEventListener("click", (event) => { const action = event.target.closest("[data-agent-toggle],[data-agent-provider]"); if (action) handleAgentAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("close-run").addEventListener("click", () => $("run-dialog").close());
 refresh(); state.timer = window.setInterval(refresh, 5000);

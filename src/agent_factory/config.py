@@ -51,6 +51,27 @@ def config_path(name: str | Path) -> Path:
     raise RuntimeError(f"Configuration {name!s} is unavailable in: {searched}")
 
 
+def config_path_for_workspace(name: str | Path, workspace: Path) -> Path:
+    """Resolve configuration for an explicitly selected workspace."""
+
+    root = workspace.expanduser().resolve()
+    directories = [
+        _explicit_config_dir(),
+        root / ".agent-factory" / "config",
+        root / "config",
+        DEFAULT_CONFIG_DIR,
+    ]
+    for directory in directories:
+        if directory is None:
+            continue
+        for filename in _names(name):
+            candidate = directory / filename
+            if candidate.is_file():
+                return candidate
+    searched = ", ".join(str(path) for path in directories if path is not None)
+    raise RuntimeError(f"Configuration {name!s} is unavailable in: {searched}")
+
+
 def writable_config_path(name: str | Path) -> Path:
     """Return a writable override, materializing the effective default once."""
 
@@ -60,6 +81,20 @@ def writable_config_path(name: str | Path) -> Path:
     if not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
         save_yaml(target, load_yaml(config_path(name)))
+    return target
+
+
+def writable_config_path_for_workspace(name: str | Path, workspace: Path) -> Path:
+    """Materialize a writable override inside an explicit workspace."""
+
+    stem = Path(name).stem if Path(name).suffix else Path(name).name
+    directory = _explicit_config_dir() or (
+        workspace.expanduser().resolve() / ".agent-factory" / "config"
+    )
+    target = directory / f"{stem}.json"
+    if not target.exists():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        save_yaml(target, load_yaml(config_path_for_workspace(name, workspace)))
     return target
 
 

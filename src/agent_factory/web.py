@@ -84,6 +84,20 @@ class ReviewCommand(ConfirmedCommand):
     note: str = ""
 
 
+class AgentEnabledCommand(ConfirmedCommand):
+    enabled: bool
+
+
+class AgentProviderCommand(ConfirmedCommand):
+    provider: str
+    model: str = ""
+
+
+class AgentCommandResult(BaseModel):
+    agent: AgentView
+    impact_summary: str
+
+
 class RunDetail(BaseModel):
     run: RunView
     artifacts: list[ArtifactView]
@@ -347,6 +361,44 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     @app.get("/api/agents", response_model=Page[AgentView])
     async def agents(service: Service, offset: Offset = 0, limit: Limit = 50) -> Page[AgentView]:
         return _page(service.agents(), offset, limit)
+
+    @app.post(
+        "/api/agents/{agent_id}/enabled", response_model=AgentCommandResult
+    )
+    async def set_agent_enabled(
+        agent_id: str,
+        command: AgentEnabledCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> AgentCommandResult:
+        _require_confirmation(command, confirmation)
+        agent = service.set_agent_enabled(agent_id, command.enabled)
+        action = "receive future assignments" if agent.enabled else "be excluded from assignments"
+        return AgentCommandResult(
+            agent=agent,
+            impact_summary=f"{agent.id} will {action}; existing evidence remains immutable",
+        )
+
+    @app.post(
+        "/api/agents/{agent_id}/provider", response_model=AgentCommandResult
+    )
+    async def replace_agent_provider(
+        agent_id: str,
+        command: AgentProviderCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> AgentCommandResult:
+        _require_confirmation(command, confirmation)
+        agent = service.replace_agent_provider(
+            agent_id, command.provider, command.model
+        )
+        return AgentCommandResult(
+            agent=agent,
+            impact_summary=(
+                f"Future {agent.role} assignments use {agent.provider} / {agent.model}; "
+                "existing artifacts remain attributed to their original producer"
+            ),
+        )
 
     @app.get("/api/providers", response_model=Page[ProviderView])
     async def providers(
