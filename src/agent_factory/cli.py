@@ -367,7 +367,7 @@ def _provider_invoke(storage: SQLiteStorage, registry: Any, gate_id: int) -> int
             approval,
             allow_fallback=False,
         )
-    except Exception as exc:  # Persist a terminal attempt even for launcher failures.
+    except Exception as exc:  # noqa: BLE001 - Persist all launcher failures.
         from .models import ProviderResult
 
         result = ProviderResult(

@@ -4,7 +4,6 @@ from pathlib import Path
 
 from agent_factory.backlog import load_backlog
 
-
 ROOT = Path(__file__).resolve().parents[1]
 BACKLOG = ROOT / "examples" / "development-backlog.json"
 ROADMAP = ROOT / "docs" / "development-roadmap.md"

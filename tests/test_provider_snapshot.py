@@ -12,7 +12,6 @@ from agent_factory.models import Agent, WorkItem
 from agent_factory.registry import AgentRegistry
 from agent_factory.storage import SQLiteStorage
 
-
 ROOT = Path(__file__).resolve().parent.parent
 
 

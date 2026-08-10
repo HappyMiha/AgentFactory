@@ -15,7 +15,6 @@ from agent_factory.providers import CLIProvider, ProcessSupervisor
 from agent_factory.runtime import AgentRuntime
 from agent_factory.storage import SQLiteStorage
 
-
 REQUEST_HASH = "a" * 64
 DEFINITION_HASH = "b" * 64
 DRIFTED_REQUEST_HASH = "c" * 64

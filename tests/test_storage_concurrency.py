@@ -7,7 +7,6 @@ from pathlib import Path
 from agent_factory.models import WorkItem
 from agent_factory.storage import SQLiteStorage
 
-
 REQUEST_HASH = "1" * 64
 DEFINITION_HASH = "2" * 64
 
