@@ -12,6 +12,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - Live Local Control Center dashboard shell with delivery counts, workflow, approval, provider, and failure status that refreshes without navigation.
 - Guarded backlog and workflow workspace with six work-item filters, contract and artifact inspection, simulation-only execution, artifact review, and ordered run evidence.
 - Workspace-local agent controls with role-compatible provider replacement, audited impact records, detailed provider health, assignment usage, and explainable independent-review routing.
+- Correlated audit explorer, immutable allowlisted runtime-setting history, and workspace-contained GitHub dry-run planning with SHA-256-bound approval gates.
 - Durable proxy-reviewer pools with model-aware author exclusion, least-used rotation, assignment history, and audit events.
 - Independent rotating policy post-checks that cannot reuse the implementation or validation producer models.
 - Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.

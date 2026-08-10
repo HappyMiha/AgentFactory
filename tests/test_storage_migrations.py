@@ -119,6 +119,27 @@ class StorageMigrationTests(unittest.TestCase):
             )
             storage.close()
 
+    def test_runtime_setting_versions_are_immutable_and_audited(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = SQLiteStorage(Path(tmp) / "settings.db")
+            self.assertEqual(
+                storage.update_runtime_setting("dashboard_refresh_seconds", 8), 1
+            )
+            self.assertEqual(
+                storage.update_runtime_setting("dashboard_refresh_seconds", 10), 2
+            )
+            with self.assertRaisesRegex(sqlite3.DatabaseError, "immutable"):
+                storage.db.execute(
+                    "UPDATE runtime_setting_versions SET value_json='99' WHERE version=1"
+                )
+            self.assertEqual(
+                storage.db.execute(
+                    "SELECT COUNT(*) FROM events WHERE event_type='settings.updated'"
+                ).fetchone()[0],
+                2,
+            )
+            storage.close()
+
 
 if __name__ == "__main__":
     unittest.main()

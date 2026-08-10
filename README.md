@@ -33,7 +33,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
 | Docker | Simulation-only | The image runs as a non-root user with persistent `/data`; external provider CLIs are not bundled. |
 | HTTP model APIs | Planned | DeepSeek, OpenRouter, Mistral, Groq, and similar services require a future HTTP adapter. |
-| Local Control Center | In progress | Dashboard, guarded workflow controls, agent/provider management, and explainable reviewer routing are ready; Founder review, audit/settings, and qualification remain. |
+| Local Control Center | In progress | Dashboard, guarded workflow and agent controls, reviewer routing, audit/settings, and GitHub dry-run preview are ready; Founder review and qualification remain. |
 
 ## How it works
 

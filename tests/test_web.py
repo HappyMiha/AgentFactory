@@ -14,6 +14,7 @@ from urllib.request import urlopen
 from fastapi.testclient import TestClient
 
 from agent_factory.application import AgentFactoryService
+from agent_factory.backlog import load_backlog
 from agent_factory.providers import DeterministicProvider
 from agent_factory.runtime import AgentRuntime
 from agent_factory.storage import SQLiteStorage
@@ -238,8 +239,128 @@ class WebHostTests(unittest.TestCase):
                         "/api/artifacts/{artifact_id}/review",
                         "/api/agents/{agent_id}/enabled",
                         "/api/agents/{agent_id}/provider",
+                        "/api/settings/{key}",
+                        "/api/github/preview",
                     },
                 )
+
+    def test_audit_settings_and_github_dry_run_controls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            database = workspace / ".agent-factory" / "state.db"
+            project_id, task_id, run_id = seed(workspace, database)
+            source = workspace / "backlog.json"
+            source.write_bytes((ROOT / "examples" / "development-backlog.json").read_bytes())
+            proposal = load_backlog(source)
+            desired = proposal.items[0].issue()
+            existing = [
+                {
+                    "number": 7,
+                    "title": desired["title"],
+                    "body": desired["body"].replace("Deliver", "Previously deliver", 1),
+                    "labels": desired["labels"],
+                }
+            ]
+            headers = {"X-Agent-Factory-Confirm": "true"}
+            with TestClient(create_app(workspace, database)) as client:
+                settings = client.get("/api/settings").json()
+                by_key = {item["key"]: item for item in settings["runtime_settings"]}
+                self.assertEqual(by_key["dashboard_refresh_seconds"]["value"], 5)
+                self.assertEqual(by_key["dashboard_refresh_seconds"]["version"], 0)
+
+                unconfirmed = client.post(
+                    "/api/settings/dashboard_refresh_seconds",
+                    json={"confirmed": False, "value": 10},
+                )
+                self.assertEqual(unconfirmed.status_code, 400)
+                for value, version in ((10, 1), (12, 2)):
+                    updated = client.post(
+                        "/api/settings/dashboard_refresh_seconds",
+                        headers=headers,
+                        json={"confirmed": True, "value": value},
+                    )
+                    self.assertEqual(updated.status_code, 200, updated.text)
+                    self.assertEqual(updated.json()["version"], version)
+                rejected_secret = client.post(
+                    "/api/settings/github_token",
+                    headers=headers,
+                    json={"confirmed": True, "value": 1},
+                )
+                self.assertEqual(rejected_secret.status_code, 400)
+                out_of_range = client.post(
+                    "/api/settings/audit_page_size",
+                    headers=headers,
+                    json={"confirmed": True, "value": 1000},
+                )
+                self.assertEqual(out_of_range.status_code, 400)
+
+                preview = client.post(
+                    "/api/github/preview",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "repo": "owner/repository",
+                        "backlog_path": "backlog.json",
+                        "existing_issues": existing,
+                    },
+                )
+                self.assertEqual(preview.status_code, 200, preview.text)
+                plan = preview.json()
+                self.assertTrue(plan["dry_run"])
+                self.assertEqual(len(plan["plan_hash"]), 64)
+                self.assertEqual(plan["gate_status"], "pending")
+                self.assertTrue(any(op["action"] == "update_issue" for op in plan["operations"]))
+                self.assertTrue(any(op["action"] == "create_issue" for op in plan["operations"]))
+                self.assertTrue(all(not item["executed"] for item in plan["preview"]["results"]))
+
+                escaped = client.post(
+                    "/api/github/preview",
+                    headers=headers,
+                    json={
+                        "confirmed": True,
+                        "repo": "owner/repository",
+                        "backlog_path": "../outside.json",
+                        "existing_issues": [],
+                    },
+                )
+                self.assertEqual(escaped.status_code, 400)
+
+                audit = client.get(
+                    "/api/events",
+                    params={
+                        "project_id": project_id,
+                        "task_id": task_id,
+                        "run_id": run_id,
+                        "agent_id": "coding-worker-codex",
+                        "provider": "deterministic",
+                    },
+                ).json()
+                self.assertGreater(audit["total"], 0)
+                self.assertTrue(
+                    any(item["related_artifact_ids"] for item in audit["items"])
+                )
+                settings_audit = client.get(
+                    "/api/events", params={"action": "settings", "outcome": "success"}
+                ).json()
+                self.assertEqual(settings_audit["total"], 2)
+                newest = client.get("/api/events", params={"limit": 1}).json()["items"][0]
+                bounded = client.get(
+                    "/api/events",
+                    params={"from_time": newest["created_at"], "to_time": newest["created_at"]},
+                ).json()
+                self.assertGreaterEqual(bounded["total"], 1)
+
+            storage = SQLiteStorage(database)
+            versions = storage.db.execute(
+                """SELECT version,value_json FROM runtime_setting_versions
+                     WHERE key='dashboard_refresh_seconds' ORDER BY version"""
+            ).fetchall()
+            self.assertEqual([(row["version"], row["value_json"]) for row in versions], [(1, "10"), (2, "12")])
+            gate = storage.db.execute(
+                "SELECT status FROM github_mutation_gates WHERE id=?", (plan["gate_id"],)
+            ).fetchone()
+            self.assertEqual(gate["status"], "pending")
+            storage.close()
 
     def test_guarded_agent_provider_and_reviewer_routing_controls(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -432,6 +553,12 @@ class WebHostTests(unittest.TestCase):
                 self.assertIn("Compatible provider", script.text)
                 self.assertIn("Candidate exclusions", script.text)
                 self.assertIn("prior approval snapshots will not be reused", script.text)
+                self.assertIn('id="audit-filters"', page.text)
+                self.assertIn('id="settings-list"', page.text)
+                self.assertIn('id="github-preview-form"', page.text)
+                self.assertIn("DRY RUN", script.text)
+                self.assertIn("unrestricted command arguments", script.text)
+                self.assertNotIn("Available in AF-042", page.text)
                 self.assertNotIn("Available in AF-039", page.text)
                 self.assertIn("prefers-reduced-motion", styles.text)
 

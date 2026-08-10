@@ -8,8 +8,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from .backlog import BacklogProposal
+from .backlog import BacklogProposal, diff_issues, issue_operations, load_backlog
 from .config import config_path, config_path_for_workspace, load_yaml
+from .github import GitHubClient
 from .models import Budget, ExecutionApproval, ProviderResult, WorkItem
 from .registry import AgentRegistry
 from .runtime import AgentRuntime, ExecutionMode
@@ -155,9 +156,36 @@ class EventView:
 
 
 @dataclass(frozen=True)
+class AuditEventView:
+    id: int
+    event_type: str
+    entity_type: str
+    entity_id: str
+    payload: dict[str, Any]
+    created_at: str
+    project_id: int | None
+    task_id: int | None
+    run_id: int | None
+    agent_id: str | None
+    provider: str | None
+    outcome: str
+    related_artifact_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
 class ConfigSourceView:
     name: str
     path: str
+
+
+@dataclass(frozen=True)
+class RuntimeSettingView:
+    key: str
+    value: int
+    version: int
+    minimum: int
+    maximum: int
+    description: str
 
 
 @dataclass(frozen=True)
@@ -170,6 +198,7 @@ class SettingsView:
     max_timeout: int
     max_output_chars: int
     config_sources: tuple[ConfigSourceView, ...]
+    runtime_settings: tuple[RuntimeSettingView, ...]
 
 
 @dataclass(frozen=True)
@@ -182,6 +211,22 @@ class ProjectChange:
 class ClaimResult:
     task_id: int
     worker: str
+
+
+RUNTIME_SETTING_SPECS: dict[str, tuple[int, int, int, str]] = {
+    "dashboard_refresh_seconds": (
+        5,
+        2,
+        60,
+        "Seconds between live Local Control Center refreshes",
+    ),
+    "audit_page_size": (
+        50,
+        10,
+        200,
+        "Maximum audit records loaded per explorer refresh",
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -626,6 +671,164 @@ class AgentFactoryService:
             for row in rows
         ]
 
+    def audit_events(
+        self,
+        *,
+        limit: int = 10_000,
+        from_time: str | None = None,
+        to_time: str | None = None,
+        project_id: int | None = None,
+        task_id: int | None = None,
+        run_id: int | None = None,
+        agent_id: str | None = None,
+        provider: str | None = None,
+        action: str | None = None,
+        outcome: str | None = None,
+    ) -> list[AuditEventView]:
+        normalized_from = from_time.replace("T", " ").removesuffix("Z") if from_time else None
+        normalized_to = to_time.replace("T", " ").removesuffix("Z") if to_time else None
+        result: list[AuditEventView] = []
+        for event in self.events(limit=limit):
+            context = self._audit_event(event)
+            if normalized_from and context.created_at < normalized_from:
+                continue
+            if normalized_to and context.created_at > normalized_to:
+                continue
+            if project_id is not None and context.project_id != project_id:
+                continue
+            if task_id is not None and context.task_id != task_id:
+                continue
+            if run_id is not None and context.run_id != run_id:
+                continue
+            if agent_id is not None and context.agent_id != agent_id:
+                continue
+            if provider is not None and context.provider != provider:
+                continue
+            if action is not None and action.casefold() not in context.event_type.casefold():
+                continue
+            if outcome is not None and context.outcome != outcome:
+                continue
+            result.append(context)
+        return result
+
+    def _audit_event(self, event: EventView) -> AuditEventView:
+        def integer(value: Any) -> int | None:
+            try:
+                return int(value) if value is not None else None
+            except (TypeError, ValueError):
+                return None
+
+        payload = event.payload
+        project_id = integer(payload.get("project_id"))
+        task_id = integer(payload.get("task_id"))
+        run_id = integer(payload.get("run_id"))
+        agent_id = next(
+            (
+                str(payload[key])
+                for key in ("agent_id", "worker", "reviewer_agent_id", "agent")
+                if payload.get(key)
+            ),
+            None,
+        )
+        provider = next(
+            (
+                str(payload[key])
+                for key in ("provider", "reviewer_provider")
+                if payload.get(key)
+            ),
+            None,
+        )
+        entity_id = integer(event.entity_id)
+        entity = event.entity_type.casefold()
+        if entity in {"task", "work_item"}:
+            task_id = entity_id
+        elif "run" in entity:
+            run_id = entity_id
+        elif entity == "agent":
+            agent_id = event.entity_id
+        elif entity == "provider":
+            provider = event.entity_id
+
+        artifact_ids: set[int] = set()
+        artifact_id = integer(payload.get("artifact_id"))
+        if artifact_id is not None:
+            artifact_ids.add(artifact_id)
+        artifact_ids.update(
+            value
+            for raw in payload.get("artifact_ids", [])
+            if (value := integer(raw)) is not None
+        )
+        if "artifact" in entity and entity_id is not None:
+            artifact_ids.add(entity_id)
+        if artifact_ids:
+            placeholders = ",".join("?" for _ in artifact_ids)
+            row = self.storage.db.execute(
+                f"""SELECT a.run_id,a.agent_id,a.provider,r.task_id,r.project_id
+                       FROM artifacts a JOIN workflow_runs r ON r.id=a.run_id
+                      WHERE a.id IN ({placeholders}) ORDER BY a.id LIMIT 1""",
+                tuple(sorted(artifact_ids)),
+            ).fetchone()
+            if row:
+                run_id = run_id or int(row["run_id"])
+                task_id = task_id or int(row["task_id"])
+                project_id = project_id or int(row["project_id"])
+                agent_id = agent_id or str(row["agent_id"])
+                provider = provider or str(row["provider"])
+        if run_id is not None:
+            row = self.storage.db.execute(
+                "SELECT task_id,project_id FROM workflow_runs WHERE id=?", (run_id,)
+            ).fetchone()
+            if row:
+                task_id = task_id or int(row["task_id"])
+                project_id = project_id or int(row["project_id"])
+        if task_id is not None:
+            row = self.storage.db.execute(
+                "SELECT project_id FROM work_items WHERE id=?", (task_id,)
+            ).fetchone()
+            if row:
+                project_id = project_id or int(row["project_id"])
+        if run_id is not None:
+            artifact_ids.update(
+                int(row[0])
+                for row in self.storage.db.execute(
+                    "SELECT id FROM artifacts WHERE run_id=? ORDER BY id", (run_id,)
+                )
+            )
+        elif task_id is not None:
+            artifact_ids.update(
+                int(row[0])
+                for row in self.storage.db.execute(
+                    """SELECT a.id FROM artifacts a JOIN workflow_runs r ON r.id=a.run_id
+                         WHERE r.task_id=? ORDER BY a.id""",
+                    (task_id,),
+                )
+            )
+        kind = event.event_type.casefold()
+        if payload.get("ok") is False or any(
+            token in kind
+            for token in ("failed", "error", "rejected", "cancelled", "abandoned")
+        ):
+            event_outcome = "failure"
+        elif any(token in kind for token in ("pending", "requested", "claimed", "running")):
+            event_outcome = "pending"
+        elif any(
+            token in kind
+            for token in ("succeeded", "approved", "completed", "created", "updated", "enabled", "disabled")
+        ):
+            event_outcome = "success"
+        else:
+            event_outcome = "info"
+        return AuditEventView(
+            **asdict(event),
+            project_id=project_id,
+            task_id=task_id,
+            run_id=run_id,
+            agent_id=agent_id,
+            provider=provider,
+            outcome=event_outcome,
+            related_artifact_ids=tuple(sorted(artifact_ids)),
+        )
+
     def settings(self) -> SettingsView:
         policy = load_yaml(config_path_for_workspace("policy", self.workspace))
         execution = policy.get("execution", {})
@@ -634,6 +837,21 @@ class AgentFactoryService:
                 name, str(config_path_for_workspace(name, self.workspace))
             )
             for name in ("agents", "providers", "policy", "workflows")
+        )
+        stored = {
+            str(row["key"]): (json.loads(row["value_json"]), int(row["version"]))
+            for row in self.storage.runtime_settings()
+        }
+        runtime_settings = tuple(
+            RuntimeSettingView(
+                key=key,
+                value=int(stored.get(key, (default, 0))[0]),
+                version=int(stored.get(key, (default, 0))[1]),
+                minimum=minimum,
+                maximum=maximum,
+                description=description,
+            )
+            for key, (default, minimum, maximum, description) in RUNTIME_SETTING_SPECS.items()
         )
         return SettingsView(
             workspace=str(self.workspace),
@@ -648,6 +866,7 @@ class AgentFactoryService:
             max_timeout=int(execution.get("max_timeout", 180)),
             max_output_chars=int(execution.get("max_output_chars", 100_000)),
             config_sources=sources,
+            runtime_settings=runtime_settings,
         )
 
     # Commands reuse storage, workflow, policy, approval, and audit paths.
@@ -737,6 +956,27 @@ class AgentFactoryService:
             item
             for item in self.approvals()
             if item.kind == "workflow" and item.id == gate_id
+        )
+
+    def update_runtime_setting(self, key: str, value: int) -> RuntimeSettingView:
+        specification = RUNTIME_SETTING_SPECS.get(key)
+        if specification is None:
+            raise ValueError(f"Runtime setting is not allowlisted: {key}")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"Runtime setting {key} requires an integer")
+        _default, minimum, maximum, description = specification
+        if value < minimum or value > maximum:
+            raise ValueError(
+                f"Runtime setting {key} must be between {minimum} and {maximum}"
+            )
+        version = self.storage.update_runtime_setting(key, value)
+        return RuntimeSettingView(
+            key=key,
+            value=value,
+            version=version,
+            minimum=minimum,
+            maximum=maximum,
+            description=description,
         )
 
     def set_agent_enabled(self, agent_id: str, enabled: bool) -> AgentView:
@@ -1030,6 +1270,47 @@ class AgentFactoryService:
             "gate_status": str(gate["status"]) if gate else "pending",
             "preview": client.apply(operations),
         }
+
+    def preview_github_sync(
+        self,
+        repo: str,
+        backlog_path: str,
+        existing_issues: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        relative = Path(backlog_path)
+        if relative.is_absolute():
+            raise ValueError("GitHub preview backlog path must be workspace-relative")
+        source = (self.workspace / relative).resolve()
+        if not source.is_relative_to(self.workspace):
+            raise ValueError("GitHub preview backlog path escapes the workspace")
+        proposal = load_backlog(source)
+        difference = diff_issues(proposal, existing_issues)
+        operations = issue_operations(difference)
+        result: dict[str, Any] = {
+            "dry_run": True,
+            "source_path": source.relative_to(self.workspace).as_posix(),
+            "diff": difference,
+            "operations": operations,
+        }
+        if operations:
+            result.update(
+                self.preview_github_plan(
+                    repo, operations, GitHubClient(repo=repo, dry_run=True)
+                )
+            )
+        else:
+            result.update(
+                {
+                    "plan_id": None,
+                    "plan_hash": canonical_hash(
+                        {"version": 1, "repo": repo, "operations": []}
+                    ),
+                    "gate_id": None,
+                    "gate_status": "not_required",
+                    "preview": {"ok": True, "dry_run": True, "results": []},
+                }
+            )
+        return result
 
     def apply_github_plan(self, plan_id: int, gate_id: int, client: Any) -> dict[str, Any]:
         plan = self.storage.github_plan(plan_id)

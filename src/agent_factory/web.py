@@ -9,17 +9,19 @@ from fastapi import Depends, FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .application import (
     AgentFactoryService,
     AgentView,
     ApprovalView,
     ArtifactView,
+    AuditEventView,
     EventView,
     ProjectView,
     ProviderView,
     ReviewView,
+    RuntimeSettingView,
     RunView,
     SettingsView,
     WorkItemView,
@@ -96,6 +98,16 @@ class AgentProviderCommand(ConfirmedCommand):
 class AgentCommandResult(BaseModel):
     agent: AgentView
     impact_summary: str
+
+
+class RuntimeSettingCommand(ConfirmedCommand):
+    value: int
+
+
+class GitHubPreviewCommand(ConfirmedCommand):
+    repo: str
+    backlog_path: str
+    existing_issues: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class RunDetail(BaseModel):
@@ -422,21 +434,60 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     ) -> Page[ApprovalView]:
         return _page(service.approvals(), offset, limit)
 
-    @app.get("/api/events", response_model=Page[EventView])
+    @app.get("/api/events", response_model=Page[AuditEventView])
     async def events(
-        service: Service, offset: Offset = 0, limit: Limit = 50
-    ) -> Page[EventView]:
-        rows = service.events(limit=min(10_000, offset + limit))
-        return Page(
-            items=rows[offset : offset + limit],
-            offset=offset,
-            limit=limit,
-            total=service.storage.db.execute("SELECT COUNT(*) FROM events").fetchone()[0],
+        service: Service,
+        offset: Offset = 0,
+        limit: Limit = 50,
+        from_time: str | None = None,
+        to_time: str | None = None,
+        project_id: int | None = None,
+        task_id: int | None = None,
+        run_id: int | None = None,
+        agent_id: str | None = None,
+        provider: str | None = None,
+        action: str | None = None,
+        outcome: Literal["success", "failure", "pending", "info"] | None = None,
+    ) -> Page[AuditEventView]:
+        rows = service.audit_events(
+            from_time=from_time,
+            to_time=to_time,
+            project_id=project_id,
+            task_id=task_id,
+            run_id=run_id,
+            agent_id=agent_id,
+            provider=provider,
+            action=action,
+            outcome=outcome,
         )
+        return _page(rows, offset, limit)
 
     @app.get("/api/settings", response_model=SettingsView)
     async def settings(service: Service) -> SettingsView:
         return service.settings()
+
+    @app.post(
+        "/api/settings/{key}", response_model=RuntimeSettingView
+    )
+    async def update_runtime_setting(
+        key: str,
+        command: RuntimeSettingCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> RuntimeSettingView:
+        _require_confirmation(command, confirmation)
+        return service.update_runtime_setting(key, command.value)
+
+    @app.post("/api/github/preview", response_model=dict[str, Any])
+    async def github_preview(
+        command: GitHubPreviewCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        return service.preview_github_sync(
+            command.repo, command.backlog_path, command.existing_issues
+        )
 
     @app.get("/api/integrations", response_model=list[IntegrationStatus])
     async def integrations(service: Service) -> list[IntegrationStatus]:

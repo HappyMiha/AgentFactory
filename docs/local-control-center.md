@@ -57,3 +57,15 @@ The runtime workspace lists every agent's role, enabled state, provider/model id
 Provider cards distinguish ready, unhealthy, unavailable, and disabled states. They include the reviewed executable path, version or sanitized error, execution capability, allowed roles, and redacted health detail. Provider replacement fails when the provider is unknown, disabled, or does not allow the agent's role. Selecting the deterministic provider remains available as a local simulation-safe assignment.
 
 The independent reviewer view displays each durable routing decision, selected reviewer/provider/model, producer models, verdict, rotation strategy, and the reason every rejected candidate was excluded. The UI independently marks a routing conflict if a recorded reviewer model matches any producer model; the workflow router itself continues to fail closed before recording such an assignment.
+
+## Audit explorer and runtime settings
+
+The audit explorer correlates stored events with project, work item, workflow run, producing/reviewing agent, provider, outcome, and related artifacts. Filters cover time range, every correlated entity, action text, and normalized `success`, `failure`, `pending`, or `info` outcomes. Event payloads remain available in expandable detail while linked run and artifact evidence stays one action away.
+
+The web UI accepts only `dashboard_refresh_seconds` (2–60) and `audit_page_size` (10–200). Both are integers with explicit bounds. Each successful update creates an immutable row in `runtime_setting_versions`, advances the current version, and records `settings.updated` with the previous and resulting value. Unknown names—including anything that resembles a token or secret—fail validation. The endpoint has no field for environment values, secrets, executable paths, or command arguments.
+
+## GitHub dry-run preview
+
+GitHub preview accepts an `OWNER/REPOSITORY`, a workspace-relative backlog path, and a JSON array containing a previously obtained issue snapshot. It does not read the network. Paths outside the selected workspace are rejected. The existing backlog diff and GitHub allowlist generate only reviewed create/update operations.
+
+After explicit confirmation, a non-empty preview stores the existing immutable mutation plan, its SHA-256 digest, and a separate pending GitHub gate. `GitHubClient` remains in dry-run mode, so every result reports `executed: false`. The Local Control Center deliberately exposes no apply endpoint: an operator must separately inspect and approve the exact plan through the existing GitHub approval flow before the CLI can apply it. An empty diff receives a deterministic digest but no unnecessary gate.

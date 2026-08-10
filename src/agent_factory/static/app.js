@@ -1,4 +1,4 @@
-const state = { lastSuccess: null, timer: null, selectedTask: null, projectsLoaded: false };
+const state = { lastSuccess: null, timer: null, selectedTask: null, projectsLoaded: false, settingsLoaded: false, refreshSeconds: 5, auditPageSize: 50 };
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
 
@@ -39,6 +39,52 @@ function renderRuntime(agents, providers, reviews) {
     const excluded = Object.entries(review.excluded_candidates).map(([id, reason]) => `<li><strong>${escapeHtml(id)}</strong>: ${escapeHtml(reason)}</li>`).join("");
     return `<article class="routing-card"><div class="stage-head"><h3>${escapeHtml(review.stage)} &middot; run #${review.run_id}</h3>${badge(independent ? "independent" : "conflict")}</div><p>Selected <strong>${escapeHtml(review.reviewer_agent_id)}</strong> via ${escapeHtml(review.reviewer_provider)} / ${escapeHtml(review.reviewer_model)}</p><p>Producer models: ${escapeHtml(producerModels.join(", ") || "none recorded")}</p><p>Strategy: ${escapeHtml(review.strategy)} &middot; verdict: ${escapeHtml(review.verdict || "pending")}</p><details><summary>Candidate exclusions</summary>${excluded ? `<ul>${excluded}</ul>` : `<p>No candidates were excluded.</p>`}</details></article>`;
   }).join("") : empty("No reviewer assignments yet. Run a simulation to create routing evidence.");
+}
+
+function auditQuery() {
+  const form = new FormData($("audit-filters"));
+  const query = new URLSearchParams({ limit: String(state.auditPageSize) });
+  for (const [key, value] of form.entries()) if (String(value).trim()) query.set(key, String(value).trim());
+  return query.toString();
+}
+
+async function loadAudit() {
+  const data = await fetchJson(`/api/events?${auditQuery()}`);
+  $("audit-count").textContent = `${data.total} correlated event${data.total === 1 ? "" : "s"}; showing up to ${data.limit}`;
+  $("audit-list").classList.remove("loading-block");
+  $("audit-list").innerHTML = data.items.length ? data.items.map((event) => {
+    const context = [event.project_id && `Project #${event.project_id}`, event.task_id && `Task #${event.task_id}`, event.run_id && `Run #${event.run_id}`, event.agent_id, event.provider].filter(Boolean).join(" · ");
+    const artifactLink = event.related_artifact_ids.length ? `<a href="/api/artifacts?${event.run_id ? `run_id=${event.run_id}` : `task_id=${event.task_id}`}">Artifacts ${event.related_artifact_ids.map((id) => `#${id}`).join(", ")}</a>` : "";
+    return `<article class="audit-row"><div><div class="stage-head"><strong>${escapeHtml(event.event_type)}</strong>${badge(event.outcome)}</div><small>${escapeHtml(event.entity_type)} #${escapeHtml(event.entity_id)}${context ? ` · ${escapeHtml(context)}` : ""}</small><div class="audit-links">${event.run_id ? `<button type="button" class="text-button" data-run-id="${event.run_id}">Inspect run</button>` : ""}${artifactLink}</div><details><summary>Event payload</summary><pre>${escapeHtml(JSON.stringify(event.payload, null, 2))}</pre></details></div><time>${escapeHtml(event.created_at)}</time></article>`;
+  }).join("") : empty("No audit events match these filters");
+}
+
+function configureRefresh(seconds) {
+  if (state.refreshSeconds === seconds && state.timer) return;
+  state.refreshSeconds = seconds;
+  if (state.timer) window.clearInterval(state.timer);
+  state.timer = window.setInterval(refresh, seconds * 1000);
+}
+
+function renderSettings(settings) {
+  $("settings-list").classList.remove("loading-block");
+  const sources = settings.config_sources.map((source) => `${source.name}: ${source.path}`).join("\n");
+  $("settings-list").innerHTML = `<div class="settings-safety">Secrets, environment values, and unrestricted command arguments are never accepted here.</div>${settings.runtime_settings.map((setting) => `<article class="setting-card" data-setting-key="${escapeHtml(setting.key)}"><div><strong>${escapeHtml(setting.key.replaceAll("_", " "))}</strong><small>${escapeHtml(setting.description)} · version ${setting.version}</small></div><label>Value (${setting.minimum}-${setting.maximum})<input class="setting-value" type="number" min="${setting.minimum}" max="${setting.maximum}" value="${setting.value}"></label><button type="button" data-setting-save>Save</button></article>`).join("")}<details class="config-sources"><summary>Environment and config sources</summary><pre>${escapeHtml(`Workspace: ${settings.workspace}\nDatabase: ${settings.database}\n${sources}`)}</pre></details>`;
+  const refreshSetting = settings.runtime_settings.find((item) => item.key === "dashboard_refresh_seconds");
+  const auditSetting = settings.runtime_settings.find((item) => item.key === "audit_page_size");
+  if (refreshSetting) configureRefresh(refreshSetting.value);
+  if (auditSetting) state.auditPageSize = auditSetting.value;
+  state.settingsLoaded = true;
+}
+
+async function loadSettings(force = false) {
+  if (state.settingsLoaded && !force) return;
+  renderSettings(await fetchJson("/api/settings"));
+}
+
+function renderGitHubPreview(result) {
+  const operations = result.operations.map((operation) => `<article class="preview-operation"><span><strong>${escapeHtml(operation.action)}</strong><small>${escapeHtml(operation.idempotency_key)}</small></span>${operation.number ? `<span>Issue #${operation.number}</span>` : ""}</article>`).join("");
+  $("github-preview").innerHTML = `<div class="dry-run-banner"><strong>DRY RUN · nothing executed</strong><span>Immutable SHA-256: <code>${escapeHtml(result.plan_hash)}</code></span><span>Plan ${result.plan_id ?? "not required"} · Gate ${result.gate_id ?? "not required"} (${escapeHtml(result.gate_status)})</span></div><div class="preview-counts"><span>Create ${result.diff.create.length}</span><span>Update ${result.diff.update.length}</span><span>Unchanged ${result.diff.unchanged.length}</span></div>${operations || empty("No create or update operations")}`;
 }
 
 function filterQuery() {
@@ -166,6 +212,28 @@ async function handleAgentAction(target) {
   await refresh();
 }
 
+async function handleSettingAction(target) {
+  const card = target.closest("[data-setting-key]");
+  if (!card) return;
+  const key = card.dataset.settingKey;
+  const value = Number(card.querySelector(".setting-value").value);
+  await guardedCommand(`/api/settings/${encodeURIComponent(key)}`, { value }, `Set allowlisted runtime setting ${key} to ${value}; a new immutable version and audit event will be recorded`);
+  state.settingsLoaded = false;
+  await Promise.all([loadSettings(true), loadAudit()]);
+}
+
+async function handleGitHubPreview(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  let existingIssues;
+  try { existingIssues = JSON.parse(String(form.get("existing_issues") || "[]")); } catch (_error) { throw new Error("Existing issue snapshot must be valid JSON"); }
+  if (!Array.isArray(existingIssues)) throw new Error("Existing issue snapshot must be a JSON array");
+  const repo = String(form.get("repo") || "").trim();
+  const backlogPath = String(form.get("backlog_path") || "").trim();
+  const result = await guardedCommand("/api/github/preview", { repo, backlog_path: backlogPath, existing_issues: existingIssues }, `Create an immutable dry-run GitHub plan for ${repo} from ${backlogPath}; no GitHub command will execute and apply still requires separate approval`);
+  if (result) { renderGitHubPreview(result); await loadAudit(); }
+}
+
 async function refresh() {
   $("refresh").disabled = true;
   try {
@@ -175,7 +243,9 @@ async function refresh() {
       fetchJson("/api/providers?limit=200"),
       fetchJson("/api/reviews?limit=200"),
       loadProjects(),
-      loadWork()
+      loadWork(),
+      loadAudit(),
+      loadSettings()
     ]);
     renderDashboard(dashboard); renderRuntime(agents.items, providers.items, reviews.items); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
@@ -183,7 +253,7 @@ async function refresh() {
   } catch (error) {
     $("connection-dot").className = "offline"; $("connection-text").textContent = "Service disconnected";
     $("notice").hidden = false; $("notice").textContent = state.lastSuccess ? "Live refresh failed. Showing the last successful local snapshot." : "Dashboard data is unavailable. Check the local service and retry.";
-    if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
+    if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list","audit-list","settings-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
   } finally { $("refresh").disabled = false; }
 }
 
@@ -194,5 +264,10 @@ $("work-list").addEventListener("click", (event) => { const row = event.target.c
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("run-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
 $("agent-list").addEventListener("click", (event) => { const action = event.target.closest("[data-agent-toggle],[data-agent-provider]"); if (action) handleAgentAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("audit-filters").addEventListener("submit", (event) => { event.preventDefault(); loadAudit().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("clear-audit").addEventListener("click", () => { $("audit-filters").reset(); loadAudit(); });
+$("audit-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
+$("settings-list").addEventListener("click", (event) => { const action = event.target.closest("[data-setting-save]"); if (action) handleSettingAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("github-preview-form").addEventListener("submit", (event) => { handleGitHubPreview(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("close-run").addEventListener("click", () => $("run-dialog").close());
 refresh(); state.timer = window.setInterval(refresh, 5000);

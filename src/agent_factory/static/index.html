@@ -71,7 +71,34 @@
           <aside id="work-detail" class="detail-pane" aria-live="polite"><div class="empty">Select a work item to inspect its delivery contract</div></aside>
         </div>
       </section>
-      <section id="audit" class="placeholder" aria-label="Audit and settings"><strong>Audit &amp; settings</strong><span>Available in AF-042</span></section>
+      <section id="audit" class="panel operations-panel" aria-labelledby="audit-title">
+        <div class="panel-head"><div><p class="eyebrow">Traceability</p><h2 id="audit-title">Audit, settings &amp; GitHub preview</h2></div><p class="panel-copy">Search local evidence and preview external intent without applying it.</p></div>
+        <form id="audit-filters" class="filter-grid audit-filters" aria-label="Filter audit events">
+          <label>From<input name="from_time" type="datetime-local"></label>
+          <label>To<input name="to_time" type="datetime-local"></label>
+          <label>Project<input name="project_id" inputmode="numeric" placeholder="Project ID"></label>
+          <label>Work item<input name="task_id" inputmode="numeric" placeholder="Task ID"></label>
+          <label>Run<input name="run_id" inputmode="numeric" placeholder="Run ID"></label>
+          <label>Agent<input name="agent_id" placeholder="Agent ID"></label>
+          <label>Provider<input name="provider" placeholder="Provider ID"></label>
+          <label>Action<input name="action" placeholder="workflow"></label>
+          <label>Outcome<select name="outcome"><option value="">All outcomes</option><option>success</option><option>failure</option><option>pending</option><option>info</option></select></label>
+          <button type="submit">Search audit</button><button id="clear-audit" class="secondary" type="button">Clear</button>
+        </form>
+        <p id="audit-count" class="result-count">Loading audit trail...</p><div id="audit-list" class="audit-list loading-block">Loading correlated events…</div>
+        <div class="operations-grid">
+          <section aria-labelledby="settings-title"><div class="subhead"><h3 id="settings-title">Allowlisted runtime settings</h3><span>Numeric values only; every version is audited</span></div><div id="settings-list" class="settings-list loading-block">Loading settings…</div></section>
+          <section aria-labelledby="github-title"><div class="subhead"><h3 id="github-title">GitHub sync preview</h3><span>Dry-run only; apply requires the separate existing gate</span></div>
+            <form id="github-preview-form" class="github-form">
+              <label>Repository<input name="repo" required placeholder="owner/repository" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"></label>
+              <label>Workspace-relative backlog path<input name="backlog_path" required value="examples/development-backlog.json"></label>
+              <label>Existing issue snapshot (JSON array)<textarea name="existing_issues" rows="5">[]</textarea></label>
+              <button type="submit">Create dry-run preview</button>
+            </form>
+            <div id="github-preview" class="preview-result"><div class="empty">No GitHub preview created</div></div>
+          </section>
+        </div>
+      </section>
     </main>
   </div>
   <dialog id="confirm-dialog" aria-labelledby="confirm-title">

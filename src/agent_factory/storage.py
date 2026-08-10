@@ -165,6 +165,29 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE INDEX IF NOT EXISTS idx_reviewer_assignments_rotation
             ON reviewer_assignments(stage,reviewer_agent_id,id);
     """),
+    (8, """
+        CREATE TABLE IF NOT EXISTS runtime_settings(
+            key TEXT PRIMARY KEY,
+            value_json TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK(version > 0),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS runtime_setting_versions(
+            id INTEGER PRIMARY KEY,
+            key TEXT NOT NULL,
+            version INTEGER NOT NULL,
+            value_json TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(key,version)
+        );
+        CREATE TRIGGER IF NOT EXISTS runtime_setting_versions_no_update
+        BEFORE UPDATE ON runtime_setting_versions
+        BEGIN SELECT RAISE(ABORT, 'runtime setting history is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS runtime_setting_versions_no_delete
+        BEFORE DELETE ON runtime_setting_versions
+        BEGIN SELECT RAISE(ABORT, 'runtime setting history is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = {
@@ -214,6 +237,49 @@ class SQLiteStorage:
     def event(self, kind: str, entity: str, entity_id: int | str, payload: dict[str, Any]) -> None:
         with self.db:
             self._event(kind, entity, entity_id, payload)
+
+    def runtime_settings(self):
+        return self.db.execute(
+            "SELECT * FROM runtime_settings ORDER BY key"
+        ).fetchall()
+
+    def update_runtime_setting(
+        self, key: str, value: Any, actor: str = "Local operator"
+    ) -> int:
+        payload = json.dumps(value, sort_keys=True, separators=(",", ":"))
+        with self.db:
+            current = self.db.execute(
+                "SELECT value_json,version FROM runtime_settings WHERE key=?", (key,)
+            ).fetchone()
+            previous = json.loads(current["value_json"]) if current else None
+            version = int(current["version"]) + 1 if current else 1
+            self.db.execute(
+                """INSERT INTO runtime_setting_versions(key,version,value_json,actor)
+                     VALUES(?,?,?,?)""",
+                (key, version, payload, actor),
+            )
+            self.db.execute(
+                """INSERT INTO runtime_settings(key,value_json,version)
+                     VALUES(?,?,?)
+                     ON CONFLICT(key) DO UPDATE SET
+                         value_json=excluded.value_json,
+                         version=excluded.version,
+                         updated_at=CURRENT_TIMESTAMP""",
+                (key, payload, version),
+            )
+            self._event(
+                "settings.updated",
+                "runtime_setting",
+                key,
+                {
+                    "key": key,
+                    "previous": previous,
+                    "value": value,
+                    "version": version,
+                    "actor": actor,
+                },
+            )
+        return version
 
     def create_project(self, name: str, description: str) -> int:
         with self.db:
