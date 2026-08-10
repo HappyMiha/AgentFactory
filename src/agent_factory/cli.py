@@ -44,6 +44,9 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("init", help="Create the generic example project and work item.")
     sub.add_parser("bootstrap", help="Alias for init.")
     sub.add_parser("demo", help="Run the offline deterministic delivery demo.")
+    web = sub.add_parser("web", help="Start the loopback-only Local Control Center API.")
+    web.add_argument("--host", default="127.0.0.1")
+    web.add_argument("--port", default=8765, type=int)
 
     project = sub.add_parser("project").add_subparsers(dest="action", required=True)
     project_init = project.add_parser("init")
@@ -296,6 +299,21 @@ def _execute(args: argparse.Namespace) -> int:
     from .environment import as_json
     from .registry import AgentRegistry
     from .runtime import AgentRuntime, ExecutionMode
+
+    if args.command == "web":
+        try:
+            import uvicorn
+
+            from .web import create_app, validate_loopback_host
+        except ImportError as exc:
+            raise RuntimeError(
+                'Local Control Center dependencies are missing; install with pip install -e ".[web]"'
+            ) from exc
+        host = validate_loopback_host(args.host)
+        if args.port < 1 or args.port > 65_535:
+            raise ValueError("--port must be between 1 and 65535")
+        uvicorn.run(create_app(workspace, db_path), host=host, port=args.port)
+        return 0
 
     storage = SQLiteStorage(db_path)
     registry = AgentRegistry()
