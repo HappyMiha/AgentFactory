@@ -13,7 +13,7 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | Static workflow DAG and typed stage evidence | Implemented alpha | Migrate to a versioned durable workflow and criterion-level evidence ledger. |
 | SQLite migrations, audit events, backup, and interrupted-attempt reconciliation | Implemented alpha | Preserve data while adding the full domain model, outbox, checkpoints, and recovery. |
 | GitHub plan/review/approve/apply | Implemented alpha | Route it through the future tool gateway as the first protected connector. |
-| Local web operator experience | Missing | Deliver the R0.2 Control Center now over shared application services; evolve it into the production control plane in R4. |
+| Local web operator experience | Foundation implemented | AF-036 provides shared typed application services; deliver the loopback host and UI in the remaining R0.2 tasks, then evolve it in R4. |
 | Mission intake, Blueprint, role pools, and Workforce Composer | Missing | Deliver in Release 2 after the durable core exists. |
 | Persistent loops, scheduling leases, immutable context, and typed memory | Missing | Deliver on the critical path before broader autonomy. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Missing | Deliver before enabling bounded autonomous mutation. |
@@ -63,6 +63,8 @@ The immediate operator-experience sequence is `AF-036 → AF-037 → AF-038/AF-0
 **Exit evidence:** from a fresh local state, the operator opens the dashboard, imports or inspects work, runs a deterministic workflow, sees independent reviewer routing, makes the explicit founder decision, reviews the complete audit trail, and previews GitHub synchronization without an unintended external mutation.
 
 This MVP is intentionally loopback-only and single-operator. It uses current SQLite state and shared Python application services rather than becoming a second orchestration implementation. `AF-026`, `AF-029`, and `AF-030` later add the authenticated, multi-tenant, production service boundary without discarding this UI.
+
+**Progress:** AF-036 is complete. CLI commands now use the shared typed service boundary, and contract tests prove matching state transitions and audit events. AF-037 is unblocked.
 
 ## R1 — Durable Safe Core
 

@@ -6,6 +6,8 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- Shared typed application-service boundary for CLI and Local Control Center queries and guarded commands.
+- Contract tests proving equivalent CLI and service state transitions and audit events.
 - Durable proxy-reviewer pools with model-aware author exclusion, least-used rotation, assignment history, and audit events.
 - Independent rotating policy post-checks that cannot reuse the implementation or validation producer models.
 - Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.

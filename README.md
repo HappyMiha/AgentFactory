@@ -22,6 +22,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 | Capability | Status | Notes |
 |---|---|---|
+| Application services | Ready | Typed operator queries and guarded commands are shared by the CLI and future local web host. |
 | Agent registry | Ready | List, enable, disable, and replace provider/model assignments. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
@@ -32,7 +33,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
 | Docker | Simulation-only | The image runs as a non-root user with persistent `/data`; external provider CLIs are not bundled. |
 | HTTP model APIs | Planned | DeepSeek, OpenRouter, Mistral, Groq, and similar services require a future HTTP adapter. |
-| Web interface | Planned | The current product is terminal-first. |
+| Local Control Center | In progress | The shared service boundary is ready; the loopback FastAPI host is next. |
 
 ## How it works
 

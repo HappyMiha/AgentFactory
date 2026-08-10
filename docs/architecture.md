@@ -16,10 +16,12 @@ Agent Factory is a local-first orchestration control plane. It coordinates work;
 
 ```mermaid
 flowchart TB
-    CLI["CLI"] --> REG["Agent registry"]
-    CLI --> WF["Workflow engine"]
-    CLI --> GH["GitHub client"]
-    CLI --> DB["SQLite storage"]
+    CLI["CLI"] --> APP["Application services"]
+    WEB["Local Control Center"] --> APP
+    APP --> REG["Agent registry"]
+    APP --> WF["Workflow engine"]
+    APP --> GH["GitHub client"]
+    APP --> DB["SQLite storage"]
     WF --> REG
     WF --> RR["Reviewer router"]
     WF --> RT["Provider runtime"]
@@ -36,7 +38,15 @@ flowchart TB
 
 ### CLI
 
-`agent_factory.cli` maps operator intent to explicit application operations. It owns argument parsing and presentation, not business-state transitions.
+`agent_factory.cli` maps terminal arguments and presentation onto shared application operations. It does not own business-state transitions.
+
+### Application services
+
+`agent_factory.application.AgentFactoryService` is the operator-facing boundary shared by the CLI and Local Control Center. Its immutable dataclass query results cover projects, work items, runs, artifacts, agents, providers, reviewer assignments, every approval kind, audit events, and effective runtime settings. JSON stored in SQLite is decoded before it crosses this boundary.
+
+Commands for workflow execution, reviews, human decisions, agent configuration, provider execution, backlog import, GitHub planning/apply, backup, and recovery call the existing registry, workflow, runtime, storage, approval, and audit implementations directly. A web handler must call this service; it must not launch a CLI subprocess or reproduce an orchestration transition.
+
+The service is deliberately transport-neutral and has no FastAPI dependency. Contract tests run equivalent CLI and direct-service operations against separate databases and compare their final states and ordered audit event types.
 
 ### Agent registry
 
