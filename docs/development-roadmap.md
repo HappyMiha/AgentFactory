@@ -68,7 +68,7 @@ The first implementation sequence is `AF-001 → AF-002/AF-003 → AF-004 → AF
 |---|---:|---|---|---|
 | AF-009 | P1 | Mission intake, source authority, clarifications, and readiness verdict | AF-001, AF-004 | §12; AC-08–09 |
 | AF-010 | P1 | Versioned Role Definition catalog and compatibility contracts | AF-001, AF-004 | §10; AC-05 |
-| AF-011 | P1 | Evaluation-aware Agent Router and qualification history | AF-005, AF-010 | §§9, 23; AC-01, AC-03 |
+| AF-011 | P1 | Evaluation-aware Agent Router, independent reviewer rotation, and qualification history | AF-005, AF-010 | §§9, 23; AC-01, AC-03 |
 | AF-012 | P1 | Role pools, arbitration strategies, and Workforce Composer | AF-010, AF-011 | §§10–11; AC-06–07 |
 | AF-013 | P1 | Factory Blueprint generation, alternatives, approval, and amendments | AF-009, AF-010, AF-012 | §13; AC-10–11, AC-16 |
 | AF-014 | P1 | Idempotent mission bootstrap, manifests, and rollback point | AF-006, AF-007, AF-013 | §14 |
@@ -86,7 +86,7 @@ The first implementation sequence is `AF-001 → AF-002/AF-003 → AF-004 → AF
 | AF-017 | P1 | Resource- and network-restricted sandbox manager | AF-003, AF-004 | §24; AC-25 |
 | AF-018 | P1 | Tool Registry, Tool Gateway, MCP manager, and connector lifecycle | AF-002, AF-004, AF-017 | §22; AC-22–23 |
 | AF-019 | P1 | Short-lived scoped credential broker with zero prompt/log exposure | AF-004, AF-017, AF-018 | §§22, 28; AC-24 |
-| AF-020 | P1 | Evaluation, quality gates, independent judges, and signed verdicts | AF-003, AF-015, AF-018 | §29; AC-31–33 |
+| AF-020 | P1 | Evaluation, quality gates, model-independent judges, and signed verdicts | AF-003, AF-015, AF-018 | §29; AC-31–33 |
 | AF-021 | P1 | Prompt-injection red team, tripwires, quarantine, and incidents | AF-004, AF-017, AF-018, AF-020 | §§28–29; AC-29–30 |
 | AF-022 | P1 | ADR governance and transactional Blueprint impact propagation | AF-006, AF-013, AF-015 | §18; AC-16 |
 | AF-023 | P1 | Audited parallel, generator-critic, quorum, debate, and red/blue patterns | AF-008, AF-012, AF-020 | §19; AC-06 |

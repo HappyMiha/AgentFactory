@@ -302,17 +302,17 @@
     {
       "stable_id": "AF-011",
       "kind": "task",
-      "title": "Evaluation-aware Agent Router and qualification history",
-      "description": "Rank eligible agents by proven capability, risk, quality, latency, cost, diversity, and current health while recording rationale.",
+      "title": "Evaluation-aware Agent Router, independent reviewer rotation, and qualification history",
+      "description": "Rank eligible agents by proven capability, risk, quality, latency, cost, diversity, current health, and independent-review history while recording rationale.",
       "parent_id": "AF-E02",
       "dependencies": [
         "AF-005",
         "AF-010"
       ],
       "acceptance_criteria": [
-        "Each routing decision records policy version, eligible and excluded candidates, scores, strategy, and selected fallback chain.",
+        "Each routing decision records policy version, eligible and excluded candidates, producer and reviewer model identities, scores, strategy, and selected fallback chain.",
         "An agent with expired or failed qualification cannot receive a task requiring that qualification.",
-        "Pinned, best-qualified, cost-aware, latency-aware, diversity, canary, tournament, and fallback strategies have deterministic tests."
+        "Pinned, best-qualified, cost-aware, latency-aware, diversity, reviewer-rotation, canary, tournament, and fallback strategies have deterministic tests."
       ],
       "source_references": [
         "docs/development-roadmap.md#r2--mission-factory"
@@ -557,7 +557,7 @@
     {
       "stable_id": "AF-020",
       "kind": "task",
-      "title": "Evaluation, quality gates, independent judges, and signed verdicts",
+      "title": "Evaluation, quality gates, model-independent judges, and signed verdicts",
       "description": "Evaluate deliverables through layered deterministic and model-assisted gates, independent judges, and criterion-level signed verdicts.",
       "parent_id": "AF-E03",
       "dependencies": [
@@ -567,7 +567,7 @@
       ],
       "acceptance_criteria": [
         "The evaluation service supports contract, deterministic, simulation, adversarial, independent-judge, release, and human-authority layers.",
-        "A judge cannot validate its own implementation and records rubric version, calibration, evidence, confidence, and dissent.",
+        "A judge cannot validate work produced by the same agent or model; the durable assignment records producer and reviewer identities, rotation strategy, rubric version, evidence, confidence, and dissent.",
         "Acceptance fails when any required criterion lacks a valid signed verdict or immutable evidence digest."
       ],
       "source_references": [
@@ -649,7 +649,7 @@
         "AF-020"
       ],
       "acceptance_criteria": [
-        "Each pattern declares participants, independence constraints, turn and budget limits, arbitration, termination, and required evidence.",
+        "Each pattern declares participants, model-aware reviewer rotation, independence constraints, turn and budget limits, arbitration, termination, and required evidence.",
         "All inter-agent contributions flow through typed stored artifacts or events rather than unlogged free-form conversation.",
         "Tests demonstrate deterministic termination and dissent preservation for every supported arbitration strategy."
       ],

@@ -22,7 +22,8 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 | Capability | Status | Notes |
 |---|---|---|
-| Agent registry | Ready | List, enable, disable, and replace provider assignments. |
+| Agent registry | Ready | List, enable, disable, and replace provider/model assignments. |
+| Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
 | Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, and Ollama adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |
@@ -156,7 +157,7 @@ agent-factory approvals approve 1 --note "Evidence reviewed"
 |---|---|---|
 | `deterministic` | Offline simulation | Installation checks, workflow development, CI, and demonstrations. |
 | `codex` | Read-only sandbox | Implementation proposals, technical analysis, and validation. |
-| `claude` | Plan mode | Planning, review, decomposition, and independent judgment. |
+| `claude` | Plan mode | Planning, rotating proxy review, decomposition, and independent judgment. |
 | `gemini` | Plan mode | Alternative planning, review, and implementation proposals. |
 | `antigravity` | Plan mode plus OS sandbox | Non-interactive implementation proposals, planning, and independent review. |
 | `ollama` | Local, no tools | Private local artifacts and low-cost review. |
@@ -176,6 +177,7 @@ agent-factory agents list | enable | disable | replace
 agent-factory backlog validate | import | sync | gates | approve | reject
 agent-factory providers status | request | gates | approve | reject | invoke
 agent-factory task claim | run | review
+agent-factory reviews list [--run-id RUN_ID]
 agent-factory workflow run
 agent-factory approvals list | approve | reject
 agent-factory audit list
@@ -193,6 +195,7 @@ Agent Factory treats every provider response and imported backlog as untrusted i
 - Simulation artifacts are explicitly labeled and never masquerade as live evidence.
 - GitHub operations are dry-run by default and restricted to an allowlist.
 - Automatic merging, closing, deletion, and final approval are not supported.
+- Reviewer routing excludes all producer model identities declared by `review_of`; a reviewer verdict cannot grant final acceptance.
 - Every important transition is recorded in the local audit stream.
 - Every provider approval stores immutable request and definition digests; task, agent, provider, or policy drift invalidates the gate before a subprocess starts.
 

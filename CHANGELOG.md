@@ -6,11 +6,15 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- Durable proxy-reviewer pools with model-aware author exclusion, least-used rotation, assignment history, and audit events.
+- Independent rotating policy post-checks that cannot reuse the implementation or validation producer models.
 - Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.
 - Immutable approval snapshots that bind each provider gate to the full work item, agent definition, provider catalog, and execution policy.
 
 ### Changed
 
+- Agent definitions now carry a stable model identity, and provider replacement clears or explicitly updates that identity.
+- Roadmap tasks AF-011, AF-020, and AF-023 now require model-independent review routing and recorded rotation evidence.
 - Provider launch now falls through to the next reviewed executable only when process creation fails before a provider starts, including Windows access-denied aliases.
 - Provider stdout and stderr are drained through a hard combined limit; overflowing processes are terminated and audited.
 - The test matrix now covers Python 3.11 and 3.12 on Windows, Ubuntu, and macOS.

@@ -21,6 +21,7 @@ flowchart TB
     CLI --> GH["GitHub client"]
     CLI --> DB["SQLite storage"]
     WF --> REG
+    WF --> RR["Reviewer router"]
     WF --> RT["Provider runtime"]
     RT --> DET["Deterministic provider"]
     RT --> CP["CLI providers"]
@@ -63,6 +64,12 @@ The engine loads a workflow, validates its graph, then executes stages in determ
 
 The default `delivery` workflow has a policy pre-check, implementation proposal, acceptance validation, and policy post-check. Guardrail stage IDs and the guardian agent are declared in configuration rather than hard-coded to a business domain.
 
+Review stages declare a reviewer pool and one or more ancestor artifacts in
+`review_of`. The reviewer router excludes producer agents and model identities,
+rotates among the least-used eligible reviewers, and persists both the selection
+rationale and producer/reviewer identities. This prevents a model from repeatedly
+judging its own output while keeping provider assignments replaceable.
+
 ### Provider runtime
 
 The runtime selects the configured provider for an agent. In simulation mode it may fall back to the deterministic provider. Live mode prohibits deterministic fallback.
@@ -90,6 +97,7 @@ SQLite is the orchestration state store, not the source repository. It contains:
 - projects and work items;
 - workflow runs and active-run claims;
 - artifacts and review notes;
+- durable reviewer assignments and rotation history;
 - final approval gates;
 - provider execution gates and attempts;
 - GitHub plans, gates, idempotency keys, and reports;
@@ -143,6 +151,8 @@ Agent Factory deliberately separates three concepts:
 3. **Final workflow approval** accepts or rejects the accumulated delivery evidence.
 
 No successful provider response creates any of these decisions automatically.
+Proxy reviewers perform the routine evidence review, but their verdict remains an
+artifact: final workflow acceptance, merge, and external closure remain separate.
 
 Provider approval consumption is atomic. The database records an execution attempt before a subprocess starts. An interrupted attempt is reconciled to a terminal abandoned state, and retry requires a new gate.
 

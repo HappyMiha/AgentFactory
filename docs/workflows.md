@@ -9,8 +9,8 @@ The packaged workflow ID is `delivery`.
 ```mermaid
 flowchart LR
     P["Policy pre-check"] --> I["Implementation proposal"]
-    I --> V["Acceptance validation"]
-    V --> O["Policy post-check"]
+    I --> V["Rotating proxy review"]
+    V --> O["Independent policy post-check"]
     O --> H["Human approval gate"]
 ```
 
@@ -18,10 +18,20 @@ flowchart LR
 |---|---|---|---|
 | `policy-precheck` | `policy-guardian` | `ALIGNED`, `CONDITIONALLY_ALIGNED` | Confirm policy consistency and testable outcome before delivery. |
 | `implementation` | `coding-worker-codex` | `COMPLETE` | Produce the smallest independently reviewable implementation artifact. |
-| `validation` | `validation-agent` | `PASS` | Map evidence to all acceptance criteria and disclose concerns. |
-| `policy-postcheck` | `policy-guardian` | `ALIGNED`, `CONDITIONALLY_ALIGNED` | Compare delivered evidence to approved scope and policy. |
+| `validation` | rotating `Proxy Reviewer` pool | `PASS` | Map evidence to all acceptance criteria and disclose concerns using a model other than the implementation producer. |
+| `policy-postcheck` | rotating `Policy Reviewer` pool | `ALIGNED`, `CONDITIONALLY_ALIGNED` | Compare delivered evidence to scope using a model other than the implementation and validation producers. |
 
 `NOT_ALIGNED` and `FAIL` block progression. A blocked or malformed run does not reach final approval.
+
+Reviewer selection is durable and model-aware. The router excludes every agent and
+model that produced the reviewed artifacts, then chooses the least-used eligible
+reviewer while avoiding the previous reviewer agent and model when alternatives
+exist. Every assignment is stored in SQLite and emitted as `reviewer.assigned`.
+
+```bash
+agent-factory reviews list
+agent-factory reviews list --run-id 1
+```
 
 ## Run the workflow
 
@@ -125,7 +135,9 @@ These checks make the file order deterministic and prevent a delivery path from 
 5. Add tests for ordering, blocking verdicts, and missing evidence.
 6. Run the workflow in simulation before enabling any live provider.
 
-Every stage agent must exist and be enabled. Its role must also be accepted by its provider.
+Every stage agent must exist and be enabled. Its role must also be accepted by its
+provider. A stage with `reviewer_pool` must also declare ancestor stages in
+`review_of`; the configured default agent must belong to the pool.
 
 ## Agent replacement
 
@@ -133,7 +145,7 @@ Provider selection is independent of workflow structure:
 
 ```bash
 agent-factory agents list
-agent-factory agents replace coding-worker-codex --provider ollama
+agent-factory agents replace coding-worker-codex --provider ollama --model local:qwen2.5-coder:7b
 agent-factory agents disable coding-worker-claude
 agent-factory agents enable coding-worker-claude
 ```
@@ -175,7 +187,7 @@ The decision is immutable. It records a note and a corresponding audit event. It
 - Prefer narrow artifacts that another agent can independently inspect.
 - Write acceptance criteria before selecting a provider.
 - Make dependencies explicit instead of relying on stage order alone.
-- Use a different agent or provider for validation when independence matters.
+- Use reviewer pools for validation; the runtime enforces a different model from every reviewed producer.
 - Keep policy review outside implementation roles.
 - Use `CONDITIONALLY_ALIGNED` only when the condition is explicit in the artifact.
 - Keep simulations deterministic enough for regression tests.
