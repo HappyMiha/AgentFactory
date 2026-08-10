@@ -16,14 +16,14 @@ class DevelopmentBacklogTests(unittest.TestCase):
         by_id = {item.stable_id: item for item in proposal.items}
 
         self.assertEqual(proposal.source_name, "Agent Factory Technical Specification v1.0")
-        self.assertEqual(len(proposal.items), 40)
+        self.assertEqual(len(proposal.items), 49)
         self.assertEqual(
             {item.stable_id for item in proposal.items if item.kind == "epic"},
-            {f"AF-E0{number}" for number in range(1, 6)},
+            {f"AF-E0{number}" for number in range(1, 7)},
         )
         self.assertEqual(
             {item.stable_id for item in proposal.items if item.kind == "task"},
-            {f"AF-{number:03d}" for number in range(1, 36)},
+            {f"AF-{number:03d}" for number in range(1, 44)},
         )
 
         for item in proposal.items:
@@ -35,13 +35,18 @@ class DevelopmentBacklogTests(unittest.TestCase):
                 self.assertEqual(len(priorities), 1)
                 self.assertEqual(len(releases), 1)
                 if item.kind == "task":
-                    self.assertIn(item.parent_id, {f"AF-E0{number}" for number in range(1, 6)})
+                    self.assertIn(item.parent_id, {f"AF-E0{number}" for number in range(1, 7)})
                     self.assertGreaterEqual(len(item.acceptance_criteria), 3)
 
         self.assertEqual(by_id["AF-001"].dependencies, ())
         self.assertIn("AF-001", by_id["AF-002"].dependencies)
         self.assertIn("AF-033", by_id["AF-034"].dependencies)
         self.assertIn("AF-034", by_id["AF-035"].dependencies)
+        self.assertIn("AF-043", by_id["AF-030"].dependencies)
+        self.assertEqual(
+            by_id["AF-043"].dependencies,
+            ("AF-038", "AF-039", "AF-040", "AF-041", "AF-042"),
+        )
 
     def test_readable_roadmap_matches_importable_manifest(self):
         proposal = load_backlog(BACKLOG)
@@ -52,7 +57,7 @@ class DevelopmentBacklogTests(unittest.TestCase):
             re.MULTILINE,
         )
 
-        self.assertEqual(len(rows), 35)
+        self.assertEqual(len(rows), 43)
         for stable_id, priority, title, dependency_cell in rows:
             with self.subTest(stable_id=stable_id):
                 item = by_id[stable_id]

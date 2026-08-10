@@ -863,7 +863,8 @@
         "AF-012",
         "AF-026",
         "AF-027",
-        "AF-029"
+        "AF-029",
+        "AF-043"
       ],
       "acceptance_criteria": [
         "Users can inspect mission status, provenance, evidence, dissent, cost, policy decisions, leases, and incidents without database access.",
@@ -907,6 +908,222 @@
       "labels": [
         "priority:p2",
         "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-E06",
+      "kind": "epic",
+      "title": "R0.2 Local Control Center MVP",
+      "description": "Expose the current Agent Factory state and guarded operator actions through a lightweight local web interface without duplicating orchestration logic or waiting for the production control plane.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "A Windows operator starts the control center with one documented command and sees current projects, work items, runs, agents, providers, approvals, and recent events.",
+        "Every mutation available in the MVP calls the same application services and policy checks as the CLI and creates an audit event.",
+        "The UI never auto-approves final acceptance, auto-merges, auto-closes, or silently changes GitHub state."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [
+        "The founder remains the final authority; independent reviewer recommendations are displayed but cannot synthesize founder approval."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-036",
+      "kind": "task",
+      "title": "Shared application-service boundary for CLI and web",
+      "description": "Extract operator queries and guarded commands behind reusable Python services so the CLI and web interface cannot diverge in behavior.",
+      "parent_id": "AF-E06",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Projects, work items, runs, agents, providers, reviews, approvals, events, and settings have typed query results independent of terminal formatting.",
+        "Every supported mutation passes through the existing policy, approval, storage, and audit path rather than invoking a shell command from the web server.",
+        "Contract tests execute equivalent CLI and service operations and observe the same state transitions and audit events."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-037",
+      "kind": "task",
+      "title": "Local FastAPI host and read-only operations API",
+      "description": "Provide a loopback-only web process with typed read endpoints, health reporting, bounded pagination, and safe startup defaults.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-036"
+      ],
+      "acceptance_criteria": [
+        "The documented command starts on 127.0.0.1 by default and serves health plus typed read endpoints for every MVP dashboard resource.",
+        "List endpoints use bounded pagination and return explicit unavailable or stale states instead of hiding provider and GitHub failures.",
+        "API tests cover valid, empty, malformed, missing, and concurrent-read cases against a temporary SQLite database."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-038",
+      "kind": "task",
+      "title": "Live development dashboard and navigation shell",
+      "description": "Build the local dashboard that summarizes delivery progress, active work, blocked work, provider health, pending decisions, and recent failures.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-037"
+      ],
+      "acceptance_criteria": [
+        "The dashboard shows counts and direct links for ready, active, blocked, failed, awaiting-review, and awaiting-approval work.",
+        "Agent and provider status, current workflow stages, pending approvals, and recent failures refresh without a full page reload.",
+        "Empty, loading, stale, disconnected, and error states remain readable and never appear as successful execution."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-039",
+      "kind": "task",
+      "title": "Backlog, work-item, and workflow run controls",
+      "description": "Expose backlog inspection and the currently supported guarded workflow commands with dependency, stage, evidence, and blocker visibility.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-037"
+      ],
+      "acceptance_criteria": [
+        "An operator can filter work items by project, type, status, priority, dependency, and assignee and inspect acceptance criteria and linked artifacts.",
+        "Supported claim, simulation-run, review, and workflow-run actions show a confirmation summary and preserve all existing execution gates.",
+        "A run detail view displays ordered stages, selected agents and models, verdicts, evidence, errors, and the exact reason progression stopped."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [
+        "The MVP exposes only commands already supported safely by the application service; unsupported cancel or resume operations are shown as unavailable rather than simulated."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-040",
+      "kind": "task",
+      "title": "Agent, provider, and reviewer routing controls",
+      "description": "Let the operator inspect provider health and safely enable, disable, replace, and configure agent assignments and reviewer rotation.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-037"
+      ],
+      "acceptance_criteria": [
+        "The UI displays each agent role, provider, model, enabled state, recent assignment, reviewer usage, and provider health without exposing credentials.",
+        "Enable, disable, and replace actions validate role compatibility, show their impact, require confirmation, and write an audit event.",
+        "Reviewer views prove the selected reviewer differs from every reviewed producer model and explain exclusions and rotation history."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-041",
+      "kind": "task",
+      "title": "Review inbox and founder approval workspace",
+      "description": "Present implementation artifacts, tests, criterion evidence, independent reviewer verdicts, dissent, and final founder decisions in one workspace.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-037",
+        "AF-040"
+      ],
+      "acceptance_criteria": [
+        "Each pending decision shows the work-item acceptance criteria, implementation artifacts, validation results, independent reviewer identity, verdict, and unresolved findings.",
+        "Approve and reject actions require an explicit confirmation and optional note, are idempotent, and record actor, timestamp, target, previous state, and resulting state.",
+        "No reviewer verdict can activate the founder approval endpoint or cause merge, close, release, or GitHub mutation without a separate authorized founder action."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [
+        "Founder approval remains a separate human action even when every automated reviewer passes."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-042",
+      "kind": "task",
+      "title": "Audit explorer, runtime settings, and GitHub sync preview",
+      "description": "Expose searchable event history, bounded operator settings, environment status, and the existing GitHub dry-run review and approval flow.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-037"
+      ],
+      "acceptance_criteria": [
+        "The audit explorer filters by time, project, work item, run, agent, provider, action, and outcome and links records to related artifacts.",
+        "Editable settings are allowlisted, validated, versioned, and audited; secret values and unrestricted command arguments are never displayed or accepted.",
+        "GitHub sync defaults to dry-run, presents create and update operations plus the immutable plan digest, and requires the existing separate approval before apply."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
+      ]
+    },
+    {
+      "stable_id": "AF-043",
+      "kind": "task",
+      "title": "Windows launch experience, accessibility, and end-to-end qualification",
+      "description": "Make the MVP easy to start on the existing Windows workstation and prove the complete local operator path with automated and manual evidence.",
+      "parent_id": "AF-E06",
+      "dependencies": [
+        "AF-038",
+        "AF-039",
+        "AF-040",
+        "AF-041",
+        "AF-042"
+      ],
+      "acceptance_criteria": [
+        "A documented PowerShell command installs optional web dependencies, starts the service, opens the local URL, and stops cleanly without requiring script-policy changes.",
+        "An end-to-end test imports a sample backlog, runs a deterministic workflow, routes an independent review, reaches founder approval, records the decision, and verifies the audit trail through the UI-facing API.",
+        "Keyboard navigation, focus visibility, labels, contrast, responsive layout, and critical screen-reader paths pass the documented MVP accessibility checklist."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r02--local-control-center-mvp"
+      ],
+      "review_notes": [
+        "Completion requires founder confirmation that the dashboard exposes enough evidence to make a real acceptance decision."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r0.2"
       ]
     },
     {

@@ -13,6 +13,7 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | Static workflow DAG and typed stage evidence | Implemented alpha | Migrate to a versioned durable workflow and criterion-level evidence ledger. |
 | SQLite migrations, audit events, backup, and interrupted-attempt reconciliation | Implemented alpha | Preserve data while adding the full domain model, outbox, checkpoints, and recovery. |
 | GitHub plan/review/approve/apply | Implemented alpha | Route it through the future tool gateway as the first protected connector. |
+| Local web operator experience | Missing | Deliver the R0.2 Control Center now over shared application services; evolve it into the production control plane in R4. |
 | Mission intake, Blueprint, role pools, and Workforce Composer | Missing | Deliver in Release 2 after the durable core exists. |
 | Persistent loops, scheduling leases, immutable context, and typed memory | Missing | Deliver on the critical path before broader autonomy. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Missing | Deliver before enabling bounded autonomous mutation. |
@@ -34,6 +35,7 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 
 ```mermaid
 flowchart LR
+    R02["R0.2 Local Control Center MVP"] --> R4["R4 Operable Platform"]
     R1["R1 Durable Safe Core"] --> R2["R2 Mission Factory"]
     R1 --> R3["R3 Safe Extensibility"]
     R2 --> R3
@@ -41,7 +43,26 @@ flowchart LR
     R4 --> R5["R5 Production Qualification"]
 ```
 
-The first implementation sequence is `AF-001 → AF-002/AF-003 → AF-004 → AF-005/AF-006 → AF-007 → AF-008`. Work on `AF-009` and `AF-010` may begin once `AF-001` and `AF-004` are stable. Release names are outcome groupings, not implicit global barriers: the explicit dependencies in the issue manifest are authoritative and permit reviewed overlap between releases.
+The immediate operator-experience sequence is `AF-036 → AF-037 → AF-038/AF-039/AF-040/AF-042 → AF-041 → AF-043`. In parallel, the first durable-core sequence is `AF-001 → AF-002/AF-003 → AF-004 → AF-005/AF-006 → AF-007 → AF-008`. Work on `AF-009` and `AF-010` may begin once `AF-001` and `AF-004` are stable. Release names are outcome groupings, not implicit global barriers: the explicit dependencies in the issue manifest are authoritative and permit reviewed overlap between releases.
+
+## R0.2 — Local Control Center MVP
+
+**Target:** make the current local Agent Factory observable and operable from one lightweight Windows web interface while preserving the existing CLI behavior, provider gates, independent reviews, founder approval, and GitHub dry-run defaults.
+
+| ID | Priority | Deliverable | Depends on | Specification trace |
+|---|---:|---|---|---|
+| AF-036 | P0 | Shared application-service boundary for CLI and web | — | Operator request; foundation for §27 |
+| AF-037 | P0 | Local FastAPI host and read-only operations API | AF-036 | Operator request; precursor to §32 |
+| AF-038 | P0 | Live development dashboard and navigation shell | AF-037 | Operator request; precursor to §27 |
+| AF-039 | P0 | Backlog, work-item, and workflow run controls | AF-037 | Operator request; precursor to §27 |
+| AF-040 | P0 | Agent, provider, and reviewer routing controls | AF-037 | Operator request; AC-03 precursor |
+| AF-041 | P0 | Review inbox and founder approval workspace | AF-037, AF-040 | Operator request; AC-42 precursor |
+| AF-042 | P0 | Audit explorer, runtime settings, and GitHub sync preview | AF-037 | Operator request; §§27, 30 precursor |
+| AF-043 | P0 | Windows launch experience, accessibility, and end-to-end qualification | AF-038, AF-039, AF-040, AF-041, AF-042 | Operator request; §36 precursor |
+
+**Exit evidence:** from a fresh local state, the operator opens the dashboard, imports or inspects work, runs a deterministic workflow, sees independent reviewer routing, makes the explicit founder decision, reviews the complete audit trail, and previews GitHub synchronization without an unintended external mutation.
+
+This MVP is intentionally loopback-only and single-operator. It uses current SQLite state and shared Python application services rather than becoming a second orchestration implementation. `AF-026`, `AF-029`, and `AF-030` later add the authenticated, multi-tenant, production service boundary without discarding this UI.
 
 ## R1 — Durable Safe Core
 
@@ -105,7 +126,7 @@ The first implementation sequence is `AF-001 → AF-002/AF-003 → AF-004 → AF
 | AF-027 | P2 | OpenTelemetry traces, metrics, cost ledger, forecasts, and budget actions | AF-002, AF-006, AF-018 | §30; AC-34–35 |
 | AF-028 | P2 | Checkpoints, reconciliation, chaos recovery, and verified restore | AF-002, AF-006, AF-007, AF-017 | §31; AC-04, AC-36–38 |
 | AF-029 | P2 | PostgreSQL/object storage migration and end-to-end tenant isolation | AF-002, AF-016, AF-026, AF-027, AF-028 | §§33, 35; AC-39 |
-| AF-030 | P2 | Human Control Plane for evidence, approvals, incidents, cost, and intervention | AF-004, AF-005, AF-012, AF-026, AF-027, AF-029 | §27; AC-03, AC-42 |
+| AF-030 | P2 | Human Control Plane for evidence, approvals, incidents, cost, and intervention | AF-004, AF-005, AF-012, AF-026, AF-027, AF-029, AF-043 | §27; AC-03, AC-42 |
 | AF-031 | P2 | Single-node, clustered, hybrid, and air-gapped deployment definitions | AF-027, AF-028, AF-029 | §34 |
 
 **Exit evidence:** the CLI and UI use the same API contracts; one root trace connects mission-to-evidence; a worker restart resumes without duplicate mutation; adversarial tenant tests observe no foreign data or side effects; classification, residency, retention, legal hold, quota, export, and deletion policies produce auditable evidence.
