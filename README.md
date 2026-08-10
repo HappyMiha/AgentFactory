@@ -208,6 +208,7 @@ See:
 
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
+- [Development roadmap](docs/development-roadmap.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)

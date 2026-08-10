@@ -1,0 +1,1044 @@
+{
+  "schema_version": 1,
+  "source": {
+    "name": "Agent Factory Technical Specification v1.0"
+  },
+  "items": [
+    {
+      "stable_id": "AF-E01",
+      "kind": "epic",
+      "title": "R1 Durable Safe Core",
+      "description": "Deliver a restart-safe local orchestrator with versioned authority, independent evidence, normalized agents, leases, and bounded persistent loops.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "Existing 0.1.x SQLite state upgrades without losing accepted state or audit history.",
+        "A forced restart resumes authorized work without duplicating an external mutation.",
+        "Every accepted criterion resolves to immutable independently verified evidence."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [
+        "Human authority must approve any migration that can alter or discard accepted mission state."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-001",
+      "kind": "task",
+      "title": "Versioned tenant-aware domain model and compatibility migration",
+      "description": "Add the specification domain entities, ownership boundaries, schema versions, and a forward migration from the current SQLite model.",
+      "parent_id": "AF-E01",
+      "dependencies": [],
+      "acceptance_criteria": [
+        "A migration upgrades a populated 0.1.x database and preserves every existing agent, approval, event, and attempt record.",
+        "Every authoritative entity stores tenant, project, mission, version, and lifecycle identity where applicable.",
+        "Agent identity, provider and model identity, runtime, Role Definition, task, lease, and attempt remain separate entities with independently queryable relationships.",
+        "Automated tests reject cross-tenant references and verify downgrade-safe backup instructions."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [
+        "A human database owner reviews the compatibility and rollback evidence before release."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-002",
+      "kind": "task",
+      "title": "Transactional event outbox and tamper-evident audit chain",
+      "description": "Persist state transitions and outbound events atomically, then chain audit records so modification is detectable.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-001"
+      ],
+      "acceptance_criteria": [
+        "A committed state transition and its outbox event are stored in one transaction under fault injection.",
+        "An idempotent consumer can replay the same event at least three times with one observable side effect.",
+        "Changing or deleting any audit record causes chain verification to fail at the altered sequence number."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-003",
+      "kind": "task",
+      "title": "Content-addressed artifact and criterion-evidence ledger",
+      "description": "Separate working, candidate, accepted, evidence, released, and quarantined artifacts and bind acceptance criteria to immutable evidence manifests.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-001"
+      ],
+      "acceptance_criteria": [
+        "Accepted artifacts are addressed by a cryptographic digest and fail verification after byte-level modification.",
+        "Each criterion records producer, verifier, toolchain, timestamp, source inputs, verdict, and artifact digest.",
+        "Only the acceptance workflow can promote a candidate artifact into accepted or released authority."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-004",
+      "kind": "task",
+      "title": "Deterministic policy plane, autonomy modes, and emergency stop",
+      "description": "Evaluate capabilities, risk tiers, autonomy levels, approvals, budgets, and tripwires outside model reasoning.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-001",
+        "AF-002"
+      ],
+      "acceptance_criteria": [
+        "The same normalized request and policy version produce the same allow, deny, or require-approval decision.",
+        "Risk-tier tests prove P3 actions require the configured human authority and P4 actions can require two distinct authorized humans.",
+        "Authenticated tenant context comes from SSO or service identity rather than request content, with RBAC and MFA or step-up checks enforced by policy.",
+        "Emergency stop prevents new dispatch within five seconds and interrupts or quarantines active mutable work."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [
+        "Only an authorized human may approve high-risk actions, lift emergency stop, or accept a policy exception."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-005",
+      "kind": "task",
+      "title": "Normalized adapter contract, qualification, and agent lifecycle",
+      "description": "Bring every provider behind one lifecycle-capable adapter contract and qualify declared capabilities with evidence.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-001",
+        "AF-004"
+      ],
+      "acceptance_criteria": [
+        "Codex, Claude, Gemini, Antigravity, Ollama, and deterministic adapters pass the same contract test suite for supported operations.",
+        "Health distinguishes availability, reliability, quality, safety, performance, cost, freshness, and drift.",
+        "A failed worker is drained or quarantined, a compatible qualified replacement is selected, and a complete handoff record is preserved for the recovery controller."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-006",
+      "kind": "task",
+      "title": "Versioned durable workflow DSL, signals, timers, and resume",
+      "description": "Replace static execution assumptions with a versioned workflow definition and replayable durable state machine.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-002",
+        "AF-003",
+        "AF-004"
+      ],
+      "acceptance_criteria": [
+        "Workflow definitions validate states, transitions, compensation, timeouts, signals, and human approval steps before activation.",
+        "A process restart during each stage replays history and resumes from the last committed state.",
+        "Workflow version changes preserve in-flight runs or require an explicit deterministic migration."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [
+        "A human approver remains a first-class durable workflow signal and cannot be simulated by an agent."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-007",
+      "kind": "task",
+      "title": "Dependency scheduler, TTL/fenced leases, and conflict domains",
+      "description": "Schedule ready tasks from the dependency graph while preventing stale workers and conflicting mutations.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-005",
+        "AF-006"
+      ],
+      "acceptance_criteria": [
+        "Only tasks with satisfied dependencies and policy eligibility enter the runnable queue.",
+        "Expired lease holders cannot commit after a newer fencing token has been issued.",
+        "Conflict-domain tests serialize overlapping mutations while allowing independent tasks to run concurrently."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-008",
+      "kind": "task",
+      "title": "Persistent nested Loop Engineering and no-progress control",
+      "description": "Implement bounded action, task, workstream, architecture, mission, and factory loops whose authoritative state survives transcript loss.",
+      "parent_id": "AF-E01",
+      "dependencies": [
+        "AF-003",
+        "AF-006",
+        "AF-007"
+      ],
+      "acceptance_criteria": [
+        "Every iteration persists objective, plan, policy result, evidence, verifier result, critic result, budget use, and next step.",
+        "Iteration, time, token, cost, and tool-failure limits stop or escalate a loop deterministically.",
+        "Repeated no-progress evidence triggers replan, worker replacement, stronger verification, or human escalation rather than endless retry."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r1--durable-safe-core"
+      ],
+      "review_notes": [
+        "Budget or iteration limit increases require the configured human approval at the applicable risk tier."
+      ],
+      "labels": [
+        "priority:p0",
+        "release:r1"
+      ]
+    },
+    {
+      "stable_id": "AF-E02",
+      "kind": "epic",
+      "title": "R2 Mission Factory",
+      "description": "Analyze a free-form mission, compose a justified workforce, approve a versioned Factory Blueprint, and bootstrap resumable execution.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "A natural-language mission reaches a deterministic readiness verdict with unresolved questions and authority sources recorded.",
+        "The composed workforce and Blueprint expose rejected alternatives, qualifications, risks, and verification strategy.",
+        "Human Blueprint approval bootstraps the mission idempotently without project-specific core logic."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [
+        "A human mission owner approves the Blueprint and all subsequent authority-changing amendments."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-009",
+      "kind": "task",
+      "title": "Mission intake, source authority, clarifications, and readiness verdict",
+      "description": "Normalize mission intent, distinguish authoritative from advisory inputs, detect gaps, and issue a readiness state.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-001",
+        "AF-004"
+      ],
+      "acceptance_criteria": [
+        "Intake emits one allowed readiness verdict with a machine-readable rationale and blocking gaps.",
+        "Every source is classified by authority, version, provenance, and conflict status.",
+        "Ambiguous, infeasible, or high-risk missions produce clarification or review requests and cannot silently proceed."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [
+        "Only the human mission owner may resolve intent ambiguity or accept a materially reduced scope."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-010",
+      "kind": "task",
+      "title": "Versioned Role Definition catalog and compatibility contracts",
+      "description": "Represent responsibilities, inputs, outputs, tools, independence, limits, and qualifications as versioned role contracts.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-001",
+        "AF-004"
+      ],
+      "acceptance_criteria": [
+        "Role definitions validate required inputs, outputs, capabilities, evidence, limits, and incompatible duties.",
+        "Role versions remain provider-neutral and can be resolved independently from agent definitions.",
+        "Compatibility tests reject one agent serving mutually exclusive implementer and independent-judge duties in the same decision."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-011",
+      "kind": "task",
+      "title": "Evaluation-aware Agent Router and qualification history",
+      "description": "Rank eligible agents by proven capability, risk, quality, latency, cost, diversity, and current health while recording rationale.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-005",
+        "AF-010"
+      ],
+      "acceptance_criteria": [
+        "Each routing decision records policy version, eligible and excluded candidates, scores, strategy, and selected fallback chain.",
+        "An agent with expired or failed qualification cannot receive a task requiring that qualification.",
+        "Pinned, best-qualified, cost-aware, latency-aware, diversity, canary, tournament, and fallback strategies have deterministic tests."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-012",
+      "kind": "task",
+      "title": "Role pools, arbitration strategies, and Workforce Composer",
+      "description": "Build role pools and generate a justified workforce from mission needs, policy, budget, independence, and provider diversity.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-010",
+        "AF-011"
+      ],
+      "acceptance_criteria": [
+        "The composer emits required roles, pool strategy, minimum and maximum replicas, qualifications, and fallback assignments.",
+        "A strengthened role can use at least two heterogeneous qualified agents with an explicit arbitration rule.",
+        "Missing capability, independence, capacity, or budget produces a visible gap instead of an invalid workforce."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [
+        "A human reviews workforce exceptions that weaken required independence or provider diversity."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-013",
+      "kind": "task",
+      "title": "Factory Blueprint generation, alternatives, approval, and amendments",
+      "description": "Generate the mandatory versioned operating design for modules, workforce, tools, context, verification, budgets, policies, and recovery.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-009",
+        "AF-010",
+        "AF-012"
+      ],
+      "acceptance_criteria": [
+        "A Blueprint validates every required section and traces decisions to mission sources, risks, assumptions, and rejected alternatives.",
+        "Execution remains blocked until the configured human signs the exact Blueprint version and digest.",
+        "An amendment creates a new immutable version with impact analysis and preserves prior approvals and execution history."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [
+        "Blueprint approval and authority-changing amendments are reserved for the human mission owner."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-014",
+      "kind": "task",
+      "title": "Idempotent mission bootstrap, manifests, and rollback point",
+      "description": "Instantiate an approved Blueprint into mission state, queues, manifests, policies, budgets, and a recoverable initial checkpoint.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-006",
+        "AF-007",
+        "AF-013"
+      ],
+      "acceptance_criteria": [
+        "Repeated bootstrap with the same Blueprint digest creates one mission and one initial workflow graph.",
+        "Bootstrap persists exact agent, role, tool, policy, context, budget, and environment manifests.",
+        "A failed bootstrap compensates partial resources and restores the recorded pre-bootstrap rollback point."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-015",
+      "kind": "task",
+      "title": "Immutable Context Packages, provenance, broker, and compaction",
+      "description": "Build minimal task-specific context packages with authority, provenance, freshness, token budgets, and deterministic compaction.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-003",
+        "AF-009",
+        "AF-013"
+      ],
+      "acceptance_criteria": [
+        "Every dispatched task references an immutable context package digest and records included, excluded, and superseded sources.",
+        "The broker enforces configured token and freshness limits while preserving authoritative requirements and safety constraints.",
+        "Compaction tests retain decisions, unresolved risks, evidence references, and next-step state after raw transcript removal."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-016",
+      "kind": "task",
+      "title": "Typed memory, bounded retrieval, invalidation, and governed skills",
+      "description": "Store durable facts, decisions, procedures, outcomes, and skills in typed memory managed by explicit curation policy.",
+      "parent_id": "AF-E02",
+      "dependencies": [
+        "AF-015"
+      ],
+      "acceptance_criteria": [
+        "Memory writes declare type, scope, source, confidence, validity interval, and invalidation conditions.",
+        "Working, semantic, episodic, procedural, entity, contextual, preference, and raw-history stores remain separately queryable and enforce their own write policies.",
+        "Retrieval is bounded by tenant, mission, task purpose, authority, freshness, and maximum result count.",
+        "A stale or contradicted memory entry is invalidated without deleting its provenance or historical consumers.",
+        "A generated skill cannot advance from draft to approved until versioned tests, security review, and representative evaluation thresholds pass; it can later be deprecated or revoked."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r2--mission-factory"
+      ],
+      "review_notes": [
+        "Promoting agent output into an authoritative reusable skill requires the configured curator or human approval."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r2"
+      ]
+    },
+    {
+      "stable_id": "AF-E03",
+      "kind": "epic",
+      "title": "R3 Safe Extensibility",
+      "description": "Execute untrusted work inside narrow environments, broker tools and credentials, verify independently, govern change, and install capabilities without editing core.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "An allowlisted MCP tool executes through policy, sandbox, credential, audit, and artifact boundaries.",
+        "Adversarial instructions cannot widen authority and produce a recorded tripwire or quarantine event.",
+        "A signed pack installs and rolls back without core edits, and its work is independently verified."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "Humans retain approval authority for protected connectors, architecture decisions, credential scope, and release acceptance."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-017",
+      "kind": "task",
+      "title": "Resource- and network-restricted sandbox manager",
+      "description": "Provision disposable execution environments with explicit filesystem, process, resource, network, and cleanup manifests.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-003",
+        "AF-004"
+      ],
+      "acceptance_criteria": [
+        "A sandbox manifest enforces CPU, memory, wall-time, filesystem, process, and network limits in automated tests.",
+        "An attempted write outside the authorized workspace and a non-allowlisted network request are denied and audited.",
+        "Sandbox teardown releases temporary resources and preserves only declared evidence and artifact outputs."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-018",
+      "kind": "task",
+      "title": "Tool Registry, Tool Gateway, MCP manager, and connector lifecycle",
+      "description": "Normalize tools and MCP servers behind policy-enforced discovery, validation, invocation, health, and revocation.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-002",
+        "AF-004",
+        "AF-017"
+      ],
+      "acceptance_criteria": [
+        "Every tool descriptor declares schemas, side effects, risk tier, required capabilities, timeouts, and evidence outputs.",
+        "Dynamic discovery never grants invocation authority beyond the mission, role, and policy allowlists.",
+        "Connector install, health failure, disable, upgrade, and removal are auditable and covered by lifecycle tests."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "A human approves registration or scope expansion for mutation-capable production connectors."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-019",
+      "kind": "task",
+      "title": "Short-lived scoped credential broker with zero prompt/log exposure",
+      "description": "Issue narrowly scoped ephemeral credentials directly to approved tools without exposing secret material to agents, prompts, artifacts, or logs.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-004",
+        "AF-017",
+        "AF-018"
+      ],
+      "acceptance_criteria": [
+        "Issued credentials are bound to one tenant, mission, tool, operation set, and expiration time.",
+        "Automated scans find no credential values in prompts, model output, audit records, traces, exceptions, or artifacts.",
+        "Revocation prevents subsequent use and produces an auditable lifecycle event without revealing the secret."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "A human system owner approves scopes above the mission's pre-approved credential policy."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-020",
+      "kind": "task",
+      "title": "Evaluation, quality gates, independent judges, and signed verdicts",
+      "description": "Evaluate deliverables through layered deterministic and model-assisted gates, independent judges, and criterion-level signed verdicts.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-003",
+        "AF-015",
+        "AF-018"
+      ],
+      "acceptance_criteria": [
+        "The evaluation service supports contract, deterministic, simulation, adversarial, independent-judge, release, and human-authority layers.",
+        "A judge cannot validate its own implementation and records rubric version, calibration, evidence, confidence, and dissent.",
+        "Acceptance fails when any required criterion lacks a valid signed verdict or immutable evidence digest."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "Human authority remains the final verification layer for configured high-impact outcomes."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-021",
+      "kind": "task",
+      "title": "Prompt-injection red team, tripwires, quarantine, and incidents",
+      "description": "Continuously test hostile inputs and activate deterministic containment when instructions attempt to bypass authority or exfiltrate data.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-004",
+        "AF-017",
+        "AF-018",
+        "AF-020"
+      ],
+      "acceptance_criteria": [
+        "A maintained corpus covers indirect injection, authority escalation, secret extraction, tool abuse, artifact poisoning, and cross-tenant access.",
+        "Every seeded attack is denied or contained and produces a linked tripwire, quarantine, or incident record.",
+        "A seeded evidence-tampering attempt is blocked, preserves the original evidence, and opens a security incident linked to the actor, attempt, and affected criterion.",
+        "A quarantined output cannot enter accepted context, memory, artifacts, or downstream execution until explicitly released."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "Only an authorized human security reviewer may release quarantined high-risk content or close a material incident."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-022",
+      "kind": "task",
+      "title": "ADR governance and transactional Blueprint impact propagation",
+      "description": "Record architecture changes as decisions, calculate their impact, and update affected Blueprint and workflow contracts transactionally.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-006",
+        "AF-013",
+        "AF-015"
+      ],
+      "acceptance_criteria": [
+        "An ADR records context, alternatives, decision, consequences, affected contracts, evidence, and approval status.",
+        "Impact analysis identifies affected tasks, context packages, policies, evaluations, artifacts, and deployment assumptions before activation.",
+        "Applying an approved ADR creates a new Blueprint version atomically or leaves the prior version fully active."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "An authorized human architecture owner approves ADRs that change mission authority, safety, data, or external contracts."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-023",
+      "kind": "task",
+      "title": "Audited parallel, generator-critic, quorum, debate, and red/blue patterns",
+      "description": "Provide bounded parallel, generator-critic, quorum, debate, tournament, and red-blue coordination as explicit workflow patterns.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-008",
+        "AF-012",
+        "AF-020"
+      ],
+      "acceptance_criteria": [
+        "Each pattern declares participants, independence constraints, turn and budget limits, arbitration, termination, and required evidence.",
+        "All inter-agent contributions flow through typed stored artifacts or events rather than unlogged free-form conversation.",
+        "Tests demonstrate deterministic termination and dissent preservation for every supported arbitration strategy."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-024",
+      "kind": "task",
+      "title": "Signed pack SDK and install/upgrade/disable/rollback manager",
+      "description": "Define versioned extension contracts for domain, capability, connector, policy, evaluation, and UI packs with supply-chain controls.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-004",
+        "AF-018",
+        "AF-020"
+      ],
+      "acceptance_criteria": [
+        "Pack manifests declare identity, version, compatibility, permissions, dependencies, migrations, evaluations, and signature metadata.",
+        "Install and upgrade reject invalid signatures, incompatible core versions, undeclared permissions, and failed qualification tests.",
+        "Disable and rollback restore the previous working version without editing factory core or losing mission history."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "A human administrator approves trust roots and any pack requesting mutation-capable or privileged connectors."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-025",
+      "kind": "task",
+      "title": "Software Engineering reference pack with isolated worktrees and release evidence",
+      "description": "Ship a product-neutral reference pack for repository work, traceable implementation, independent review, reproducible release, and rollback.",
+      "parent_id": "AF-E03",
+      "dependencies": [
+        "AF-014",
+        "AF-017",
+        "AF-020",
+        "AF-024"
+      ],
+      "acceptance_criteria": [
+        "Concurrent tasks receive isolated worktrees and cannot modify another task's candidate state.",
+        "Every change traces to a requirement, task, Blueprint decision or ADR, test evidence, and independent review verdict.",
+        "The pack produces a reproducible release manifest, dependency and security evidence, and a tested rollback procedure."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r3--safe-extensibility"
+      ],
+      "review_notes": [
+        "Only the configured human release authority may approve publication or merge to a protected branch."
+      ],
+      "labels": [
+        "priority:p1",
+        "release:r3"
+      ]
+    },
+    {
+      "stable_id": "AF-E04",
+      "kind": "epic",
+      "title": "R4 Operable Platform",
+      "description": "Expose one governed service boundary, make missions observable and recoverable, isolate tenants, and provide a usable human control plane.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "CLI, SDK, web UI, and webhooks use one versioned API and policy boundary.",
+        "A root trace links mission intake through cost, decisions, execution, evidence, and final authority.",
+        "Restart and adversarial isolation tests show no duplicate mutation, accepted-state loss, or cross-tenant observation."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [
+        "Human operators retain explicit approval, pause, resume, stop, incident, and exception controls."
+      ],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-026",
+      "kind": "task",
+      "title": "REST operations API, idempotency/ETags, webhooks, and SDK contracts",
+      "description": "Expose all supported orchestration and control operations through one authenticated, versioned, concurrency-safe service boundary.",
+      "parent_id": "AF-E04",
+      "dependencies": [
+        "AF-002",
+        "AF-004",
+        "AF-006"
+      ],
+      "acceptance_criteria": [
+        "An OpenAPI contract covers registry, missions, workflows, approvals, evidence, events, incidents, budgets, and operations.",
+        "Mutation endpoints enforce idempotency keys and conditional updates reject stale ETags with a conflict response.",
+        "Signed webhooks retry idempotently and the generated SDK passes contract tests against the service."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-027",
+      "kind": "task",
+      "title": "OpenTelemetry traces, metrics, cost ledger, forecasts, and budget actions",
+      "description": "Instrument mission-to-evidence execution and account for usage and cost with enforceable forecasts and budget responses.",
+      "parent_id": "AF-E04",
+      "dependencies": [
+        "AF-002",
+        "AF-006",
+        "AF-018"
+      ],
+      "acceptance_criteria": [
+        "One trace root connects mission, workflow, loop, agent, model, tool, policy, approval, artifact, evaluation, and recovery spans.",
+        "The ledger reconciles provider usage, tokens, tool time, compute, storage, and estimated versus actual cost per tenant and mission.",
+        "Forecast thresholds deterministically notify, throttle, reroute, pause, or require approval according to the active budget policy."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [
+        "Only the configured human budget authority may increase a hard mission budget after execution begins."
+      ],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-028",
+      "kind": "task",
+      "title": "Checkpoints, reconciliation, chaos recovery, and verified restore",
+      "description": "Recover safely from worker, process, host, network, queue, and storage faults while preserving accepted state and side-effect uniqueness.",
+      "parent_id": "AF-E04",
+      "dependencies": [
+        "AF-002",
+        "AF-006",
+        "AF-007",
+        "AF-017"
+      ],
+      "acceptance_criteria": [
+        "A checkpoint captures workflow state, leases, context, artifacts, budgets, pending approvals, and external-operation identities.",
+        "Chaos tests kill an active worker and orchestrator at every mutation boundary; a qualified replacement resumes from authoritative state without accepted-state loss or duplicate external side effects.",
+        "A documented restore exercise meets the configured recovery targets and verifies accepted artifact and audit-chain integrity."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [
+        "A human operator approves destructive reconciliation or rollback that could supersede accepted external state."
+      ],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-029",
+      "kind": "task",
+      "title": "PostgreSQL/object storage migration and end-to-end tenant isolation",
+      "description": "Move transactional authority and binary artifacts to production stores while enforcing tenant isolation through every access path.",
+      "parent_id": "AF-E04",
+      "dependencies": [
+        "AF-002",
+        "AF-016",
+        "AF-026",
+        "AF-027",
+        "AF-028"
+      ],
+      "acceptance_criteria": [
+        "The migration preserves record counts, versions, digests, relationships, and audit-chain verification from SQLite and local artifacts.",
+        "Database, object, cache, queue, search, telemetry, and connector access all require an explicit tenant scope.",
+        "Adversarial isolation tests cannot read, infer, mutate, enumerate, or trigger side effects for a different tenant.",
+        "Data classification, handling, residency, retention, and legal-hold rules are enforced consistently across authoritative state, artifacts, memory, search, backups, logs, and exports.",
+        "Per-tenant quotas plus verified export and deletion workflows produce criterion-level completion evidence without bypassing retention or legal hold."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [
+        "A human data owner approves cutover after backup and restore evidence has passed."
+      ],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-030",
+      "kind": "task",
+      "title": "Human Control Plane for evidence, approvals, incidents, cost, and intervention",
+      "description": "Provide an accessible web control plane for mission oversight, evidence inspection, approvals, interventions, incidents, and spend.",
+      "parent_id": "AF-E04",
+      "dependencies": [
+        "AF-004",
+        "AF-005",
+        "AF-012",
+        "AF-026",
+        "AF-027",
+        "AF-029"
+      ],
+      "acceptance_criteria": [
+        "Users can inspect mission status, provenance, evidence, dissent, cost, policy decisions, leases, and incidents without database access.",
+        "Approve, reject, pause, resume, cancel, recompose, release, and emergency-stop actions require authenticated role authority and are audited.",
+        "The API and UI can enable, pause, drain, quarantine, replace, and irreversibly retire an Agent Definition version with policy checks and lifecycle evidence.",
+        "Keyboard-only and screen-reader checks pass the declared accessibility baseline for all approval and emergency paths."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [
+        "The interface must never offer an agent the ability to impersonate or synthesize a human approval."
+      ],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-031",
+      "kind": "task",
+      "title": "Single-node, clustered, hybrid, and air-gapped deployment definitions",
+      "description": "Publish reproducible deployment profiles with health, scaling, upgrade, backup, and security defaults for supported topologies.",
+      "parent_id": "AF-E04",
+      "dependencies": [
+        "AF-027",
+        "AF-028",
+        "AF-029"
+      ],
+      "acceptance_criteria": [
+        "Automated smoke tests deploy and verify single-node and clustered profiles from versioned manifests.",
+        "Hybrid and air-gapped profiles document and enforce allowed egress, model, connector, update, and artifact-transfer paths.",
+        "A rolling upgrade and rollback preserve active mission authority, pending approvals, accepted artifacts, and audit continuity."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r4--operable-platform"
+      ],
+      "review_notes": [
+        "A human operator approves production deployment, upgrade, rollback, and any air-gap transfer."
+      ],
+      "labels": [
+        "priority:p2",
+        "release:r4"
+      ]
+    },
+    {
+      "stable_id": "AF-E05",
+      "kind": "epic",
+      "title": "R5 Production Qualification",
+      "description": "Prove the platform against measurable service objectives and the reusable reference mission, then hand it over with recovery evidence.",
+      "parent_id": null,
+      "dependencies": [],
+      "acceptance_criteria": [
+        "The qualification suite maps every final acceptance criterion to immutable stored evidence.",
+        "A 72-hour fault-injection soak loses no accepted state and keeps resource growth within defined bounds.",
+        "A heterogeneous reference mission and a second unrelated mission complete without core workflow changes."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r5--production-qualification"
+      ],
+      "review_notes": [
+        "Only the designated human acceptance authority may sign the GA evidence bundle and final handover."
+      ],
+      "labels": [
+        "priority:p3",
+        "release:r5"
+      ]
+    },
+    {
+      "stable_id": "AF-032",
+      "kind": "task",
+      "title": "NFR, performance, accessibility, isolation, and recovery qualification suite",
+      "description": "Automate evidence for availability, capacity, latency, durability, security, accessibility, isolation, and recovery objectives.",
+      "parent_id": "AF-E05",
+      "dependencies": [
+        "AF-020",
+        "AF-027",
+        "AF-030",
+        "AF-031"
+      ],
+      "acceptance_criteria": [
+        "The suite measures every declared NFR and SLO with thresholds, environment metadata, repeatable load profiles, and retained raw evidence.",
+        "Capacity tests sustain at least 10 active runs, 25 runnable tasks, and 100 registered agents without violating declared latency targets.",
+        "Accessibility, tenant-isolation, backup, and restore checks fail the qualification gate when any required result is absent or below threshold."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r5--production-qualification"
+      ],
+      "review_notes": [
+        "A human product and operations owner approves any documented SLO exception before release."
+      ],
+      "labels": [
+        "priority:p3",
+        "release:r5"
+      ]
+    },
+    {
+      "stable_id": "AF-033",
+      "kind": "task",
+      "title": "72-hour fault-injection soak with bounded resource growth",
+      "description": "Run sustained mixed missions while injecting provider, worker, process, network, queue, storage, and host faults.",
+      "parent_id": "AF-E05",
+      "dependencies": [
+        "AF-028",
+        "AF-031",
+        "AF-032"
+      ],
+      "acceptance_criteria": [
+        "The soak runs continuously for at least 72 hours with a versioned workload and fault schedule.",
+        "No accepted state, evidence, audit continuity, or authorized external-operation identity is lost or duplicated.",
+        "Memory, storage, queue depth, orphaned leases, and temporary environments stay within documented steady-state bounds."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r5--production-qualification"
+      ],
+      "review_notes": [],
+      "labels": [
+        "priority:p3",
+        "release:r5"
+      ]
+    },
+    {
+      "stable_id": "AF-034",
+      "kind": "task",
+      "title": "Full heterogeneous-agent reference acceptance mission",
+      "description": "Execute the specification reference mission through intake, Blueprint, heterogeneous workforce, guarded mutation, verification, recovery, and human acceptance.",
+      "parent_id": "AF-E05",
+      "dependencies": [
+        "AF-013",
+        "AF-023",
+        "AF-025",
+        "AF-030",
+        "AF-033"
+      ],
+      "acceptance_criteria": [
+        "At least three heterogeneous qualified agent providers participate through replaceable role assignments and recorded routing rationale.",
+        "The mission demonstrates independent verification, one worker replacement, one recovery event, one approval gate, and a reproducible release artifact.",
+        "All 45 final acceptance criteria resolve to signed evidence or an explicitly human-accepted exception with rationale."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r5--production-qualification"
+      ],
+      "review_notes": [
+        "The designated Mission Owner or acceptance authority performs the final mission verdict; no agent may self-accept the result."
+      ],
+      "labels": [
+        "priority:p3",
+        "release:r5"
+      ]
+    },
+    {
+      "stable_id": "AF-035",
+      "kind": "task",
+      "title": "Runbooks, clean install, restore exercise, GA evidence, and handover",
+      "description": "Complete operational documentation, prove clean deployment and disaster recovery, assemble the evidence index, and transfer ownership.",
+      "parent_id": "AF-E05",
+      "dependencies": [
+        "AF-031",
+        "AF-034"
+      ],
+      "acceptance_criteria": [
+        "A new operator completes clean install, provider registration, mission start, emergency stop, backup, restore, and upgrade using only versioned runbooks.",
+        "The GA evidence index links every requirement, risk, acceptance criterion, test, artifact, decision, exception, and recovery exercise.",
+        "A second unrelated mission starts from a new Blueprint without changing factory core workflow code."
+      ],
+      "source_references": [
+        "docs/development-roadmap.md#r5--production-qualification"
+      ],
+      "review_notes": [
+        "The human release authority signs the GA evidence bundle and accepts operational handover."
+      ],
+      "labels": [
+        "priority:p3",
+        "release:r5"
+      ]
+    }
+  ]
+}

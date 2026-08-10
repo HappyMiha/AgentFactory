@@ -97,6 +97,8 @@ Idempotency does not make an operation reversible. Review the plan before approv
 
 The example file contains a project-neutral hierarchy with stable IDs, dependencies, and acceptance criteria. Stable IDs should remain unchanged even if titles evolve.
 
+The specification-driven product backlog is stored in `examples/development-backlog.json`, with its readable release sequence in `docs/development-roadmap.md`. Its required labels are `type:epic`, `type:task`, `status:triage`, `priority:p0` through `priority:p3`, and `release:r1` through `release:r5`. The sync operation does not create labels; bootstrap all required labels in the target repository before applying a plan that uses them.
+
 Guidelines:
 
 - use globally unique, readable stable IDs within the repository;
