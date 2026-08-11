@@ -47,11 +47,19 @@ class DevelopmentBacklogTests(unittest.TestCase):
             ("AF-038", "AF-039", "AF-040", "AF-041", "AF-042"),
         )
         self.assertEqual(by_id["AF-044"].dependencies, ("AF-004", "AF-005"))
-        self.assertIn("AF-044", by_id["AF-045"].dependencies)
+        self.assertEqual(
+            by_id["AF-045"].dependencies,
+            ("AF-006", "AF-044", "AF-048", "AF-055"),
+        )
         self.assertIn("AF-048", by_id["AF-049"].dependencies)
+        self.assertIn("AF-020", by_id["AF-053"].dependencies)
         self.assertIn("AF-052", by_id["AF-053"].dependencies)
+        self.assertIn("AF-053", by_id["AF-056"].dependencies)
+        self.assertIn("AF-053", by_id["AF-057"].dependencies)
         self.assertIn("AF-057", by_id["AF-028"].dependencies)
         self.assertIn("priority:p0", by_id["AF-017"].labels)
+        self.assertIn("priority:p0", by_id["AF-020"].labels)
+        self.assertIn("priority:p1", by_id["AF-050"].labels)
         self.assertIn("priority:p1", by_id["AF-027"].labels)
 
     def test_readable_roadmap_matches_importable_manifest(self):

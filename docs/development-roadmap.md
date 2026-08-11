@@ -2,7 +2,7 @@
 
 This roadmap converts the remaining requirements in *Agent Factory Technical Specification v1.0* (2 August 2026) into an ordered delivery backlog. It is deliberately based on the current repository rather than treating the specification as a greenfield design.
 
-The importable source of the issue list is [`examples/development-backlog.json`](../examples/development-backlog.json). Stable IDs in that file are permanent. Titles, descriptions, and implementation choices may evolve without changing those IDs.
+The importable source of the issue list is [`examples/development-backlog.json`](../examples/development-backlog.json). Stable IDs in that file are permanent. Titles, descriptions, priorities, dependencies, and implementation choices may evolve without changing those IDs. Completion claims and evidence are tracked separately in the [2026-08-11 implementation audit](implementation-audit-2026-08-11.md); the manifest describes required outcomes and must not be treated as proof that they exist.
 
 ## Current baseline
 
@@ -13,11 +13,12 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | Static workflow DAG and typed stage evidence | Implemented alpha | Migrate to a versioned durable workflow and criterion-level evidence ledger. |
 | SQLite migrations, audit events, backup, and interrupted-attempt reconciliation | Implemented alpha | Preserve data while adding the full domain model, outbox, checkpoints, and recovery. |
 | GitHub plan/review/approve/apply | Implemented alpha | Route it through the future tool gateway as the first protected connector. |
-| Local web operator experience | Foundation implemented | AF-036 provides shared typed application services; deliver the loopback host and UI in the remaining R0.2 tasks, then evolve it in R4. |
+| Local web operator experience | R0.2 implemented | Preserve AF-036–AF-043; evolve the loopback single-operator UI behind the later production service boundary. |
 | Mission intake, Blueprint, role pools, and Workforce Composer | Missing | Deliver in Release 2 after the durable core exists. |
-| Persistent loops, scheduling leases, immutable context, and typed memory | Missing | Deliver on the critical path before broader autonomy. |
+| Durable domain, audit, evidence, policy, adapters, and workflow checkpoints | AF-001–AF-006 implemented | Continue with AF-007 scheduler/leases; do not reopen completed foundations without regression evidence. |
+| Persistent loops, scheduling leases, immutable context, and typed memory | Partial foundation | AF-006 supplies checkpoints; AF-007, AF-008, AF-055, AF-015, and AF-016 remain open. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Missing | Deliver before enabling bounded autonomous mutation. |
-| Hermes runtime, coding worktrees, validators, and repair loop | Missing | Deliver as the first restart-safe single-node coding vertical slice. |
+| Hermes runtime, coding worktrees, validators, and repair loop | Missing in AgentFactory | Installed Hermes 0.20.0 has a qualified ACP entry point, but AF-044–AF-049 and AF-051–AF-057 remain product work. |
 | REST API, PostgreSQL, Redis, Qdrant, multi-tenancy, hosted UI, and clustered deployment | Missing | Deliver only after the local durable coding loop is proven. |
 | Pack SDK, production qualification, soak test, and acceptance mission | Missing | GA work; explicitly downstream of the operating platform. |
 
@@ -39,33 +40,33 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 The implementation order is:
 
 ```text
-AF-001
-  -> AF-002 + AF-003 + AF-004
-  -> AF-005 + AF-006
-  -> AF-007
-     -> AF-044 -> AF-045 -> AF-046
-     -> AF-017 -> AF-048 -> AF-049/AF-050
-     -> AF-055
-  -> AF-052 + AF-051
-  -> AF-008 + AF-053
-  -> AF-056 -> AF-057
+DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006
+
+NOW   AF-007
+      -> AF-017 + AF-044 + AF-048 + AF-055
+      -> AF-045
+      -> AF-046 + AF-049
+      -> AF-052 -> AF-020 + AF-051
+      -> AF-008 -> AF-053 -> AF-056 -> AF-057
+
+THEN  AF-047 + AF-050 + AF-054
 ```
 
-Core worktree isolation moves from AF-025 into AF-048 and AF-017 is promoted to P0. AF-025 remains the later installable Software Engineering reference pack. `AF-049` is the first required writable implementation worker; `AF-050` supplies the compatible Claude alternative after its separate qualification.
+Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. AgentFactory is the sole worktree authority: managed Hermes sessions receive an AF-048 worktree and do not invoke Hermes worktree creation. Mutable Hermes execution uses ACP stdio and its permission bridge; Hermes one-shot mode is restricted to qualification or read-only work because it bypasses interactive approvals. `AF-049` Codex is the first required writable implementation worker. `AF-050` Claude Code is P1 and supplies a compatible alternative after the first vertical slice is proven. The local independent-verdict subset of AF-020 is P0 because AF-053 cannot satisfy its review requirement without it.
 
 ### Milestones
 
 | Milestone | Outcome | Tasks |
 |---|---|---|
-| M1 Durable orchestration core | Work-item lifecycle, dependency readiness, leases, checkpoints, and live-stage waiting states | AF-001 through AF-007 |
-| M2 First real coding worker | Hermes lifecycle, one worktree, Codex worker, Claude alternative, cancellation, and cleanup | AF-044 through AF-050 |
-| M3 Verified engineering loop | Candidate diffs, deterministic validators, independent review, and bounded repair | AF-051 through AF-053, AF-008, AF-020 |
-| M4 Context, budgets, and recovery | Immutable dispatch context, enforced budgets, telemetry, and restart reconciliation | AF-055 through AF-057, then AF-015, AF-016, AF-027, AF-028 |
+| M1 Durable orchestration core | Work-item lifecycle, dependency readiness, fenced leases, checkpoints, and live-stage waiting states | AF-001 through AF-007; only AF-007 remains |
+| M2 First real coding worker | Sandbox subset, runtime contract, Control-Plane-owned worktree/context, Hermes ACP lifecycle, live approvals, and Codex worker | AF-017, AF-044–AF-046, AF-048, AF-049, AF-055 |
+| M3 Verified engineering loop | Candidate diffs, deterministic validators, independent criterion review, and bounded repair | AF-008, AF-020, AF-051–AF-053 |
+| M4 Budgets and recovery | Enforced budgets, correlation, and local restart reconciliation | AF-056, AF-057; then full AF-015, AF-016, AF-027, AF-028 |
 | M5 Platform expansion | MCP gateway, credential broker, production stores, tenant isolation, and hosted or clustered operation | AF-018, AF-019, AF-026, AF-029 through AF-031 |
 
 ### MVP exit scenario
 
-One real dependency-ready task receives a durable claim and lease, an isolated Git worktree, and a scoped Hermes session. Hermes delegates implementation to a qualified Codex or Claude worker; allowlisted validators produce primary evidence; an independent model reviews the candidate diff; bounded repair handles failure; the Founder separately accepts or rejects the result; and the Control Plane emits an approval-gated PR plan. Restart at any point must not duplicate a worktree, commit, provider mutation, or external operation.
+One real dependency-ready task receives a durable claim and lease, an isolated Git worktree, and a scoped Hermes ACP session. Hermes delegates implementation to the qualified Codex worker; allowlisted validators produce primary evidence; an independent model reviews the candidate diff; bounded repair handles failure; the Founder separately accepts or rejects the result; and the Control Plane emits an approval-gated PR plan. AF-057 must prove that restart at any local mutation boundary does not duplicate a worktree, commit, provider mutation, or external operation. Claude Code is an alternative qualification, not an MVP exit dependency.
 
 ## Dependency path
 
@@ -80,6 +81,12 @@ flowchart LR
 ```
 
 The Local Control Center sequence `AF-036 → AF-043` is complete. The active delivery order is the Hermes and Control Plane critical path above. Work on `AF-009` and `AF-010` may begin once `AF-001` and `AF-004` are stable. Release names are outcome groupings, not implicit global barriers: the explicit dependencies in the issue manifest are authoritative and permit reviewed overlap between releases.
+
+## Audited implementation status
+
+As of 11 August 2026, 14 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-006` and `AF-036` through `AF-043`. Nineteen tasks have partial precursors and 24 are not started. Partial work never satisfies a dependency.
+
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next task is `AF-007`; the presence of Hermes on the host does not advance `AF-044` or `AF-045` until the runtime contract and ACP adapter exist in AgentFactory.
 
 ## R0.2 — Local Control Center MVP
 
@@ -117,13 +124,15 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 | AF-007 | P0 | Dependency scheduler, TTL/fenced leases, and conflict domains | AF-005, AF-006 | §17; AC-15 |
 | AF-008 | P0 | Persistent Loop Engineering and no-progress control | AF-003, AF-006, AF-007 | Bounded repair loop |
 | AF-044 | P0 | Worker Runtime abstraction | AF-004, AF-005 | Hermes runtime boundary |
-| AF-045 | P0 | Hermes adapter and session lifecycle | AF-006, AF-044 | Hermes runtime boundary |
+| AF-045 | P0 | Hermes adapter and session lifecycle | AF-006, AF-044, AF-048, AF-055 | Hermes ACP runtime boundary |
 | AF-046 | P0 | Per-stage live execution approvals | AF-004, AF-006, AF-044 | Durable approval signals |
 | AF-055 | P0 | Execution Context Package MVP | AF-003, AF-006 | Immutable dispatch context |
-| AF-056 | P0 | Minimal execution telemetry and enforced budgets | AF-002, AF-005, AF-006 | Correlation and budget enforcement |
-| AF-057 | P0 | Local recovery and orphan reconciliation | AF-006, AF-007, AF-045, AF-048, AF-056 | Single-node recovery |
+| AF-056 | P0 | Minimal execution telemetry and enforced budgets | AF-002, AF-005, AF-006, AF-045, AF-048, AF-052, AF-053 | Correlation and budget enforcement |
+| AF-057 | P0 | Local recovery and orphan reconciliation | AF-006, AF-007, AF-045, AF-048, AF-053, AF-056 | Single-node recovery |
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
+
+**Progress:** AF-001 through AF-006 are implemented and tested. AF-007 is the next unsatisfied dependency. AF-044, AF-045, AF-055, AF-056, and AF-057 remain open; AF-046 has only the durable waiting-state and one-use-approval precursors.
 
 ## R2 — Mission Factory
 
@@ -152,7 +161,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 | AF-017 | P0 | Local sandbox subset for writable workers | AF-003, AF-004 | P0 coding isolation |
 | AF-018 | P1 | Tool Registry, Tool Gateway, MCP manager, and connector lifecycle | AF-002, AF-004, AF-017 | §22; AC-22–23 |
 | AF-019 | P1 | Short-lived scoped credential broker with zero prompt/log exposure | AF-004, AF-017, AF-018 | §§22, 28; AC-24 |
-| AF-020 | P1 | Independent evaluation service and criterion verdicts | AF-003, AF-052, AF-055 | §29; AC-31–33 |
+| AF-020 | P0 | Independent evaluation service and criterion verdicts | AF-003, AF-052, AF-055 | MVP criterion review; §29; AC-31–33 |
 | AF-021 | P1 | Prompt-injection red team, tripwires, quarantine, and incidents | AF-004, AF-017, AF-018, AF-020 | §§28–29; AC-29–30 |
 | AF-022 | P1 | ADR governance and transactional Blueprint impact propagation | AF-006, AF-013, AF-015 | §18; AC-16 |
 | AF-023 | P1 | Audited parallel, generator-critic, quorum, debate, and red/blue patterns | AF-008, AF-012, AF-020 | §19; AC-06 |
@@ -161,10 +170,10 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 | AF-047 | P1 | Hermes qualification and controlled fallback | AF-005, AF-045 | Runtime qualification |
 | AF-048 | P0 | Worktree manager | AF-007, AF-017 | Core worktree isolation |
 | AF-049 | P0 | Codex CLI implementation worker | AF-045, AF-048 | First writable worker |
-| AF-050 | P0 | Claude Code implementation worker | AF-045, AF-048 | Compatible writable alternative |
+| AF-050 | P1 | Claude Code implementation worker | AF-045, AF-048 | Post-MVP compatible writable alternative |
 | AF-051 | P0 | Candidate change artifact and approval-gated PR plan | AF-003, AF-048, AF-049 | Immutable candidate diff |
 | AF-052 | P0 | Deterministic validator runner | AF-003, AF-017, AF-048 | Primary test evidence |
-| AF-053 | P0 | End-to-end coding delivery loop | AF-008, AF-046, AF-049, AF-051, AF-052 | Restart-safe vertical slice |
+| AF-053 | P0 | End-to-end coding delivery loop | AF-008, AF-020, AF-046, AF-049, AF-051, AF-052 | Replay-safe vertical slice; AF-057 proves crash recovery |
 
 **Exit evidence:** one writable worker is confined to an isolated worktree, produces a content-addressed candidate diff, passes allowlisted validators and independent review, and reaches a Founder decision plus approval-gated PR plan without modifying the base branch. Broader MCP and pack lifecycle evidence remains part of the later R3 exit.
 

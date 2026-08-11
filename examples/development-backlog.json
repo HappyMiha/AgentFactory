@@ -240,9 +240,10 @@
       "dependencies": ["AF-004", "AF-005"],
       "acceptance_criteria": [
         "The interface supports start, resume, heartbeat, cancel, collect_events, and finalize.",
-        "Direct CLI and Hermes runtimes pass one shared contract test suite.",
+        "Direct CLI and Hermes ACP runtimes pass one shared contract test suite.",
         "A runtime returns structured events, tool calls, artifacts, and terminal status.",
-        "Fallback is forbidden after the first mutable action."
+        "Fallback is forbidden after the first mutable action.",
+        "Hermes one-shot mode is qualification-only or read-only because it bypasses interactive approvals; mutable sessions use the ACP permission bridge."
       ],
       "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
       "review_notes": ["The Control Plane remains authoritative for policy, approvals, leases, evidence, and terminal acceptance."],
@@ -252,15 +253,16 @@
       "stable_id": "AF-045",
       "kind": "task",
       "title": "Hermes adapter and session lifecycle",
-      "description": "Bind Hermes execution sessions to durable Control Plane identities, scoped context, tools, and cancellation authority.",
+      "description": "Bind Hermes ACP sessions to durable Control Plane identities, Control-Plane-owned worktrees, scoped context, tools, and cancellation authority.",
       "parent_id": "AF-E01",
-      "dependencies": ["AF-006", "AF-044"],
+      "dependencies": ["AF-006", "AF-044", "AF-048", "AF-055"],
       "acceptance_criteria": [
         "A Hermes session is bound to task, run, stage, attempt, agent role, and worktree identities.",
-        "The Control Plane can start, stop, and resume a Hermes session.",
+        "The Control Plane starts Hermes as an ACP stdio child process, collects protocol events, resumes by stable session identity, and cancels the complete process tree.",
+        "The approved worktree is passed as the ACP working directory; Hermes does not create a second unmanaged worktree.",
         "Hermes receives only a scoped context package and allowlisted tools.",
         "Control Plane restart preserves Hermes session identity.",
-        "A missing or incompatible Hermes version is an explicit health and qualification failure."
+        "Executable discovery, version constraints, hermes-acp --check, and workspace access are explicit health and qualification evidence; absence or incompatibility fails closed."
       ],
       "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
       "review_notes": [],
@@ -306,7 +308,7 @@
       "title": "Minimal execution telemetry and enforced budgets",
       "description": "Correlate the single-node execution loop and enforce token, cost, stage, retry, and tool budgets before OpenTelemetry export.",
       "parent_id": "AF-E01",
-      "dependencies": ["AF-002", "AF-005", "AF-006"],
+      "dependencies": ["AF-002", "AF-005", "AF-006", "AF-045", "AF-048", "AF-052", "AF-053"],
       "acceptance_criteria": [
         "One correlation root connects task, workflow, Hermes session, worker process, worktree, validators, and approvals.",
         "Duration, retries, tokens, estimated cost, tool calls, and terminal reason are retained.",
@@ -323,7 +325,7 @@
       "title": "Local recovery and orphan reconciliation",
       "description": "Recover single-node coding-loop authority and reconcile orphaned runtime sessions, processes, leases, and worktrees.",
       "parent_id": "AF-E01",
-      "dependencies": ["AF-006", "AF-007", "AF-045", "AF-048", "AF-056"],
+      "dependencies": ["AF-006", "AF-007", "AF-045", "AF-048", "AF-053", "AF-056"],
       "acceptance_criteria": [
         "Restart restores stage, lease, Hermes session reference, context digest, worktree, and pending approval.",
         "Orphaned provider processes, Hermes sessions, and worktrees are detected separately.",
@@ -708,7 +710,7 @@
         "Human authority remains the final verification layer for configured high-impact outcomes."
       ],
       "labels": [
-        "priority:p1",
+        "priority:p0",
         "release:r3"
       ]
     },
@@ -858,9 +860,9 @@
       "parent_id": "AF-E03",
       "dependencies": ["AF-005", "AF-045"],
       "acceptance_criteria": [
-        "Qualification verifies version, session lifecycle, cancellation, tool restrictions, and artifact contract.",
+        "Qualification verifies executable resolution, version constraints, hermes-acp --check, session lifecycle, cancellation, workspace confinement, tool restrictions, permission bridging, usage reporting, and the artifact contract.",
         "A failed Hermes runtime can be quarantined.",
-        "Direct Codex or Claude remains a controlled fallback for compatible read-only tasks.",
+        "Direct Codex or Claude remains a controlled fallback only for compatible read-only tasks before any mutable action.",
         "A mutable session cannot move between runtimes without an explicit checkpoint and new lease."
       ],
       "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
@@ -878,6 +880,7 @@
         "Each task attempt receives a deterministic branch and isolated worktree from an approved base SHA.",
         "Concurrent tasks cannot mutate the same worktree.",
         "Metadata records repository, base SHA, branch, task, lease, and owner.",
+        "The Control Plane is the sole worktree authority; managed Hermes sessions receive the existing worktree and never invoke Hermes worktree creation.",
         "Startup reconciliation finds orphaned, dirty, and missing worktrees.",
         "Cleanup occurs only after terminal state and the configured retention period."
       ],
@@ -919,7 +922,7 @@
       ],
       "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
       "review_notes": [],
-      "labels": ["priority:p0", "release:r3"]
+      "labels": ["priority:p1", "release:r3"]
     },
     {
       "stable_id": "AF-051",
@@ -961,15 +964,15 @@
       "stable_id": "AF-053",
       "kind": "task",
       "title": "End-to-end coding delivery loop",
-      "description": "Connect claim, worktree, implementation, validation, independent review, repair, founder decision, and PR planning as one restart-safe vertical slice.",
+      "description": "Connect claim, worktree, implementation, validation, independent review, repair, founder decision, and PR planning as one idempotent vertical slice; AF-057 supplies crash-boundary recovery qualification.",
       "parent_id": "AF-E03",
-      "dependencies": ["AF-008", "AF-046", "AF-049", "AF-051", "AF-052"],
+      "dependencies": ["AF-008", "AF-020", "AF-046", "AF-049", "AF-051", "AF-052"],
       "acceptance_criteria": [
         "A ready task proceeds through claim, worktree, implement, validate, review, and founder decision.",
         "Test failure returns to the same worker or a policy-selected compatible replacement.",
         "The maximum repair iteration count is deterministic.",
         "Success produces a PR-ready plan but never auto-merges.",
-        "A full restart creates no duplicate worktree, commit, or provider mutation."
+        "Replaying the same logical attempt at supported checkpoints creates no duplicate worktree, commit, or provider mutation."
       ],
       "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
       "review_notes": ["Founder acceptance remains separate from worker and reviewer terminal status."],

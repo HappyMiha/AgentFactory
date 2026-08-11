@@ -27,6 +27,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-004 durable Control Plane policy with allow/deny/require-approval decisions, exact one-use execution approvals, immutable decision records, persistent emergency stop, dispatch blocking, and mutable-session cancellation.
 - AF-005 normalized provider adapter contract, eight-dimensional health evidence, immutable worker qualifications, lifecycle quarantine/draining, compatible replacement routing, and durable recovery handoffs.
 - AF-006 version-pinned durable workflow runs, dependency-aware stage checkpoints, restart resume, durable waiting-approval state, and generic provider/worktree/GitHub mutation idempotency reservations.
+- Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
 
@@ -35,6 +36,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - Provider launch now falls through to the next reviewed executable only when process creation fails before a provider starts, including Windows access-denied aliases.
 - Provider stdout and stderr are drained through a hard combined limit; overflowing processes are terminated and audited.
 - The test matrix now covers Python 3.11 and 3.12 on Windows, Ubuntu, and macOS.
+- The critical path now uses Hermes ACP for mutable sessions, keeps worktree ownership in the Control Plane, makes context and worktrees prerequisites of the Hermes adapter, promotes the MVP independent-review subset of AF-020 to P0, and moves the optional Claude worker AF-050 to P1.
 
 ### Planned
 

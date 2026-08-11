@@ -22,7 +22,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 | Capability | Status | Notes |
 |---|---|---|
-| Application services | Ready | Typed operator queries and guarded commands are shared by the CLI and future local web host. |
+| Application services | Ready | Typed operator queries and guarded commands are shared by the CLI and Local Control Center. |
 | Agent registry | Ready | List, enable, disable, and replace provider/model assignments. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
@@ -30,6 +30,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |
 | Human approval gates | Ready | Provider gates are scoped to one provider, agent, and work item; final acceptance is separate. |
 | SQLite state and audit | Ready | Versioned migrations, WAL mode, integrity checks, backup support, and interrupted-attempt reconciliation. |
+| Durable Control Plane core | AF-001–AF-006 complete | Normalized identities, transactional outbox/audit, criterion evidence, deterministic policy, adapter qualification, and resumable stage checkpoints. AF-007 scheduling is next. |
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
 | Docker | Simulation-only | The image runs as a non-root user with persistent `/data`; external provider CLIs are not bundled. |
 | HTTP model APIs | Planned | DeepSeek, OpenRouter, Mistral, Groq, and similar services require a future HTTP adapter. |
@@ -218,6 +219,8 @@ See:
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
 - [Development roadmap](docs/development-roadmap.md)
+- [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
+- [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)
