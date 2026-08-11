@@ -30,15 +30,15 @@
     {
       "stable_id": "AF-001",
       "kind": "task",
-      "title": "Versioned tenant-aware domain model and compatibility migration",
-      "description": "Add the specification domain entities, ownership boundaries, schema versions, and a forward migration from the current SQLite model.",
+      "title": "Versioned domain model and compatibility migration",
+      "description": "Separate durable Control Plane identities and lifecycle state while preserving the current SQLite authority and deferring multi-tenancy until the single-node coding loop is proven.",
       "parent_id": "AF-E01",
       "dependencies": [],
       "acceptance_criteria": [
-        "A migration upgrades a populated 0.1.x database and preserves every existing agent, approval, event, and attempt record.",
-        "Every authoritative entity stores tenant, project, mission, version, and lifecycle identity where applicable.",
-        "Agent identity, provider and model identity, runtime, Role Definition, task, lease, and attempt remain separate entities with independently queryable relationships.",
-        "Automated tests reject cross-tenant references and verify downgrade-safe backup instructions."
+        "Work item, run, stage, assignment, worker session, attempt, lease, worktree, and artifact have separate immutable identities.",
+        "A migration upgrades the current SQLite database without losing approvals, attempts, events, or artifacts.",
+        "Every lifecycle transition is checked by an explicit state machine.",
+        "The work-item payload is no longer the sole storage location for authoritative domain state."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -61,9 +61,10 @@
         "AF-001"
       ],
       "acceptance_criteria": [
-        "A committed state transition and its outbox event are stored in one transaction under fault injection.",
-        "An idempotent consumer can replay the same event at least three times with one observable side effect.",
-        "Changing or deleting any audit record causes chain verification to fail at the altered sequence number."
+        "A state transition and its corresponding outbox event commit in one transaction under fault injection.",
+        "Repeated event delivery cannot create a duplicate external action.",
+        "Changing or deleting an audit record is detected by integrity verification.",
+        "Every event carries correlation identities for mission, task, run, stage, attempt, and worker session."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -84,9 +85,10 @@
         "AF-001"
       ],
       "acceptance_criteria": [
-        "Accepted artifacts are addressed by a cryptographic digest and fail verification after byte-level modification.",
-        "Each criterion records producer, verifier, toolchain, timestamp, source inputs, verdict, and artifact digest.",
-        "Only the acceptance workflow can promote a candidate artifact into accepted or released authority."
+        "Every artifact records a SHA-256 digest, producer, verifier, inputs, and toolchain.",
+        "Every acceptance criterion links to concrete test results, diffs, or review evidence.",
+        "An LLM summary without primary evidence cannot close a criterion.",
+        "Accepted evidence is immutable and fails verification after modification."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -109,9 +111,9 @@
       ],
       "acceptance_criteria": [
         "The same normalized request and policy version produce the same allow, deny, or require-approval decision.",
-        "Risk-tier tests prove P3 actions require the configured human authority and P4 actions can require two distinct authorized humans.",
-        "Authenticated tenant context comes from SSO or service identity rather than request content, with RBAC and MFA or step-up checks enforced by policy.",
-        "Emergency stop prevents new dispatch within five seconds and interrupts or quarantines active mutable work."
+        "Emergency stop prevents new dispatches and cancels active mutable worker sessions.",
+        "An approval is bound to the exact task, stage, worker, runtime, worktree, permissions, and definition digest.",
+        "Hermes cannot bypass Control Plane policy through its own tool, skill, session, or subagent."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -151,8 +153,8 @@
     {
       "stable_id": "AF-006",
       "kind": "task",
-      "title": "Versioned durable workflow DSL, signals, timers, and resume",
-      "description": "Replace static execution assumptions with a versioned workflow definition and replayable durable state machine.",
+      "title": "Durable workflow execution, checkpoints, and resume",
+      "description": "Execute versioned workflow stages through committed checkpoints and restart-safe state transitions.",
       "parent_id": "AF-E01",
       "dependencies": [
         "AF-002",
@@ -160,9 +162,10 @@
         "AF-004"
       ],
       "acceptance_criteria": [
-        "Workflow definitions validate states, transitions, compensation, timeouts, signals, and human approval steps before activation.",
-        "A process restart during each stage replays history and resumes from the last committed state.",
-        "Workflow version changes preserve in-flight runs or require an explicit deterministic migration."
+        "Every stage persists pending, running, waiting_approval, succeeded, or failed state.",
+        "After restart, a workflow resumes from its last committed checkpoint.",
+        "Retry does not duplicate a provider call, worktree, or GitHub operation.",
+        "The workflow version is pinned for every run."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -186,9 +189,10 @@
         "AF-006"
       ],
       "acceptance_criteria": [
-        "Only tasks with satisfied dependencies and policy eligibility enter the runnable queue.",
-        "Expired lease holders cannot commit after a newer fencing token has been issued.",
-        "Conflict-domain tests serialize overlapping mutations while allowing independent tasks to run concurrently."
+        "Only leaf tasks with completed dependencies become runnable; epics and stories are never dispatched as coding tasks.",
+        "A claim creates a durable assignment, TTL lease, and fencing token.",
+        "A stale worker cannot write an artifact or commit after losing its lease.",
+        "Independent conflict domains run concurrently while overlapping file or module mutations serialize or escalate."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -202,8 +206,8 @@
     {
       "stable_id": "AF-008",
       "kind": "task",
-      "title": "Persistent nested Loop Engineering and no-progress control",
-      "description": "Implement bounded action, task, workstream, architecture, mission, and factory loops whose authoritative state survives transcript loss.",
+      "title": "Persistent Loop Engineering and no-progress control",
+      "description": "Persist a bounded implementation, validation, critic, and repair loop whose authoritative state survives transcript loss and process restart.",
       "parent_id": "AF-E01",
       "dependencies": [
         "AF-003",
@@ -211,9 +215,10 @@
         "AF-007"
       ],
       "acceptance_criteria": [
-        "Every iteration persists objective, plan, policy result, evidence, verifier result, critic result, budget use, and next step.",
-        "Iteration, time, token, cost, and tool-failure limits stop or escalate a loop deterministically.",
-        "Repeated no-progress evidence triggers replan, worker replacement, stronger verification, or human escalation rather than endless retry."
+        "Every iteration persists objective, plan, diff, validator results, critic result, and budget usage.",
+        "Iteration, time, token, cost, and tool-failure limits stop or pause the loop deterministically.",
+        "The same failure twice consecutively triggers replan or policy-selected worker replacement.",
+        "The loop terminates only through accepted evidence, explicit failure, or human escalation."
       ],
       "source_references": [
         "docs/development-roadmap.md#r1--durable-safe-core"
@@ -225,6 +230,110 @@
         "priority:p0",
         "release:r1"
       ]
+    },
+    {
+      "stable_id": "AF-044",
+      "kind": "task",
+      "title": "Worker Runtime abstraction",
+      "description": "Introduce a lifecycle-aware worker runtime boundary; Hermes is not represented as an ordinary CLIProvider.",
+      "parent_id": "AF-E01",
+      "dependencies": ["AF-004", "AF-005"],
+      "acceptance_criteria": [
+        "The interface supports start, resume, heartbeat, cancel, collect_events, and finalize.",
+        "Direct CLI and Hermes runtimes pass one shared contract test suite.",
+        "A runtime returns structured events, tool calls, artifacts, and terminal status.",
+        "Fallback is forbidden after the first mutable action."
+      ],
+      "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
+      "review_notes": ["The Control Plane remains authoritative for policy, approvals, leases, evidence, and terminal acceptance."],
+      "labels": ["priority:p0", "release:r1"]
+    },
+    {
+      "stable_id": "AF-045",
+      "kind": "task",
+      "title": "Hermes adapter and session lifecycle",
+      "description": "Bind Hermes execution sessions to durable Control Plane identities, scoped context, tools, and cancellation authority.",
+      "parent_id": "AF-E01",
+      "dependencies": ["AF-006", "AF-044"],
+      "acceptance_criteria": [
+        "A Hermes session is bound to task, run, stage, attempt, agent role, and worktree identities.",
+        "The Control Plane can start, stop, and resume a Hermes session.",
+        "Hermes receives only a scoped context package and allowlisted tools.",
+        "Control Plane restart preserves Hermes session identity.",
+        "A missing or incompatible Hermes version is an explicit health and qualification failure."
+      ],
+      "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r1"]
+    },
+    {
+      "stable_id": "AF-046",
+      "kind": "task",
+      "title": "Per-stage live execution approvals",
+      "description": "Make live workflow stages wait durably for an exact approval and continue automatically after the approved logical attempt.",
+      "parent_id": "AF-E01",
+      "dependencies": ["AF-004", "AF-006", "AF-044"],
+      "acceptance_criteria": [
+        "A live stage enters waiting_approval without failing the workflow.",
+        "An approved gate is delivered only to its exact stage execution and consumed by one logical attempt.",
+        "A rejected or expired gate cannot start Hermes or another worker runtime.",
+        "A completed stage advances automatically to the next dependency-ready stage."
+      ],
+      "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
+      "review_notes": ["Hermes cannot synthesize, widen, or consume a human approval outside its exact scope."],
+      "labels": ["priority:p0", "release:r1"]
+    },
+    {
+      "stable_id": "AF-055",
+      "kind": "task",
+      "title": "Execution Context Package MVP",
+      "description": "Create an immutable, bounded dispatch package before the full role-aware context broker.",
+      "parent_id": "AF-E01",
+      "dependencies": ["AF-003", "AF-006"],
+      "acceptance_criteria": [
+        "Every dispatch receives an immutable context digest.",
+        "The package contains task, acceptance criteria, dependencies, base SHA, policies, relevant requirements, and previous decisions.",
+        "Included, excluded, and superseded sources are explicit.",
+        "Token and size limits use deterministic compaction."
+      ],
+      "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r1"]
+    },
+    {
+      "stable_id": "AF-056",
+      "kind": "task",
+      "title": "Minimal execution telemetry and enforced budgets",
+      "description": "Correlate the single-node execution loop and enforce token, cost, stage, retry, and tool budgets before OpenTelemetry export.",
+      "parent_id": "AF-E01",
+      "dependencies": ["AF-002", "AF-005", "AF-006"],
+      "acceptance_criteria": [
+        "One correlation root connects task, workflow, Hermes session, worker process, worktree, validators, and approvals.",
+        "Duration, retries, tokens, estimated cost, tool calls, and terminal reason are retained.",
+        "Maximum tokens, cost, and stage budgets actually block or pause execution.",
+        "The dashboard shows active sessions, queue, leases, worktrees, failures, and budget state."
+      ],
+      "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r1"]
+    },
+    {
+      "stable_id": "AF-057",
+      "kind": "task",
+      "title": "Local recovery and orphan reconciliation",
+      "description": "Recover single-node coding-loop authority and reconcile orphaned runtime sessions, processes, leases, and worktrees.",
+      "parent_id": "AF-E01",
+      "dependencies": ["AF-006", "AF-007", "AF-045", "AF-048", "AF-056"],
+      "acceptance_criteria": [
+        "Restart restores stage, lease, Hermes session reference, context digest, worktree, and pending approval.",
+        "Orphaned provider processes, Hermes sessions, and worktrees are detected separately.",
+        "A stale worker cannot commit after a newer fencing token is issued.",
+        "Process termination at each local mutation boundary creates no duplicate commit or external operation.",
+        "Restore verifies artifact digests and audit continuity."
+      ],
+      "source_references": ["docs/development-roadmap.md#hermes-and-control-plane-critical-path"],
+      "review_notes": ["Destructive reconciliation remains a human-authorized Control Plane action."],
+      "labels": ["priority:p0", "release:r1"]
     },
     {
       "stable_id": "AF-E02",
@@ -278,7 +387,7 @@
     {
       "stable_id": "AF-010",
       "kind": "task",
-      "title": "Versioned Role Definition catalog and compatibility contracts",
+      "title": "Provider-neutral Role Definitions and compatibility contracts",
       "description": "Represent responsibilities, inputs, outputs, tools, independence, limits, and qualifications as versioned role contracts.",
       "parent_id": "AF-E02",
       "dependencies": [
@@ -286,9 +395,10 @@
         "AF-004"
       ],
       "acceptance_criteria": [
-        "Role definitions validate required inputs, outputs, capabilities, evidence, limits, and incompatible duties.",
+        "Role definitions validate typed inputs, outputs, tools, permissions, limits, evidence contracts, and incompatible duties.",
         "Role versions remain provider-neutral and can be resolved independently from agent definitions.",
-        "Compatibility tests reject one agent serving mutually exclusive implementer and independent-judge duties in the same decision."
+        "Workflows reference role requirements rather than concrete agent IDs.",
+        "Compatibility tests reject one agent serving mutually exclusive implementer and final-review duties in the same decision."
       ],
       "source_references": [
         "docs/development-roadmap.md#r2--mission-factory"
@@ -310,9 +420,10 @@
         "AF-010"
       ],
       "acceptance_criteria": [
-        "Each routing decision records policy version, eligible and excluded candidates, producer and reviewer model identities, scores, strategy, and selected fallback chain.",
+        "Each routing decision records eligible and excluded candidates, capability, qualification, model independence, cost, latency, load, rationale, and selected fallback chain.",
         "An agent with expired or failed qualification cannot receive a task requiring that qualification.",
-        "Pinned, best-qualified, cost-aware, latency-aware, diversity, reviewer-rotation, canary, tournament, and fallback strategies have deterministic tests."
+        "Existing model-aware reviewer rotation remains preserved and deterministic.",
+        "Pinned, best-qualified, cost-aware, latency-aware, diversity, canary, tournament, and fallback strategies have deterministic tests."
       ],
       "source_references": [
         "docs/development-roadmap.md#r2--mission-factory"
@@ -408,7 +519,7 @@
       "description": "Build minimal task-specific context packages with authority, provenance, freshness, token budgets, and deterministic compaction.",
       "parent_id": "AF-E02",
       "dependencies": [
-        "AF-003",
+        "AF-055",
         "AF-009",
         "AF-013"
       ],
@@ -454,6 +565,24 @@
       ]
     },
     {
+      "stable_id": "AF-054",
+      "kind": "task",
+      "title": "Software engineering role pack",
+      "description": "Define provider-neutral typed contracts for the initial software delivery roles after validator and routing foundations exist.",
+      "parent_id": "AF-E02",
+      "dependencies": ["AF-010", "AF-011", "AF-052"],
+      "acceptance_criteria": [
+        "The pack defines Requirements and Backlog Steward, Solution Architect, Implementation Worker, Deterministic Test Runner, Independent Code Reviewer, Security Reviewer, Release and Integration Agent, and Policy Guardian roles.",
+        "Every role has a typed input and output contract.",
+        "Validator and reviewer remain separate roles.",
+        "An implementer cannot accept its own result.",
+        "The Release Agent can operate only on approved candidate artifacts."
+      ],
+      "source_references": ["docs/development-roadmap.md#r2--mission-factory"],
+      "review_notes": [],
+      "labels": ["priority:p1", "release:r2"]
+    },
+    {
       "stable_id": "AF-E03",
       "kind": "epic",
       "title": "R3 Safe Extensibility",
@@ -479,24 +608,25 @@
     {
       "stable_id": "AF-017",
       "kind": "task",
-      "title": "Resource- and network-restricted sandbox manager",
-      "description": "Provision disposable execution environments with explicit filesystem, process, resource, network, and cleanup manifests.",
+      "title": "Local sandbox subset for writable workers",
+      "description": "Restrict a writable worker to its task worktree and declared temporary paths with process, time, output, and network controls enforced outside prompts.",
       "parent_id": "AF-E03",
       "dependencies": [
         "AF-003",
         "AF-004"
       ],
       "acceptance_criteria": [
-        "A sandbox manifest enforces CPU, memory, wall-time, filesystem, process, and network limits in automated tests.",
-        "An attempted write outside the authorized workspace and a non-allowlisted network request are denied and audited.",
-        "Sandbox teardown releases temporary resources and preserves only declared evidence and artifact outputs."
+        "A writable worker can access only its task worktree and declared temporary paths.",
+        "A write outside the worktree is blocked and audited.",
+        "Process, time, output, and network limits are enforced outside prompt-level instructions.",
+        "Sandbox teardown preserves evidence and the candidate diff."
       ],
       "source_references": [
         "docs/development-roadmap.md#r3--safe-extensibility"
       ],
       "review_notes": [],
       "labels": [
-        "priority:p1",
+        "priority:p0",
         "release:r3"
       ]
     },
@@ -557,18 +687,19 @@
     {
       "stable_id": "AF-020",
       "kind": "task",
-      "title": "Evaluation, quality gates, model-independent judges, and signed verdicts",
-      "description": "Evaluate deliverables through layered deterministic and model-assisted gates, independent judges, and criterion-level signed verdicts.",
+      "title": "Independent evaluation service and criterion verdicts",
+      "description": "Run deterministic checks before model-assisted review and produce independent criterion-level verdicts over primary evidence.",
       "parent_id": "AF-E03",
       "dependencies": [
         "AF-003",
-        "AF-015",
-        "AF-018"
+        "AF-052",
+        "AF-055"
       ],
       "acceptance_criteria": [
-        "The evaluation service supports contract, deterministic, simulation, adversarial, independent-judge, release, and human-authority layers.",
-        "A judge cannot validate work produced by the same agent or model; the durable assignment records producer and reviewer identities, rotation strategy, rubric version, evidence, confidence, and dissent.",
-        "Acceptance fails when any required criterion lacks a valid signed verdict or immutable evidence digest."
+        "Deterministic checks execute before any LLM review.",
+        "A reviewer cannot use the model that produced the candidate change.",
+        "A verdict records rubric version, criterion evidence, confidence, concerns, and dissent.",
+        "Acceptance fails when any required criterion lacks primary evidence."
       ],
       "source_references": [
         "docs/development-roadmap.md#r3--safe-extensibility"
@@ -692,17 +823,19 @@
     {
       "stable_id": "AF-025",
       "kind": "task",
-      "title": "Software Engineering reference pack with isolated worktrees and release evidence",
-      "description": "Ship a product-neutral reference pack for repository work, traceable implementation, independent review, reproducible release, and rollback.",
+      "title": "Software Engineering reference pack and release evidence",
+      "description": "Package the proven worktree, worker, validator, review, and release contracts as a product-neutral installable capability after the single-node coding loop works.",
       "parent_id": "AF-E03",
       "dependencies": [
         "AF-014",
         "AF-017",
         "AF-020",
+        "AF-048",
+        "AF-053",
         "AF-024"
       ],
       "acceptance_criteria": [
-        "Concurrent tasks receive isolated worktrees and cannot modify another task's candidate state.",
+        "The pack consumes the core worktree and candidate-artifact contracts without reimplementing them.",
         "Every change traces to a requirement, task, Blueprint decision or ADR, test evidence, and independent review verdict.",
         "The pack produces a reproducible release manifest, dependency and security evidence, and a tested rollback procedure."
       ],
@@ -716,6 +849,131 @@
         "priority:p1",
         "release:r3"
       ]
+    },
+    {
+      "stable_id": "AF-047",
+      "kind": "task",
+      "title": "Hermes qualification and controlled fallback",
+      "description": "Qualify Hermes lifecycle and restrictions while retaining bounded direct CLI fallback for compatible read-only work.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-005", "AF-045"],
+      "acceptance_criteria": [
+        "Qualification verifies version, session lifecycle, cancellation, tool restrictions, and artifact contract.",
+        "A failed Hermes runtime can be quarantined.",
+        "Direct Codex or Claude remains a controlled fallback for compatible read-only tasks.",
+        "A mutable session cannot move between runtimes without an explicit checkpoint and new lease."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": [],
+      "labels": ["priority:p1", "release:r3"]
+    },
+    {
+      "stable_id": "AF-048",
+      "kind": "task",
+      "title": "Worktree manager",
+      "description": "Move core worktree isolation from AF-025 into the P0 Control Plane coding path.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-007", "AF-017"],
+      "acceptance_criteria": [
+        "Each task attempt receives a deterministic branch and isolated worktree from an approved base SHA.",
+        "Concurrent tasks cannot mutate the same worktree.",
+        "Metadata records repository, base SHA, branch, task, lease, and owner.",
+        "Startup reconciliation finds orphaned, dirty, and missing worktrees.",
+        "Cleanup occurs only after terminal state and the configured retention period."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r3"]
+    },
+    {
+      "stable_id": "AF-049",
+      "kind": "task",
+      "title": "Codex CLI implementation worker",
+      "description": "Run a qualified writable Codex worker only inside its leased task worktree.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-045", "AF-048"],
+      "acceptance_criteria": [
+        "Codex can modify only the task worktree.",
+        "Invocation uses fixed arguments and a reviewed permission profile.",
+        "The result records changed files, diff digest, commands, exit state, and handoff.",
+        "The worker cannot merge, push, close an issue, or grant final approval.",
+        "Timeout or cancellation terminates the complete process tree."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r3"]
+    },
+    {
+      "stable_id": "AF-050",
+      "kind": "task",
+      "title": "Claude Code implementation worker",
+      "description": "Provide a separately qualified writable Claude Code profile compatible with the implementation-worker contract.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-045", "AF-048"],
+      "acceptance_criteria": [
+        "Claude Code can modify only the task worktree and passes its own qualification matrix.",
+        "Plan-only Claude roles remain separate from the writable implementation profile.",
+        "Provider replacement does not change the task or workflow contract.",
+        "Codex and Claude replace one another only when role qualification is compatible.",
+        "Timeout or cancellation terminates the complete process tree."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r3"]
+    },
+    {
+      "stable_id": "AF-051",
+      "kind": "task",
+      "title": "Candidate change artifact and approval-gated PR plan",
+      "description": "Represent a worker result as immutable candidate-change evidence before any push or pull-request mutation.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-003", "AF-048", "AF-049"],
+      "acceptance_criteria": [
+        "A candidate artifact records base and head SHA, diff digest, changed files, and worktree identity.",
+        "The commit message includes the stable task ID.",
+        "Push and pull-request creation remain dry-run or separately approval-gated.",
+        "The base branch is never changed directly.",
+        "Failed validation cannot enter PR-ready state."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": ["AF-050 may satisfy the implementation-worker dependency after compatible qualification."],
+      "labels": ["priority:p0", "release:r3"]
+    },
+    {
+      "stable_id": "AF-052",
+      "kind": "task",
+      "title": "Deterministic validator runner",
+      "description": "Run project-pack tests, lint, type checks, builds, and security scans in the candidate worktree through fixed command vectors.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-003", "AF-017", "AF-048"],
+      "acceptance_criteria": [
+        "Only allowlisted command vectors execute and no shell is used.",
+        "A project pack declares test, lint, type-check, build, and security-scan commands.",
+        "Each result records command digest, exit code, bounded output, and environment metadata.",
+        "Validation runs in the candidate worktree rather than the main checkout.",
+        "Test evidence maps to acceptance criteria."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": [],
+      "labels": ["priority:p0", "release:r3"]
+    },
+    {
+      "stable_id": "AF-053",
+      "kind": "task",
+      "title": "End-to-end coding delivery loop",
+      "description": "Connect claim, worktree, implementation, validation, independent review, repair, founder decision, and PR planning as one restart-safe vertical slice.",
+      "parent_id": "AF-E03",
+      "dependencies": ["AF-008", "AF-046", "AF-049", "AF-051", "AF-052"],
+      "acceptance_criteria": [
+        "A ready task proceeds through claim, worktree, implement, validate, review, and founder decision.",
+        "Test failure returns to the same worker or a policy-selected compatible replacement.",
+        "The maximum repair iteration count is deterministic.",
+        "Success produces a PR-ready plan but never auto-merges.",
+        "A full restart creates no duplicate worktree, commit, or provider mutation."
+      ],
+      "source_references": ["docs/development-roadmap.md#r3--safe-extensibility"],
+      "review_notes": ["Founder acceptance remains separate from worker and reviewer terminal status."],
+      "labels": ["priority:p0", "release:r3"]
     },
     {
       "stable_id": "AF-E04",
@@ -768,18 +1026,18 @@
     {
       "stable_id": "AF-027",
       "kind": "task",
-      "title": "OpenTelemetry traces, metrics, cost ledger, forecasts, and budget actions",
-      "description": "Instrument mission-to-evidence execution and account for usage and cost with enforceable forecasts and budget responses.",
+      "title": "OpenTelemetry and cost ledger",
+      "description": "Export the minimal execution telemetry through OpenTelemetry and extend it with provider-reported and estimated cost accounting.",
       "parent_id": "AF-E04",
       "dependencies": [
-        "AF-002",
-        "AF-006",
+        "AF-056",
         "AF-018"
       ],
       "acceptance_criteria": [
-        "One trace root connects mission, workflow, loop, agent, model, tool, policy, approval, artifact, evaluation, and recovery spans.",
-        "The ledger reconciles provider usage, tokens, tool time, compute, storage, and estimated versus actual cost per tenant and mission.",
-        "Forecast thresholds deterministically notify, throttle, reroute, pause, or require approval according to the active budget policy."
+        "Traces export through OpenTelemetry without changing correlation identities.",
+        "Metrics include queue depth, wait time, run duration, failure rate, iteration count, and orphaned resources.",
+        "The ledger supports provider-reported and estimated usage.",
+        "Budget thresholds can notify, reroute, pause, or require approval."
       ],
       "source_references": [
         "docs/development-roadmap.md#r4--operable-platform"
@@ -788,25 +1046,23 @@
         "Only the configured human budget authority may increase a hard mission budget after execution begins."
       ],
       "labels": [
-        "priority:p2",
+        "priority:p1",
         "release:r4"
       ]
     },
     {
       "stable_id": "AF-028",
       "kind": "task",
-      "title": "Checkpoints, reconciliation, chaos recovery, and verified restore",
-      "description": "Recover safely from worker, process, host, network, queue, and storage faults while preserving accepted state and side-effect uniqueness.",
+      "title": "Full chaos recovery and verified restore",
+      "description": "Extend the local AF-057 recovery subset across host, network, queue, clustered deployment, and storage faults.",
       "parent_id": "AF-E04",
       "dependencies": [
-        "AF-002",
-        "AF-006",
-        "AF-007",
-        "AF-017"
+        "AF-057",
+        "AF-031"
       ],
       "acceptance_criteria": [
-        "A checkpoint captures workflow state, leases, context, artifacts, budgets, pending approvals, and external-operation identities.",
-        "Chaos tests kill an active worker and orchestrator at every mutation boundary; a qualified replacement resumes from authoritative state without accepted-state loss or duplicate external side effects.",
+        "Clustered recovery preserves stage, lease, runtime session, context, worktree, budget, approval, and external-operation identities.",
+        "Chaos tests terminate hosts and services at every mutation boundary without duplicate commits or external operations.",
         "A documented restore exercise meets the configured recovery targets and verifies accepted artifact and audit-chain integrity."
       ],
       "source_references": [
@@ -816,7 +1072,7 @@
         "A human operator approves destructive reconciliation or rollback that could supersede accepted external state."
       ],
       "labels": [
-        "priority:p2",
+        "priority:p1",
         "release:r4"
       ]
     },
@@ -831,7 +1087,7 @@
         "AF-016",
         "AF-026",
         "AF-027",
-        "AF-028"
+        "AF-057"
       ],
       "acceptance_criteria": [
         "The migration preserves record counts, versions, digests, relationships, and audit-chain verification from SQLite and local artifacts.",
@@ -891,8 +1147,8 @@
       "parent_id": "AF-E04",
       "dependencies": [
         "AF-027",
-        "AF-028",
-        "AF-029"
+        "AF-029",
+        "AF-057"
       ],
       "acceptance_criteria": [
         "Automated smoke tests deploy and verify single-node and clustered profiles from versioned manifests.",

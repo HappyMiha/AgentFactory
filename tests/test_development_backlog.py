@@ -15,14 +15,14 @@ class DevelopmentBacklogTests(unittest.TestCase):
         by_id = {item.stable_id: item for item in proposal.items}
 
         self.assertEqual(proposal.source_name, "Agent Factory Technical Specification v1.0")
-        self.assertEqual(len(proposal.items), 49)
+        self.assertEqual(len(proposal.items), 63)
         self.assertEqual(
             {item.stable_id for item in proposal.items if item.kind == "epic"},
             {f"AF-E0{number}" for number in range(1, 7)},
         )
         self.assertEqual(
             {item.stable_id for item in proposal.items if item.kind == "task"},
-            {f"AF-{number:03d}" for number in range(1, 44)},
+            {f"AF-{number:03d}" for number in range(1, 58)},
         )
 
         for item in proposal.items:
@@ -46,6 +46,13 @@ class DevelopmentBacklogTests(unittest.TestCase):
             by_id["AF-043"].dependencies,
             ("AF-038", "AF-039", "AF-040", "AF-041", "AF-042"),
         )
+        self.assertEqual(by_id["AF-044"].dependencies, ("AF-004", "AF-005"))
+        self.assertIn("AF-044", by_id["AF-045"].dependencies)
+        self.assertIn("AF-048", by_id["AF-049"].dependencies)
+        self.assertIn("AF-052", by_id["AF-053"].dependencies)
+        self.assertIn("AF-057", by_id["AF-028"].dependencies)
+        self.assertIn("priority:p0", by_id["AF-017"].labels)
+        self.assertIn("priority:p1", by_id["AF-027"].labels)
 
     def test_readable_roadmap_matches_importable_manifest(self):
         proposal = load_backlog(BACKLOG)
@@ -56,7 +63,7 @@ class DevelopmentBacklogTests(unittest.TestCase):
             re.MULTILINE,
         )
 
-        self.assertEqual(len(rows), 43)
+        self.assertEqual(len(rows), 57)
         for stable_id, priority, title, dependency_cell in rows:
             with self.subTest(stable_id=stable_id):
                 item = by_id[stable_id]

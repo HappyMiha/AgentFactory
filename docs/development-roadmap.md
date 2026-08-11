@@ -17,7 +17,8 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | Mission intake, Blueprint, role pools, and Workforce Composer | Missing | Deliver in Release 2 after the durable core exists. |
 | Persistent loops, scheduling leases, immutable context, and typed memory | Missing | Deliver on the critical path before broader autonomy. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Missing | Deliver before enabling bounded autonomous mutation. |
-| REST API, web control plane, PostgreSQL, multi-tenancy, and clustered deployment | Missing | Deliver after the local durable runtime is proven. |
+| Hermes runtime, coding worktrees, validators, and repair loop | Missing | Deliver as the first restart-safe single-node coding vertical slice. |
+| REST API, PostgreSQL, Redis, Qdrant, multi-tenancy, hosted UI, and clustered deployment | Missing | Deliver only after the local durable coding loop is proven. |
 | Pack SDK, production qualification, soak test, and acceptance mission | Missing | GA work; explicitly downstream of the operating platform. |
 
 ## Delivery rules
@@ -31,6 +32,41 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 - A release is complete only when its executable tasks meet the task Definition of Done below.
 - Review risks R-01 through R-20 at every release gate and after any critical incident, provider, tool class, pack, or production architecture change.
 
+## Hermes and Control Plane critical path
+
+[ADR-0001](adr/0001-control-plane-hermes-boundary.md) is authoritative: Hermes executes bounded sessions, tools, skills, and subagents, while the Control Plane retains backlog, policy, approvals, scheduler, budgets, worktrees, evidence, audit, and terminal acceptance. Hermes runtime success can never self-declare a task complete.
+
+The implementation order is:
+
+```text
+AF-001
+  -> AF-002 + AF-003 + AF-004
+  -> AF-005 + AF-006
+  -> AF-007
+     -> AF-044 -> AF-045 -> AF-046
+     -> AF-017 -> AF-048 -> AF-049/AF-050
+     -> AF-055
+  -> AF-052 + AF-051
+  -> AF-008 + AF-053
+  -> AF-056 -> AF-057
+```
+
+Core worktree isolation moves from AF-025 into AF-048 and AF-017 is promoted to P0. AF-025 remains the later installable Software Engineering reference pack. `AF-049` is the first required writable implementation worker; `AF-050` supplies the compatible Claude alternative after its separate qualification.
+
+### Milestones
+
+| Milestone | Outcome | Tasks |
+|---|---|---|
+| M1 Durable orchestration core | Work-item lifecycle, dependency readiness, leases, checkpoints, and live-stage waiting states | AF-001 through AF-007 |
+| M2 First real coding worker | Hermes lifecycle, one worktree, Codex worker, Claude alternative, cancellation, and cleanup | AF-044 through AF-050 |
+| M3 Verified engineering loop | Candidate diffs, deterministic validators, independent review, and bounded repair | AF-051 through AF-053, AF-008, AF-020 |
+| M4 Context, budgets, and recovery | Immutable dispatch context, enforced budgets, telemetry, and restart reconciliation | AF-055 through AF-057, then AF-015, AF-016, AF-027, AF-028 |
+| M5 Platform expansion | MCP gateway, credential broker, production stores, tenant isolation, and hosted or clustered operation | AF-018, AF-019, AF-026, AF-029 through AF-031 |
+
+### MVP exit scenario
+
+One real dependency-ready task receives a durable claim and lease, an isolated Git worktree, and a scoped Hermes session. Hermes delegates implementation to a qualified Codex or Claude worker; allowlisted validators produce primary evidence; an independent model reviews the candidate diff; bounded repair handles failure; the Founder separately accepts or rejects the result; and the Control Plane emits an approval-gated PR plan. Restart at any point must not duplicate a worktree, commit, provider mutation, or external operation.
+
 ## Dependency path
 
 ```mermaid
@@ -43,7 +79,7 @@ flowchart LR
     R4 --> R5["R5 Production Qualification"]
 ```
 
-The immediate operator-experience sequence is `AF-036 → AF-037 → AF-038/AF-039/AF-040/AF-042 → AF-041 → AF-043`. In parallel, the first durable-core sequence is `AF-001 → AF-002/AF-003 → AF-004 → AF-005/AF-006 → AF-007 → AF-008`. Work on `AF-009` and `AF-010` may begin once `AF-001` and `AF-004` are stable. Release names are outcome groupings, not implicit global barriers: the explicit dependencies in the issue manifest are authoritative and permit reviewed overlap between releases.
+The Local Control Center sequence `AF-036 → AF-043` is complete. The active delivery order is the Hermes and Control Plane critical path above. Work on `AF-009` and `AF-010` may begin once `AF-001` and `AF-004` are stable. Release names are outcome groupings, not implicit global barriers: the explicit dependencies in the issue manifest are authoritative and permit reviewed overlap between releases.
 
 ## R0.2 — Local Control Center MVP
 
@@ -72,16 +108,22 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 | ID | Priority | Deliverable | Depends on | Specification trace |
 |---|---:|---|---|---|
-| AF-001 | P0 | Versioned tenant-aware domain model and compatibility migration | — | §§3, 33, 35; AC-02 |
+| AF-001 | P0 | Versioned domain model and compatibility migration | — | Durable Control Plane foundation |
 | AF-002 | P0 | Transactional event outbox and tamper-evident audit chain | AF-001 | §§30, 32–33; AC-34, AC-37 |
 | AF-003 | P0 | Content-addressed artifact and criterion-evidence ledger | AF-001 | §§3, 24, 29; AC-26, AC-31, AC-33 |
 | AF-004 | P0 | Deterministic policy plane, autonomy modes, and emergency stop | AF-001, AF-002 | §§5, 27–28; AC-27–30, AC-42 |
 | AF-005 | P0 | Normalized adapter contract, qualification, and agent lifecycle | AF-001, AF-004 | §§8–9; AC-01–03 |
-| AF-006 | P0 | Versioned durable workflow DSL, signals, timers, and resume | AF-002, AF-003, AF-004 | §15; AC-12, AC-36–37 |
+| AF-006 | P0 | Durable workflow execution, checkpoints, and resume | AF-002, AF-003, AF-004 | Durable stage lifecycle |
 | AF-007 | P0 | Dependency scheduler, TTL/fenced leases, and conflict domains | AF-005, AF-006 | §17; AC-15 |
-| AF-008 | P0 | Persistent nested Loop Engineering and no-progress control | AF-003, AF-006, AF-007 | §16; AC-13–14 |
+| AF-008 | P0 | Persistent Loop Engineering and no-progress control | AF-003, AF-006, AF-007 | Bounded repair loop |
+| AF-044 | P0 | Worker Runtime abstraction | AF-004, AF-005 | Hermes runtime boundary |
+| AF-045 | P0 | Hermes adapter and session lifecycle | AF-006, AF-044 | Hermes runtime boundary |
+| AF-046 | P0 | Per-stage live execution approvals | AF-004, AF-006, AF-044 | Durable approval signals |
+| AF-055 | P0 | Execution Context Package MVP | AF-003, AF-006 | Immutable dispatch context |
+| AF-056 | P0 | Minimal execution telemetry and enforced budgets | AF-002, AF-005, AF-006 | Correlation and budget enforcement |
+| AF-057 | P0 | Local recovery and orphan reconciliation | AF-006, AF-007, AF-045, AF-048, AF-056 | Single-node recovery |
 
-**Exit evidence:** upgrade test from the current SQLite schema, restart/replay test, duplicate-mutation fault injection, lifecycle handoff test, criterion-complete evidence manifest, authenticated tenant/RBAC/MFA policy tests, and two-person P4 approval enforcement. Full checkpoint replacement is completed by `AF-028`.
+**Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
 ## R2 — Mission Factory
 
@@ -90,13 +132,14 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 | ID | Priority | Deliverable | Depends on | Specification trace |
 |---|---:|---|---|---|
 | AF-009 | P1 | Mission intake, source authority, clarifications, and readiness verdict | AF-001, AF-004 | §12; AC-08–09 |
-| AF-010 | P1 | Versioned Role Definition catalog and compatibility contracts | AF-001, AF-004 | §10; AC-05 |
+| AF-010 | P1 | Provider-neutral Role Definitions and compatibility contracts | AF-001, AF-004 | §10; AC-05 |
 | AF-011 | P1 | Evaluation-aware Agent Router, independent reviewer rotation, and qualification history | AF-005, AF-010 | §§9, 23; AC-01, AC-03 |
 | AF-012 | P1 | Role pools, arbitration strategies, and Workforce Composer | AF-010, AF-011 | §§10–11; AC-06–07 |
 | AF-013 | P1 | Factory Blueprint generation, alternatives, approval, and amendments | AF-009, AF-010, AF-012 | §13; AC-10–11, AC-16 |
 | AF-014 | P1 | Idempotent mission bootstrap, manifests, and rollback point | AF-006, AF-007, AF-013 | §14 |
-| AF-015 | P1 | Immutable Context Packages, provenance, broker, and compaction | AF-003, AF-009, AF-013 | §20; AC-17–18 |
+| AF-015 | P1 | Immutable Context Packages, provenance, broker, and compaction | AF-055, AF-009, AF-013 | §20; AC-17–18 |
 | AF-016 | P1 | Typed memory, bounded retrieval, invalidation, and governed skills | AF-015 | §21; AC-19–21 |
+| AF-054 | P1 | Software engineering role pack | AF-010, AF-011, AF-052 | Typed software delivery roles |
 
 **Exit evidence:** one natural-language mission reaches `READY_FOR_BLUEPRINT`, exposes rejected alternatives and uncertainties, composes a two-agent strengthened role, receives human Blueprint approval, and bootstraps without hard-coded project logic.
 
@@ -106,17 +149,24 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 | ID | Priority | Deliverable | Depends on | Specification trace |
 |---|---:|---|---|---|
-| AF-017 | P1 | Resource- and network-restricted sandbox manager | AF-003, AF-004 | §24; AC-25 |
+| AF-017 | P0 | Local sandbox subset for writable workers | AF-003, AF-004 | P0 coding isolation |
 | AF-018 | P1 | Tool Registry, Tool Gateway, MCP manager, and connector lifecycle | AF-002, AF-004, AF-017 | §22; AC-22–23 |
 | AF-019 | P1 | Short-lived scoped credential broker with zero prompt/log exposure | AF-004, AF-017, AF-018 | §§22, 28; AC-24 |
-| AF-020 | P1 | Evaluation, quality gates, model-independent judges, and signed verdicts | AF-003, AF-015, AF-018 | §29; AC-31–33 |
+| AF-020 | P1 | Independent evaluation service and criterion verdicts | AF-003, AF-052, AF-055 | §29; AC-31–33 |
 | AF-021 | P1 | Prompt-injection red team, tripwires, quarantine, and incidents | AF-004, AF-017, AF-018, AF-020 | §§28–29; AC-29–30 |
 | AF-022 | P1 | ADR governance and transactional Blueprint impact propagation | AF-006, AF-013, AF-015 | §18; AC-16 |
 | AF-023 | P1 | Audited parallel, generator-critic, quorum, debate, and red/blue patterns | AF-008, AF-012, AF-020 | §19; AC-06 |
 | AF-024 | P1 | Signed pack SDK and install/upgrade/disable/rollback manager | AF-004, AF-018, AF-020 | §25; AC-41 |
-| AF-025 | P1 | Software Engineering reference pack with isolated worktrees and release evidence | AF-014, AF-017, AF-020, AF-024 | §26; AC-40 |
+| AF-025 | P1 | Software Engineering reference pack and release evidence | AF-014, AF-017, AF-020, AF-048, AF-053, AF-024 | §26; AC-40 |
+| AF-047 | P1 | Hermes qualification and controlled fallback | AF-005, AF-045 | Runtime qualification |
+| AF-048 | P0 | Worktree manager | AF-007, AF-017 | Core worktree isolation |
+| AF-049 | P0 | Codex CLI implementation worker | AF-045, AF-048 | First writable worker |
+| AF-050 | P0 | Claude Code implementation worker | AF-045, AF-048 | Compatible writable alternative |
+| AF-051 | P0 | Candidate change artifact and approval-gated PR plan | AF-003, AF-048, AF-049 | Immutable candidate diff |
+| AF-052 | P0 | Deterministic validator runner | AF-003, AF-017, AF-048 | Primary test evidence |
+| AF-053 | P0 | End-to-end coding delivery loop | AF-008, AF-046, AF-049, AF-051, AF-052 | Restart-safe vertical slice |
 
-**Exit evidence:** an allowlisted MCP tool runs through policy and sandbox boundaries; an injected instruction cannot widen authority; a pack is installed and rolled back without core changes; an implementation task is independently verified.
+**Exit evidence:** one writable worker is confined to an isolated worktree, produces a content-addressed candidate diff, passes allowlisted validators and independent review, and reaches a Founder decision plus approval-gated PR plan without modifying the base branch. Broader MCP and pack lifecycle evidence remains part of the later R3 exit.
 
 ## R4 — Operable Platform
 
@@ -125,11 +175,11 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 | ID | Priority | Deliverable | Depends on | Specification trace |
 |---|---:|---|---|---|
 | AF-026 | P2 | REST operations API, idempotency/ETags, webhooks, and SDK contracts | AF-002, AF-004, AF-006 | §32 |
-| AF-027 | P2 | OpenTelemetry traces, metrics, cost ledger, forecasts, and budget actions | AF-002, AF-006, AF-018 | §30; AC-34–35 |
-| AF-028 | P2 | Checkpoints, reconciliation, chaos recovery, and verified restore | AF-002, AF-006, AF-007, AF-017 | §31; AC-04, AC-36–38 |
-| AF-029 | P2 | PostgreSQL/object storage migration and end-to-end tenant isolation | AF-002, AF-016, AF-026, AF-027, AF-028 | §§33, 35; AC-39 |
+| AF-027 | P1 | OpenTelemetry and cost ledger | AF-056, AF-018 | Full telemetry export |
+| AF-028 | P1 | Full chaos recovery and verified restore | AF-057, AF-031 | Clustered chaos suite |
+| AF-029 | P2 | PostgreSQL/object storage migration and end-to-end tenant isolation | AF-002, AF-016, AF-026, AF-027, AF-057 | §§33, 35; AC-39 |
 | AF-030 | P2 | Human Control Plane for evidence, approvals, incidents, cost, and intervention | AF-004, AF-005, AF-012, AF-026, AF-027, AF-029, AF-043 | §27; AC-03, AC-42 |
-| AF-031 | P2 | Single-node, clustered, hybrid, and air-gapped deployment definitions | AF-027, AF-028, AF-029 | §34 |
+| AF-031 | P2 | Single-node, clustered, hybrid, and air-gapped deployment definitions | AF-027, AF-029, AF-057 | §34 |
 
 **Exit evidence:** the CLI and UI use the same API contracts; one root trace connects mission-to-evidence; a worker restart resumes without duplicate mutation; adversarial tenant tests observe no foreign data or side effects; classification, residency, retention, legal hold, quota, export, and deletion policies produce auditable evidence.
 
