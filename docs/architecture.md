@@ -168,6 +168,8 @@ Provider approval consumption is atomic. The database records an execution attem
 
 Writable worker processes additionally cross the [local sandbox boundary](local-sandbox.md). A live fenced assignment, immutable path/limit policy, and qualified OS backend are prerequisites. Unsupported hosts fail before launch; a process group or prompt instruction is never treated as filesystem or network isolation. Teardown preserves bounded execution evidence and the candidate change manifest outside the worker's writable roots.
 
+The [Worker Runtime contract](worker-runtime.md) owns durable start, resume, heartbeat, cancel, event collection, and finalization semantics above provider/transport drivers. Direct CLI and Hermes ACP use the same immutable session-event model. A mutable event closes the fallback boundary permanently; runtime terminal success remains subordinate to Control Plane evidence, review, and acceptance.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

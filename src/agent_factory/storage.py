@@ -759,6 +759,47 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON scheduler_conflicts
         BEGIN SELECT RAISE(ABORT, 'scheduler conflicts are immutable'); END;
     """),
+    (16, """
+        ALTER TABLE worker_sessions ADD COLUMN request_json TEXT NOT NULL DEFAULT '{}';
+        ALTER TABLE worker_sessions ADD COLUMN result_json TEXT;
+        ALTER TABLE worker_sessions ADD COLUMN heartbeat_at TEXT;
+        ALTER TABLE worker_sessions ADD COLUMN finalized_at TEXT;
+        ALTER TABLE worker_sessions ADD COLUMN mutable_action_count INTEGER NOT NULL DEFAULT 0
+            CHECK(mutable_action_count >= 0);
+
+        CREATE TABLE runtime_session_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            session_id INTEGER NOT NULL REFERENCES worker_sessions(id),
+            sequence INTEGER NOT NULL CHECK(sequence > 0),
+            kind TEXT NOT NULL CHECK(kind IN (
+                'status','message','tool_call','artifact','heartbeat','error'
+            )),
+            payload_json TEXT NOT NULL,
+            mutable INTEGER NOT NULL DEFAULT 0 CHECK(mutable IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(session_id,sequence)
+        );
+        CREATE INDEX idx_runtime_session_events
+            ON runtime_session_events(session_id,sequence);
+        CREATE TRIGGER runtime_session_events_no_update
+        BEFORE UPDATE ON runtime_session_events
+        BEGIN SELECT RAISE(ABORT, 'runtime session events are immutable'); END;
+        CREATE TRIGGER runtime_session_events_no_delete
+        BEFORE DELETE ON runtime_session_events
+        BEGIN SELECT RAISE(ABORT, 'runtime session events are immutable'); END;
+        CREATE TRIGGER worker_session_scope_immutable
+        BEFORE UPDATE OF assignment_id,runtime,request_json ON worker_sessions
+        BEGIN SELECT RAISE(ABORT, 'worker session scope is immutable'); END;
+        CREATE TRIGGER worker_session_external_id_immutable
+        BEFORE UPDATE OF external_session_id ON worker_sessions
+        WHEN OLD.external_session_id IS NOT NULL
+        BEGIN SELECT RAISE(ABORT, 'worker external session identity is immutable'); END;
+        CREATE TRIGGER worker_session_result_immutable
+        BEFORE UPDATE OF result_json ON worker_sessions
+        WHEN OLD.result_json IS NOT NULL
+        BEGIN SELECT RAISE(ABORT, 'worker session result is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1866,6 +1907,255 @@ class SQLiteStorage:
                 },
             )
         return handoff_id
+
+    def create_runtime_session(
+        self,
+        *,
+        assignment_id: int,
+        runtime: str,
+        request: dict[str, Any],
+    ) -> int:
+        if not runtime.strip():
+            raise ValueError("Runtime identity is required")
+        with self.db:
+            assignment = self.db.execute(
+                "SELECT task_id,status FROM assignments WHERE id=?",
+                (assignment_id,),
+            ).fetchone()
+            if not assignment:
+                raise KeyError(f"Unknown assignment: {assignment_id}")
+            if str(assignment["status"]) != "active":
+                raise ValueError("Runtime session requires an active assignment")
+            cursor = self.db.execute(
+                """INSERT INTO worker_sessions(
+                       identity,assignment_id,runtime,status,request_json,updated_at
+                   ) VALUES(?,?,?,'starting',?,CURRENT_TIMESTAMP)""",
+                (
+                    self._identity("worker-session"),
+                    assignment_id,
+                    runtime,
+                    json.dumps(request, sort_keys=True),
+                ),
+            )
+            session_id = int(cursor.lastrowid)
+            self._event(
+                "runtime.session.created",
+                "worker_session",
+                session_id,
+                {
+                    "task_id": int(assignment["task_id"]),
+                    "assignment_id": assignment_id,
+                    "runtime": runtime,
+                },
+            )
+        return session_id
+
+    def runtime_session(self, session_id: int):
+        row = self.db.execute(
+            "SELECT * FROM worker_sessions WHERE id=?", (session_id,)
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown runtime session: {session_id}")
+        return row
+
+    def start_runtime_session(self, session_id: int, external_session_id: str) -> None:
+        if not external_session_id.strip():
+            raise ValueError("External session identity is required")
+        with self.db:
+            row = self.runtime_session(session_id)
+            if str(row["status"]) != "starting":
+                raise ValueError("Only a starting runtime session can bind externally")
+            self.db.execute(
+                """UPDATE worker_sessions
+                      SET external_session_id=?,status='running',version=version+1,
+                          updated_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='starting'""",
+                (external_session_id, session_id),
+            )
+            self._event(
+                "runtime.session.started",
+                "worker_session",
+                session_id,
+                {"external_session_id": external_session_id},
+            )
+
+    def resume_runtime_session(self, session_id: int) -> None:
+        with self.db:
+            row = self.runtime_session(session_id)
+            status = str(row["status"])
+            if status == "running":
+                return
+            if status != "suspended":
+                raise ValueError(f"Runtime session cannot resume from {status}")
+            self.db.execute(
+                """UPDATE worker_sessions
+                      SET status='running',version=version+1,
+                          updated_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='suspended'""",
+                (session_id,),
+            )
+            self._event(
+                "runtime.session.resumed", "worker_session", session_id, {}
+            )
+
+    def suspend_runtime_session(self, session_id: int, *, reason: str) -> None:
+        with self.db:
+            row = self.runtime_session(session_id)
+            if str(row["status"]) != "running":
+                raise ValueError("Only a running runtime session can be suspended")
+            self.db.execute(
+                """UPDATE worker_sessions
+                      SET status='suspended',version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='running'""",
+                (session_id,),
+            )
+            self._event(
+                "runtime.session.suspended",
+                "worker_session",
+                session_id,
+                {"reason": reason},
+            )
+
+    def heartbeat_runtime_session(self, session_id: int) -> str:
+        heartbeat = datetime.now(timezone.utc).isoformat(timespec="microseconds")
+        with self.db:
+            row = self.runtime_session(session_id)
+            if str(row["status"]) != "running":
+                raise ValueError("Only a running runtime session can heartbeat")
+            self.db.execute(
+                """UPDATE worker_sessions
+                      SET heartbeat_at=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='running'""",
+                (heartbeat, session_id),
+            )
+            self._event(
+                "runtime.session.heartbeat",
+                "worker_session",
+                session_id,
+                {"heartbeat_at": heartbeat},
+            )
+        return heartbeat
+
+    def append_runtime_event(
+        self,
+        session_id: int,
+        *,
+        kind: str,
+        payload: dict[str, Any],
+        mutable: bool = False,
+    ) -> int:
+        allowed = {"status", "message", "tool_call", "artifact", "heartbeat", "error"}
+        if kind not in allowed:
+            raise ValueError(f"Unknown runtime event kind: {kind}")
+        with self.db:
+            self._begin_immediate()
+            session = self.runtime_session(session_id)
+            if str(session["status"]) not in {"starting", "running", "suspended"}:
+                raise ValueError("Cannot append events to a terminal runtime session")
+            sequence = int(
+                self.db.execute(
+                    """SELECT COALESCE(MAX(sequence),0)+1
+                         FROM runtime_session_events WHERE session_id=?""",
+                    (session_id,),
+                ).fetchone()[0]
+            )
+            cursor = self.db.execute(
+                """INSERT INTO runtime_session_events(
+                       identity,session_id,sequence,kind,payload_json,mutable
+                   ) VALUES(?,?,?,?,?,?)""",
+                (
+                    self._identity("runtime-event"),
+                    session_id,
+                    sequence,
+                    kind,
+                    json.dumps(payload, sort_keys=True),
+                    int(mutable),
+                ),
+            )
+            if mutable:
+                self.db.execute(
+                    """UPDATE worker_sessions
+                          SET mutable_action_count=mutable_action_count+1,
+                              version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE id=?""",
+                    (session_id,),
+                )
+            event_id = int(cursor.lastrowid)
+            self._event(
+                f"runtime.event.{kind}",
+                "worker_session",
+                session_id,
+                {
+                    "event_id": event_id,
+                    "sequence": sequence,
+                    "mutable": mutable,
+                },
+            )
+        return event_id
+
+    def runtime_events(self, session_id: int, *, after_sequence: int = 0):
+        self.runtime_session(session_id)
+        return self.db.execute(
+            """SELECT * FROM runtime_session_events
+                WHERE session_id=? AND sequence>? ORDER BY sequence""",
+            (session_id, after_sequence),
+        ).fetchall()
+
+    def cancel_runtime_session(self, session_id: int, *, reason: str) -> bool:
+        with self.db:
+            row = self.runtime_session(session_id)
+            status = str(row["status"])
+            if status == "cancelled":
+                return False
+            if status in {"succeeded", "failed"}:
+                raise ValueError(f"Terminal runtime session is already {status}")
+            self.db.execute(
+                """UPDATE worker_sessions
+                      SET status='cancelled',version=version+1,
+                          updated_at=CURRENT_TIMESTAMP,finalized_at=CURRENT_TIMESTAMP,
+                          result_json=? WHERE id=?""",
+                (json.dumps({"status": "cancelled", "reason": reason}), session_id),
+            )
+            self._event(
+                "runtime.session.cancelled",
+                "worker_session",
+                session_id,
+                {"reason": reason},
+            )
+        return True
+
+    def finalize_runtime_session(
+        self, session_id: int, *, status: str, result: dict[str, Any]
+    ) -> bool:
+        if status not in {"succeeded", "failed", "cancelled"}:
+            raise ValueError("Runtime terminal status is invalid")
+        with self.db:
+            row = self.runtime_session(session_id)
+            current = str(row["status"])
+            if current in {"succeeded", "failed", "cancelled"}:
+                if current != status:
+                    raise ValueError(
+                        f"Runtime session already finalized as {current}"
+                    )
+                return False
+            ensure_transition("worker_session", current, status)
+            self.db.execute(
+                """UPDATE worker_sessions
+                      SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP,
+                          finalized_at=CURRENT_TIMESTAMP,result_json=? WHERE id=?""",
+                (status, json.dumps(result, sort_keys=True), session_id),
+            )
+            self._event(
+                "runtime.session.finalized",
+                "worker_session",
+                session_id,
+                {"status": status},
+            )
+        return True
+
+    def runtime_fallback_allowed(self, session_id: int) -> bool:
+        row = self.runtime_session(session_id)
+        return int(row["mutable_action_count"]) == 0
 
     def runtime_settings(self):
         return self.db.execute(

@@ -33,7 +33,7 @@ class AdapterHealth:
 
 
 class NormalizedAdapter:
-    """Provider-neutral AF-005 contract; session lifecycle belongs to AF-044."""
+    """Provider-neutral AF-005 health/execute contract below Worker Runtime."""
 
     operations = frozenset({"health", "execute"})
 
