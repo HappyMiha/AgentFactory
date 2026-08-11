@@ -20,6 +20,7 @@ from agent_factory.models import Agent, WorkItem
 from agent_factory.policy import PolicyRequest
 from agent_factory.providers import ProcessSupervisor
 from agent_factory.sandbox import SandboxBackend, SandboxManager
+from agent_factory.software_roles import SoftwareEngineeringRolePack
 from agent_factory.storage import SQLiteStorage
 from agent_factory.worker_runtime import CodexCLIWorkerRuntime, RuntimeBinding, RuntimeLaunch
 from agent_factory.worktrees import WorktreeManager
@@ -480,6 +481,11 @@ class CodexImplementationWorkerTests(unittest.TestCase):
         self.assertEqual(awaiting.status, "awaiting_founder")
         self.assertIsNotNone(awaiting.candidate_id)
         self.assertIsNotNone(awaiting.evaluation_id)
+        release_roles = SoftwareEngineeringRolePack(self.storage)
+        with self.assertRaisesRegex(PermissionError, "Founder-approved"):
+            release_roles.authorize_release(
+                int(awaiting.candidate_id), release_agent_id="release-agent"
+            )
         counts = {
             table: self.storage.db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
             for table in (
@@ -523,6 +529,15 @@ class CodexImplementationWorkerTests(unittest.TestCase):
         )
         self.assertEqual(replay_ready, ready)
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM candidate_pr_plans").fetchone()[0], 1)
+        release_authorization = release_roles.authorize_release(
+            int(ready.candidate_id), release_agent_id="release-agent"
+        )
+        self.assertEqual(
+            release_roles.authorize_release(
+                int(ready.candidate_id), release_agent_id="release-agent"
+            ),
+            release_authorization,
+        )
         telemetry = ExecutionTelemetryService(self.storage)
         trace = telemetry.create(
             task_id=int(worker_result["task_id"]), run_id=int(worker_result["run_id"]),

@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-011 agent-routing, AF-050 Claude-worker, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-054 software-role-pack and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **33 of 57** backlog tasks: AF-001–AF-008, AF-010, AF-011, AF-017, AF-020, AF-036–AF-053, and AF-055–AF-057.
+- Completed **34 of 57** backlog tasks: AF-001–AF-008, AF-010, AF-011, AF-017, AF-020, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **199 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified restart-safe two-worker single-node coding vertical slice is implemented but not released; AF-054 is now dependency-ready.
+- Verified **202 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified restart-safe two-worker single-node coding vertical slice and initial typed role pack are implemented but not released; AF-009 mission intake is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -51,6 +51,7 @@ These notes describe the implemented, tested repository state through the AF-011
 |---|---|---|---|
 | AF-010 | Provider-neutral typed role definitions and incompatible-duty contracts | 2026-08-12 00:57 CEST | This AF-010 task commit |
 | AF-011 | Evaluation-aware deterministic routing and immutable fallback rationale | 2026-08-12 01:03 CEST | This AF-011 task commit |
+| AF-054 | Eight-role software-engineering pack and approved-candidate release authority | 2026-08-12 01:09 CEST | This AF-054 task commit |
 
 ### Local Control Center MVP
 
@@ -78,6 +79,10 @@ Responsibilities are now immutable semantic role versions rather than strings em
 ## AF-011 implementation detail
 
 Routing now reloads the latest worker qualification, expiry, lifecycle, provider and capability evidence rather than trusting a caller. It records every candidate's model independence, quality, risk, cost, latency, load, health, eligibility or exclusion reasons, selected agent, rationale, and ordered fallback chain in one content-digested decision. Pinned, best-qualified, cost-aware, latency-aware, diversity, canary, tournament, and fallback strategies have stable tie-breaking and exact-key replay. The specialized least-used model-aware independent-review rotation remains unchanged and regression-tested.
+
+## AF-054 implementation detail
+
+The first software-engineering pack installs exactly eight immutable provider-neutral roles: Requirements and Backlog Steward, Solution Architect, Implementation Worker, Deterministic Test Runner, Independent Code Reviewer, Security Reviewer, Release and Integration Agent, and Policy Guardian. Every role has typed input, output, evidence, tools, permissions, limits, and symmetric incompatible duties. Implementer, deterministic validator, and independent reviewer cannot collapse onto one agent for the same decision. Release authority is derived from the real AF-053 lineage and exists only after the candidate is `pr_ready`, its Founder gate is approved, and its GitHub plan is bound; replay creates no duplicate authorization.
 
 ## AF-049 implementation detail
 
@@ -134,4 +139,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008, AF-010, AF-011, AF-017, AF-020, AF-044 through AF-053, and AF-055 through AF-057 are complete. AF-054 is next.
+M1, AF-008, AF-010, AF-011, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-009 mission intake is next.

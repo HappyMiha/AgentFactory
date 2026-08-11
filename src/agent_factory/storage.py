@@ -1532,6 +1532,39 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER agent_routing_decisions_no_delete BEFORE DELETE ON agent_routing_decisions
         BEGIN SELECT RAISE(ABORT, 'agent routing decision is immutable'); END;
     """),
+    (33, """
+        CREATE TABLE software_role_packs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pack_id TEXT NOT NULL,
+            version TEXT NOT NULL,
+            manifest_json TEXT NOT NULL,
+            manifest_digest TEXT NOT NULL UNIQUE CHECK(length(manifest_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(pack_id,version)
+        );
+        CREATE TRIGGER software_role_packs_no_update BEFORE UPDATE ON software_role_packs
+        BEGIN SELECT RAISE(ABORT, 'software role pack is immutable'); END;
+        CREATE TRIGGER software_role_packs_no_delete BEFORE DELETE ON software_role_packs
+        BEGIN SELECT RAISE(ABORT, 'software role pack is immutable'); END;
+
+        CREATE TABLE release_candidate_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pack_id INTEGER NOT NULL REFERENCES software_role_packs(id),
+            candidate_id INTEGER NOT NULL REFERENCES candidate_change_artifacts(id),
+            delivery_id INTEGER NOT NULL REFERENCES coding_delivery_runs(id),
+            founder_gate_id INTEGER NOT NULL REFERENCES approval_gates(id),
+            github_plan_id INTEGER NOT NULL REFERENCES github_mutation_plans(id),
+            release_agent_id TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(pack_id,candidate_id,release_agent_id)
+        );
+        CREATE TRIGGER release_candidate_authorizations_no_update BEFORE UPDATE ON release_candidate_authorizations
+        BEGIN SELECT RAISE(ABORT, 'release candidate authorization is immutable'); END;
+        CREATE TRIGGER release_candidate_authorizations_no_delete BEFORE DELETE ON release_candidate_authorizations
+        BEGIN SELECT RAISE(ABORT, 'release candidate authorization is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

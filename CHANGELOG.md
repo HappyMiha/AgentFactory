@@ -46,6 +46,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-050 separately qualified writable Claude Code worker with a fixed file-only permission profile, immutable result/usage evidence, role-compatible routing, and complete process-tree termination.
 - AF-010 immutable provider-neutral role definitions with typed input/output/evidence contracts, workflow role requirements, version resolution, and incompatible-duty enforcement.
 - AF-011 immutable evaluation-aware routing decisions with qualification filtering, complete cost/latency/load/independence rationale, deterministic eight-strategy selection, and fallback chains.
+- AF-054 installable typed software-engineering role pack with eight provider-neutral roles, enforced validator/reviewer/implementer separation, and Founder-approved candidate-only release authorization.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

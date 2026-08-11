@@ -8,15 +8,15 @@ This audit compares the repository through the AF-050 Claude worker and AF-057 l
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **199 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **202 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-008, AF-010, AF-011, AF-017, AF-020, AF-036–AF-053, AF-055–AF-057 | 33 |
+| Implemented | AF-001–AF-008, AF-010, AF-011, AF-017, AF-020, AF-036–AF-057 | 34 |
 | Partial precursors | AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032 | 7 |
-| Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-054 | 17 |
+| Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035 | 16 |
 
 The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice across durable data, fenced scheduling, bounded repair, managed worktrees, immutable context, fully qualified Hermes ACP, controlled fallback, independently qualified writable Codex and Claude execution, deterministic validation, independent evaluation, separate Founder authority, and gated PR planning. Typed role packs and platform expansion remain downstream work.
 
@@ -77,7 +77,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-051 | Implemented | 5/5-validated immutable candidate artifact, stable-ID task-branch commit, base-ref preservation, failed-validation denial, and separately gated PR plan; `test_codex_worker.py`, `test_github.py` | — |
 | AF-052 | Implemented | Five-category project packs, fixed shell-free argv, candidate-worktree sandbox execution, bounded command/environment evidence, immutable results, and exact criterion mappings; `test_validators.py` | — |
 | AF-053 | Implemented | Replay-safe worker/worktree lineage through validation, candidate, independent review, bounded repair, separate Founder decision, and pending PR gate; same/replacement worker policy and deterministic repair exhaustion; `test_codex_worker.py` | — |
-| AF-054 | Not started | Some legacy agent roles exist | No typed software-engineering role pack or duty-separation enforcement |
+| AF-054 | Implemented | Immutable eight-role software-engineering manifest, typed contracts, separate deterministic validator and independent reviewer, implementer self-acceptance denial, and AF-053 Founder-approved PR-ready release authorization; `test_software_roles.py`, `test_codex_worker.py` | — |
 | AF-055 | Implemented | Fenced canonical dispatch packages, immutable SHA-256 identity, required task/dependency/base/policy scope, explicit included/excluded/superseded sources, deterministic byte/token compaction and runtime digest binding; `test_context_packages.py`, `test_worker_runtime.py` | — |
 | AF-056 | Implemented | One correlation root across delivery entities, immutable duration/retry/token/cost/tool/terminal telemetry, enforced token/cost/stage/retry/tool caps, and dashboard queue/session/lease/worktree/failure/budget state; `test_execution_telemetry.py`, `test_codex_worker.py`, `test_web.py` | — |
 | AF-057 | Implemented | Restart snapshots for stage/lease/Hermes/context/worktree/approval identity, separate provider/Hermes/worktree orphan sets, stale-fence denial, replay qualification, and artifact/audit/foreign-key restore verification; `test_local_recovery.py`, `test_hermes_acp.py`, `test_worktrees.py`, `test_codex_worker.py`, `test_scheduler.py` | — |
@@ -96,11 +96,11 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-010 + AF-011 + AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056 + AF-057
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-010 + AF-011 + AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-054 + AF-055 + AF-056 + AF-057
 
-Now:  AF-054
+Now:  AF-009
 
-Then: AF-054
+Then: AF-012
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031
 ```
 
