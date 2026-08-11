@@ -174,6 +174,8 @@ The [managed worktree service](managed-worktrees.md) is the only component allow
 
 The [Execution Context Package builder](execution-context-packages.md) snapshots task scope, acceptance criteria, dependencies, approved base, effective policy, requirements, and prior decisions before dispatch. Its canonical digest is bound to the live fenced assignment and runtime session. Source selection and compaction are deterministic and fully manifested; workers cannot widen or replace the package after launch.
 
+The [Hermes ACP runtime](hermes-acp-runtime.md) is the concrete stdio process boundary. It binds the AF-044 session to the active workflow stage, attempt, AF-048 worktree, and AF-055 package; admits only the exactly qualified Hermes/tool version; maps JSON-RPC events and permissions; reloads the stable Hermes identity after Control Plane restart; and owns complete child-tree cancellation.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

@@ -872,6 +872,46 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE UPDATE OF context_package_id,context_digest ON worker_sessions
         BEGIN SELECT RAISE(ABORT, 'worker session context is immutable'); END;
     """),
+    (19, """
+        CREATE TABLE hermes_acp_sessions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            worker_session_id INTEGER NOT NULL UNIQUE REFERENCES worker_sessions(id),
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            attempt_id INTEGER NOT NULL REFERENCES attempts(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            fencing_token INTEGER NOT NULL CHECK(fencing_token > 0),
+            agent_role TEXT NOT NULL,
+            worktree_id INTEGER NOT NULL REFERENCES worktrees(id),
+            context_package_id INTEGER NOT NULL REFERENCES execution_context_packages(id),
+            allowed_tools_json TEXT NOT NULL,
+            executable TEXT NOT NULL,
+            hermes_version TEXT NOT NULL,
+            protocol_version INTEGER NOT NULL CHECK(protocol_version > 0),
+            external_session_id TEXT NOT NULL UNIQUE,
+            process_pid INTEGER,
+            status TEXT NOT NULL CHECK(status IN (
+                'running','suspended','succeeded','failed','cancelled'
+            )),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_hermes_acp_assignment
+            ON hermes_acp_sessions(assignment_id,status,id);
+        CREATE TRIGGER hermes_acp_scope_immutable
+        BEFORE UPDATE OF worker_session_id,task_id,run_id,stage_id,attempt_id,
+                         assignment_id,fencing_token,agent_role,worktree_id,
+                         context_package_id,allowed_tools_json,executable,
+                         hermes_version,protocol_version,external_session_id
+        ON hermes_acp_sessions
+        BEGIN SELECT RAISE(ABORT, 'Hermes ACP session scope is immutable'); END;
+        CREATE TRIGGER hermes_acp_sessions_no_delete
+        BEFORE DELETE ON hermes_acp_sessions
+        BEGIN SELECT RAISE(ABORT, 'Hermes ACP session history is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1980,6 +2020,55 @@ class SQLiteStorage:
             )
         return handoff_id
 
+    def create_assignment_attempt(
+        self,
+        assignment_id: int,
+        fencing_token: int,
+        *,
+        now: datetime | None = None,
+    ) -> int:
+        current = _timestamp(_utc(now))
+        self._begin_immediate()
+        try:
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            ordinal = int(
+                self.db.execute(
+                    "SELECT COALESCE(MAX(ordinal),0)+1 FROM attempts WHERE assignment_id=?",
+                    (assignment_id,),
+                ).fetchone()[0]
+            )
+            cursor = self.db.execute(
+                """INSERT INTO attempts(
+                       identity,assignment_id,ordinal,status,updated_at
+                   ) VALUES(?,?,?,'claimed',?)""",
+                (
+                    self._identity("attempt"),
+                    assignment_id,
+                    ordinal,
+                    current,
+                ),
+            )
+            attempt_id = int(cursor.lastrowid)
+            self._event(
+                "attempt.claimed",
+                "attempt",
+                attempt_id,
+                {
+                    "task_id": int(lease["task_id"]),
+                    "assignment_id": assignment_id,
+                    "fencing_token": fencing_token,
+                    "ordinal": ordinal,
+                },
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return attempt_id
+
     def store_execution_context_package(
         self,
         *,
@@ -2108,6 +2197,216 @@ class SQLiteStorage:
         ):
             raise PermissionError("Execution context package belongs to another dispatch")
         return int(row["id"])
+
+    def record_hermes_acp_session(
+        self,
+        *,
+        worker_session_id: int,
+        task_id: int,
+        run_id: int,
+        stage_key: str,
+        attempt_id: int,
+        assignment_id: int,
+        fencing_token: int,
+        agent_role: str,
+        worktree_id: int,
+        context_digest: str,
+        allowed_tools: tuple[str, ...],
+        executable: str,
+        hermes_version: str,
+        protocol_version: int,
+        external_session_id: str,
+        process_pid: int | None,
+        now: datetime | None = None,
+    ) -> int:
+        if not stage_key.strip() or not agent_role.strip():
+            raise ValueError("Hermes stage and agent role are required")
+        if not executable.strip() or not hermes_version.strip():
+            raise ValueError("Hermes executable and version evidence are required")
+        if protocol_version <= 0 or not external_session_id.strip():
+            raise ValueError("Hermes protocol and external session identity are required")
+        normalized_tools = tuple(sorted({tool.strip() for tool in allowed_tools if tool.strip()}))
+        if not normalized_tools:
+            raise ValueError("Hermes requires an explicit non-empty tool allowlist")
+        current = _timestamp(_utc(now))
+        self._begin_immediate()
+        try:
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            if int(lease["task_id"]) != task_id:
+                raise PermissionError("Hermes task is not owned by its lease")
+            worker_session = self.db.execute(
+                "SELECT * FROM worker_sessions WHERE id=?", (worker_session_id,)
+            ).fetchone()
+            if not worker_session or int(worker_session["assignment_id"]) != assignment_id:
+                raise PermissionError("Hermes worker session belongs to another assignment")
+            context = self.execution_context_package(context_digest)
+            if (
+                int(context["task_id"]) != task_id
+                or int(context["run_id"]) != run_id
+                or int(context["assignment_id"]) != assignment_id
+                or int(context["fencing_token"]) != fencing_token
+                or int(worker_session["context_package_id"] or 0) != int(context["id"])
+            ):
+                raise PermissionError("Hermes context package scope does not match")
+            stage = self.db.execute(
+                "SELECT id,status FROM workflow_stages WHERE run_id=? AND stage_key=?",
+                (run_id, stage_key),
+            ).fetchone()
+            if not stage:
+                raise KeyError(f"Unknown Hermes stage {stage_key} for run {run_id}")
+            if str(stage["status"]) not in {"running", "waiting_approval"}:
+                raise PermissionError("Hermes requires an active durable workflow stage")
+            attempt = self.db.execute(
+                "SELECT assignment_id,status FROM attempts WHERE id=?", (attempt_id,)
+            ).fetchone()
+            if (
+                not attempt
+                or int(attempt["assignment_id"]) != assignment_id
+                or str(attempt["status"]) not in {"claimed", "running"}
+            ):
+                raise PermissionError("Hermes attempt is not active for its assignment")
+            worktree = self.db.execute(
+                "SELECT * FROM worktrees WHERE id=?", (worktree_id,)
+            ).fetchone()
+            if (
+                not worktree
+                or int(worktree["assignment_id"]) != assignment_id
+                or int(worktree["fencing_token"] or 0) != fencing_token
+                or str(worktree["status"]) not in {"ready", "dirty"}
+            ):
+                raise PermissionError("Hermes worktree is not owned by its assignment")
+            existing = self.db.execute(
+                "SELECT * FROM hermes_acp_sessions WHERE worker_session_id=?",
+                (worker_session_id,),
+            ).fetchone()
+            if existing:
+                if str(existing["external_session_id"]) != external_session_id:
+                    raise ValueError("Worker session already has another Hermes identity")
+                self.db.commit()
+                return int(existing["id"])
+            cursor = self.db.execute(
+                """INSERT INTO hermes_acp_sessions(
+                       identity,worker_session_id,task_id,run_id,stage_id,attempt_id,
+                       assignment_id,fencing_token,agent_role,worktree_id,
+                       context_package_id,allowed_tools_json,executable,hermes_version,
+                       protocol_version,external_session_id,process_pid,status,updated_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'running',?)""",
+                (
+                    self._identity("hermes-acp-session"),
+                    worker_session_id,
+                    task_id,
+                    run_id,
+                    int(stage["id"]),
+                    attempt_id,
+                    assignment_id,
+                    fencing_token,
+                    agent_role,
+                    worktree_id,
+                    int(context["id"]),
+                    json.dumps(normalized_tools, separators=(",", ":")),
+                    executable,
+                    hermes_version,
+                    protocol_version,
+                    external_session_id,
+                    process_pid,
+                    current,
+                ),
+            )
+            hermes_session_id = int(cursor.lastrowid)
+            self.db.execute(
+                """UPDATE attempts SET status='running',version=version+1,updated_at=?
+                    WHERE id=? AND status='claimed'""",
+                (current, attempt_id),
+            )
+            self._event(
+                "hermes.session.bound",
+                "hermes_acp_session",
+                hermes_session_id,
+                {
+                    "task_id": task_id,
+                    "run_id": run_id,
+                    "stage_id": stage_key,
+                    "attempt_id": attempt_id,
+                    "assignment_id": assignment_id,
+                    "fencing_token": fencing_token,
+                    "worktree_id": worktree_id,
+                    "context_digest": context_digest,
+                    "external_session_id": external_session_id,
+                    "hermes_version": hermes_version,
+                    "protocol_version": protocol_version,
+                    "allowed_tools": list(normalized_tools),
+                },
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return hermes_session_id
+
+    def hermes_acp_session(self, external_session_id: str):
+        row = self.db.execute(
+            "SELECT * FROM hermes_acp_sessions WHERE external_session_id=?",
+            (external_session_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown Hermes ACP session: {external_session_id}")
+        return row
+
+    def update_hermes_acp_session(
+        self,
+        external_session_id: str,
+        *,
+        status: str,
+        process_pid: int | None = None,
+    ) -> None:
+        if status not in {"running", "suspended", "succeeded", "failed", "cancelled"}:
+            raise ValueError(f"Unknown Hermes ACP status: {status}")
+        with self.db:
+            row = self.hermes_acp_session(external_session_id)
+            source = str(row["status"])
+            allowed = {
+                "running": {"running", "suspended", "succeeded", "failed", "cancelled"},
+                "suspended": {"suspended", "running", "failed", "cancelled"},
+                "succeeded": {"succeeded"},
+                "failed": {"failed"},
+                "cancelled": {"cancelled"},
+            }
+            if status not in allowed[source]:
+                raise ValueError(f"Invalid Hermes ACP transition: {source} -> {status}")
+            updated = self.db.execute(
+                """UPDATE hermes_acp_sessions
+                      SET status=?,process_pid=?,version=version+1,
+                          updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND version=?""",
+                (status, process_pid, int(row["id"]), int(row["version"])),
+            )
+            if updated.rowcount != 1:
+                raise ValueError("Hermes ACP session changed concurrently")
+            if status in {"succeeded", "failed", "cancelled"}:
+                attempt = self.db.execute(
+                    "SELECT status FROM attempts WHERE id=?", (int(row["attempt_id"]),)
+                ).fetchone()
+                if attempt and str(attempt["status"]) not in {
+                    "succeeded",
+                    "failed",
+                    "cancelled",
+                }:
+                    ensure_transition("attempt", str(attempt["status"]), status)
+                    self.db.execute(
+                        """UPDATE attempts
+                              SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                            WHERE id=?""",
+                        (status, int(row["attempt_id"])),
+                    )
+            self._event(
+                f"hermes.session.{status}",
+                "hermes_acp_session",
+                int(row["id"]),
+                {"external_session_id": external_session_id},
+            )
 
     def create_runtime_session(
         self,

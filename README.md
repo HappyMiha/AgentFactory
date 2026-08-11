@@ -18,6 +18,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Lifecycle-aware runtimes.** Direct CLI and Hermes ACP execution share durable start/resume/heartbeat/cancel/event/finalize semantics without transferring Control Plane authority.
 - **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path with durable ownership, reconciliation, and retention controls.
 - **Immutable dispatch context.** Every Worker Runtime launch is bound to a content-addressed, size-bounded package with explicit included, excluded, and superseded sources.
+- **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.

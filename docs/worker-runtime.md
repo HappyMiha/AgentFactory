@@ -12,7 +12,7 @@ Heartbeats, suspension/resume, cancellation, and terminal finalization use the e
 
 `DirectCLIProviderDriver` adapts an existing synchronous provider to the lifecycle. Because a writable direct CLI can mutate before `start` returns, a mutable direct launch crosses the durable fallback boundary immediately.
 
-`HermesACPWorkerRuntime` uses the same Control Plane contract over an injected ACP driver. Mutable ACP launches require a permission-bridge identity, and the fallback boundary is crossed when a mutable structured event is collected. The real ACP stdio process, protocol mapping, worktree/context binding, executable qualification, and restart reattachment belong to AF-045.
+`HermesACPWorkerRuntime` uses the same Control Plane contract over an injected ACP driver. Mutable ACP launches require a permission-bridge identity, and the fallback boundary is crossed when a mutable structured event is collected. The concrete [AF-045 Hermes ACP process driver](hermes-acp-runtime.md) now supplies protocol mapping, worktree/context binding, executable qualification, stable identity, restart reattachment, and process-tree cancellation.
 
 Hermes one-shot transport is accepted only for qualification or read-only launches. A mutable one-shot request is rejected before a session is created because one-shot mode bypasses interactive approval handling.
 

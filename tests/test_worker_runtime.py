@@ -49,7 +49,10 @@ class ScriptedACPDriver(RuntimeDriver):
         self.resumes = 0
         self.heartbeats = 0
 
-    def start(self, launch: RuntimeLaunch) -> str:
+    def start(
+        self, launch: RuntimeLaunch, *, control_session_id: int | None = None
+    ) -> str:
+        del control_session_id
         external_id = f"acp-session-{len(self.sessions) + 1}"
         self.sessions[external_id] = {
             "status": "succeeded",

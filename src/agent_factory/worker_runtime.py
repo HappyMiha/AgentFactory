@@ -6,7 +6,7 @@ import hashlib
 import json
 import uuid
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from .models import Agent, ExecutionApproval, WorkItem
@@ -19,6 +19,15 @@ class FallbackForbiddenError(PermissionError):
 
 
 @dataclass(frozen=True)
+class RuntimeBinding:
+    run_id: int
+    stage_id: str
+    attempt_id: int
+    worktree_id: int
+    allowed_tools: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class RuntimeLaunch:
     assignment_id: int
     fencing_token: int
@@ -26,6 +35,7 @@ class RuntimeLaunch:
     item: WorkItem
     context: dict[str, Any]
     context_digest: str
+    binding: RuntimeBinding | None = None
     approval: ExecutionApproval | None = None
     mutable: bool = False
     permission_bridge_id: str | None = None
@@ -46,6 +56,7 @@ class RuntimeLaunch:
             "permission_bridge_id": self.permission_bridge_id,
             "context_sha256": hashlib.sha256(context_json.encode("utf-8")).hexdigest(),
             "context_package_digest": self.context_digest,
+            "binding": asdict(self.binding) if self.binding else None,
         }
 
 
@@ -96,7 +107,9 @@ class RuntimeDriver(ABC):
     mutation_boundary_on_start: bool = False
 
     @abstractmethod
-    def start(self, launch: RuntimeLaunch) -> str: ...
+    def start(
+        self, launch: RuntimeLaunch, *, control_session_id: int | None = None
+    ) -> str: ...
 
     @abstractmethod
     def resume(self, external_session_id: str) -> None: ...
@@ -123,7 +136,10 @@ class DirectCLIProviderDriver(RuntimeDriver):
         self.provider = provider
         self._sessions: dict[str, dict[str, Any]] = {}
 
-    def start(self, launch: RuntimeLaunch) -> str:
+    def start(
+        self, launch: RuntimeLaunch, *, control_session_id: int | None = None
+    ) -> str:
+        del control_session_id
         external_id = f"direct:{uuid.uuid4().hex}"
         result = self.provider.execute(
             launch.agent,
@@ -263,7 +279,9 @@ class WorkerRuntime(ABC):
             fencing_token=launch.fencing_token,
         )
         try:
-            external_id = self.driver.start(launch)
+            external_id = self.driver.start(
+                launch, control_session_id=session_id
+            )
             self.storage.start_runtime_session(session_id, external_id)
             if launch.mutable and self.driver.mutation_boundary_on_start:
                 self.storage.append_runtime_event(
@@ -389,6 +407,7 @@ class WorkerRuntime(ABC):
         if session.status not in {"succeeded", "failed", "cancelled"}:
             self.collect_events(session_id)
             status = self.driver.finalize(session.external_session_id)
+            self.collect_events(session_id)
             self.storage.finalize_runtime_session(
                 session_id,
                 status=status,

@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-055 implementation. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-045 implementation. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **19 of 57** backlog tasks: AF-001–AF-007, AF-017, AF-036–AF-044, AF-048, and AF-055.
+- Completed **20 of 57** backlog tasks: AF-001–AF-007, AF-017, AF-036–AF-045, AF-048, and AF-055.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **148 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The coding-worker vertical slice is not released: AF-045–AF-047, AF-049, AF-051–AF-053, AF-056, and AF-057 still contain required work.
+- Verified **154 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The coding-worker vertical slice is not released: AF-046, AF-047, AF-049, AF-051–AF-053, AF-056, and AF-057 still contain required work.
 
 ## Implemented backlog items and implementation commits
 
@@ -24,6 +24,7 @@ These notes describe the implemented, tested repository state through the AF-055
 | AF-006 | Version-pinned durable workflow stages, resume and mutation reservations | 2026-08-11 10:29 CEST | [`b466073`](https://github.com/HappyMiha/AgentFactory/commit/b466073950eac3d99402a00acd21a28ebfdad9e1) |
 | AF-007 | Dependency-ready claims, TTL/fenced leases and hierarchical conflict domains | 2026-08-11 21:59 CEST | This AF-007 task commit |
 | AF-044 | Shared lifecycle-aware Direct CLI/Hermes ACP runtime contract | 2026-08-11 22:27 CEST | This AF-044 task commit |
+| AF-045 | Version-qualified Hermes ACP stdio lifecycle, durable scope and restart identity | 2026-08-11 23:05 CEST | This AF-045 task commit |
 | AF-048 | Fenced deterministic Git worktrees, reconciliation, retention and branch-preserving cleanup | 2026-08-11 22:35 CEST | This AF-048 task commit |
 | AF-055 | Immutable bounded execution context packages and runtime digest enforcement | 2026-08-11 22:46 CEST | This AF-055 task commit |
 
@@ -50,7 +51,6 @@ Commit times above are author timestamps from Git in the repository timezone (`+
 
 ## What is explicitly not in this snapshot
 
-- AF-045 Hermes ACP lifecycle adapter (the shared AF-044 runtime boundary is implemented).
 - AF-049 writable Codex implementation worker; AF-050 Claude alternative.
 - AF-052 shell-free deterministic project validators and AF-020 complete independent criterion verdicts.
 - AF-053 bounded coding delivery/repair loop.
@@ -68,4 +68,4 @@ Commit times above are author timestamps from Git in the repository timezone (`+
 
 ## Next release target
 
-M1, AF-017, AF-044, AF-048, and AF-055 are complete. AF-045 is now unblocked and is the next critical-path slice, followed by AF-046/AF-049 once their explicit prerequisites are complete.
+M1, AF-017, AF-044, AF-045, AF-048, and AF-055 are complete. AF-046 is the next critical-path slice; AF-049 is also independently startable now that its runtime and worktree prerequisites are complete.

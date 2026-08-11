@@ -40,10 +40,10 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 The implementation order is:
 
 ```text
-DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044 + AF-048 + AF-055
+DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044 + AF-045 + AF-048 + AF-055
 
-NOW   AF-045
-      -> AF-046 + AF-049
+NOW   AF-046
+      -> AF-049
       -> AF-052 -> AF-020 + AF-051
       -> AF-008 -> AF-053 -> AF-056 -> AF-057
 
@@ -82,9 +82,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 11 August 2026, 19 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007`, `AF-017`, `AF-036` through `AF-044`, `AF-048`, and `AF-055`. Seventeen tasks have partial precursors and 21 are not started. Partial work never satisfies a dependency.
+As of 11 August 2026, 20 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007`, `AF-017`, `AF-036` through `AF-045`, `AF-048`, and `AF-055`. Seventeen tasks have partial precursors and 20 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next critical-path task is `AF-045`; the presence of Hermes on the host does not advance it until the concrete ACP adapter exists in AgentFactory.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next critical-path task is `AF-046`, followed by the first writable implementation worker in `AF-049`.
 
 ## R0.2 — Local Control Center MVP
 
@@ -130,7 +130,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
-**Progress:** AF-001 through AF-007, AF-017, AF-044, AF-048, and AF-055 are implemented and tested. AF-045 is the next critical-path task; AF-046, AF-056, and AF-057 remain downstream of explicit prerequisites.
+**Progress:** AF-001 through AF-007, AF-017, AF-044, AF-045, AF-048, and AF-055 are implemented and tested. AF-046 is the next critical-path task; AF-049 is now independently startable, while AF-056 and AF-057 remain downstream of explicit prerequisites.
 
 ## R2 — Mission Factory
 
