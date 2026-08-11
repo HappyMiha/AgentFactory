@@ -60,6 +60,19 @@ class CandidateChangeService:
     def create(self, codex_result_id: int, *, stable_task_id: str) -> CandidateChange:
         if not STABLE_TASK.fullmatch(stable_task_id):
             raise ValueError("Candidate commit requires a stable AF-NNN task ID")
+        existing = self.storage.db.execute(
+            "SELECT * FROM candidate_change_artifacts WHERE codex_result_id=?",
+            (codex_result_id,),
+        ).fetchone()
+        if existing:
+            if existing["stable_task_id"] != stable_task_id:
+                raise ValueError("Codex result is already bound to another stable task ID")
+            return CandidateChange(
+                int(existing["id"]), str(existing["base_sha"]), str(existing["head_sha"]),
+                str(existing["branch"]), str(existing["diff_digest"]),
+                tuple(json.loads(existing["changed_files_json"])),
+                str(existing["commit_message"]),
+            )
         result = self.storage.db.execute(
             "SELECT * FROM codex_worker_results WHERE id=?", (codex_result_id,)
         ).fetchone()
@@ -125,6 +138,12 @@ class CandidateChangeService:
         ).fetchone()
         if not candidate:
             raise KeyError(f"Unknown candidate: {candidate_id}")
+        existing = self.storage.db.execute(
+            "SELECT github_plan_id,github_gate_id FROM candidate_pr_plans WHERE candidate_id=?",
+            (candidate_id,),
+        ).fetchone()
+        if existing:
+            return int(existing["github_plan_id"]), int(existing["github_gate_id"])
         operation = {
             "action": "create_pull_request",
             "idempotency_key": f"candidate:{candidate_id}:pr",

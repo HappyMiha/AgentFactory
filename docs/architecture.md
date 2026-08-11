@@ -188,6 +188,8 @@ The [independent evaluation service](independent-evaluation.md) reconstructs the
 
 The [persistent engineering loop](persistent-engineering-loop.md) binds one objective and worker policy to a durable run, stores every plan/diff/validator/critic/budget iteration immutably, pauses at deterministic iteration/time/token/cost/tool-failure caps, and converts a repeated identical failure into the configured replan or replacement action. Database constraints restrict terminal state to evidence-backed acceptance, explicit failure, or attributable human escalation.
 
+The [coding delivery loop](coding-delivery-loop.md) binds the persisted AF-049 implementation lineage to exact AF-052 validation, AF-051 candidate creation, AF-020 independent review, an AF-008 repair record, a separate Founder workflow gate, and finally an AF-051 pending GitHub PR gate. Completed checkpoints are replayed from immutable state, so a supported retry does not rerun the provider, reprovision the worktree, recommit the candidate, rereview evidence, or duplicate the external-mutation plan.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

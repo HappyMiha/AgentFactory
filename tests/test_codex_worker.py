@@ -10,6 +10,7 @@ from pathlib import Path
 
 from agent_factory.codex_worker import CODEX_EXEC_ARGS, CodexCLIProcessDriver
 from agent_factory.candidate_changes import CandidateChangeService
+from agent_factory.coding_delivery import CodingDeliveryService
 from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.evaluation import EvaluationService
 from agent_factory.live_stages import LiveStageExecution
@@ -418,6 +419,130 @@ class CodexImplementationWorkerTests(unittest.TestCase):
             )
         self.assertEqual(calls, [])
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM evaluation_runs").fetchone()[0], 0)
+
+    def delivery_service(self):
+        candidates = CandidateChangeService(
+            self.storage, self.workspace, git_executable=self.git
+        )
+        return CodingDeliveryService(
+            self.storage, candidates, EvaluationService(self.storage)
+        )
+
+    def independent_reviewer(self):
+        return Agent(
+            "delivery-reviewer", "Delivery reviewer", "Reviewer", True,
+            "openai", "Review", model="gpt-delivery-reviewer",
+        )
+
+    def test_end_to_end_delivery_is_replay_safe_and_stops_at_gated_pr_plan(self):
+        worker_result, _ = self.validated_candidate()
+        service = self.delivery_service()
+        delivery = service.start(
+            worker_result["id"], logical_attempt_key="AF-053:logical:success",
+            stable_task_id="AF-053", max_repair_iterations=3,
+        )
+        awaiting = service.process(
+            delivery.id, worker_result["id"], reviewer=self.independent_reviewer(),
+            rubric_id="coding-delivery", rubric_version="1.0.0",
+            review=self.review_payload,
+        )
+        self.assertEqual(awaiting.status, "awaiting_founder")
+        self.assertIsNotNone(awaiting.candidate_id)
+        self.assertIsNotNone(awaiting.evaluation_id)
+        counts = {
+            table: self.storage.db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in (
+                "codex_worker_results", "worktrees", "candidate_change_artifacts",
+                "evaluation_runs", "approval_gates",
+            )
+        }
+        replay = service.process(
+            delivery.id, worker_result["id"], reviewer=self.independent_reviewer(),
+            rubric_id="coding-delivery", rubric_version="1.0.0",
+            review=lambda request: self.fail("reviewer called during checkpoint replay"),
+        )
+        self.assertEqual(replay, awaiting)
+        self.assertEqual(counts, {
+            table: self.storage.db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            for table in counts
+        })
+
+        ready = service.founder_decide(
+            delivery.id, "approved", actor="Founder", note="Evidence accepted",
+            repo="example/repository", base_branch="main", title="AF-053 delivery",
+            body="Founder-approved candidate",
+        )
+        self.assertEqual(ready.status, "pr_ready")
+        self.assertIsNotNone(ready.github_plan_id)
+        self.assertIsNotNone(ready.github_gate_id)
+        plan = json.loads(self.storage.github_plan(ready.github_plan_id)["plan_json"])
+        self.assertEqual(plan["operations"][0]["action"], "create_pull_request")
+        self.assertNotIn("merge", json.dumps(plan).casefold())
+        gate = self.storage.db.execute(
+            "SELECT status FROM github_mutation_gates WHERE id=?", (ready.github_gate_id,)
+        ).fetchone()
+        self.assertEqual(gate["status"], "pending")
+        self.assertEqual(
+            self.storage.db.execute("SELECT COUNT(*) FROM github_mutation_reports").fetchone()[0], 0
+        )
+        replay_ready = service.founder_decide(
+            delivery.id, "approved", actor="Founder", note="Evidence accepted",
+            repo="example/repository", base_branch="main", title="AF-053 delivery",
+            body="Founder-approved candidate",
+        )
+        self.assertEqual(replay_ready, ready)
+        self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM candidate_pr_plans").fetchone()[0], 1)
+
+    def test_validation_failure_returns_to_same_or_policy_replacement_worker(self):
+        worker_result, _ = self.validated_candidate(failing=True)
+        service = self.delivery_service()
+        delivery = service.start(
+            worker_result["id"], logical_attempt_key="AF-053:logical:repair",
+            stable_task_id="AF-053", max_repair_iterations=2,
+        )
+        calls = []
+        repair = service.process(
+            delivery.id, worker_result["id"], reviewer=self.independent_reviewer(),
+            rubric_id="coding-delivery", rubric_version="1.0.0",
+            review=lambda request: calls.append(request),
+        )
+        self.assertEqual(repair.status, "active")
+        self.assertEqual(repair.repair_iterations, 1)
+        self.assertEqual(repair.current_worker_id, "coding-worker-codex")
+        self.assertEqual(calls, [])
+
+        replacement_result, _ = self.validated_candidate(failing=True)
+        replacement_delivery = service.start(
+            replacement_result["id"], logical_attempt_key="AF-053:logical:replacement",
+            stable_task_id="AF-053", max_repair_iterations=2,
+        )
+        replacement = service.process(
+            replacement_delivery.id, replacement_result["id"],
+            reviewer=self.independent_reviewer(), rubric_id="coding-delivery",
+            rubric_version="1.0.0", review=lambda request: calls.append(request),
+            replacement_selector=lambda worker, failure: "compatible-codex-replacement",
+        )
+        self.assertEqual(replacement.status, "active")
+        self.assertEqual(replacement.current_worker_id, "compatible-codex-replacement")
+
+    def test_repair_iteration_cap_fails_deterministically(self):
+        worker_result, _ = self.validated_candidate(failing=True)
+        service = self.delivery_service()
+        delivery = service.start(
+            worker_result["id"], logical_attempt_key="AF-053:logical:exhausted",
+            stable_task_id="AF-053", max_repair_iterations=1,
+        )
+        exhausted = service.process(
+            delivery.id, worker_result["id"], reviewer=self.independent_reviewer(),
+            rubric_id="coding-delivery", rubric_version="1.0.0",
+            review=self.review_payload,
+        )
+        self.assertEqual(exhausted.status, "failed")
+        self.assertEqual(exhausted.repair_iterations, 1)
+        row = self.storage.db.execute(
+            "SELECT terminal_reason FROM coding_delivery_runs WHERE id=?", (delivery.id,)
+        ).fetchone()
+        self.assertEqual(row["terminal_reason"], "maximum repair iterations reached")
 
 
 if __name__ == "__main__":

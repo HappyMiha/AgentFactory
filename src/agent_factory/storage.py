@@ -1190,6 +1190,69 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER engineering_limit_revisions_no_delete BEFORE DELETE ON engineering_loop_limit_revisions
         BEGIN SELECT RAISE(ABORT, 'engineering limit revision is immutable'); END;
     """),
+    (26, """
+        CREATE TABLE coding_delivery_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            logical_attempt_key TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stable_task_id TEXT NOT NULL,
+            engineering_loop_id INTEGER NOT NULL UNIQUE REFERENCES engineering_loops(id),
+            initial_worker_id TEXT NOT NULL,
+            current_worker_id TEXT NOT NULL,
+            max_repair_iterations INTEGER NOT NULL CHECK(max_repair_iterations > 0),
+            repair_iterations INTEGER NOT NULL DEFAULT 0 CHECK(repair_iterations >= 0),
+            last_failure_signature TEXT,
+            status TEXT NOT NULL DEFAULT 'active' CHECK(status IN (
+                'active','awaiting_founder','pr_ready','rejected','failed'
+            )),
+            candidate_id INTEGER REFERENCES candidate_change_artifacts(id),
+            evaluation_id INTEGER REFERENCES evaluation_runs(id),
+            founder_gate_id INTEGER REFERENCES approval_gates(id),
+            github_plan_id INTEGER REFERENCES github_mutation_plans(id),
+            github_gate_id INTEGER REFERENCES github_mutation_gates(id),
+            terminal_reason TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE coding_delivery_iterations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            delivery_id INTEGER NOT NULL REFERENCES coding_delivery_runs(id),
+            iteration_number INTEGER NOT NULL CHECK(iteration_number > 0),
+            codex_result_id INTEGER NOT NULL UNIQUE REFERENCES codex_worker_results(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            worktree_id INTEGER NOT NULL REFERENCES worktrees(id),
+            worker_id TEXT NOT NULL,
+            validator_snapshot_json TEXT NOT NULL,
+            candidate_id INTEGER REFERENCES candidate_change_artifacts(id),
+            evaluation_id INTEGER REFERENCES evaluation_runs(id),
+            outcome TEXT NOT NULL CHECK(outcome IN (
+                'validation_failed','review_rejected','awaiting_founder','repair_exhausted'
+            )),
+            selected_repair_worker_id TEXT,
+            failure_signature TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(delivery_id,iteration_number)
+        );
+        CREATE INDEX idx_coding_delivery_task ON coding_delivery_runs(task_id,status,id);
+        CREATE TRIGGER coding_delivery_scope_immutable
+        BEFORE UPDATE OF logical_attempt_key,task_id,run_id,stable_task_id,
+                         engineering_loop_id,initial_worker_id,max_repair_iterations
+        ON coding_delivery_runs
+        BEGIN SELECT RAISE(ABORT, 'coding delivery scope is immutable'); END;
+        CREATE TRIGGER coding_delivery_terminal_no_update
+        BEFORE UPDATE ON coding_delivery_runs
+        WHEN OLD.status IN ('pr_ready','rejected','failed')
+        BEGIN SELECT RAISE(ABORT, 'terminal coding delivery is immutable'); END;
+        CREATE TRIGGER coding_delivery_runs_no_delete BEFORE DELETE ON coding_delivery_runs
+        BEGIN SELECT RAISE(ABORT, 'coding delivery history is immutable'); END;
+        CREATE TRIGGER coding_delivery_iterations_no_update BEFORE UPDATE ON coding_delivery_iterations
+        BEGIN SELECT RAISE(ABORT, 'coding delivery iteration is immutable'); END;
+        CREATE TRIGGER coding_delivery_iterations_no_delete BEFORE DELETE ON coding_delivery_iterations
+        BEGIN SELECT RAISE(ABORT, 'coding delivery iteration is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

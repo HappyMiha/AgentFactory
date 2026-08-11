@@ -39,6 +39,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-051 immutable validated candidate commits with stable task IDs, base-branch preservation, failed-validation denial, and separately gated pull-request plans.
 - AF-020 evidence-first independent evaluation with producer-model exclusion, versioned rubrics, immutable criterion verdicts, confidence, concerns, dissent, and primary-evidence closure.
 - AF-008 durable bounded engineering loops with complete iteration snapshots, deterministic iteration/time/token/cost/tool-failure caps, repeated-failure replan or replacement, evidence-only acceptance, and human-approved limit increases.
+- AF-053 replay-safe coding delivery integration from persisted implementation through deterministic validation, independent review, bounded repair, separate Founder decision, and approval-gated PR planning.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

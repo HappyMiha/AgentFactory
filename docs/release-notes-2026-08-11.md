@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-008 persistent-engineering-loop slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-053 end-to-end coding-delivery slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **26 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055.
+- Completed **27 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, and AF-055.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **175 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The coding-worker vertical slice is not released: AF-047, AF-050, AF-053, AF-056, and AF-057 still contain required work.
+- Verified **178 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The coding-worker vertical slice is implemented but not released: AF-047, AF-050, AF-056, and AF-057 still contain qualification, optional-worker, telemetry, and recovery work.
 
 ## Implemented backlog items and implementation commits
 
@@ -39,6 +39,7 @@ These notes describe the implemented, tested repository state through the AF-008
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
 | AF-051 | Validated immutable candidate commit and separately gated PR plan | 2026-08-11 23:43 CEST | This AF-051 task commit |
 | AF-052 | Five-category shell-free validator packs and criterion-mapped bounded evidence | 2026-08-11 23:37 CEST | This AF-052 task commit |
+| AF-053 | Replay-safe end-to-end coding delivery with separate Founder and PR gates | 2026-08-12 00:07 CEST | This AF-053 task commit |
 
 ### Local Control Center MVP
 
@@ -79,10 +80,13 @@ Independent evaluation now reconstructs and verifies the exact five-result AF-05
 
 The engineering loop now persists the objective, structured plan, diff digest, validator and critic results, per-iteration usage, cumulative budget, failure signature, and outcome for every attempt. Iteration, time, token, cost, and tool-failure caps deterministically pause work; two identical consecutive failures force the configured replan or worker-replacement action. Evidence-backed acceptance, explicit failed iteration, and attributable human escalation are the only terminal paths, enforced by SQLite triggers. Raising a paused loop's limits requires an immutable human approval record and cannot reduce any cap or undercut already consumed budget.
 
+## AF-053 implementation detail
+
+The first coding-delivery integration now binds an immutable Codex result back to its claimed assignment and managed worktree, consumes its exact validator snapshot, creates one replay-safe candidate commit, runs one independent evidence review, and records success or repair in the bounded engineering loop. Validation failure returns to the same worker unless a policy selector supplies a compatible replacement, and the configured repair cap fails exhausted delivery deterministically. Accepted review evidence opens a separate Founder gate; only Founder approval creates a PR-ready dry-run plan with another pending GitHub gate. Supported replay creates no additional worker result, worktree, commit, review, Founder gate, PR plan, provider call, or live GitHub mutation.
+
 ## What is explicitly not in this snapshot
 
 - AF-050 optional Claude writable-worker alternative.
-- AF-053 bounded coding delivery/repair loop.
 - AF-056 enforced budgets/end-to-end telemetry and AF-057 local crash recovery.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
 
@@ -97,4 +101,4 @@ The engineering loop now persists the objective, structured plan, diff digest, v
 
 ## Next release target
 
-M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055 are complete. AF-053 is the next critical-path slice for end-to-end coding delivery.
+M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051 through AF-053, and AF-055 are complete. AF-056 is the next critical-path slice for end-to-end execution telemetry and enforced budgets.
