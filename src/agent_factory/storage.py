@@ -800,6 +800,44 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         WHEN OLD.result_json IS NOT NULL
         BEGIN SELECT RAISE(ABORT, 'worker session result is immutable'); END;
     """),
+    (17, """
+        ALTER TABLE worktrees ADD COLUMN task_id INTEGER REFERENCES work_items(id);
+        ALTER TABLE worktrees ADD COLUMN lease_id INTEGER REFERENCES leases(id);
+        ALTER TABLE worktrees ADD COLUMN fencing_token INTEGER;
+        ALTER TABLE worktrees ADD COLUMN owner TEXT;
+        ALTER TABLE worktrees ADD COLUMN retention_until TEXT;
+        ALTER TABLE worktrees ADD COLUMN reconciled_at TEXT;
+
+        UPDATE worktrees
+           SET task_id=(SELECT task_id FROM assignments WHERE id=worktrees.assignment_id),
+               owner=(SELECT agent_id FROM assignments WHERE id=worktrees.assignment_id),
+               lease_id=(SELECT id FROM leases
+                          WHERE assignment_id=worktrees.assignment_id
+                          ORDER BY fencing_token DESC LIMIT 1),
+               fencing_token=(SELECT fencing_token FROM leases
+                               WHERE assignment_id=worktrees.assignment_id
+                               ORDER BY fencing_token DESC LIMIT 1);
+
+        CREATE UNIQUE INDEX idx_worktrees_active_assignment ON worktrees(assignment_id)
+            WHERE status<>'cleaned';
+        CREATE UNIQUE INDEX idx_worktrees_repository_branch
+            ON worktrees(repository,branch);
+        CREATE INDEX idx_worktrees_reconcile
+            ON worktrees(repository,status,retention_until);
+        CREATE TRIGGER worktree_authority_required
+        BEFORE INSERT ON worktrees
+        WHEN NEW.task_id IS NULL OR NEW.lease_id IS NULL
+          OR NEW.fencing_token IS NULL OR NEW.owner IS NULL
+        BEGIN SELECT RAISE(ABORT, 'worktree authority metadata is required'); END;
+        CREATE TRIGGER worktree_scope_immutable
+        BEFORE UPDATE OF assignment_id,attempt_id,repository,base_sha,branch,path,
+                         task_id,lease_id,fencing_token,owner
+        ON worktrees
+        BEGIN SELECT RAISE(ABORT, 'worktree authority metadata is immutable'); END;
+        CREATE TRIGGER worktrees_no_delete
+        BEFORE DELETE ON worktrees
+        BEGIN SELECT RAISE(ABORT, 'worktree history is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -2698,6 +2736,153 @@ class SQLiteStorage:
                     "resource": resource,
                 },
             )
+
+    def create_managed_worktree(
+        self,
+        *,
+        assignment_id: int,
+        fencing_token: int,
+        repository: str,
+        base_sha: str,
+        branch: str,
+        path: str,
+        attempt_id: int | None = None,
+        now: datetime | None = None,
+    ) -> int:
+        current = _timestamp(_utc(now))
+        self._begin_immediate()
+        try:
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            existing = self.db.execute(
+                """SELECT * FROM worktrees
+                    WHERE assignment_id=? AND status<>'cleaned' ORDER BY id DESC LIMIT 1""",
+                (assignment_id,),
+            ).fetchone()
+            scope = (repository, base_sha, branch, path, attempt_id)
+            if existing:
+                stored = (
+                    str(existing["repository"]),
+                    str(existing["base_sha"]),
+                    str(existing["branch"]),
+                    str(existing["path"]),
+                    int(existing["attempt_id"])
+                    if existing["attempt_id"] is not None
+                    else None,
+                )
+                if stored != scope:
+                    raise ValueError(
+                        "Assignment already owns a different active worktree"
+                    )
+                self.db.commit()
+                return int(existing["id"])
+            cursor = self.db.execute(
+                """INSERT INTO worktrees(
+                       identity,assignment_id,attempt_id,repository,base_sha,
+                       branch,path,status,task_id,lease_id,fencing_token,owner,
+                       reconciled_at,updated_at
+                   ) VALUES(?,?,?,?,?,?,?,'provisioning',?,?,?,?,?,?)""",
+                (
+                    self._identity("worktree"),
+                    assignment_id,
+                    attempt_id,
+                    repository,
+                    base_sha,
+                    branch,
+                    path,
+                    int(lease["task_id"]),
+                    int(lease["id"]),
+                    fencing_token,
+                    str(lease["agent_id"]),
+                    current,
+                    current,
+                ),
+            )
+            worktree_id = int(cursor.lastrowid)
+            self._event(
+                "worktree.provisioning",
+                "worktree",
+                worktree_id,
+                {
+                    "task_id": int(lease["task_id"]),
+                    "assignment_id": assignment_id,
+                    "lease_id": int(lease["id"]),
+                    "fencing_token": fencing_token,
+                    "owner": str(lease["agent_id"]),
+                    "repository": repository,
+                    "base_sha": base_sha,
+                    "branch": branch,
+                    "path": path,
+                },
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return worktree_id
+
+    def managed_worktree(self, worktree_id: int):
+        row = self.db.execute(
+            "SELECT * FROM worktrees WHERE id=?", (worktree_id,)
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown worktree: {worktree_id}")
+        return row
+
+    def managed_worktrees(self, repository: str | None = None):
+        if repository is None:
+            return self.db.execute("SELECT * FROM worktrees ORDER BY id").fetchall()
+        return self.db.execute(
+            "SELECT * FROM worktrees WHERE repository=? ORDER BY id",
+            (repository,),
+        ).fetchall()
+
+    def transition_managed_worktree(
+        self,
+        worktree_id: int,
+        target: str,
+        *,
+        retention_until: str | None = None,
+        reconciled_at: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> bool:
+        with self.db:
+            row = self.managed_worktree(worktree_id)
+            source = str(row["status"])
+            timestamp = reconciled_at or datetime.now(timezone.utc).isoformat(
+                timespec="microseconds"
+            )
+            if source == target:
+                self.db.execute(
+                    """UPDATE worktrees
+                          SET reconciled_at=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE id=?""",
+                    (timestamp, worktree_id),
+                )
+                return False
+            ensure_transition("worktree", source, target)
+            self.db.execute(
+                """UPDATE worktrees
+                      SET status=?,retention_until=COALESCE(?,retention_until),
+                          reconciled_at=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status=?""",
+                (target, retention_until, timestamp, worktree_id, source),
+            )
+            self._event(
+                f"worktree.{target}",
+                "worktree",
+                worktree_id,
+                {
+                    "task_id": int(row["task_id"]),
+                    "assignment_id": int(row["assignment_id"]),
+                    "previous_state": source,
+                    "resulting_state": target,
+                    **(details or {}),
+                },
+            )
+        return True
 
     def close(self) -> None:
         self.db.close()

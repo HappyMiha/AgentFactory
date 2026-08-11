@@ -12,5 +12,9 @@
     "max_output_chars": 100000,
     "live_provider_approval_required": true,
     "automatic_fallback_in_simulation": true
+  },
+  "worktrees": {
+    "root": ".agent-factory/worktrees",
+    "retention_seconds": 86400
   }
 }

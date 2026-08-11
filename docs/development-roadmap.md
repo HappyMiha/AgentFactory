@@ -18,7 +18,7 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | Durable domain, audit, evidence, policy, adapters, workflow checkpoints, and fenced scheduling | AF-001–AF-007 implemented | M1 is complete; do not reopen completed foundations without regression evidence. |
 | Persistent loops, scheduling leases, immutable context, and typed memory | Partial foundation | AF-006 supplies checkpoints and AF-007 supplies fenced scheduling; AF-008, AF-055, AF-015, and AF-016 remain open. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Missing | Deliver before enabling bounded autonomous mutation. |
-| Hermes runtime, coding worktrees, validators, and repair loop | Missing in AgentFactory | Installed Hermes 0.20.0 has a qualified ACP entry point, but AF-044–AF-049 and AF-051–AF-057 remain product work. |
+| Hermes runtime, coding worktrees, validators, and repair loop | Partial foundation | AF-044 and AF-048 provide runtime/worktree boundaries; AF-045–AF-047, AF-049, and AF-051–AF-057 remain product work. |
 | REST API, PostgreSQL, Redis, Qdrant, multi-tenancy, hosted UI, and clustered deployment | Missing | Deliver only after the local durable coding loop is proven. |
 | Pack SDK, production qualification, soak test, and acceptance mission | Missing | GA work; explicitly downstream of the operating platform. |
 
@@ -40,9 +40,9 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 The implementation order is:
 
 ```text
-DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044
+DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044 + AF-048
 
-NOW   AF-048 + AF-055
+NOW   AF-055
       -> AF-045
       -> AF-046 + AF-049
       -> AF-052 -> AF-020 + AF-051
@@ -83,9 +83,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 11 August 2026, 17 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007`, `AF-017`, `AF-036` through `AF-044`. Seventeen tasks have partial precursors and 23 are not started. Partial work never satisfies a dependency.
+As of 11 August 2026, 18 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007`, `AF-017`, `AF-036` through `AF-044`, and `AF-048`. Seventeen tasks have partial precursors and 22 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next independently startable tasks are `AF-048` and `AF-055`; the presence of Hermes on the host does not advance `AF-045` until its ACP adapter exists in AgentFactory.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next critical-path task is `AF-055`; the presence of Hermes on the host does not advance `AF-045` until its ACP adapter exists in AgentFactory.
 
 ## R0.2 — Local Control Center MVP
 
@@ -131,7 +131,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
-**Progress:** AF-001 through AF-007, AF-017, and AF-044 are implemented and tested. AF-048 and AF-055 are the next independently startable tasks; AF-045, AF-046, AF-056, and AF-057 remain downstream of explicit prerequisites.
+**Progress:** AF-001 through AF-007, AF-017, AF-044, and AF-048 are implemented and tested. AF-055 is the next critical-path task; AF-045, AF-046, AF-056, and AF-057 remain downstream of explicit prerequisites.
 
 ## R2 — Mission Factory
 

@@ -30,6 +30,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-007 dependency readiness scheduler with atomic durable assignments, TTL leases, monotonic fencing tokens, fenced artifact/commit boundaries, and serialized or escalated hierarchical conflict domains.
 - AF-017 fail-closed writable-worker sandbox policies, Bubblewrap and macOS enforcement backends, audited path denials, external process/time/output/network controls, and preserved teardown evidence.
 - AF-044 lifecycle-aware Worker Runtime contract with durable sessions/events, shared Direct CLI and Hermes ACP adapters, structured results, immutable external identities, and a durable post-mutation fallback barrier.
+- AF-048 Control-Plane-owned Git worktree manager with deterministic fenced branches/paths, immutable authority metadata, crash-safe replay, non-destructive reconciliation, and terminal retention cleanup.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

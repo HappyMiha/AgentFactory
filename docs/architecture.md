@@ -170,6 +170,8 @@ Writable worker processes additionally cross the [local sandbox boundary](local-
 
 The [Worker Runtime contract](worker-runtime.md) owns durable start, resume, heartbeat, cancel, event collection, and finalization semantics above provider/transport drivers. Direct CLI and Hermes ACP use the same immutable session-event model. A mutable event closes the fallback boundary permanently; runtime terminal success remains subordinate to Control Plane evidence, review, and acceptance.
 
+The [managed worktree service](managed-worktrees.md) is the only component allowed to create task Git worktrees. It binds deterministic branch/path identity to an approved base SHA and live fenced assignment before mutation, detects dirty/missing/orphaned state without destructive adoption, and permits cleanup only after terminal state plus the persisted retention deadline.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:
