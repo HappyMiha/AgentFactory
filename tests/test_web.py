@@ -112,7 +112,7 @@ class WebHostTests(unittest.TestCase):
                         ) as response:
                             payload = json.load(response)
                         break
-                    except URLError:
+                    except (TimeoutError, URLError):
                         time.sleep(0.05)
                 self.assertIsNotNone(
                     payload,
