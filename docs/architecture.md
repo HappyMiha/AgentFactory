@@ -172,6 +172,8 @@ The [Worker Runtime contract](worker-runtime.md) owns durable start, resume, hea
 
 The [managed worktree service](managed-worktrees.md) is the only component allowed to create task Git worktrees. It binds deterministic branch/path identity to an approved base SHA and live fenced assignment before mutation, detects dirty/missing/orphaned state without destructive adoption, and permits cleanup only after terminal state plus the persisted retention deadline.
 
+The [Execution Context Package builder](execution-context-packages.md) snapshots task scope, acceptance criteria, dependencies, approved base, effective policy, requirements, and prior decisions before dispatch. Its canonical digest is bound to the live fenced assignment and runtime session. Source selection and compaction are deterministic and fully manifested; workers cannot widen or replace the package after launch.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

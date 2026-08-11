@@ -17,6 +17,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Fail-closed writable isolation.** Qualified OS sandbox backends restrict future writable workers to one task worktree and declared temporary paths, with network denied and teardown evidence preserved.
 - **Lifecycle-aware runtimes.** Direct CLI and Hermes ACP execution share durable start/resume/heartbeat/cancel/event/finalize semantics without transferring Control Plane authority.
 - **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path with durable ownership, reconciliation, and retention controls.
+- **Immutable dispatch context.** Every Worker Runtime launch is bound to a content-addressed, size-bounded package with explicit included, excluded, and superseded sources.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.
@@ -33,7 +34,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |
 | Human approval gates | Ready | Provider gates are scoped to one provider, agent, and work item; final acceptance is separate. |
 | SQLite state and audit | Ready | Versioned migrations, WAL mode, integrity checks, backup support, and interrupted-attempt reconciliation. |
-| Durable Control Plane core | AF-001–AF-006 complete | Normalized identities, transactional outbox/audit, criterion evidence, deterministic policy, adapter qualification, and resumable stage checkpoints. AF-007 scheduling is next. |
+| Durable Control Plane core | AF-001–AF-007 complete | Normalized identities, transactional outbox/audit, criterion evidence, deterministic policy, adapter qualification, resumable checkpoints, and fenced scheduling. |
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
 | Docker | Simulation-only | The image runs as a non-root user with persistent `/data`; external provider CLIs are not bundled. |
 | HTTP model APIs | Planned | DeepSeek, OpenRouter, Mistral, Groq, and similar services require a future HTTP adapter. |

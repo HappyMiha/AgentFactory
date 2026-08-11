@@ -70,7 +70,7 @@ class NormalizedAdapter:
         self,
         agent: Agent,
         item: WorkItem,
-        context: dict[str, str],
+        context: dict[str, Any],
         approval: ExecutionApproval | None = None,
     ) -> ProviderResult:
         return self.provider.execute(agent, item, context, approval)

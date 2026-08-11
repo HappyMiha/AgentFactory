@@ -127,7 +127,7 @@ class Provider(ABC):
         self,
         agent: Agent,
         item: WorkItem,
-        context: dict[str, str],
+        context: dict[str, Any],
         approval: ExecutionApproval | None = None,
     ) -> ProviderResult: ...
 
@@ -265,7 +265,7 @@ class CLIProvider(Provider):
             or not any(marker in key.upper() for marker in SENSITIVE_ENV_MARKERS)
         } | {"NO_COLOR": "1", "TERM": "dumb"}
 
-    def _prompt(self, agent: Agent, item: WorkItem, context: dict[str, str]) -> str:
+    def _prompt(self, agent: Agent, item: WorkItem, context: dict[str, Any]) -> str:
         protected = ", ".join(self.protected_paths) if self.protected_paths else "none configured"
         rules = [
             "Work only on the requested task and return a reviewable artifact.",
@@ -311,7 +311,7 @@ class CLIProvider(Provider):
         self,
         agent: Agent,
         item: WorkItem,
-        context: dict[str, str],
+        context: dict[str, Any],
         approval: ExecutionApproval | None = None,
     ) -> ProviderResult:
         if error := self._approval_error(agent, item, approval):
@@ -514,7 +514,7 @@ class DeterministicProvider(Provider):
         self,
         agent: Agent,
         item: WorkItem,
-        context: dict[str, str],
+        context: dict[str, Any],
         approval: ExecutionApproval | None = None,
     ) -> ProviderResult:
         verdict = self._verdict(item)

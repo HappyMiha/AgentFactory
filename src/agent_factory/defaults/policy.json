@@ -16,5 +16,9 @@
   "worktrees": {
     "root": ".agent-factory/worktrees",
     "retention_seconds": 86400
+  },
+  "context_packages": {
+    "max_bytes": 50000,
+    "max_tokens": 12500
   }
 }

@@ -24,7 +24,8 @@ class RuntimeLaunch:
     fencing_token: int
     agent: Agent
     item: WorkItem
-    context: dict[str, str]
+    context: dict[str, Any]
+    context_digest: str
     approval: ExecutionApproval | None = None
     mutable: bool = False
     permission_bridge_id: str | None = None
@@ -44,6 +45,7 @@ class RuntimeLaunch:
             "mutable": self.mutable,
             "permission_bridge_id": self.permission_bridge_id,
             "context_sha256": hashlib.sha256(context_json.encode("utf-8")).hexdigest(),
+            "context_package_digest": self.context_digest,
         }
 
 
@@ -238,6 +240,18 @@ class WorkerRuntime(ABC):
             raise PermissionError("Runtime launch task does not match its assignment")
         if str(assignment["agent_id"]) != launch.agent.id:
             raise PermissionError("Runtime launch worker does not own its assignment")
+        context_json = json.dumps(
+            launch.context, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        actual_digest = hashlib.sha256(context_json.encode("utf-8")).hexdigest()
+        if actual_digest != launch.context_digest:
+            raise PermissionError("Runtime context does not match its immutable digest")
+        self.storage.assert_execution_context_scope(
+            launch.context_digest,
+            task_id=launch.item.id,
+            assignment_id=launch.assignment_id,
+            fencing_token=launch.fencing_token,
+        )
 
     def start(self, launch: RuntimeLaunch) -> RuntimeSession:
         self._validate_launch(launch)
@@ -245,6 +259,8 @@ class WorkerRuntime(ABC):
             assignment_id=launch.assignment_id,
             runtime=self.runtime_id,
             request=launch.durable_scope(),
+            context_digest=launch.context_digest,
+            fencing_token=launch.fencing_token,
         )
         try:
             external_id = self.driver.start(launch)

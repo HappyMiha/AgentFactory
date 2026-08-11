@@ -838,6 +838,40 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON worktrees
         BEGIN SELECT RAISE(ABORT, 'worktree history is immutable'); END;
     """),
+    (18, """
+        CREATE TABLE execution_context_packages(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            fencing_token INTEGER NOT NULL CHECK(fencing_token > 0),
+            digest TEXT NOT NULL UNIQUE
+                CHECK(length(digest)=64 AND digest NOT GLOB '*[^0-9a-f]*'),
+            package_json TEXT NOT NULL,
+            byte_count INTEGER NOT NULL CHECK(byte_count > 0),
+            token_count INTEGER NOT NULL CHECK(token_count > 0),
+            compacted INTEGER NOT NULL CHECK(compacted IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_context_packages_scope
+            ON execution_context_packages(task_id,run_id,assignment_id,id);
+        CREATE TRIGGER execution_context_packages_no_update
+        BEFORE UPDATE ON execution_context_packages
+        BEGIN SELECT RAISE(ABORT, 'execution context packages are immutable'); END;
+        CREATE TRIGGER execution_context_packages_no_delete
+        BEFORE DELETE ON execution_context_packages
+        BEGIN SELECT RAISE(ABORT, 'execution context packages are immutable'); END;
+
+        ALTER TABLE worker_sessions ADD COLUMN context_package_id INTEGER
+            REFERENCES execution_context_packages(id);
+        ALTER TABLE worker_sessions ADD COLUMN context_digest TEXT;
+        CREATE INDEX idx_worker_sessions_context
+            ON worker_sessions(context_package_id);
+        CREATE TRIGGER worker_session_context_immutable
+        BEFORE UPDATE OF context_package_id,context_digest ON worker_sessions
+        BEGIN SELECT RAISE(ABORT, 'worker session context is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1946,16 +1980,150 @@ class SQLiteStorage:
             )
         return handoff_id
 
+    def store_execution_context_package(
+        self,
+        *,
+        task_id: int,
+        run_id: int,
+        assignment_id: int,
+        fencing_token: int,
+        digest: str,
+        package_json: str,
+        byte_count: int,
+        token_count: int,
+        compacted: bool,
+        now: datetime | None = None,
+    ) -> int:
+        _sha256_snapshot(digest, "context package digest")
+        try:
+            decoded = json.loads(package_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Context package must be valid JSON") from exc
+        canonical = json.dumps(
+            decoded, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        if canonical != package_json:
+            raise ValueError("Context package JSON must use canonical encoding")
+        encoded = package_json.encode("utf-8")
+        if hashlib.sha256(encoded).hexdigest() != digest:
+            raise ValueError("Context package digest does not match its content")
+        if byte_count != len(encoded) or token_count != (len(encoded) + 3) // 4:
+            raise ValueError("Context package size metadata does not match its content")
+
+        current = _timestamp(_utc(now))
+        self._begin_immediate()
+        try:
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            if int(lease["task_id"]) != task_id:
+                raise PermissionError("Context package task is not owned by its lease")
+            run = self.db.execute(
+                "SELECT task_id FROM workflow_runs WHERE id=?", (run_id,)
+            ).fetchone()
+            if not run:
+                raise KeyError(f"Unknown workflow run: {run_id}")
+            if int(run["task_id"]) != task_id:
+                raise PermissionError("Context package run belongs to another task")
+            existing = self.db.execute(
+                "SELECT * FROM execution_context_packages WHERE digest=?",
+                (digest,),
+            ).fetchone()
+            if existing:
+                expected = (task_id, run_id, assignment_id, fencing_token, package_json)
+                stored = (
+                    int(existing["task_id"]),
+                    int(existing["run_id"]),
+                    int(existing["assignment_id"]),
+                    int(existing["fencing_token"]),
+                    str(existing["package_json"]),
+                )
+                if stored != expected:
+                    raise ValueError("Context digest is already bound to another scope")
+                self.db.commit()
+                return int(existing["id"])
+            cursor = self.db.execute(
+                """INSERT INTO execution_context_packages(
+                       identity,task_id,run_id,assignment_id,fencing_token,digest,
+                       package_json,byte_count,token_count,compacted
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("execution-context"),
+                    task_id,
+                    run_id,
+                    assignment_id,
+                    fencing_token,
+                    digest,
+                    package_json,
+                    byte_count,
+                    token_count,
+                    int(compacted),
+                ),
+            )
+            package_id = int(cursor.lastrowid)
+            self._event(
+                "context.package.created",
+                "execution_context_package",
+                package_id,
+                {
+                    "task_id": task_id,
+                    "run_id": run_id,
+                    "assignment_id": assignment_id,
+                    "fencing_token": fencing_token,
+                    "digest": digest,
+                    "byte_count": byte_count,
+                    "token_count": token_count,
+                    "compacted": bool(compacted),
+                },
+            )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return package_id
+
+    def execution_context_package(self, digest: str):
+        _sha256_snapshot(digest, "context package digest")
+        row = self.db.execute(
+            "SELECT * FROM execution_context_packages WHERE digest=?", (digest,)
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown execution context package: {digest}")
+        return row
+
+    def assert_execution_context_scope(
+        self,
+        digest: str,
+        *,
+        task_id: int,
+        assignment_id: int,
+        fencing_token: int,
+    ) -> int:
+        row = self.execution_context_package(digest)
+        if (
+            int(row["task_id"]) != task_id
+            or int(row["assignment_id"]) != assignment_id
+            or int(row["fencing_token"]) != fencing_token
+        ):
+            raise PermissionError("Execution context package belongs to another dispatch")
+        return int(row["id"])
+
     def create_runtime_session(
         self,
         *,
         assignment_id: int,
         runtime: str,
         request: dict[str, Any],
+        context_digest: str | None = None,
+        fencing_token: int | None = None,
     ) -> int:
         if not runtime.strip():
             raise ValueError("Runtime identity is required")
-        with self.db:
+        if (context_digest is None) != (fencing_token is None):
+            raise ValueError("Context digest and fencing token must be supplied together")
+        self._begin_immediate()
+        try:
             assignment = self.db.execute(
                 "SELECT task_id,status FROM assignments WHERE id=?",
                 (assignment_id,),
@@ -1964,15 +2132,29 @@ class SQLiteStorage:
                 raise KeyError(f"Unknown assignment: {assignment_id}")
             if str(assignment["status"]) != "active":
                 raise ValueError("Runtime session requires an active assignment")
+            context_package_id = None
+            if context_digest is not None and fencing_token is not None:
+                current = _timestamp(_utc())
+                self._expire_scheduler_leases(current)
+                self._assert_fenced_lease(assignment_id, fencing_token, current)
+                context_package_id = self.assert_execution_context_scope(
+                    context_digest,
+                    task_id=int(assignment["task_id"]),
+                    assignment_id=assignment_id,
+                    fencing_token=fencing_token,
+                )
             cursor = self.db.execute(
                 """INSERT INTO worker_sessions(
-                       identity,assignment_id,runtime,status,request_json,updated_at
-                   ) VALUES(?,?,?,'starting',?,CURRENT_TIMESTAMP)""",
+                       identity,assignment_id,runtime,status,request_json,
+                       context_package_id,context_digest,updated_at
+                   ) VALUES(?,?,?,'starting',?,?,?,CURRENT_TIMESTAMP)""",
                 (
                     self._identity("worker-session"),
                     assignment_id,
                     runtime,
                     json.dumps(request, sort_keys=True),
+                    context_package_id,
+                    context_digest,
                 ),
             )
             session_id = int(cursor.lastrowid)
@@ -1984,8 +2166,13 @@ class SQLiteStorage:
                     "task_id": int(assignment["task_id"]),
                     "assignment_id": assignment_id,
                     "runtime": runtime,
+                    "context_digest": context_digest,
                 },
             )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
         return session_id
 
     def runtime_session(self, session_id: int):

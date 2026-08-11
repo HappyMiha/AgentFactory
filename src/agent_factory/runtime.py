@@ -76,7 +76,7 @@ class AgentRuntime:
         self,
         agent: Agent,
         item: WorkItem,
-        context: dict[str, str],
+        context: dict[str, Any],
         approval: ExecutionApproval | None = None,
         *,
         allow_fallback: bool = True,

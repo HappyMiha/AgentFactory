@@ -2,8 +2,10 @@ import json
 import sqlite3
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
+from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.models import Agent, ProviderResult, WorkItem
 from agent_factory.providers import Provider
 from agent_factory.storage import SQLiteStorage
@@ -107,8 +109,17 @@ class WorkerRuntimeContractTests(unittest.TestCase):
                 f"Task {self.counter}",
                 "Exercise runtime lifecycle",
                 self.project_id,
+                inputs={"requirements": ["contract-secret-content"]},
                 permissions=["read_project", *( ["worktree_write"] if mutable else [])],
             )
+        )
+        run_id = self.storage.start_durable_run(
+            project_id=self.project_id,
+            task_id=task_id,
+            workflow_id=f"runtime-{self.counter}",
+            workflow_version="1",
+            definition={"id": f"runtime-{self.counter}"},
+            stages=[{"id": "runtime", "depends_on": []}],
         )
         claim = self.storage.claim_runnable_task(
             task_id,
@@ -124,12 +135,22 @@ class WorkerRuntimeContractTests(unittest.TestCase):
             "runtime-contract",
             "Return structured evidence",
         )
+        package = ContextPackageBuilder(
+            self.storage, Path(self.temporary.name)
+        ).build(
+            task_id=task_id,
+            run_id=run_id,
+            assignment_id=claim.assignment_id,
+            fencing_token=claim.fencing_token,
+            base_sha="a" * 40,
+        )
         launch = RuntimeLaunch(
             claim.assignment_id,
             claim.fencing_token,
             agent,
             self.storage.get_task(task_id),
-            {"scope": "contract-secret-content"},
+            package.payload,
+            package.digest,
             mutable=mutable,
             permission_bridge_id="bridge-1" if mutable else None,
         )
@@ -225,6 +246,7 @@ class WorkerRuntimeContractTests(unittest.TestCase):
             mutable_launch.agent,
             mutable_launch.item,
             mutable_launch.context,
+            mutable_launch.context_digest,
             mutable=True,
         )
         with self.assertRaisesRegex(PermissionError, "permission bridge"):
@@ -246,6 +268,22 @@ class WorkerRuntimeContractTests(unittest.TestCase):
         )
         session = oneshot.start(readonly_launch)
         self.assertEqual(oneshot.finalize(session.id).status, "succeeded")
+
+    def test_runtime_rejects_context_changed_after_package_creation(self):
+        _, launch = self.fixture()
+        tampered_context = {**launch.context, "base_sha": "b" * 40}
+        tampered = replace(launch, context=tampered_context)
+        with self.assertRaisesRegex(PermissionError, "immutable digest"):
+            DirectCLIWorkerRuntime(
+                self.storage, DirectCLIProviderDriver(StructuredProvider())
+            ).start(tampered)
+        self.assertEqual(
+            self.storage.db.execute(
+                "SELECT COUNT(*) FROM worker_sessions WHERE context_digest=?",
+                (launch.context_digest,),
+            ).fetchone()[0],
+            0,
+        )
 
 
 if __name__ == "__main__":
