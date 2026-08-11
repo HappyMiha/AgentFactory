@@ -44,6 +44,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-057 read-only local recovery snapshots, separate provider/Hermes/worktree orphan detection, fencing/replay qualification, and restore verification for artifact digests, audit continuity, and foreign keys.
 - AF-047 immutable ten-check Hermes qualification, failed-runtime quarantine, compatible read-only Codex/Claude fallback, and checkpoint-plus-new-lease mutable transfer authorization.
 - AF-050 separately qualified writable Claude Code worker with a fixed file-only permission profile, immutable result/usage evidence, role-compatible routing, and complete process-tree termination.
+- AF-010 immutable provider-neutral role definitions with typed input/output/evidence contracts, workflow role requirements, version resolution, and incompatible-duty enforcement.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

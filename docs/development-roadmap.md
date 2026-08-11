@@ -8,7 +8,7 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 
 | Capability | Assessment | Roadmap treatment |
 |---|---|---|
-| Configured agents and provider adapters | Implemented alpha | Preserve; normalize the adapter contract and add qualification/lifecycle. |
+| Configured agents, role contracts, and provider adapters | Implemented foundation | AF-005 and AF-010 supply qualification/lifecycle plus provider-neutral typed roles; AF-011 routing is next. |
 | One-use provider and GitHub approvals | Implemented alpha | Generalize into a deterministic policy plane without weakening existing gates. |
 | Static workflow DAG and typed stage evidence | Implemented alpha | Migrate to a versioned durable workflow and criterion-level evidence ledger. |
 | SQLite migrations, audit events, backup, and interrupted-attempt reconciliation | Implemented alpha | Preserve data while adding the full domain model, outbox, checkpoints, and recovery. |
@@ -40,11 +40,11 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 The implementation order is:
 
 ```text
-DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056 + AF-057
+DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-010 + AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056 + AF-057
 
-NOW   AF-054
+NOW   AF-011
 
-THEN  AF-009 + AF-010
+THEN  AF-054
 ```
 
 Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. AgentFactory is the sole worktree authority: managed Hermes sessions receive an AF-048 worktree and do not invoke Hermes worktree creation. Mutable Hermes execution uses ACP stdio and its permission bridge; Hermes one-shot mode is restricted to qualification or read-only work because it bypasses interactive approvals. `AF-049` Codex is the first required writable implementation worker. `AF-050` Claude Code is P1 and supplies a compatible alternative after the first vertical slice is proven. The local independent-verdict subset of AF-020 is P0 because AF-053 cannot satisfy its review requirement without it.
@@ -79,9 +79,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 12 August 2026, 31 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-008`, `AF-017`, `AF-020`, `AF-036` through `AF-053`, and `AF-055` through `AF-057`. Nine tasks have partial precursors and 17 are not started. Partial work never satisfies a dependency.
+As of 12 August 2026, 32 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-008`, `AF-010`, `AF-017`, `AF-020`, `AF-036` through `AF-053`, and `AF-055` through `AF-057`. Eight tasks have partial precursors and 17 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next task is the typed software-engineering role pack in `AF-054`.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). AF-011 routing is the remaining dependency before the AF-054 software-engineering role pack.
 
 ## R0.2 — Local Control Center MVP
 
@@ -127,7 +127,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
-**Progress:** AF-001 through AF-008, AF-017, AF-020, AF-044 through AF-053, and AF-055 through AF-057 are implemented and tested. The qualified restart-safe two-worker single-node path is complete; AF-054 is next.
+**Progress:** AF-001 through AF-008, AF-010, AF-017, AF-020, AF-044 through AF-053, and AF-055 through AF-057 are implemented and tested. AF-011 is next, then AF-054.
 
 ## R2 — Mission Factory
 

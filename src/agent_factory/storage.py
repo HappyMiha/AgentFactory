@@ -1456,6 +1456,56 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER claude_worker_results_no_delete BEFORE DELETE ON claude_worker_results
         BEGIN SELECT RAISE(ABORT, 'Claude worker result is immutable'); END;
     """),
+    (31, """
+        CREATE TABLE role_definitions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            role_id TEXT NOT NULL,
+            version TEXT NOT NULL,
+            contract_json TEXT NOT NULL,
+            contract_digest TEXT NOT NULL UNIQUE CHECK(length(contract_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(role_id,version)
+        );
+        CREATE TRIGGER role_definitions_no_update BEFORE UPDATE ON role_definitions
+        BEGIN SELECT RAISE(ABORT, 'role definition is immutable'); END;
+        CREATE TRIGGER role_definitions_no_delete BEFORE DELETE ON role_definitions
+        BEGIN SELECT RAISE(ABORT, 'role definition is immutable'); END;
+
+        CREATE TABLE workflow_role_requirements(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            workflow_id TEXT NOT NULL,
+            workflow_version TEXT NOT NULL,
+            stage_key TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            role_version TEXT NOT NULL,
+            requirement_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(workflow_id,workflow_version,stage_key),
+            FOREIGN KEY(role_id,role_version) REFERENCES role_definitions(role_id,version)
+        );
+        CREATE TRIGGER workflow_role_requirements_no_update BEFORE UPDATE ON workflow_role_requirements
+        BEGIN SELECT RAISE(ABORT, 'workflow role requirement is immutable'); END;
+        CREATE TRIGGER workflow_role_requirements_no_delete BEFORE DELETE ON workflow_role_requirements
+        BEGIN SELECT RAISE(ABORT, 'workflow role requirement is immutable'); END;
+
+        CREATE TABLE role_decision_assignments(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            decision_key TEXT NOT NULL,
+            agent_id TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            role_version TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(decision_key,agent_id,role_id,role_version),
+            FOREIGN KEY(role_id,role_version) REFERENCES role_definitions(role_id,version)
+        );
+        CREATE TRIGGER role_decision_assignments_no_update BEFORE UPDATE ON role_decision_assignments
+        BEGIN SELECT RAISE(ABORT, 'role decision assignment is immutable'); END;
+        CREATE TRIGGER role_decision_assignments_no_delete BEFORE DELETE ON role_decision_assignments
+        BEGIN SELECT RAISE(ABORT, 'role decision assignment is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
