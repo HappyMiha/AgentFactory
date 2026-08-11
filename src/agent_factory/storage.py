@@ -490,6 +490,78 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'invalid outbox transition'); END;
     """),
+    (11, """
+        ALTER TABLE artifacts ADD COLUMN digest TEXT;
+        ALTER TABLE artifacts ADD COLUMN producer_json TEXT;
+        ALTER TABLE artifacts ADD COLUMN verifier_json TEXT;
+        ALTER TABLE artifacts ADD COLUMN inputs_json TEXT;
+        ALTER TABLE artifacts ADD COLUMN toolchain_json TEXT;
+        ALTER TABLE artifacts ADD COLUMN evidence_kind TEXT NOT NULL DEFAULT 'review';
+
+        ALTER TABLE provider_execution_artifacts ADD COLUMN digest TEXT;
+        ALTER TABLE provider_execution_artifacts ADD COLUMN producer_json TEXT;
+        ALTER TABLE provider_execution_artifacts ADD COLUMN verifier_json TEXT;
+        ALTER TABLE provider_execution_artifacts ADD COLUMN inputs_json TEXT;
+        ALTER TABLE provider_execution_artifacts ADD COLUMN toolchain_json TEXT;
+
+        CREATE TABLE criterion_evidence(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            criterion_index INTEGER NOT NULL CHECK(criterion_index >= 0),
+            criterion_text TEXT NOT NULL,
+            artifact_id INTEGER NOT NULL REFERENCES artifacts(id),
+            evidence_type TEXT NOT NULL
+                CHECK(evidence_type IN ('test_result','diff','review','summary')),
+            primary_evidence INTEGER NOT NULL CHECK(primary_evidence IN (0,1)),
+            artifact_digest TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'proposed'
+                CHECK(status IN ('proposed','accepted','rejected')),
+            verifier_json TEXT NOT NULL DEFAULT '{}',
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            decided_at TEXT,
+            UNIQUE(task_id,criterion_index,artifact_id,evidence_type)
+        );
+        CREATE INDEX idx_criterion_evidence_status
+            ON criterion_evidence(task_id,criterion_index,status,primary_evidence);
+        CREATE TRIGGER artifacts_evidence_envelope_required
+        BEFORE INSERT ON artifacts
+        WHEN NEW.digest IS NULL OR NEW.producer_json IS NULL
+          OR NEW.verifier_json IS NULL OR NEW.inputs_json IS NULL
+          OR NEW.toolchain_json IS NULL
+        BEGIN SELECT RAISE(ABORT, 'artifact evidence envelope is required'); END;
+        CREATE TRIGGER provider_artifacts_evidence_envelope_required
+        BEFORE INSERT ON provider_execution_artifacts
+        WHEN NEW.digest IS NULL OR NEW.producer_json IS NULL
+          OR NEW.verifier_json IS NULL OR NEW.inputs_json IS NULL
+          OR NEW.toolchain_json IS NULL
+        BEGIN SELECT RAISE(ABORT, 'provider artifact evidence envelope is required'); END;
+        CREATE TRIGGER criterion_evidence_identity_immutable
+        BEFORE UPDATE OF identity ON criterion_evidence
+        WHEN OLD.identity IS NOT NEW.identity
+        BEGIN SELECT RAISE(ABORT, 'criterion evidence identity is immutable'); END;
+        CREATE TRIGGER criterion_evidence_accepted_no_update
+        BEFORE UPDATE ON criterion_evidence WHEN OLD.status='accepted'
+        BEGIN SELECT RAISE(ABORT, 'accepted evidence is immutable'); END;
+        CREATE TRIGGER criterion_evidence_accepted_no_delete
+        BEFORE DELETE ON criterion_evidence WHEN OLD.status='accepted'
+        BEGIN SELECT RAISE(ABORT, 'accepted evidence is immutable'); END;
+        CREATE TRIGGER artifacts_accepted_evidence_no_update
+        BEFORE UPDATE ON artifacts
+        WHEN EXISTS(
+            SELECT 1 FROM criterion_evidence e
+             WHERE e.artifact_id=OLD.id AND e.status='accepted'
+        )
+        BEGIN SELECT RAISE(ABORT, 'accepted evidence artifact is immutable'); END;
+        CREATE TRIGGER artifacts_accepted_evidence_no_delete
+        BEFORE DELETE ON artifacts
+        WHEN EXISTS(
+            SELECT 1 FROM criterion_evidence e
+             WHERE e.artifact_id=OLD.id AND e.status='accepted'
+        )
+        BEGIN SELECT RAISE(ABORT, 'accepted evidence artifact is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -518,6 +590,7 @@ class SQLiteStorage:
         self.db.execute("PRAGMA journal_mode=WAL")
         self._migrate()
         self._ensure_audit_chain()
+        self._ensure_evidence_ledger()
 
     def _migrate(self) -> None:
         self.db.execute("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
@@ -734,6 +807,65 @@ class SQLiteStorage:
         if not self.db.in_transaction:
             self.db.execute("BEGIN IMMEDIATE")
 
+    @staticmethod
+    def _content_digest(content: str) -> str:
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+    def _ensure_evidence_ledger(self) -> None:
+        with self.db:
+            for row in self.db.execute(
+                """SELECT id,run_id,stage,agent_id,provider,content
+                     FROM artifacts WHERE digest IS NULL"""
+            ).fetchall():
+                self.db.execute(
+                    """UPDATE artifacts
+                          SET digest=?,producer_json=?,verifier_json=?,inputs_json=?,
+                              toolchain_json=?
+                        WHERE id=?""",
+                    (
+                        self._content_digest(str(row["content"])),
+                        json.dumps(
+                            {"agent_id": row["agent_id"], "provider": row["provider"]},
+                            sort_keys=True,
+                        ),
+                        json.dumps({"status": "unverified"}, sort_keys=True),
+                        json.dumps(
+                            {"run_id": row["run_id"], "stage": row["stage"]},
+                            sort_keys=True,
+                        ),
+                        json.dumps({"provider": row["provider"]}, sort_keys=True),
+                        row["id"],
+                    ),
+                )
+            for row in self.db.execute(
+                """SELECT id,gate_id,attempt_id,provider,agent_id,content,metadata
+                     FROM provider_execution_artifacts WHERE digest IS NULL"""
+            ).fetchall():
+                metadata = json.loads(row["metadata"])
+                self.db.execute(
+                    """UPDATE provider_execution_artifacts
+                          SET digest=?,producer_json=?,verifier_json=?,inputs_json=?,
+                              toolchain_json=?
+                        WHERE id=?""",
+                    (
+                        self._content_digest(str(row["content"])),
+                        json.dumps(
+                            {"agent_id": row["agent_id"], "provider": row["provider"]},
+                            sort_keys=True,
+                        ),
+                        json.dumps({"status": "unverified"}, sort_keys=True),
+                        json.dumps(
+                            {"gate_id": row["gate_id"], "attempt_id": row["attempt_id"]},
+                            sort_keys=True,
+                        ),
+                        json.dumps(
+                            {"provider": row["provider"], "metadata": metadata},
+                            sort_keys=True,
+                        ),
+                        row["id"],
+                    ),
+                )
+
     def _event(self, kind: str, entity: str, entity_id: int | str, payload: dict[str, Any]) -> None:
         self._begin_immediate()
         identity = self._identity("event")
@@ -840,6 +972,37 @@ class SQLiteStorage:
                 failures.append({"event_id": int(row["id"]), "reasons": reasons})
             expected_previous = str(row["record_hash"])
         return {"ok": not failures, "checked": len(rows), "failures": failures}
+
+    def verify_evidence_ledger(self) -> dict[str, Any]:
+        failures: list[dict[str, Any]] = []
+        checked = 0
+        for table in ("artifacts", "provider_execution_artifacts"):
+            for row in self.db.execute(
+                f"SELECT id,content,digest FROM {table} ORDER BY id"
+            ).fetchall():
+                checked += 1
+                expected = self._content_digest(str(row["content"]))
+                if row["digest"] != expected:
+                    failures.append(
+                        {
+                            "artifact": f"{table}:{row['id']}",
+                            "reason": "content digest does not match",
+                        }
+                    )
+        for row in self.db.execute(
+            """SELECT e.id,e.artifact_digest,a.digest
+                 FROM criterion_evidence e
+                 JOIN artifacts a ON a.id=e.artifact_id
+                WHERE e.status='accepted' ORDER BY e.id"""
+        ).fetchall():
+            if row["artifact_digest"] != row["digest"]:
+                failures.append(
+                    {
+                        "criterion_evidence_id": int(row["id"]),
+                        "reason": "accepted evidence digest does not match artifact",
+                    }
+                )
+        return {"ok": not failures, "checked": checked, "failures": failures}
 
     def outbox_messages(self, status: str | None = None):
         if status is None:
@@ -1049,6 +1212,13 @@ class SQLiteStorage:
                 raise KeyError(f"Unknown task: {task_id}")
             source = str(row["status"])
             ensure_transition("work_item", source, target)
+            if target == "approved":
+                evidence = self.criterion_evidence_status(task_id)
+                if not evidence["closed"]:
+                    raise ValueError(
+                        "Work item cannot be approved without accepted primary "
+                        f"evidence for criteria: {evidence['missing_criteria']}"
+                    )
             updated = self.db.execute(
                 """UPDATE work_items
                       SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
@@ -1070,10 +1240,12 @@ class SQLiteStorage:
     def integrity_check(self) -> dict[str, Any]:
         messages = [str(row[0]) for row in self.db.execute("PRAGMA integrity_check")]
         audit = self.verify_audit_chain()
+        evidence = self.verify_evidence_ledger()
         return {
-            "ok": messages == ["ok"] and audit["ok"],
+            "ok": messages == ["ok"] and audit["ok"] and evidence["ok"],
             "messages": messages,
             "audit": audit,
+            "evidence": evidence,
         }
 
     def online_backup(self, destination: Path) -> Path:
@@ -1249,12 +1421,47 @@ class SQLiteStorage:
             )
         return True
 
-    def add_artifact(self, run_id: int, stage: str, agent_id: str, provider: str, content: str) -> int:
+    def add_artifact(
+        self,
+        run_id: int,
+        stage: str,
+        agent_id: str,
+        provider: str,
+        content: str,
+        *,
+        producer: dict[str, Any] | None = None,
+        verifier: dict[str, Any] | None = None,
+        inputs: dict[str, Any] | None = None,
+        toolchain: dict[str, Any] | None = None,
+        evidence_kind: str = "review",
+    ) -> int:
+        if evidence_kind not in {"test_result", "diff", "review", "summary"}:
+            raise ValueError(f"Unknown evidence kind: {evidence_kind}")
+        producer = producer or {"agent_id": agent_id, "provider": provider}
+        verifier = verifier or {"status": "unverified"}
+        inputs = inputs or {"run_id": run_id, "stage": stage}
+        toolchain = toolchain or {"provider": provider}
         with self.db:
             cur = self.db.execute(
-                """INSERT INTO artifacts(identity,run_id,stage,agent_id,provider,content)
-                   VALUES(?,?,?,?,?,?)""",
-                (self._identity("artifact"), run_id, stage, agent_id, provider, content),
+                """INSERT INTO artifacts(
+                       identity,run_id,stage,agent_id,provider,content,digest,
+                       producer_json,verifier_json,inputs_json,toolchain_json,
+                       evidence_kind
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("artifact"),
+                    run_id,
+                    stage,
+                    agent_id,
+                    provider,
+                    content,
+                    self._content_digest(content),
+                    json.dumps(producer, sort_keys=True),
+                    json.dumps(verifier, sort_keys=True),
+                    json.dumps(inputs, sort_keys=True),
+                    json.dumps(toolchain, sort_keys=True),
+                    evidence_kind,
+                ),
             )
             artifact_id = int(cur.lastrowid)
             self._event("artifact.created", "artifact", artifact_id, {"stage": stage, "provider": provider})
@@ -1400,8 +1607,18 @@ class SQLiteStorage:
         with self.db:
             ensure_transition("artifact", "pending", status)
             updated = self.db.execute(
-                "UPDATE artifacts SET status=?,review_note=?,version=version+1 WHERE id=? AND status='pending'",
-                (status, note, artifact_id),
+                """UPDATE artifacts
+                      SET status=?,review_note=?,version=version+1,verifier_json=?
+                    WHERE id=? AND status='pending'""",
+                (
+                    status,
+                    note,
+                    json.dumps(
+                        {"type": "human_artifact_review", "decision": status, "note": note},
+                        sort_keys=True,
+                    ),
+                    artifact_id,
+                ),
             )
             if updated.rowcount != 1:
                 row = self.db.execute("SELECT status FROM artifacts WHERE id=?", (artifact_id,)).fetchone()
@@ -1409,6 +1626,181 @@ class SQLiteStorage:
                     raise KeyError(f"Unknown artifact: {artifact_id}")
                 raise ValueError(f"Artifact {artifact_id} is already {row['status']}")
             self._event(f"artifact.{status}", "artifact", artifact_id, {"note": note})
+
+    def link_criterion_evidence(
+        self,
+        *,
+        task_id: int,
+        criterion_index: int,
+        artifact_id: int,
+        evidence_type: str,
+    ) -> int:
+        if evidence_type not in {"test_result", "diff", "review", "summary"}:
+            raise ValueError(f"Unknown evidence type: {evidence_type}")
+        task = self.get_task(task_id)
+        if criterion_index < 0 or criterion_index >= len(task.acceptance_criteria):
+            raise ValueError(f"Unknown criterion index {criterion_index} for task {task_id}")
+        artifact = self.db.execute(
+            """SELECT a.*,r.task_id
+                 FROM artifacts a
+                 JOIN workflow_runs r ON r.id=a.run_id
+                WHERE a.id=?""",
+            (artifact_id,),
+        ).fetchone()
+        if not artifact:
+            raise KeyError(f"Unknown artifact: {artifact_id}")
+        if int(artifact["task_id"]) != task_id:
+            raise ValueError("Evidence artifact belongs to a different work item")
+        if artifact["evidence_kind"] != evidence_type:
+            raise ValueError(
+                f"Artifact is typed {artifact['evidence_kind']}, not {evidence_type}"
+            )
+        with self.db:
+            existing = self.db.execute(
+                """SELECT id FROM criterion_evidence
+                    WHERE task_id=? AND criterion_index=? AND artifact_id=?
+                      AND evidence_type=?""",
+                (task_id, criterion_index, artifact_id, evidence_type),
+            ).fetchone()
+            if existing:
+                return int(existing["id"])
+            cur = self.db.execute(
+                """INSERT INTO criterion_evidence(
+                       identity,task_id,criterion_index,criterion_text,artifact_id,
+                       evidence_type,primary_evidence,artifact_digest
+                   ) VALUES(?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("criterion-evidence"),
+                    task_id,
+                    criterion_index,
+                    task.acceptance_criteria[criterion_index],
+                    artifact_id,
+                    evidence_type,
+                    int(evidence_type != "summary"),
+                    artifact["digest"],
+                ),
+            )
+            evidence_id = int(cur.lastrowid)
+            self._event(
+                "evidence.linked",
+                "criterion_evidence",
+                evidence_id,
+                {
+                    "task_id": task_id,
+                    "run_id": artifact["run_id"],
+                    "stage": artifact["stage"],
+                    "artifact_id": artifact_id,
+                    "criterion_index": criterion_index,
+                    "evidence_type": evidence_type,
+                    "primary_evidence": evidence_type != "summary",
+                },
+            )
+        return evidence_id
+
+    def decide_criterion_evidence(
+        self,
+        evidence_id: int,
+        decision: str,
+        *,
+        verifier: str,
+        note: str = "",
+    ) -> bool:
+        if decision not in {"accepted", "rejected"}:
+            raise ValueError(decision)
+        if not verifier.strip():
+            raise ValueError("Evidence verifier is required")
+        with self.db:
+            row = self.db.execute(
+                """SELECT e.*,a.content,a.digest,a.run_id,a.stage
+                     FROM criterion_evidence e
+                     JOIN artifacts a ON a.id=e.artifact_id
+                    WHERE e.id=?""",
+                (evidence_id,),
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown criterion evidence: {evidence_id}")
+            if row["status"] == decision:
+                return False
+            if row["status"] != "proposed":
+                raise ValueError(f"Evidence {evidence_id} is already {row['status']}")
+            current_digest = self._content_digest(str(row["content"]))
+            if current_digest != row["artifact_digest"] or current_digest != row["digest"]:
+                raise ValueError("Evidence artifact digest changed before verification")
+            verifier_record = json.dumps(
+                {"verifier": verifier, "decision": decision, "note": note},
+                sort_keys=True,
+            )
+            if decision == "accepted":
+                already_locked = self.db.execute(
+                    """SELECT 1 FROM criterion_evidence
+                        WHERE artifact_id=? AND status='accepted' LIMIT 1""",
+                    (row["artifact_id"],),
+                ).fetchone()
+                if not already_locked:
+                    self.db.execute(
+                        "UPDATE artifacts SET verifier_json=? WHERE id=?",
+                        (verifier_record, row["artifact_id"]),
+                    )
+            updated = self.db.execute(
+                """UPDATE criterion_evidence
+                      SET status=?,verifier_json=?,version=version+1,
+                          decided_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='proposed'""",
+                (decision, verifier_record, evidence_id),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(f"Evidence {evidence_id} changed concurrently")
+            self._event(
+                f"evidence.{decision}",
+                "criterion_evidence",
+                evidence_id,
+                {
+                    "task_id": row["task_id"],
+                    "run_id": row["run_id"],
+                    "stage": row["stage"],
+                    "artifact_id": row["artifact_id"],
+                    "criterion_index": row["criterion_index"],
+                    "evidence_type": row["evidence_type"],
+                    "verifier": verifier,
+                    "note": note,
+                },
+            )
+        return True
+
+    def criterion_evidence_status(self, task_id: int) -> dict[str, Any]:
+        task = self.get_task(task_id)
+        rows = self.db.execute(
+            """SELECT * FROM criterion_evidence
+                WHERE task_id=? ORDER BY criterion_index,id""",
+            (task_id,),
+        ).fetchall()
+        accepted_primary = {
+            int(row["criterion_index"])
+            for row in rows
+            if row["status"] == "accepted" and int(row["primary_evidence"]) == 1
+        }
+        missing = [
+            {"index": index, "criterion": criterion}
+            for index, criterion in enumerate(task.acceptance_criteria)
+            if index not in accepted_primary
+        ]
+        return {
+            "task_id": task_id,
+            "closed": not missing,
+            "missing_criteria": missing,
+            "evidence": [
+                {
+                    "id": int(row["id"]),
+                    "criterion_index": int(row["criterion_index"]),
+                    "artifact_id": int(row["artifact_id"]),
+                    "evidence_type": str(row["evidence_type"]),
+                    "primary": bool(row["primary_evidence"]),
+                    "status": str(row["status"]),
+                    "digest": str(row["artifact_digest"]),
+                }
+                for row in rows
+            ],
+        }
 
     # Provider approvals bind immutable snapshots to durable, one-use attempts.
     def request_provider_execution(
@@ -1647,7 +2039,37 @@ class SQLiteStorage:
             self.db.execute("UPDATE provider_execution_attempts SET status=?,version=version+1,result=?,metadata=?,finished_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP WHERE id=?", (status, bounded_result, json.dumps(metadata), attempt_id))
             self.db.execute("UPDATE provider_execution_gates SET status='consumed',consumed_at=CURRENT_TIMESTAMP WHERE id=? AND status='claimed'", (row["gate_id"],))
             content = bounded_result if status == "succeeded" else ""
-            cur = self.db.execute("INSERT INTO provider_execution_artifacts(identity,gate_id,attempt_id,provider,agent_id,content,metadata,status) VALUES(?,?,?,?,?,?,?,?)", (self._identity("provider-artifact"), row["gate_id"], attempt_id, row["provider"], row["agent_id"], content, json.dumps(metadata), status))
+            cur = self.db.execute(
+                """INSERT INTO provider_execution_artifacts(
+                       identity,gate_id,attempt_id,provider,agent_id,content,
+                       metadata,status,digest,producer_json,verifier_json,
+                       inputs_json,toolchain_json
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("provider-artifact"),
+                    row["gate_id"],
+                    attempt_id,
+                    row["provider"],
+                    row["agent_id"],
+                    content,
+                    json.dumps(metadata),
+                    status,
+                    self._content_digest(content),
+                    json.dumps(
+                        {"agent_id": row["agent_id"], "provider": row["provider"]},
+                        sort_keys=True,
+                    ),
+                    json.dumps({"status": "unverified"}, sort_keys=True),
+                    json.dumps(
+                        {"gate_id": row["gate_id"], "attempt_id": attempt_id},
+                        sort_keys=True,
+                    ),
+                    json.dumps(
+                        {"provider": row["provider"], "metadata": metadata},
+                        sort_keys=True,
+                    ),
+                ),
+            )
             artifact_id = int(cur.lastrowid)
             assignment_status = "cancelled" if status == "abandoned" else status
             session_status = "cancelled" if status == "abandoned" else status
@@ -1688,7 +2110,29 @@ class SQLiteStorage:
 
     def add_provider_artifact(self, gate_id: int, provider: str, agent_id: str, content: str, metadata: dict[str, Any]) -> int:
         with self.db:
-            cur = self.db.execute("INSERT INTO provider_execution_artifacts(identity,gate_id,provider,agent_id,content,metadata) VALUES(?,?,?,?,?,?)", (self._identity("provider-artifact"), gate_id, provider, agent_id, content, json.dumps(metadata)))
+            cur = self.db.execute(
+                """INSERT INTO provider_execution_artifacts(
+                       identity,gate_id,provider,agent_id,content,metadata,digest,
+                       producer_json,verifier_json,inputs_json,toolchain_json
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("provider-artifact"),
+                    gate_id,
+                    provider,
+                    agent_id,
+                    content,
+                    json.dumps(metadata),
+                    self._content_digest(content),
+                    json.dumps(
+                        {"agent_id": agent_id, "provider": provider}, sort_keys=True
+                    ),
+                    json.dumps({"status": "unverified"}, sort_keys=True),
+                    json.dumps({"gate_id": gate_id, "attempt_id": None}, sort_keys=True),
+                    json.dumps(
+                        {"provider": provider, "metadata": metadata}, sort_keys=True
+                    ),
+                ),
+            )
             artifact_id = int(cur.lastrowid)
             self._event("provider.artifact.created", "provider_artifact", artifact_id, {"gate_id": gate_id, "provider": provider, "agent_id": agent_id})
         return artifact_id
