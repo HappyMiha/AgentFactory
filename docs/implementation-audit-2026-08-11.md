@@ -1,6 +1,6 @@
 # Implementation audit — 2026-08-11
 
-This audit compares the repository at `b466073` with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
+This audit compares the repository through the AF-007 implementation with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
 
 ## Audit method
 
@@ -8,17 +8,17 @@ This audit compares the repository at `b466073` with the acceptance criteria in 
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **122 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **126 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-006, AF-036–AF-043 | 14 |
-| Partial precursors | AF-007, AF-008, AF-010, AF-011, AF-017–AF-020, AF-023, AF-026, AF-028, AF-030, AF-032, AF-046, AF-047, AF-051, AF-052, AF-056, AF-057 | 19 |
+| Implemented | AF-001–AF-007, AF-036–AF-043 | 15 |
+| Partial precursors | AF-008, AF-010, AF-011, AF-017–AF-020, AF-023, AF-026, AF-028, AF-030, AF-032, AF-046, AF-047, AF-051, AF-052, AF-056, AF-057 | 18 |
 | Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-044, AF-045, AF-048–AF-050, AF-053–AF-055 | 24 |
 
-The product has a tested durable-data and local-operator foundation, but it does **not** yet have the single-node coding vertical slice. In particular, no AgentFactory code launches Hermes, owns a real task worktree, enforces a fenced scheduler claim, runs an allowlisted project validator, or completes the bounded repair/recovery loop.
+The product has a tested durable-data, fenced-scheduler, and local-operator foundation, but it does **not** yet have the single-node coding vertical slice. In particular, no AgentFactory code launches Hermes, owns a real task worktree, runs an allowlisted project validator, or completes the bounded repair/recovery loop.
 
 ## Task-by-task findings
 
@@ -30,7 +30,7 @@ The product has a tested durable-data and local-operator foundation, but it does
 | AF-004 | Implemented | Deterministic policy, exact one-use approvals, persistent emergency stop; `test_policy_plane.py` | — |
 | AF-005 | Implemented | Normalized provider contract, eight health dimensions, qualification and handoff; `test_adapter_qualification.py` | — |
 | AF-006 | Implemented | Version-pinned durable stages, resume and mutation reservations; `test_durable_workflow.py` | — |
-| AF-007 | Partial | Dependency data, DAG validation, task views | Claim only emits an event; no readiness scheduler, durable assignment, TTL lease, fencing enforcement, or conflict domains |
+| AF-007 | Implemented | Leaf-task/dependency readiness, atomic assignments and TTL leases, monotonic fencing, fenced artifact/commit boundaries, conflict serialization/escalation; `test_scheduler.py` | — |
 | AF-008 | Partial | Durable stage checkpoints and existing delivery workflow | No persisted multi-iteration objective/plan/diff/critic/budget loop or repeated-failure replan rule |
 | AF-009 | Not started | — | Mission intake, source authority, clarification and readiness model absent |
 | AF-010 | Partial | Simple agent roles and role allowlists | No versioned provider-neutral typed role input/output/evidence contract or incompatible-duty validation |
@@ -84,7 +84,7 @@ The product has a tested durable-data and local-operator foundation, but it does
 
 ## Backlog decisions from the audit
 
-1. **AF-007 is the only immediate implementation target.** AF-001–AF-006 are complete; starting Hermes or worktrees before fenced readiness would create mutable work without durable ownership.
+1. **AF-007 closes M1 and unlocks the next independent slice.** AF-017, AF-044, AF-048, and AF-055 can now proceed from durable fenced ownership; AF-045 still waits for its explicit prerequisites.
 2. **Use Hermes ACP for mutable sessions.** Installed Hermes 0.20.0 exposes an ACP stdio server, structured events and permission bridging. `hermes --oneshot` states that approvals are auto-bypassed, so it is limited to qualification or read-only probes.
 3. **Keep worktree authority in AgentFactory.** AF-048 creates and owns the worktree; AF-045 passes it to Hermes as the working directory. Managed sessions must not invoke Hermes `--worktree`.
 4. **Make context and worktree prerequisites of Hermes.** AF-045 now depends on AF-048 and AF-055, preventing an unscoped runtime session.
@@ -96,10 +96,9 @@ The product has a tested durable-data and local-operator foundation, but it does
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007
 
-Now:  AF-007
-Next: AF-017 + AF-044 + AF-048 + AF-055
+Now:  AF-017 + AF-044 + AF-048 + AF-055
       -> AF-045 -> AF-046 + AF-049
       -> AF-052 -> AF-020 + AF-051
       -> AF-008 -> AF-053 -> AF-056 -> AF-057
@@ -108,4 +107,4 @@ Then: AF-047 + AF-050 + AF-054
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031
 ```
 
-The next release gate is therefore **M1 completion at AF-007**, not “Hermes connected.” A chat response from Hermes is useful environment evidence, but it does not prove durable scheduling, scoped mutation, acceptance evidence, or recovery.
+The M1 release gate is complete at **AF-007**. The next gate is the M2 first coding worker slice; a chat response from Hermes remains environment evidence only and does not prove scoped mutation, acceptance evidence, or recovery.

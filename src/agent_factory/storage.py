@@ -5,12 +5,12 @@ import hashlib
 import os
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from .lifecycle import TRANSITIONS, ensure_transition
-from .models import Budget, Status, WorkItem
+from .models import AssignmentLease, Budget, Status, WorkItem
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
     (1, """
@@ -723,9 +723,66 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         ON workflow_mutations
         BEGIN SELECT RAISE(ABORT, 'workflow mutation scope is immutable'); END;
     """),
+    (15, """
+        CREATE TRIGGER leases_no_delete
+        BEFORE DELETE ON leases
+        BEGIN SELECT RAISE(ABORT, 'lease history is immutable'); END;
+
+        CREATE TABLE assignment_conflict_domains(
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            domain TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(assignment_id,domain)
+        );
+        CREATE INDEX idx_assignment_conflict_domains_domain
+            ON assignment_conflict_domains(domain,assignment_id);
+        CREATE TRIGGER assignment_conflict_domains_no_update
+        BEFORE UPDATE ON assignment_conflict_domains
+        BEGIN SELECT RAISE(ABORT, 'assignment conflict domains are immutable'); END;
+        CREATE TRIGGER assignment_conflict_domains_no_delete
+        BEFORE DELETE ON assignment_conflict_domains
+        BEGIN SELECT RAISE(ABORT, 'assignment conflict domains are immutable'); END;
+
+        CREATE TABLE scheduler_conflicts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            requested_domains_json TEXT NOT NULL,
+            conflicting_assignment_ids_json TEXT NOT NULL,
+            action TEXT NOT NULL CHECK(action IN ('serialize','escalate')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER scheduler_conflicts_no_update
+        BEFORE UPDATE ON scheduler_conflicts
+        BEGIN SELECT RAISE(ABORT, 'scheduler conflicts are immutable'); END;
+        CREATE TRIGGER scheduler_conflicts_no_delete
+        BEFORE DELETE ON scheduler_conflicts
+        BEGIN SELECT RAISE(ABORT, 'scheduler conflicts are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
+
+
+class TaskNotRunnableError(RuntimeError):
+    """Raised when a work item cannot be dispatched by the scheduler."""
+
+
+class ConflictDomainBusyError(RuntimeError):
+    """Raised when an active assignment owns an overlapping mutation domain."""
+
+    def __init__(self, assignment_ids: tuple[int, ...], *, escalated: bool = False):
+        self.assignment_ids = assignment_ids
+        self.escalated = escalated
+        action = "escalated" if escalated else "serialized"
+        super().__init__(
+            f"Conflict domains overlap active assignments {list(assignment_ids)}; "
+            f"request was {action}"
+        )
+
+
+class StaleLeaseError(PermissionError):
+    """Raised when a worker presents an expired or superseded fencing token."""
 
 
 def _sha256_snapshot(value: str, field: str) -> str:
@@ -738,6 +795,52 @@ def _sha256_snapshot(value: str, field: str) -> str:
     ):
         raise ValueError(f"{field} must be a lowercase SHA-256 digest")
     return value
+
+
+def _utc(value: datetime | None = None) -> datetime:
+    current = value or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("Scheduler timestamps must be timezone-aware")
+    return current.astimezone(timezone.utc)
+
+
+def _timestamp(value: datetime) -> str:
+    return _utc(value).isoformat(timespec="microseconds")
+
+
+def _normalize_conflict_domains(
+    project_id: int, domains: list[str] | tuple[str, ...] | None
+) -> tuple[str, ...]:
+    requested = domains or ()
+    if not requested:
+        return (f"project:{project_id}",)
+    normalized: set[str] = set()
+    prefix = f"project:{project_id}"
+    for value in requested:
+        domain = str(value).strip().replace("\\", "/").casefold()
+        while "//" in domain:
+            domain = domain.replace("//", "/")
+        domain = domain.rstrip("/")
+        if not domain:
+            raise ValueError("Conflict domains cannot be empty")
+        if domain.startswith("project:"):
+            if domain != prefix and not domain.startswith(f"{prefix}/"):
+                raise ValueError("Conflict domains cannot cross project boundaries")
+        else:
+            if domain.startswith("module:"):
+                namespace, resource = domain.split(":", 1)
+                domain = f"{namespace}:{resource.replace('.', '/')}"
+            domain = f"{prefix}/{domain}"
+        normalized.add(domain)
+    return tuple(sorted(normalized))
+
+
+def _domains_overlap(left: str, right: str) -> bool:
+    return (
+        left == right
+        or left.startswith(f"{right}/")
+        or right.startswith(f"{left}/")
+    )
 
 
 class SQLiteStorage:
@@ -1909,6 +2012,403 @@ class SQLiteStorage:
                 {"previous_state": source, "resulting_state": target},
             )
 
+    def task_readiness(self, task_id: int, *, now: datetime | None = None) -> tuple[str, ...]:
+        """Return deterministic blockers; an empty tuple means the task is runnable."""
+
+        current = _timestamp(_utc(now))
+        row = self.db.execute(
+            "SELECT id,project_id,kind,status,dependencies_json FROM work_items WHERE id=?",
+            (task_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown task: {task_id}")
+        return self._task_blockers(row, current)
+
+    def _task_blockers(self, row: sqlite3.Row, current: str) -> tuple[str, ...]:
+        blockers: list[str] = []
+        if str(row["kind"]) != "task":
+            blockers.append(f"kind:{row['kind']}")
+        if str(row["status"]) != "pending":
+            blockers.append(f"status:{row['status']}")
+        dependency_ids = [int(value) for value in json.loads(row["dependencies_json"])]
+        for dependency_id in dependency_ids:
+            dependency = self.db.execute(
+                "SELECT project_id,status FROM work_items WHERE id=?", (dependency_id,)
+            ).fetchone()
+            if not dependency or int(dependency["project_id"]) != int(row["project_id"]):
+                blockers.append(f"dependency:{dependency_id}:missing")
+            elif str(dependency["status"]) not in {"completed", "approved"}:
+                blockers.append(
+                    f"dependency:{dependency_id}:{dependency['status']}"
+                )
+        active = self.db.execute(
+            """SELECT a.id FROM assignments a
+                 JOIN leases l ON l.assignment_id=a.id
+                WHERE a.task_id=? AND a.status='active' AND l.status='active'
+                  AND l.expires_at>? LIMIT 1""",
+            (int(row["id"]), current),
+        ).fetchone()
+        if active:
+            blockers.append(f"assignment:{active['id']}:active")
+        return tuple(blockers)
+
+    def runnable_tasks(
+        self, project_id: int | None = None, *, now: datetime | None = None
+    ) -> list[WorkItem]:
+        current = _timestamp(_utc(now))
+        query = (
+            "SELECT id,project_id,kind,status,dependencies_json FROM work_items"
+        )
+        parameters: tuple[Any, ...] = ()
+        if project_id is not None:
+            query += " WHERE project_id=?"
+            parameters = (project_id,)
+        query += " ORDER BY id"
+        return [
+            self.get_task(int(row["id"]))
+            for row in self.db.execute(query, parameters)
+            if not self._task_blockers(row, current)
+        ]
+
+    def _expire_scheduler_leases(self, current: str) -> None:
+        rows = self.db.execute(
+            """SELECT l.id,l.assignment_id,l.fencing_token,a.task_id
+                 FROM leases l JOIN assignments a ON a.id=l.assignment_id
+                WHERE l.status='active' AND l.expires_at<=?""",
+            (current,),
+        ).fetchall()
+        for row in rows:
+            self.db.execute(
+                """UPDATE leases SET status='expired',version=version+1,
+                          updated_at=? WHERE id=? AND status='active'""",
+                (current, int(row["id"])),
+            )
+            self.db.execute(
+                """UPDATE assignments SET status='cancelled',version=version+1,
+                          updated_at=? WHERE id=? AND status='active'""",
+                (current, int(row["assignment_id"])),
+            )
+            self._event(
+                "lease.expired",
+                "assignment",
+                int(row["assignment_id"]),
+                {
+                    "task_id": int(row["task_id"]),
+                    "lease_id": int(row["id"]),
+                    "fencing_token": int(row["fencing_token"]),
+                },
+            )
+
+    def claim_runnable_task(
+        self,
+        task_id: int,
+        worker: str,
+        runtime: str,
+        *,
+        ttl_seconds: int = 60,
+        conflict_domains: list[str] | tuple[str, ...] | None = None,
+        conflict_action: str = "serialize",
+        now: datetime | None = None,
+    ) -> AssignmentLease:
+        if not worker.strip() or not runtime.strip():
+            raise ValueError("Worker and runtime are required")
+        if not 1 <= ttl_seconds <= 86400:
+            raise ValueError("Lease TTL must be between 1 and 86400 seconds")
+        if conflict_action not in {"serialize", "escalate"}:
+            raise ValueError("Conflict action must be serialize or escalate")
+        instant = _utc(now)
+        current = _timestamp(instant)
+        expires_at = _timestamp(instant + timedelta(seconds=ttl_seconds))
+        conflict_error: ConflictDomainBusyError | None = None
+        claim: AssignmentLease | None = None
+        self._begin_immediate()
+        try:
+            self._assert_dispatch_allowed()
+            self._expire_scheduler_leases(current)
+            row = self.db.execute(
+                "SELECT id,project_id,kind,status,dependencies_json FROM work_items WHERE id=?",
+                (task_id,),
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown task: {task_id}")
+            blockers = self._task_blockers(row, current)
+            if blockers:
+                raise TaskNotRunnableError(
+                    f"Task {task_id} is not runnable: {', '.join(blockers)}"
+                )
+            domains = _normalize_conflict_domains(
+                int(row["project_id"]), conflict_domains
+            )
+            active_rows = self.db.execute(
+                """SELECT DISTINCT a.id,a.task_id,d.domain
+                     FROM assignments a
+                     JOIN leases l ON l.assignment_id=a.id
+                     JOIN assignment_conflict_domains d ON d.assignment_id=a.id
+                    WHERE a.status='active' AND l.status='active' AND l.expires_at>?
+                    ORDER BY a.id,d.domain""",
+                (current,),
+            ).fetchall()
+            conflicting = tuple(
+                sorted(
+                    {
+                        int(active["id"])
+                        for active in active_rows
+                        if int(active["task_id"]) == task_id
+                        or any(
+                            _domains_overlap(domain, str(active["domain"]))
+                            for domain in domains
+                        )
+                    }
+                )
+            )
+            if conflicting:
+                conflict = self.db.execute(
+                    """INSERT INTO scheduler_conflicts(
+                           identity,task_id,requested_domains_json,
+                           conflicting_assignment_ids_json,action
+                       ) VALUES(?,?,?,?,?)""",
+                    (
+                        self._identity("scheduler-conflict"),
+                        task_id,
+                        json.dumps(domains),
+                        json.dumps(conflicting),
+                        conflict_action,
+                    ),
+                )
+                conflict_id = int(conflict.lastrowid)
+                self._event(
+                    f"scheduler.conflict.{conflict_action}",
+                    "task",
+                    task_id,
+                    {
+                        "task_id": task_id,
+                        "conflict_id": conflict_id,
+                        "domains": list(domains),
+                        "conflicting_assignment_ids": list(conflicting),
+                    },
+                )
+                conflict_error = ConflictDomainBusyError(
+                    conflicting, escalated=conflict_action == "escalate"
+                )
+            else:
+                assignment = self.db.execute(
+                    """INSERT INTO assignments(
+                           identity,task_id,agent_id,runtime,status,updated_at
+                       ) VALUES(?,?,?,?, 'active',?)""",
+                    (
+                        self._identity("assignment"),
+                        task_id,
+                        worker,
+                        runtime,
+                        current,
+                    ),
+                )
+                assignment_id = int(assignment.lastrowid)
+                self.db.executemany(
+                    """INSERT INTO assignment_conflict_domains(assignment_id,domain)
+                       VALUES(?,?)""",
+                    [(assignment_id, domain) for domain in domains],
+                )
+                fencing_token = int(
+                    self.db.execute(
+                        "SELECT COALESCE(MAX(fencing_token),0)+1 FROM leases"
+                    ).fetchone()[0]
+                )
+                lease = self.db.execute(
+                    """INSERT INTO leases(
+                           identity,assignment_id,fencing_token,status,expires_at,updated_at
+                       ) VALUES(?,?,?,'active',?,?)""",
+                    (
+                        self._identity("lease"),
+                        assignment_id,
+                        fencing_token,
+                        expires_at,
+                        current,
+                    ),
+                )
+                lease_id = int(lease.lastrowid)
+                self._event(
+                    "task.claimed",
+                    "task",
+                    task_id,
+                    {
+                        "task_id": task_id,
+                        "worker": worker,
+                        "runtime": runtime,
+                        "assignment_id": assignment_id,
+                        "lease_id": lease_id,
+                        "fencing_token": fencing_token,
+                        "expires_at": expires_at,
+                        "conflict_domains": list(domains),
+                    },
+                )
+                claim = AssignmentLease(
+                    task_id=task_id,
+                    assignment_id=assignment_id,
+                    lease_id=lease_id,
+                    worker=worker,
+                    runtime=runtime,
+                    fencing_token=fencing_token,
+                    expires_at=expires_at,
+                    conflict_domains=domains,
+                )
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        if conflict_error:
+            raise conflict_error
+        if claim is None:  # pragma: no cover - defensive invariant
+            raise RuntimeError("Scheduler claim did not produce a lease")
+        return claim
+
+    def _assert_fenced_lease(
+        self, assignment_id: int, fencing_token: int, current: str
+    ) -> sqlite3.Row:
+        row = self.db.execute(
+            """SELECT l.*,a.task_id,a.agent_id,a.status AS assignment_status
+                 FROM leases l JOIN assignments a ON a.id=l.assignment_id
+                WHERE l.assignment_id=? ORDER BY l.fencing_token DESC LIMIT 1""",
+            (assignment_id,),
+        ).fetchone()
+        if (
+            not row
+            or int(row["fencing_token"]) != fencing_token
+            or str(row["status"]) != "active"
+            or str(row["assignment_status"]) != "active"
+            or str(row["expires_at"]) <= current
+        ):
+            raise StaleLeaseError(
+                f"Assignment {assignment_id} has no active lease for fencing token "
+                f"{fencing_token}"
+            )
+        return row
+
+    def assert_fenced_lease(
+        self, assignment_id: int, fencing_token: int, *, now: datetime | None = None
+    ) -> None:
+        current = _timestamp(_utc(now))
+        stale: StaleLeaseError | None = None
+        self._begin_immediate()
+        try:
+            self._expire_scheduler_leases(current)
+            try:
+                self._assert_fenced_lease(assignment_id, fencing_token, current)
+            except StaleLeaseError as exc:
+                stale = exc
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        if stale:
+            raise stale
+
+    def renew_task_lease(
+        self,
+        assignment_id: int,
+        fencing_token: int,
+        *,
+        ttl_seconds: int = 60,
+        now: datetime | None = None,
+    ) -> str:
+        if not 1 <= ttl_seconds <= 86400:
+            raise ValueError("Lease TTL must be between 1 and 86400 seconds")
+        instant = _utc(now)
+        current = _timestamp(instant)
+        expires_at = _timestamp(instant + timedelta(seconds=ttl_seconds))
+        with self.db:
+            self._begin_immediate()
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            self.db.execute(
+                """UPDATE leases SET expires_at=?,version=version+1,updated_at=?
+                    WHERE id=?""",
+                (expires_at, current, int(lease["id"])),
+            )
+            self._event(
+                "lease.renewed",
+                "assignment",
+                assignment_id,
+                {
+                    "task_id": int(lease["task_id"]),
+                    "fencing_token": fencing_token,
+                    "expires_at": expires_at,
+                },
+            )
+        return expires_at
+
+    def release_task_lease(
+        self,
+        assignment_id: int,
+        fencing_token: int,
+        *,
+        outcome: str = "succeeded",
+        now: datetime | None = None,
+    ) -> None:
+        if outcome not in {"succeeded", "failed", "cancelled"}:
+            raise ValueError("Assignment outcome must be succeeded, failed, or cancelled")
+        current = _timestamp(_utc(now))
+        with self.db:
+            self._begin_immediate()
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            self.db.execute(
+                """UPDATE leases SET status='released',version=version+1,updated_at=?
+                    WHERE id=?""",
+                (current, int(lease["id"])),
+            )
+            self.db.execute(
+                """UPDATE assignments SET status=?,version=version+1,updated_at=?
+                    WHERE id=?""",
+                (outcome, current, assignment_id),
+            )
+            self._event(
+                "lease.released",
+                "assignment",
+                assignment_id,
+                {
+                    "task_id": int(lease["task_id"]),
+                    "fencing_token": fencing_token,
+                    "outcome": outcome,
+                },
+            )
+
+    def record_fenced_mutation(
+        self,
+        assignment_id: int,
+        fencing_token: int,
+        operation: str,
+        resource: str,
+        *,
+        now: datetime | None = None,
+    ) -> None:
+        """Authorize a Control Plane artifact or commit boundary with a live fence."""
+
+        if operation not in {"artifact", "commit"}:
+            raise ValueError("Fenced operation must be artifact or commit")
+        current = _timestamp(_utc(now))
+        with self.db:
+            self._begin_immediate()
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            self._event(
+                f"assignment.{operation}.authorized",
+                "assignment",
+                assignment_id,
+                {
+                    "task_id": int(lease["task_id"]),
+                    "worker": str(lease["agent_id"]),
+                    "fencing_token": fencing_token,
+                    "resource": resource,
+                },
+            )
+
     def close(self) -> None:
         self.db.close()
 
@@ -2373,30 +2873,126 @@ class SQLiteStorage:
         inputs = inputs or {"run_id": run_id, "stage": stage}
         toolchain = toolchain or {"provider": provider}
         with self.db:
-            cur = self.db.execute(
-                """INSERT INTO artifacts(
-                       identity,run_id,stage,agent_id,provider,content,digest,
-                       producer_json,verifier_json,inputs_json,toolchain_json,
-                       evidence_kind
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (
-                    self._identity("artifact"),
-                    run_id,
-                    stage,
-                    agent_id,
-                    provider,
-                    content,
-                    self._content_digest(content),
-                    json.dumps(producer, sort_keys=True),
-                    json.dumps(verifier, sort_keys=True),
-                    json.dumps(inputs, sort_keys=True),
-                    json.dumps(toolchain, sort_keys=True),
-                    evidence_kind,
-                ),
+            return self._insert_artifact(
+                run_id,
+                stage,
+                agent_id,
+                provider,
+                content,
+                producer,
+                verifier,
+                inputs,
+                toolchain,
+                evidence_kind,
             )
-            artifact_id = int(cur.lastrowid)
-            self._event("artifact.created", "artifact", artifact_id, {"stage": stage, "provider": provider})
+
+    def _insert_artifact(
+        self,
+        run_id: int,
+        stage: str,
+        agent_id: str,
+        provider: str,
+        content: str,
+        producer: dict[str, Any],
+        verifier: dict[str, Any],
+        inputs: dict[str, Any],
+        toolchain: dict[str, Any],
+        evidence_kind: str,
+    ) -> int:
+        cur = self.db.execute(
+            """INSERT INTO artifacts(
+                   identity,run_id,stage,agent_id,provider,content,digest,
+                   producer_json,verifier_json,inputs_json,toolchain_json,
+                   evidence_kind
+               ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                self._identity("artifact"),
+                run_id,
+                stage,
+                agent_id,
+                provider,
+                content,
+                self._content_digest(content),
+                json.dumps(producer, sort_keys=True),
+                json.dumps(verifier, sort_keys=True),
+                json.dumps(inputs, sort_keys=True),
+                json.dumps(toolchain, sort_keys=True),
+                evidence_kind,
+            ),
+        )
+        artifact_id = int(cur.lastrowid)
+        self._event(
+            "artifact.created",
+            "artifact",
+            artifact_id,
+            {"stage": stage, "provider": provider},
+        )
         return artifact_id
+
+    def add_fenced_artifact(
+        self,
+        assignment_id: int,
+        fencing_token: int,
+        run_id: int,
+        stage: str,
+        provider: str,
+        content: str,
+        *,
+        evidence_kind: str = "review",
+        now: datetime | None = None,
+    ) -> int:
+        """Atomically verify assignment authority and persist a worker artifact."""
+
+        if evidence_kind not in {"test_result", "diff", "review", "summary"}:
+            raise ValueError(f"Unknown evidence kind: {evidence_kind}")
+        current = _timestamp(_utc(now))
+        with self.db:
+            self._begin_immediate()
+            self._expire_scheduler_leases(current)
+            lease = self._assert_fenced_lease(
+                assignment_id, fencing_token, current
+            )
+            run = self.db.execute(
+                "SELECT task_id FROM workflow_runs WHERE id=?", (run_id,)
+            ).fetchone()
+            if not run:
+                raise KeyError(f"Unknown run: {run_id}")
+            if int(run["task_id"]) != int(lease["task_id"]):
+                raise PermissionError("Assignment lease does not own the workflow task")
+            worker = str(lease["agent_id"])
+            artifact_id = self._insert_artifact(
+                run_id,
+                stage,
+                worker,
+                provider,
+                content,
+                {
+                    "agent_id": worker,
+                    "provider": provider,
+                    "assignment_id": assignment_id,
+                    "fencing_token": fencing_token,
+                },
+                {"status": "unverified"},
+                {
+                    "run_id": run_id,
+                    "stage": stage,
+                    "assignment_id": assignment_id,
+                    "fencing_token": fencing_token,
+                },
+                {"provider": provider},
+                evidence_kind,
+            )
+            self._event(
+                "assignment.artifact.authorized",
+                "assignment",
+                assignment_id,
+                {
+                    "task_id": int(lease["task_id"]),
+                    "artifact_id": artifact_id,
+                    "fencing_token": fencing_token,
+                },
+            )
+            return artifact_id
 
     def latest_run(self):
         return self.db.execute("SELECT * FROM workflow_runs ORDER BY id DESC LIMIT 1").fetchone()

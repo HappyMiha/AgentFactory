@@ -612,7 +612,7 @@ class WebHostTests(unittest.TestCase):
                 project_id=project.project_id,
                 title="Controlled task",
                 description="Confirm every mutation",
-                kind="feature",
+                kind="task",
                 inputs={"labels": ["priority:high"]},
                 acceptance_criteria=["Mutation is audited"],
             )
@@ -642,7 +642,7 @@ class WebHostTests(unittest.TestCase):
                 self.assertEqual(filtered["total"], 1)
                 for key, value, expected_id in (
                     ("project_id", project.project_id, item.id),
-                    ("kind", "feature", item.id),
+                    ("kind", "task", item.id),
                     ("status", "pending", item.id),
                     ("priority", "high", item.id),
                     ("dependency", item.id, dependent.id),

@@ -2,6 +2,7 @@
 
 import sqlite3
 from collections.abc import AsyncIterator
+from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Any, Generic, Literal, TypeVar
 
@@ -367,7 +368,7 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     ) -> dict[str, Any]:
         _require_confirmation(command, confirmation)
         result = service.claim_work_item(task_id, command.agent_id)
-        return {"task_id": result.task_id, "worker": result.worker}
+        return asdict(result)
 
     @app.post("/api/work-items/{task_id}/runs", response_model=RunView)
     async def start_workflow(

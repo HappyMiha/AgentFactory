@@ -233,6 +233,11 @@ class ProjectChange:
 class ClaimResult:
     task_id: int
     worker: str
+    assignment_id: int
+    lease_id: int
+    fencing_token: int
+    expires_at: str
+    conflict_domains: tuple[str, ...]
 
 
 RUNTIME_SETTING_SPECS: dict[str, tuple[int, int, int, str]] = {
@@ -1037,8 +1042,33 @@ class AgentFactoryService:
         agent = self.registry.get(agent_id)
         if not agent.enabled:
             raise RuntimeError(f"Agent is disabled: {agent.id}")
-        self.storage.event("task.claimed", "task", item.id or 0, {"worker": agent.id})
-        return ClaimResult(task_id, agent.id)
+        configured_domains = item.inputs.get("conflict_domains")
+        if configured_domains is not None and not isinstance(configured_domains, list):
+            raise ValueError("Work-item conflict_domains must be a list")
+        ttl = item.inputs.get("lease_ttl_seconds", 60)
+        if not isinstance(ttl, int):
+            raise ValueError("Work-item lease_ttl_seconds must be an integer")
+        conflict_action = str(item.inputs.get("conflict_action", "serialize"))
+        lease = self.storage.claim_runnable_task(
+            task_id,
+            agent.id,
+            agent.provider,
+            ttl_seconds=ttl,
+            conflict_domains=configured_domains,
+            conflict_action=conflict_action,
+        )
+        return ClaimResult(
+            task_id=lease.task_id,
+            worker=lease.worker,
+            assignment_id=lease.assignment_id,
+            lease_id=lease.lease_id,
+            fencing_token=lease.fencing_token,
+            expires_at=lease.expires_at,
+            conflict_domains=lease.conflict_domains,
+        )
+
+    def runnable_work_items(self, project_id: int | None = None) -> list[WorkItemView]:
+        return [self.work_item(item.id or 0) for item in self.storage.runnable_tasks(project_id)]
 
     def run_workflow(
         self,
@@ -1046,6 +1076,15 @@ class AgentFactoryService:
         workflow_id: str = "delivery",
         mode: ExecutionMode | str = ExecutionMode.SIMULATION,
     ) -> RunView:
+        blockers = tuple(
+            blocker
+            for blocker in self.storage.task_readiness(task_id)
+            if not blocker.startswith("assignment:")
+        )
+        if blockers:
+            raise RuntimeError(
+                f"Task {task_id} cannot run: {', '.join(blockers)}"
+            )
         run_id = WorkflowEngine(
             self.storage, registry=self.registry, runtime=self.runtime
         ).run(workflow_id, self.storage.get_task(task_id), mode)
@@ -1387,7 +1426,7 @@ class AgentFactoryService:
                 "Produce a bounded implementation proposal, validate it against explicit "
                 "criteria, and stop for a human decision."
             ),
-            kind="epic",
+            kind="task",
             inputs={"example": True},
             expected_outputs=[
                 "policy precheck",

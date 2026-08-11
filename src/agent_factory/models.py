@@ -44,6 +44,18 @@ class WorkItem:
         return data
 
 
+@dataclass(frozen=True)
+class AssignmentLease:
+    task_id: int
+    assignment_id: int
+    lease_id: int
+    worker: str
+    runtime: str
+    fencing_token: int
+    expires_at: str
+    conflict_domains: tuple[str, ...]
+
+
 @dataclass
 class Agent:
     id: str

@@ -15,8 +15,8 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | GitHub plan/review/approve/apply | Implemented alpha | Route it through the future tool gateway as the first protected connector. |
 | Local web operator experience | R0.2 implemented | Preserve AF-036–AF-043; evolve the loopback single-operator UI behind the later production service boundary. |
 | Mission intake, Blueprint, role pools, and Workforce Composer | Missing | Deliver in Release 2 after the durable core exists. |
-| Durable domain, audit, evidence, policy, adapters, and workflow checkpoints | AF-001–AF-006 implemented | Continue with AF-007 scheduler/leases; do not reopen completed foundations without regression evidence. |
-| Persistent loops, scheduling leases, immutable context, and typed memory | Partial foundation | AF-006 supplies checkpoints; AF-007, AF-008, AF-055, AF-015, and AF-016 remain open. |
+| Durable domain, audit, evidence, policy, adapters, workflow checkpoints, and fenced scheduling | AF-001–AF-007 implemented | M1 is complete; do not reopen completed foundations without regression evidence. |
+| Persistent loops, scheduling leases, immutable context, and typed memory | Partial foundation | AF-006 supplies checkpoints and AF-007 supplies fenced scheduling; AF-008, AF-055, AF-015, and AF-016 remain open. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Missing | Deliver before enabling bounded autonomous mutation. |
 | Hermes runtime, coding worktrees, validators, and repair loop | Missing in AgentFactory | Installed Hermes 0.20.0 has a qualified ACP entry point, but AF-044–AF-049 and AF-051–AF-057 remain product work. |
 | REST API, PostgreSQL, Redis, Qdrant, multi-tenancy, hosted UI, and clustered deployment | Missing | Deliver only after the local durable coding loop is proven. |
@@ -40,10 +40,9 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 The implementation order is:
 
 ```text
-DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006
+DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007
 
-NOW   AF-007
-      -> AF-017 + AF-044 + AF-048 + AF-055
+NOW   AF-017 + AF-044 + AF-048 + AF-055
       -> AF-045
       -> AF-046 + AF-049
       -> AF-052 -> AF-020 + AF-051
@@ -58,7 +57,7 @@ Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. AgentFac
 
 | Milestone | Outcome | Tasks |
 |---|---|---|
-| M1 Durable orchestration core | Work-item lifecycle, dependency readiness, fenced leases, checkpoints, and live-stage waiting states | AF-001 through AF-007; only AF-007 remains |
+| M1 Durable orchestration core | Work-item lifecycle, dependency readiness, fenced leases, checkpoints, and live-stage waiting states | AF-001 through AF-007; complete |
 | M2 First real coding worker | Sandbox subset, runtime contract, Control-Plane-owned worktree/context, Hermes ACP lifecycle, live approvals, and Codex worker | AF-017, AF-044–AF-046, AF-048, AF-049, AF-055 |
 | M3 Verified engineering loop | Candidate diffs, deterministic validators, independent criterion review, and bounded repair | AF-008, AF-020, AF-051–AF-053 |
 | M4 Budgets and recovery | Enforced budgets, correlation, and local restart reconciliation | AF-056, AF-057; then full AF-015, AF-016, AF-027, AF-028 |
@@ -84,9 +83,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 11 August 2026, 14 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-006` and `AF-036` through `AF-043`. Nineteen tasks have partial precursors and 24 are not started. Partial work never satisfies a dependency.
+As of 11 August 2026, 15 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007` and `AF-036` through `AF-043`. Eighteen tasks have partial precursors and 24 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next task is `AF-007`; the presence of Hermes on the host does not advance `AF-044` or `AF-045` until the runtime contract and ACP adapter exist in AgentFactory.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next independently startable tasks are `AF-017`, `AF-044`, `AF-048`, and `AF-055`; the presence of Hermes on the host does not advance `AF-044` or `AF-045` until the runtime contract and ACP adapter exist in AgentFactory.
 
 ## R0.2 — Local Control Center MVP
 
@@ -132,7 +131,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
-**Progress:** AF-001 through AF-006 are implemented and tested. AF-007 is the next unsatisfied dependency. AF-044, AF-045, AF-055, AF-056, and AF-057 remain open; AF-046 has only the durable waiting-state and one-use-approval precursors.
+**Progress:** AF-001 through AF-007 are implemented and tested, completing M1. AF-017, AF-044, AF-048, and AF-055 are the next independently startable tasks; AF-045, AF-046, AF-056, and AF-057 remain downstream of explicit prerequisites.
 
 ## R2 — Mission Factory
 
