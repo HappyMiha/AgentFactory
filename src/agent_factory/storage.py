@@ -1034,6 +1034,52 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER candidate_pr_plans_no_delete BEFORE DELETE ON candidate_pr_plans
         BEGIN SELECT RAISE(ABORT, 'candidate PR plan is immutable'); END;
     """),
+    (24, """
+        ALTER TABLE codex_worker_results
+            ADD COLUMN producer_model TEXT NOT NULL DEFAULT 'provider:codex';
+
+        CREATE TABLE evaluation_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            candidate_id INTEGER NOT NULL REFERENCES candidate_change_artifacts(id),
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            candidate_digest TEXT NOT NULL CHECK(length(candidate_digest)=64),
+            producer_model TEXT NOT NULL,
+            reviewer_agent_id TEXT NOT NULL,
+            reviewer_provider TEXT NOT NULL,
+            reviewer_model TEXT NOT NULL,
+            rubric_id TEXT NOT NULL,
+            rubric_version TEXT NOT NULL,
+            deterministic_evidence_digest TEXT NOT NULL CHECK(length(deterministic_evidence_digest)=64),
+            verdict TEXT NOT NULL CHECK(verdict IN ('accepted','rejected')),
+            summary TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(candidate_id,rubric_id,rubric_version)
+        );
+        CREATE TABLE criterion_verdicts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            evaluation_id INTEGER NOT NULL REFERENCES evaluation_runs(id),
+            criterion_index INTEGER NOT NULL,
+            criterion_text TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK(verdict IN ('pass','fail')),
+            evidence_json TEXT NOT NULL,
+            confidence REAL NOT NULL CHECK(confidence >= 0.0 AND confidence <= 1.0),
+            concerns_json TEXT NOT NULL,
+            dissent_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(evaluation_id,criterion_index)
+        );
+        CREATE INDEX idx_evaluation_candidate ON evaluation_runs(candidate_id,rubric_id,rubric_version);
+        CREATE TRIGGER evaluation_runs_no_update BEFORE UPDATE ON evaluation_runs
+        BEGIN SELECT RAISE(ABORT, 'evaluation run is immutable'); END;
+        CREATE TRIGGER evaluation_runs_no_delete BEFORE DELETE ON evaluation_runs
+        BEGIN SELECT RAISE(ABORT, 'evaluation run is immutable'); END;
+        CREATE TRIGGER criterion_verdicts_no_update BEFORE UPDATE ON criterion_verdicts
+        BEGIN SELECT RAISE(ABORT, 'criterion verdict is immutable'); END;
+        CREATE TRIGGER criterion_verdicts_no_delete BEFORE DELETE ON criterion_verdicts
+        BEGIN SELECT RAISE(ABORT, 'criterion verdict is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -2633,6 +2679,7 @@ class SQLiteStorage:
         worktree_id: int,
         context_digest: str,
         codex_version: str,
+        producer_model: str,
         permission_profile: dict[str, Any],
         invocation: list[str],
         executed_commands: list[dict[str, Any]],
@@ -2646,6 +2693,8 @@ class SQLiteStorage:
     ) -> int:
         if status not in {"succeeded", "failed", "timed_out", "cancelled", "output_limited"}:
             raise ValueError(f"Unknown Codex worker result status: {status}")
+        if not producer_model.strip():
+            raise ValueError("Codex producer model identity is required")
         _sha256_snapshot(diff_digest, "Codex diff digest")
         _sha256_snapshot(evidence_digest, "Codex evidence digest")
         with self.db:
@@ -2689,16 +2738,17 @@ class SQLiteStorage:
                 """INSERT INTO codex_worker_results(
                        identity,worker_session_id,approval_consumption_id,task_id,
                        run_id,stage_id,attempt_id,assignment_id,worktree_id,
-                       context_package_id,codex_version,permission_profile_json,
+                       context_package_id,codex_version,producer_model,permission_profile_json,
                        invocation_json,executed_commands_json,changed_files_json,
                        diff_digest,status,exit_code,handoff_json,evidence_directory,
                        evidence_digest
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     self._identity("codex-worker-result"), worker_session_id,
                     int(consumption["id"]), task_id, run_id, int(stage["id"]),
                     attempt_id, assignment_id, worktree_id, int(context["id"]),
-                    codex_version, json.dumps(permission_profile, sort_keys=True),
+                    codex_version, producer_model.strip(),
+                    json.dumps(permission_profile, sort_keys=True),
                     json.dumps(invocation, separators=(",", ":")),
                     json.dumps(executed_commands, sort_keys=True),
                     json.dumps(sorted(set(changed_files)), separators=(",", ":")),

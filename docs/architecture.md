@@ -184,6 +184,8 @@ The [deterministic validator runner](deterministic-validators.md) accepts only f
 
 The [candidate change service](candidate-changes.md) commits only the AF-049 changed-file set after exact 5/5 AF-052 success, preserves the base branch, and records immutable base/head/diff/worktree evidence. Its pull-request operation is an immutable dry-run plan with a separate pending GitHub gate; candidate readiness never implies push or PR authority.
 
+The [independent evaluation service](independent-evaluation.md) reconstructs the candidate's exact five-validator snapshot before any reviewer callback, rejects the candidate-producing model, and persists a versioned rubric result plus one immutable evidence/confidence/concerns/dissent verdict per required criterion. Missing primary evidence or any failed criterion makes acceptance fail closed.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

@@ -37,6 +37,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-049 qualified writable Codex CLI worker with a fixed workspace-write profile, leased-worktree scope, JSONL command/handoff evidence, immutable candidate results, and complete process-tree timeout/cancellation.
 - AF-052 deterministic validator packs with five required shell-free command categories, candidate-worktree execution, bounded output/environment evidence, and exact acceptance-criterion mappings.
 - AF-051 immutable validated candidate commits with stable task IDs, base-branch preservation, failed-validation denial, and separately gated pull-request plans.
+- AF-020 evidence-first independent evaluation with producer-model exclusion, versioned rubrics, immutable criterion verdicts, confidence, concerns, dissent, and primary-evidence closure.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

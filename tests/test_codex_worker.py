@@ -11,6 +11,7 @@ from pathlib import Path
 from agent_factory.codex_worker import CODEX_EXEC_ARGS, CodexCLIProcessDriver
 from agent_factory.candidate_changes import CandidateChangeService
 from agent_factory.context_packages import ContextPackageBuilder
+from agent_factory.evaluation import EvaluationService
 from agent_factory.live_stages import LiveStageExecution
 from agent_factory.models import Agent, WorkItem
 from agent_factory.policy import PolicyRequest
@@ -103,10 +104,13 @@ class CodexImplementationWorkerTests(unittest.TestCase):
             self.fail(completed.stderr)
         return completed
 
-    def fixture(self, *, description="implement", mode="normal", max_seconds=5):
+    def fixture(self, *, description="implement", mode="normal", max_seconds=5, extra_criterion=False):
+        acceptance_criteria = ["A scoped file changes"]
+        if extra_criterion:
+            acceptance_criteria.append("A reviewer verifies release readiness")
         task_id = self.storage.create_task(WorkItem(
             f"Codex task {time.time_ns()}", description, self.project_id,
-            acceptance_criteria=["A scoped file changes"],
+            acceptance_criteria=acceptance_criteria,
             permissions=["read_project", "worktree_write", "tool_use"],
         ))
         run_id = self.storage.start_durable_run(
@@ -218,8 +222,8 @@ class CodexImplementationWorkerTests(unittest.TestCase):
             CodexCLIWorkerRuntime(self.storage, driver).start(launch)
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM codex_worker_results").fetchone()[0], 0)
 
-    def validated_candidate(self, *, failing=False):
-        launch, worktree, driver, _ = self.fixture()
+    def validated_candidate(self, *, failing=False, extra_criterion=False):
+        launch, worktree, driver, _ = self.fixture(extra_criterion=extra_criterion)
         runtime = CodexCLIWorkerRuntime(self.storage, driver)
         runtime.finalize(runtime.start(launch).id)
         worker_result = self.storage.db.execute(
@@ -277,6 +281,143 @@ class CodexImplementationWorkerTests(unittest.TestCase):
                 worker_result["id"], stable_task_id="AF-051"
             )
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM candidate_change_artifacts").fetchone()[0], 0)
+
+    @staticmethod
+    def review_payload(request):
+        return {
+            "summary": "Independent evidence review passed.",
+            "criteria": [
+                {
+                    "criterion": criterion.criterion,
+                    "verdict": "pass",
+                    "confidence": 0.94,
+                    "concerns": [],
+                    "dissent": ["No dissent recorded"],
+                }
+                for criterion in request.criteria
+            ],
+        }
+
+    def test_independent_evaluation_records_versioned_criterion_verdict(self):
+        worker_result, _ = self.validated_candidate()
+        candidate = CandidateChangeService(
+            self.storage, self.workspace, git_executable=self.git
+        ).create(worker_result["id"], stable_task_id="AF-020")
+        reviewer = Agent(
+            "independent-reviewer", "Reviewer", "Reviewer", True,
+            "openai", "Review evidence", model="gpt-independent",
+        )
+        service = EvaluationService(self.storage)
+        result = service.evaluate(
+            candidate.id, reviewer=reviewer, rubric_id="coding-change",
+            rubric_version="1.0.0", review=self.review_payload,
+        )
+        self.assertTrue(result.accepted)
+        self.assertEqual(result.verdicts[0].criterion, "A scoped file changes")
+        self.assertEqual(result.verdicts[0].confidence, 0.94)
+        self.assertTrue(all(item["primary"] for item in result.verdicts[0].primary_evidence))
+        row = self.storage.db.execute(
+            "SELECT * FROM evaluation_runs WHERE id=?", (result.id,)
+        ).fetchone()
+        self.assertEqual(row["producer_model"], "provider:codex")
+        self.assertEqual(row["reviewer_model"], "gpt-independent")
+        self.assertEqual(row["rubric_version"], "1.0.0")
+        verdict = self.storage.db.execute(
+            "SELECT * FROM criterion_verdicts WHERE evaluation_id=?", (result.id,)
+        ).fetchone()
+        self.assertEqual(json.loads(verdict["concerns_json"]), [])
+        self.assertEqual(json.loads(verdict["dissent_json"]), ["No dissent recorded"])
+        with self.assertRaisesRegex(sqlite3.DatabaseError, "immutable"):
+            self.storage.db.execute(
+                "UPDATE criterion_verdicts SET confidence=0 WHERE id=?", (verdict["id"],)
+            )
+
+        calls = []
+        replay = service.evaluate(
+            candidate.id, reviewer=reviewer, rubric_id="coding-change",
+            rubric_version="1.0.0", review=lambda request: calls.append(request),
+        )
+        self.assertEqual(replay.id, result.id)
+        self.assertEqual(calls, [])
+
+        def reject(request):
+            payload = self.review_payload(request)
+            payload["criteria"][0]["verdict"] = "fail"
+            payload["criteria"][0]["concerns"] = ["Release evidence is insufficient"]
+            return payload
+
+        rejected = service.evaluate(
+            candidate.id, reviewer=reviewer, rubric_id="coding-change",
+            rubric_version="2.0.0", review=reject,
+        )
+        self.assertFalse(rejected.accepted)
+        self.assertEqual(rejected.verdicts[0].concerns, ("Release evidence is insufficient",))
+
+    def test_evaluation_denies_producer_model_before_review(self):
+        worker_result, _ = self.validated_candidate()
+        candidate = CandidateChangeService(
+            self.storage, self.workspace, git_executable=self.git
+        ).create(worker_result["id"], stable_task_id="AF-020")
+        calls = []
+        producer = Agent(
+            "same-model", "Same model", "Reviewer", True,
+            "codex", "Review", model="",
+        )
+        with self.assertRaisesRegex(PermissionError, "cannot review its own"):
+            EvaluationService(self.storage).evaluate(
+                candidate.id, reviewer=producer, rubric_id="coding-change",
+                rubric_version="1.0.0", review=lambda request: calls.append(request),
+            )
+        self.assertEqual(calls, [])
+        self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM evaluation_runs").fetchone()[0], 0)
+
+    def test_failed_deterministic_suite_never_invokes_model_review(self):
+        worker_result, worktree = self.validated_candidate(failing=True)
+        with self.storage.db:
+            cursor = self.storage.db.execute(
+                """INSERT INTO candidate_change_artifacts(
+                       identity,codex_result_id,task_id,stable_task_id,worktree_id,
+                       base_sha,head_sha,branch,diff_digest,changed_files_json,
+                       commit_message,validation_digest
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("invalid-candidate"), worker_result["id"],
+                    worker_result["task_id"], "AF-020", worker_result["worktree_id"],
+                    self.base_sha, "f" * 40, worktree.branch, worker_result["diff_digest"],
+                    worker_result["changed_files_json"], "AF-020: invalid candidate", "e" * 64,
+                ),
+            )
+            candidate_id = int(cursor.lastrowid)
+        calls = []
+        reviewer = Agent(
+            "independent-reviewer", "Reviewer", "Reviewer", True,
+            "openai", "Review", model="gpt-independent",
+        )
+        with self.assertRaisesRegex(PermissionError, "failed before model review"):
+            EvaluationService(self.storage).evaluate(
+                candidate_id, reviewer=reviewer, rubric_id="coding-change",
+                rubric_version="1.0.0", review=lambda request: calls.append(request),
+            )
+        self.assertEqual(calls, [])
+        self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM evaluation_runs").fetchone()[0], 0)
+
+    def test_required_criterion_without_primary_evidence_fails_acceptance_before_review(self):
+        worker_result, _ = self.validated_candidate(extra_criterion=True)
+        candidate = CandidateChangeService(
+            self.storage, self.workspace, git_executable=self.git
+        ).create(worker_result["id"], stable_task_id="AF-020")
+        calls = []
+        reviewer = Agent(
+            "independent-reviewer", "Reviewer", "Reviewer", True,
+            "openai", "Review", model="gpt-independent",
+        )
+        with self.assertRaisesRegex(PermissionError, "lack primary evidence"):
+            EvaluationService(self.storage).evaluate(
+                candidate.id, reviewer=reviewer, rubric_id="coding-change",
+                rubric_version="1.0.0", review=lambda request: calls.append(request),
+            )
+        self.assertEqual(calls, [])
+        self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM evaluation_runs").fetchone()[0], 0)
 
 
 if __name__ == "__main__":

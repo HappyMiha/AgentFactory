@@ -8,14 +8,14 @@ This audit compares the repository through the AF-051 candidate slice, including
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **166 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **170 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-007, AF-017, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, AF-055 | 24 |
-| Partial precursors | AF-008, AF-010, AF-011, AF-018–AF-020, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047, AF-056, AF-057 | 14 |
+| Implemented | AF-001–AF-007, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, AF-055 | 25 |
+| Partial precursors | AF-008, AF-010, AF-011, AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047, AF-056, AF-057 | 13 |
 | Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-050, AF-053, AF-054 | 19 |
 
 The product has a tested durable-data, fenced-scheduler, managed-worktree, immutable-context, concrete Hermes ACP, and local-operator foundation, but it does **not** yet have the single-node coding vertical slice. In particular, no qualified writable Codex worker runs allowlisted project validators or completes the bounded repair/recovery loop.
@@ -43,7 +43,7 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 | AF-017 | Implemented | Fail-closed path policy, fenced launches, Bubblewrap/macOS backends, unsupported-host denial, audited out-of-scope writes, bounded process/time/output/network execution and preserved candidate evidence; `test_sandbox.py` | — |
 | AF-018 | Partial | Guarded GitHub and Firecrawl integrations | No Tool Registry/Gateway, MCP lifecycle, normalized tool contracts, or centralized authorization boundary |
 | AF-019 | Partial | Sensitive environment removal from provider subprocesses | No short-lived credential broker, scope issuance, revocation, injection firewall, or zero-exposure proof |
-| AF-020 | Partial | Independent reviewer rotation and criterion evidence gates | No post-AF-052 evaluation service with versioned rubric, criterion verdict, confidence, concerns, and dissent |
+| AF-020 | Implemented | Deterministic-first independent model review, exact primary evidence closure, versioned rubric, immutable criterion verdicts, confidence, concerns, dissent, and replay safety; `test_codex_worker.py` | — |
 | AF-021 | Not started | — | Red-team corpus, tripwires, quarantine and incidents absent |
 | AF-022 | Not started | ADR document exists | No transactional ADR/Blueprint impact propagation lifecycle |
 | AF-023 | Partial | Static generator/reviewer workflow and model-aware rotation | No configurable parallel, quorum, debate, generator-critic or red/blue execution patterns |
@@ -84,7 +84,7 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 
 ## Backlog decisions from the audit
 
-1. **AF-007 closes M1; AF-017, AF-044 through AF-046, AF-048, AF-049, AF-052, and AF-055 supply isolation, runtime, concrete ACP, exact live approvals, worktree, writable worker, deterministic validation, and immutable-context boundaries.** AF-020 and AF-051 can now consume candidate evidence.
+1. **AF-007 closes M1; AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055 supply isolation, runtime, exact live approvals, worktree, writable worker, candidate, validation, independent evaluation, and immutable-context boundaries.** AF-008 can now add the bounded repair loop.
 2. **Use Hermes ACP for mutable sessions.** Installed Hermes 0.20.0 exposes an ACP stdio server, structured events and permission bridging. `hermes --oneshot` states that approvals are auto-bypassed, so it is limited to qualification or read-only probes.
 3. **Keep worktree authority in AgentFactory.** AF-048 creates and owns the worktree; AF-045 passes it to Hermes as the working directory. Managed sessions must not invoke Hermes `--worktree`.
 4. **Make context and worktree prerequisites of Hermes.** AF-045 now depends on AF-048 and AF-055, preventing an unscoped runtime session.
@@ -96,10 +96,10 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-052 + AF-055
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-051 + AF-052 + AF-055
 
-Now:  AF-020
-      -> AF-008 -> AF-053 -> AF-056 -> AF-057
+Now:  AF-008
+      -> AF-053 -> AF-056 -> AF-057
 
 Then: AF-047 + AF-050 + AF-054
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031

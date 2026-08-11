@@ -314,6 +314,7 @@ class CodexCLIProcessDriver(RuntimeDriver):
             attempt_id=binding.attempt_id, assignment_id=launch.assignment_id,
             worktree_id=binding.worktree_id, context_digest=launch.context_digest,
             codex_version=state["health"].version,
+            producer_model=launch.agent.model_identity,
             permission_profile=CODEX_PERMISSION_PROFILE, invocation=state["invocation"],
             executed_commands=commands, changed_files=changed_files,
             diff_digest=diff_digest, status=status, exit_code=proc.returncode,

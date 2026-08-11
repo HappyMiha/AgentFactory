@@ -8,4 +8,6 @@ Each immutable result binds the task, attempt, worktree, candidate and pack dige
 
 Validators are evidence producers, not implementation workers. If a command leaves any candidate file changed, its effective validation status is failed even when the process exits zero.
 
+AF-020 consumes the exact immutable validator set before invoking an independent reviewer. Every required acceptance criterion must be covered by at least one mapped primary result; a green but unmapped criterion blocks review and acceptance.
+
 The packaged `python-unittest` pack is a reviewed default and can be replaced by a project-owned JSON pack with the same typed contract. Pack presence declares available commands; execution still requires a live fenced candidate and a qualified sandbox backend.

@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-051 candidate slice, including AF-052 validation. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-020 independent-evaluation slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **24 of 57** backlog tasks: AF-001–AF-007, AF-017, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055.
+- Completed **25 of 57** backlog tasks: AF-001–AF-007, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **166 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The coding-worker vertical slice is not released: AF-047, AF-051–AF-053, AF-056, and AF-057 still contain required work.
+- Verified **170 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The coding-worker vertical slice is not released: AF-008, AF-047, AF-050, AF-053, AF-056, and AF-057 still contain required work.
 
 ## Implemented backlog items and implementation commits
 
@@ -34,6 +34,7 @@ These notes describe the implemented, tested repository state through the AF-051
 | Backlog item | Implemented outcome | Committed | Implementation commit |
 |---|---|---|---|
 | AF-017 | Fail-closed writable-worker sandbox and preserved teardown evidence | 2026-08-11 22:17 CEST | This AF-017 task commit |
+| AF-020 | Deterministic-first independent criterion verdicts with primary-evidence closure | 2026-08-11 23:46 CEST | This AF-020 task commit |
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
 | AF-051 | Validated immutable candidate commit and separately gated PR plan | 2026-08-11 23:43 CEST | This AF-051 task commit |
 | AF-052 | Five-category shell-free validator packs and criterion-mapped bounded evidence | 2026-08-11 23:37 CEST | This AF-052 task commit |
@@ -69,10 +70,13 @@ Validation is now driven by reviewed project packs with required test, lint, typ
 
 Only the exact AF-049 diff with five successful AF-052 categories can now become a committed candidate artifact. Agent Factory stages the worker-declared file set on the deterministic task branch, requires an `AF-NNN` commit prefix, verifies the base branch SHA did not move, and records immutable base/head/worktree/diff/validation identity. The pull request remains an immutable GitHub dry-run operation behind its own pending gate; failed or candidate-mutating validation produces neither a candidate artifact nor PR-ready plan.
 
+## AF-020 implementation detail
+
+Independent evaluation now reconstructs and verifies the exact five-result AF-052 snapshot before a reviewer callback is allowed to run. The candidate-producing model identity is persisted on AF-049 output and cannot be selected as reviewer. Agent Factory—not the model—binds primary validator evidence to every required acceptance criterion, then stores the rubric version and one immutable pass/fail verdict with confidence, concerns, and dissent per criterion. Missing evidence, failed deterministic checks, or any failed criterion rejects acceptance; replay of the same rubric version returns the stored result without another model call.
+
 ## What is explicitly not in this snapshot
 
 - AF-050 optional Claude writable-worker alternative.
-- AF-020 complete independent criterion verdicts.
 - AF-053 bounded coding delivery/repair loop.
 - AF-056 enforced budgets/end-to-end telemetry and AF-057 local crash recovery.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
@@ -88,4 +92,4 @@ Only the exact AF-049 diff with five successful AF-052 categories can now become
 
 ## Next release target
 
-M1, AF-017, AF-044 through AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055 are complete. AF-020 is the next critical-path slice for independent criterion verdicts.
+M1, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055 are complete. AF-008 is the next critical-path slice for the persistent engineering loop.
