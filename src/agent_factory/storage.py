@@ -562,6 +562,70 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'accepted evidence artifact is immutable'); END;
     """),
+    (12, """
+        CREATE TABLE policy_state(
+            id INTEGER PRIMARY KEY CHECK(id=1),
+            emergency_stop INTEGER NOT NULL DEFAULT 0 CHECK(emergency_stop IN (0,1)),
+            reason TEXT NOT NULL DEFAULT '',
+            actor TEXT NOT NULL DEFAULT 'system',
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO policy_state(id) VALUES(1);
+
+        CREATE TABLE policy_decisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL,
+            request_json TEXT NOT NULL,
+            outcome TEXT NOT NULL CHECK(outcome IN ('allow','deny','require_approval')),
+            reason TEXT NOT NULL,
+            policy_version INTEGER NOT NULL CHECK(policy_version > 0),
+            approval_id INTEGER,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER policy_decisions_no_update BEFORE UPDATE ON policy_decisions
+        BEGIN SELECT RAISE(ABORT, 'policy decisions are immutable'); END;
+        CREATE TRIGGER policy_decisions_no_delete BEFORE DELETE ON policy_decisions
+        BEGIN SELECT RAISE(ABORT, 'policy decisions are immutable'); END;
+
+        CREATE TABLE scoped_execution_approvals(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER REFERENCES workflow_runs(id),
+            stage_id TEXT NOT NULL,
+            worker_id TEXT NOT NULL,
+            runtime_id TEXT NOT NULL,
+            worktree_id TEXT,
+            permissions_json TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK(status IN ('pending','approved','rejected','consumed','expired','cancelled')),
+            requested_by TEXT NOT NULL,
+            decided_by TEXT,
+            decision_note TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT NOT NULL,
+            decided_at TEXT,
+            consumed_at TEXT
+        );
+        CREATE INDEX idx_scoped_approvals_status
+            ON scoped_execution_approvals(status,expires_at,task_id);
+        CREATE TRIGGER scoped_approval_scope_immutable
+        BEFORE UPDATE OF mission_id,task_id,run_id,stage_id,worker_id,runtime_id,
+                         worktree_id,permissions_json,request_digest
+        ON scoped_execution_approvals
+        BEGIN SELECT RAISE(ABORT, 'approval scope is immutable'); END;
+        CREATE TRIGGER scoped_approval_valid_transition
+        BEFORE UPDATE OF status ON scoped_execution_approvals
+        WHEN NOT (
+            (OLD.status='pending' AND NEW.status IN ('approved','rejected','expired','cancelled')) OR
+            (OLD.status='approved' AND NEW.status IN ('consumed','expired','cancelled'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid scoped approval transition'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1089,6 +1153,319 @@ class SQLiteStorage:
                     raise KeyError(f"Unknown outbox message: {message_id}")
                 raise PermissionError("Outbox claim token is invalid or stale")
 
+    @staticmethod
+    def _policy_digest(request: dict[str, Any]) -> str:
+        normalized = dict(request)
+        normalized["permissions"] = sorted(set(normalized.get("permissions", [])))
+        payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def policy_state(self) -> dict[str, Any]:
+        row = self.db.execute("SELECT * FROM policy_state WHERE id=1").fetchone()
+        return {
+            "emergency_stop": bool(row["emergency_stop"]),
+            "reason": str(row["reason"]),
+            "actor": str(row["actor"]),
+            "version": int(row["version"]),
+            "updated_at": str(row["updated_at"]),
+        }
+
+    def _assert_dispatch_allowed(self) -> None:
+        state = self.policy_state()
+        if state["emergency_stop"]:
+            raise PermissionError(f"Emergency stop is active: {state['reason']}")
+
+    def record_policy_decision(
+        self,
+        *,
+        request: dict[str, Any],
+        request_digest: str,
+        outcome: str,
+        reason: str,
+        policy_version: int,
+        approval_id: int | None = None,
+    ) -> int:
+        if outcome not in {"allow", "deny", "require_approval"}:
+            raise ValueError(outcome)
+        if self._policy_digest(request) != request_digest:
+            raise ValueError("Policy request digest does not match canonical request")
+        request_json = json.dumps(request, sort_keys=True, separators=(",", ":"))
+        with self.db:
+            cur = self.db.execute(
+                """INSERT INTO policy_decisions(
+                       identity,request_digest,request_json,outcome,reason,
+                       policy_version,approval_id
+                   ) VALUES(?,?,?,?,?,?,?)""",
+                (
+                    self._identity("policy-decision"),
+                    request_digest,
+                    request_json,
+                    outcome,
+                    reason,
+                    policy_version,
+                    approval_id,
+                ),
+            )
+            decision_id = int(cur.lastrowid)
+            self._event(
+                f"policy.{outcome}",
+                "policy_decision",
+                decision_id,
+                {
+                    **request,
+                    "request_digest": request_digest,
+                    "policy_version": policy_version,
+                    "approval_id": approval_id,
+                    "reason": reason,
+                },
+            )
+        return decision_id
+
+    def request_scoped_approval(
+        self,
+        *,
+        request: dict[str, Any],
+        requested_by: str,
+        ttl_seconds: int = 900,
+    ) -> int:
+        required = {
+            "mission_id",
+            "task_id",
+            "run_id",
+            "stage_id",
+            "worker_id",
+            "runtime_id",
+            "worktree_id",
+            "permissions",
+        }
+        if set(request) != required:
+            raise ValueError(f"Approval request requires exact fields: {sorted(required)}")
+        if not requested_by.strip():
+            raise ValueError("Approval requester is required")
+        if ttl_seconds < 1 or ttl_seconds > 86_400:
+            raise ValueError("Approval TTL must be between 1 and 86400 seconds")
+        task = self.db.execute(
+            "SELECT project_id FROM work_items WHERE id=?", (request["task_id"],)
+        ).fetchone()
+        if not task:
+            raise KeyError(f"Unknown task: {request['task_id']}")
+        if int(task["project_id"]) != int(request["mission_id"]):
+            raise ValueError("Approval mission does not own the requested task")
+        if request["run_id"] is not None:
+            run = self.db.execute(
+                "SELECT task_id FROM workflow_runs WHERE id=?", (request["run_id"],)
+            ).fetchone()
+            if not run or int(run["task_id"]) != int(request["task_id"]):
+                raise ValueError("Approval run does not belong to the requested task")
+        normalized = dict(request)
+        normalized["permissions"] = sorted(set(request["permissions"]))
+        digest = self._policy_digest(normalized)
+        with self.db:
+            cur = self.db.execute(
+                """INSERT INTO scoped_execution_approvals(
+                       identity,mission_id,task_id,run_id,stage_id,worker_id,
+                       runtime_id,worktree_id,permissions_json,request_digest,
+                       requested_by,expires_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,datetime('now', ?))""",
+                (
+                    self._identity("execution-approval"),
+                    normalized["mission_id"],
+                    normalized["task_id"],
+                    normalized["run_id"],
+                    normalized["stage_id"],
+                    normalized["worker_id"],
+                    normalized["runtime_id"],
+                    normalized["worktree_id"],
+                    json.dumps(normalized["permissions"], separators=(",", ":")),
+                    digest,
+                    requested_by,
+                    f"+{ttl_seconds} seconds",
+                ),
+            )
+            approval_id = int(cur.lastrowid)
+            self._event(
+                "policy.approval.requested",
+                "scoped_approval",
+                approval_id,
+                {**normalized, "request_digest": digest, "requested_by": requested_by},
+            )
+        return approval_id
+
+    def decide_scoped_approval(
+        self, approval_id: int, decision: str, *, actor: str, note: str = ""
+    ) -> bool:
+        if decision not in {"approved", "rejected"}:
+            raise ValueError(decision)
+        if not actor.strip():
+            raise ValueError("Approval decision actor is required")
+        with self.db:
+            row = self.db.execute(
+                "SELECT * FROM scoped_execution_approvals WHERE id=?", (approval_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown scoped approval: {approval_id}")
+            if row["status"] == decision:
+                return False
+            if row["status"] != "pending":
+                raise ValueError(f"Scoped approval {approval_id} is already {row['status']}")
+            if self.db.execute(
+                "SELECT datetime(?)<=CURRENT_TIMESTAMP", (row["expires_at"],)
+            ).fetchone()[0]:
+                raise ValueError(f"Scoped approval {approval_id} has expired")
+            self.db.execute(
+                """UPDATE scoped_execution_approvals
+                      SET status=?,decided_by=?,decision_note=?,
+                          decided_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='pending'""",
+                (decision, actor, note, approval_id),
+            )
+            self._event(
+                f"policy.approval.{decision}",
+                "scoped_approval",
+                approval_id,
+                {
+                    "mission_id": row["mission_id"],
+                    "task_id": row["task_id"],
+                    "run_id": row["run_id"],
+                    "stage_id": row["stage_id"],
+                    "worker_id": row["worker_id"],
+                    "runtime_id": row["runtime_id"],
+                    "worktree_id": row["worktree_id"],
+                    "request_digest": row["request_digest"],
+                    "actor": actor,
+                    "note": note,
+                },
+            )
+        return True
+
+    def consume_scoped_approval(
+        self,
+        approval_id: int,
+        *,
+        request: dict[str, Any],
+        request_digest: str,
+    ) -> None:
+        self._assert_dispatch_allowed()
+        if self._policy_digest(request) != request_digest:
+            raise PermissionError("Current policy request digest is invalid")
+        expired = False
+        with self.db:
+            row = self.db.execute(
+                "SELECT * FROM scoped_execution_approvals WHERE id=?", (approval_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown scoped approval: {approval_id}")
+            if row["status"] != "approved":
+                raise PermissionError(
+                    f"Scoped approval {approval_id} is {row['status']}, expected approved"
+                )
+            if self.db.execute(
+                "SELECT datetime(?)<=CURRENT_TIMESTAMP", (row["expires_at"],)
+            ).fetchone()[0]:
+                self.db.execute(
+                    "UPDATE scoped_execution_approvals SET status='expired' WHERE id=?",
+                    (approval_id,),
+                )
+                self._event(
+                    "policy.approval.expired", "scoped_approval", approval_id, {"task_id": row["task_id"]}
+                )
+                expired = True
+            elif row["request_digest"] != request_digest:
+                raise PermissionError("Approval scope does not match the current request digest")
+            else:
+                self.db.execute(
+                    """UPDATE scoped_execution_approvals
+                          SET status='consumed',consumed_at=CURRENT_TIMESTAMP
+                        WHERE id=? AND status='approved'""",
+                    (approval_id,),
+                )
+                self._event(
+                    "policy.approval.consumed",
+                    "scoped_approval",
+                    approval_id,
+                    {**request, "request_digest": request_digest},
+                )
+        if expired:
+            raise PermissionError(f"Scoped approval {approval_id} has expired")
+
+    def set_emergency_stop(self, active: bool, *, actor: str, reason: str) -> bool:
+        if not actor.strip() or not reason.strip():
+            raise ValueError("Emergency stop requires actor and reason")
+        with self.db:
+            state = self.db.execute("SELECT * FROM policy_state WHERE id=1").fetchone()
+            if bool(state["emergency_stop"]) == active:
+                return False
+            self.db.execute(
+                """UPDATE policy_state
+                      SET emergency_stop=?,reason=?,actor=?,version=version+1,
+                          updated_at=CURRENT_TIMESTAMP WHERE id=1""",
+                (int(active), reason, actor),
+            )
+            cancelled: dict[str, int] = {}
+            if active:
+                cancelled["worker_sessions"] = self.db.execute(
+                    """UPDATE worker_sessions
+                          SET status='cancelled',version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE status IN ('starting','running','suspended')"""
+                ).rowcount
+                cancelled["attempts"] = self.db.execute(
+                    """UPDATE attempts
+                          SET status='cancelled',version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE status IN ('claimed','running')"""
+                ).rowcount
+                cancelled["assignments"] = self.db.execute(
+                    """UPDATE assignments
+                          SET status='cancelled',version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE status IN ('pending','active','suspended')"""
+                ).rowcount
+                cancelled["leases"] = self.db.execute(
+                    """UPDATE leases
+                          SET status='revoked',version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE status='active'"""
+                ).rowcount
+                provider_attempts = self.db.execute(
+                    """SELECT id,gate_id FROM provider_execution_attempts
+                        WHERE status IN ('claimed','running')"""
+                ).fetchall()
+                for attempt in provider_attempts:
+                    self.db.execute(
+                        """UPDATE provider_execution_attempts
+                              SET status='abandoned',version=version+1,
+                                  result='Cancelled by Control Plane emergency stop',
+                                  metadata='{"emergency_stop":true}',
+                                  finished_at=CURRENT_TIMESTAMP,
+                                  heartbeat_at=CURRENT_TIMESTAMP
+                            WHERE id=?""",
+                        (attempt["id"],),
+                    )
+                    self.db.execute(
+                        """UPDATE provider_execution_gates
+                              SET status='consumed',consumed_at=CURRENT_TIMESTAMP
+                            WHERE id=? AND status='claimed'""",
+                        (attempt["gate_id"],),
+                    )
+                cancelled["provider_attempts"] = len(provider_attempts)
+                self.db.execute(
+                    """UPDATE provider_execution_gates
+                          SET status='rejected',decision_note=?,decided_at=CURRENT_TIMESTAMP
+                        WHERE status IN ('pending','approved')""",
+                    (f"Emergency stop by {actor}: {reason}",),
+                )
+                self.db.execute("DELETE FROM pending_provider_gate_claims")
+                self.db.execute(
+                    """UPDATE scoped_execution_approvals
+                          SET status='cancelled',decision_note=?,decided_at=CURRENT_TIMESTAMP
+                        WHERE status IN ('pending','approved')""",
+                    (f"Emergency stop by {actor}: {reason}",),
+                )
+            self._event(
+                "policy.emergency_stop.activated" if active else "policy.emergency_stop.cleared",
+                "policy_state",
+                1,
+                {"active": active, "actor": actor, "reason": reason, "cancelled": cancelled},
+            )
+        return True
+
     def runtime_settings(self):
         return self.db.execute(
             "SELECT * FROM runtime_settings ORDER BY key"
@@ -1295,6 +1672,7 @@ class SQLiteStorage:
         ).fetchall()
 
     def start_run(self, project_id: int, task_id: int | None, workflow_id: str) -> int:
+        self._assert_dispatch_allowed()
         if task_id is None:
             raise ValueError("Workflow requires a persisted work item")
         task = self.db.execute("SELECT project_id FROM work_items WHERE id=?", (task_id,)).fetchone()
@@ -1892,6 +2270,7 @@ class SQLiteStorage:
             )
 
     def claim_provider_execution(self, gate_id: int, request_hash: str, definition_hash: str):
+        self._assert_dispatch_allowed()
         request_hash = _sha256_snapshot(request_hash, "request_hash")
         definition_hash = _sha256_snapshot(definition_hash, "definition_hash")
         mismatch_error: str | None = None

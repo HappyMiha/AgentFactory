@@ -24,6 +24,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-001 versioned SQLite domain model with immutable identities for work items, runs, stages, assignments, sessions, attempts, leases, worktrees, and artifacts; normalized WorkItem authority; compatibility backfill; and lifecycle state-machine enforcement.
 - AF-002 transactional event outbox with stable delivery keys and guarded claims, complete correlation envelopes, concurrent-safe SHA-256 audit chaining, immutable audit records, and integrated tamper verification.
 - AF-003 evidence ledger with SHA-256 artifact envelopes, typed criterion mappings, explicit verifier decisions, primary-evidence closure gates, immutable accepted evidence, and integrity verification.
+- AF-004 durable Control Plane policy with allow/deny/require-approval decisions, exact one-use execution approvals, immutable decision records, persistent emergency stop, dispatch blocking, and mutable-session cancellation.
 
 ### Changed
 

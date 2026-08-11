@@ -126,3 +126,9 @@ class ExecutionApproval:
     agent_id: str
     task_id: int
     approved_by: str = "Human"
+    run_id: int | None = None
+    stage_id: str | None = None
+    runtime_id: str | None = None
+    worktree_id: str | None = None
+    permissions: tuple[str, ...] = ()
+    request_digest: str | None = None
