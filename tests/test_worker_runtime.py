@@ -6,7 +6,9 @@ from dataclasses import replace
 from pathlib import Path
 
 from agent_factory.context_packages import ContextPackageBuilder
+from agent_factory.live_stages import LiveStageExecution
 from agent_factory.models import Agent, ProviderResult, WorkItem
+from agent_factory.policy import PolicyRequest
 from agent_factory.providers import Provider
 from agent_factory.storage import SQLiteStorage
 from agent_factory.worker_runtime import (
@@ -16,6 +18,7 @@ from agent_factory.worker_runtime import (
     HermesACPWorkerRuntime,
     RuntimeDriver,
     RuntimeDriverEvent,
+    RuntimeBinding,
     RuntimeLaunch,
 )
 
@@ -104,7 +107,7 @@ class WorkerRuntimeContractTests(unittest.TestCase):
         self.storage.close()
         self.temporary.cleanup()
 
-    def fixture(self, *, mutable: bool = False):
+    def fixture(self, *, mutable: bool = False, runtime_id: str = "direct-cli"):
         self.counter += 1
         worker_id = f"worker-{self.counter}"
         task_id = self.storage.create_task(
@@ -124,10 +127,13 @@ class WorkerRuntimeContractTests(unittest.TestCase):
             definition={"id": f"runtime-{self.counter}"},
             stages=[{"id": "runtime", "depends_on": []}],
         )
+        self.storage.transition_durable_stage(
+            run_id, "runtime", "running", {"reason": "dispatch"}
+        )
         claim = self.storage.claim_runnable_task(
             task_id,
             worker_id,
-            "runtime-contract",
+            runtime_id,
             conflict_domains=[f"path:worktree-{self.counter}"],
         )
         agent = Agent(
@@ -154,9 +160,51 @@ class WorkerRuntimeContractTests(unittest.TestCase):
             self.storage.get_task(task_id),
             package.payload,
             package.digest,
+            binding=None,
+            approval=None,
             mutable=mutable,
             permission_bridge_id="bridge-1" if mutable else None,
         )
+        if mutable:
+            attempt_id = self.storage.create_assignment_attempt(
+                claim.assignment_id, claim.fencing_token
+            )
+            worktree_id = self.storage.create_managed_worktree(
+                assignment_id=claim.assignment_id,
+                fencing_token=claim.fencing_token,
+                repository=str(Path(self.temporary.name) / "repository"),
+                base_sha="a" * 40,
+                branch=f"agent-factory/task-{task_id}",
+                path=str(Path(self.temporary.name) / f"worktree-{task_id}"),
+                attempt_id=attempt_id,
+            )
+            self.storage.transition_managed_worktree(worktree_id, "ready")
+            request = PolicyRequest(
+                mission_id=self.project_id,
+                task_id=task_id,
+                run_id=run_id,
+                stage_id="runtime",
+                worker_id=worker_id,
+                runtime_id=runtime_id,
+                worktree_id=str(worktree_id),
+                permissions=tuple(sorted(set(launch.item.permissions))),
+            )
+            live = LiveStageExecution(self.storage)
+            gate = live.request_approval(request, requested_by="runtime-test")
+            approval = live.decide(
+                gate.approval_id, "approved", actor="runtime-test"
+            )
+            launch = replace(
+                launch,
+                binding=RuntimeBinding(
+                    run_id=run_id,
+                    stage_id="runtime",
+                    attempt_id=attempt_id,
+                    worktree_id=worktree_id,
+                    allowed_tools=("read_file", "write_file"),
+                ),
+                approval=approval,
+            )
         return claim, launch
 
     def runtimes(self):
@@ -170,7 +218,7 @@ class WorkerRuntimeContractTests(unittest.TestCase):
     def test_direct_and_hermes_share_complete_lifecycle_and_structured_result(self):
         for name, runtime, driver in self.runtimes():
             with self.subTest(runtime=name):
-                _, launch = self.fixture()
+                _, launch = self.fixture(runtime_id=runtime.runtime_id)
                 self.assertEqual(
                     runtime.operations,
                     {
@@ -217,7 +265,7 @@ class WorkerRuntimeContractTests(unittest.TestCase):
     def test_cancel_is_supported_and_idempotent_for_both_runtimes(self):
         for name, runtime, _ in self.runtimes():
             with self.subTest(runtime=name):
-                _, launch = self.fixture()
+                _, launch = self.fixture(runtime_id=runtime.runtime_id)
                 session = runtime.start(launch)
                 cancelled = runtime.cancel(session.id, reason="operator stop")
                 self.assertEqual(cancelled.status, "cancelled")
@@ -227,7 +275,7 @@ class WorkerRuntimeContractTests(unittest.TestCase):
     def test_fallback_becomes_forbidden_after_first_mutable_event(self):
         for name, runtime, _ in self.runtimes():
             with self.subTest(runtime=name):
-                _, launch = self.fixture(mutable=True)
+                _, launch = self.fixture(mutable=True, runtime_id=runtime.runtime_id)
                 session = runtime.start(launch)
                 if name == "direct":
                     with self.assertRaises(FallbackForbiddenError):
@@ -242,7 +290,7 @@ class WorkerRuntimeContractTests(unittest.TestCase):
                 )
 
     def test_hermes_mutation_requires_acp_permission_bridge_and_never_oneshot(self):
-        _, mutable_launch = self.fixture(mutable=True)
+        _, mutable_launch = self.fixture(mutable=True, runtime_id="hermes-acp")
         no_bridge = RuntimeLaunch(
             mutable_launch.assignment_id,
             mutable_launch.fencing_token,

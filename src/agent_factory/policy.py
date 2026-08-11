@@ -99,7 +99,12 @@ class ControlPlanePolicy:
         )
 
     def authorize(
-        self, request: PolicyRequest, *, approval_id: int | None = None
+        self,
+        request: PolicyRequest,
+        *,
+        approval_id: int | None = None,
+        assignment_id: int | None = None,
+        attempt_id: int | None = None,
     ) -> PolicyDecision:
         decision = self.evaluate(request)
         if decision.outcome is not PolicyOutcome.REQUIRE_APPROVAL:
@@ -107,7 +112,11 @@ class ControlPlanePolicy:
         if approval_id is None:
             return decision
         self.storage.consume_scoped_approval(
-            approval_id, request=request.canonical(), request_digest=request.digest
+            approval_id,
+            request=request.canonical(),
+            request_digest=request.digest,
+            assignment_id=assignment_id,
+            attempt_id=attempt_id,
         )
         state = self.storage.policy_state()
         reason = "Exact one-use Control Plane approval consumed"

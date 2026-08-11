@@ -912,6 +912,27 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON hermes_acp_sessions
         BEGIN SELECT RAISE(ABORT, 'Hermes ACP session history is immutable'); END;
     """),
+    (20, """
+        CREATE TABLE stage_approval_consumptions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            approval_id INTEGER NOT NULL UNIQUE REFERENCES scoped_execution_approvals(id),
+            attempt_id INTEGER NOT NULL UNIQUE REFERENCES attempts(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            request_digest TEXT NOT NULL,
+            consumed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_stage_approval_scope
+            ON stage_approval_consumptions(run_id,stage_id,assignment_id);
+        CREATE TRIGGER stage_approval_consumptions_no_update
+        BEFORE UPDATE ON stage_approval_consumptions
+        BEGIN SELECT RAISE(ABORT, 'stage approval consumption is immutable'); END;
+        CREATE TRIGGER stage_approval_consumptions_no_delete
+        BEFORE DELETE ON stage_approval_consumptions
+        BEGIN SELECT RAISE(ABORT, 'stage approval consumption is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1697,10 +1718,14 @@ class SQLiteStorage:
         *,
         request: dict[str, Any],
         request_digest: str,
+        assignment_id: int | None = None,
+        attempt_id: int | None = None,
     ) -> None:
         self._assert_dispatch_allowed()
         if self._policy_digest(request) != request_digest:
             raise PermissionError("Current policy request digest is invalid")
+        if (assignment_id is None) != (attempt_id is None):
+            raise ValueError("Assignment and attempt must be supplied together")
         expired = False
         with self.db:
             row = self.db.execute(
@@ -1726,12 +1751,99 @@ class SQLiteStorage:
             elif row["request_digest"] != request_digest:
                 raise PermissionError("Approval scope does not match the current request digest")
             else:
+                stage_row = None
+                if assignment_id is not None and attempt_id is not None:
+                    assignment = self.db.execute(
+                        """SELECT a.*,w.project_id
+                             FROM assignments a
+                             JOIN work_items w ON w.id=a.task_id
+                            WHERE a.id=?""",
+                        (assignment_id,),
+                    ).fetchone()
+                    attempt = self.db.execute(
+                        "SELECT * FROM attempts WHERE id=?", (attempt_id,)
+                    ).fetchone()
+                    if (
+                        not assignment
+                        or str(assignment["status"]) != "active"
+                        or int(assignment["task_id"]) != int(request["task_id"])
+                        or int(assignment["project_id"]) != int(request["mission_id"])
+                        or str(assignment["agent_id"]) != str(request["worker_id"])
+                        or str(assignment["runtime"]) != str(request["runtime_id"])
+                    ):
+                        raise PermissionError(
+                            "Approval assignment scope does not match the live execution"
+                        )
+                    if (
+                        not attempt
+                        or int(attempt["assignment_id"]) != assignment_id
+                        or str(attempt["status"]) not in {"claimed", "running"}
+                    ):
+                        raise PermissionError(
+                            "Approval attempt is not active for its assignment"
+                        )
+                    if self.db.execute(
+                        "SELECT 1 FROM stage_approval_consumptions WHERE attempt_id=?",
+                        (attempt_id,),
+                    ).fetchone():
+                        raise PermissionError(
+                            "This logical attempt already consumed a stage approval"
+                        )
+                    stage_row = self.db.execute(
+                        """SELECT s.id,s.status,r.task_id
+                             FROM workflow_stages s
+                             JOIN workflow_runs r ON r.id=s.run_id
+                            WHERE s.run_id=? AND s.stage_key=?""",
+                        (request["run_id"], request["stage_id"]),
+                    ).fetchone()
+                    if (
+                        request["run_id"] is None
+                        or not stage_row
+                        or int(stage_row["task_id"]) != int(request["task_id"])
+                        or str(stage_row["status"]) != "waiting_approval"
+                    ):
+                        raise PermissionError(
+                            "Approval stage is not waiting in the requested run"
+                        )
+                    worktree = self.db.execute(
+                        "SELECT * FROM worktrees WHERE id=?",
+                        (request["worktree_id"],),
+                    ).fetchone()
+                    if (
+                        not worktree
+                        or int(worktree["assignment_id"]) != assignment_id
+                        or (
+                            worktree["attempt_id"] is not None
+                            and int(worktree["attempt_id"]) != attempt_id
+                        )
+                        or str(worktree["status"]) not in {"ready", "dirty"}
+                        or str(worktree["id"]) != str(request["worktree_id"])
+                    ):
+                        raise PermissionError(
+                            "Approval worktree scope does not match the live attempt"
+                        )
                 self.db.execute(
                     """UPDATE scoped_execution_approvals
                           SET status='consumed',consumed_at=CURRENT_TIMESTAMP
                         WHERE id=? AND status='approved'""",
                     (approval_id,),
                 )
+                if stage_row is not None:
+                    self.db.execute(
+                        """INSERT INTO stage_approval_consumptions(
+                               identity,approval_id,attempt_id,assignment_id,
+                               run_id,stage_id,request_digest
+                           ) VALUES(?,?,?,?,?,?,?)""",
+                        (
+                            self._identity("stage-approval-consumption"),
+                            approval_id,
+                            attempt_id,
+                            assignment_id,
+                            request["run_id"],
+                            int(stage_row["id"]),
+                            request_digest,
+                        ),
+                    )
                 self._event(
                     "policy.approval.consumed",
                     "scoped_approval",

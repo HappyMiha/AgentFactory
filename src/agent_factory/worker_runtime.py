@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from .models import Agent, ExecutionApproval, WorkItem
+from .policy import ControlPlanePolicy, PolicyOutcome, PolicyRequest
 from .providers import Provider
 from .storage import SQLiteStorage
 
@@ -269,8 +270,74 @@ class WorkerRuntime(ABC):
             fencing_token=launch.fencing_token,
         )
 
+    def _authorize_mutable_launch(self, launch: RuntimeLaunch) -> None:
+        if not launch.mutable:
+            return
+        if launch.binding is None or launch.approval is None:
+            raise PermissionError(
+                "Mutable execution requires an exact live-stage approval and binding"
+            )
+        binding = launch.binding
+        approval = launch.approval
+        request = PolicyRequest(
+            mission_id=launch.item.project_id,
+            task_id=int(launch.item.id),
+            run_id=binding.run_id,
+            stage_id=binding.stage_id,
+            worker_id=launch.agent.id,
+            runtime_id=self.runtime_id,
+            worktree_id=str(binding.worktree_id),
+            permissions=tuple(sorted(set(launch.item.permissions))),
+        )
+        envelope = (
+            approval.provider,
+            approval.agent_id,
+            approval.task_id,
+            approval.run_id,
+            approval.stage_id,
+            approval.runtime_id,
+            approval.worktree_id,
+            tuple(sorted(set(approval.permissions))),
+            approval.request_digest,
+        )
+        expected = (
+            self.runtime_id,
+            launch.agent.id,
+            launch.item.id,
+            binding.run_id,
+            binding.stage_id,
+            self.runtime_id,
+            str(binding.worktree_id),
+            request.permissions,
+            request.digest,
+        )
+        if envelope != expected:
+            raise PermissionError(
+                "Execution approval envelope does not match the live runtime scope"
+            )
+        decision = ControlPlanePolicy(self.storage).authorize(
+            request,
+            approval_id=approval.gate_id,
+            assignment_id=launch.assignment_id,
+            attempt_id=binding.attempt_id,
+        )
+        if decision.outcome is not PolicyOutcome.ALLOW:
+            raise PermissionError(decision.reason)
+        self.storage.transition_durable_stage(
+            binding.run_id,
+            binding.stage_id,
+            "running",
+            {
+                "approval_id": approval.gate_id,
+                "attempt_id": binding.attempt_id,
+                "assignment_id": launch.assignment_id,
+                "request_digest": request.digest,
+            },
+        )
+
     def start(self, launch: RuntimeLaunch) -> RuntimeSession:
         self._validate_launch(launch)
+        self._authorize_mutable_launch(launch)
         session_id = self.storage.create_runtime_session(
             assignment_id=launch.assignment_id,
             runtime=self.runtime_id,

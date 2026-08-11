@@ -33,6 +33,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-048 Control-Plane-owned Git worktree manager with deterministic fenced branches/paths, immutable authority metadata, crash-safe replay, non-destructive reconciliation, and terminal retention cleanup.
 - AF-055 immutable Execution Context Packages with fenced dispatch scope, canonical SHA-256 identity, explicit source inclusion/exclusion/supersession, deterministic byte/token compaction, and runtime digest enforcement.
 - AF-045 concrete Hermes ACP stdio driver with exact version/check qualification, durable task/run/stage/attempt/worktree/context bindings, normalized protocol events, permission bridging, stable restart reattachment, and process-tree cancellation.
+- AF-046 durable per-stage live execution approvals with exact runtime scope, immutable gate-to-attempt consumption, pre-process rejection/expiry enforcement, and automatic dependency-ready continuation.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
@@ -47,7 +48,6 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 ### Planned
 
 - Native HTTP provider interface.
-- Per-stage live execution approval orchestration.
 - Streaming output limits and value-aware secret redaction.
 - PostgreSQL storage adapter.
 - Hosted control interface.

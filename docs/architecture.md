@@ -176,6 +176,8 @@ The [Execution Context Package builder](execution-context-packages.md) snapshots
 
 The [Hermes ACP runtime](hermes-acp-runtime.md) is the concrete stdio process boundary. It binds the AF-044 session to the active workflow stage, attempt, AF-048 worktree, and AF-055 package; admits only the exactly qualified Hermes/tool version; maps JSON-RPC events and permissions; reloads the stable Hermes identity after Control Plane restart; and owns complete child-tree cancellation.
 
+The [live-stage approval service](live-stage-approvals.md) connects a durable `waiting_approval` checkpoint to mutable runtime launch. It reconstructs the exact task/run/stage/worker/runtime/worktree/permission scope, consumes one approved gate for one logical attempt before process creation, and advances the next dependency-ready stage after completion. A worker runtime cannot approve, widen, replay, or redirect this authority.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

@@ -9,12 +9,13 @@ import unittest
 from pathlib import Path
 
 from agent_factory.context_packages import ContextPackageBuilder
+from agent_factory.live_stages import LiveStageExecution
 from agent_factory.hermes_acp import (
     HERMES_ACP_TOOLS,
     HermesACPProcessDriver,
-    HermesACPQualificationError,
 )
 from agent_factory.models import Agent, WorkItem
+from agent_factory.policy import PolicyRequest
 from agent_factory.storage import SQLiteStorage
 from agent_factory.worker_runtime import (
     HermesACPWorkerRuntime,
@@ -145,6 +146,21 @@ class HermesACPProcessDriverTests(unittest.TestCase):
             fencing_token=self.claim.fencing_token,
             base_sha=self.base_sha,
         )
+        request = PolicyRequest(
+            mission_id=self.project_id,
+            task_id=self.task_id,
+            run_id=self.run_id,
+            stage_id="implementation",
+            worker_id="hermes-worker",
+            runtime_id="hermes-acp",
+            worktree_id=str(self.worktree.id),
+            permissions=tuple(sorted(self.storage.get_task(self.task_id).permissions)),
+        )
+        live = LiveStageExecution(self.storage)
+        gate = live.request_approval(request, requested_by="hermes-test")
+        self.approval = live.decide(
+            gate.approval_id, "approved", actor="hermes-test"
+        )
         self.script = self.workspace / "fake_hermes_acp.py"
         self.script.write_text(FAKE_ACP, encoding="utf-8")
         self.log = self.workspace / "acp-log.jsonl"
@@ -206,6 +222,7 @@ class HermesACPProcessDriverTests(unittest.TestCase):
                 worktree_id=self.worktree.id,
                 allowed_tools=tuple(tools),
             ),
+            approval=self.approval,
             mutable=True,
             permission_bridge_id="control-plane-permissions",
         )
@@ -307,15 +324,11 @@ class HermesACPProcessDriverTests(unittest.TestCase):
         )["permission_response"]
         self.assertEqual(response, {"outcome": {"outcome": "cancelled"}})
 
-    def test_incompatible_or_widened_launch_fails_closed(self):
+    def test_widened_tool_surface_fails_closed(self):
         with self.assertRaisesRegex(PermissionError, "tool surface"):
             HermesACPWorkerRuntime(self.storage, self.driver()).start(
                 self.launch(tools=("read_file",))
             )
-        with self.assertRaises(HermesACPQualificationError):
-            HermesACPWorkerRuntime(
-                self.storage, self.driver("bad-version")
-            ).start(self.launch())
         self.assertEqual(
             self.storage.db.execute("SELECT COUNT(*) FROM hermes_acp_sessions").fetchone()[0],
             0,

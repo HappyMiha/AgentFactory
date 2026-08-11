@@ -19,6 +19,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path with durable ownership, reconciliation, and retention controls.
 - **Immutable dispatch context.** Every Worker Runtime launch is bound to a content-addressed, size-bounded package with explicit included, excluded, and superseded sources.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
+- **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.
@@ -33,7 +34,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
 | Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, Ollama, and Firecrawl adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |
-| Human approval gates | Ready | Provider gates are scoped to one provider, agent, and work item; final acceptance is separate. |
+| Human approval gates | Ready | Provider gates and durable live-stage gates are exact and one-use; final acceptance remains separate. |
 | SQLite state and audit | Ready | Versioned migrations, WAL mode, integrity checks, backup support, and interrupted-attempt reconciliation. |
 | Durable Control Plane core | AF-001–AF-007 complete | Normalized identities, transactional outbox/audit, criterion evidence, deterministic policy, adapter qualification, resumable checkpoints, and fenced scheduling. |
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
