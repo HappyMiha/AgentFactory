@@ -199,14 +199,11 @@ class ProviderApprovalSnapshotTests(unittest.TestCase):
                 os.environ, {"AGENT_FACTORY_CONFIG_DIR": str(policy_path.parent)}
             ):
                 gate_id = self.approve_current_snapshot(storage, registry, task_id)
-                row = storage.db.execute(
-                    "SELECT payload FROM work_items WHERE id=?", (task_id,)
-                ).fetchone()
-                payload = json.loads(row["payload"])
-                payload["description"] = "Changed after approval."
                 storage.db.execute(
-                    "UPDATE work_items SET payload=? WHERE id=?",
-                    (json.dumps(payload), task_id),
+                    """UPDATE work_items
+                          SET description=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE id=?""",
+                    ("Changed after approval.", task_id),
                 )
                 storage.db.commit()
                 with self.assertRaisesRegex(PermissionError, "request a new gate"):

@@ -21,6 +21,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - Immutable approval snapshots that bind each provider gate to the full work item, agent definition, provider catalog, and execution policy.
 - Guarded Firecrawl CLI integration with a least-privilege `Web Researcher` role, source-oriented instructions, fixed five-credit ceiling, and one-use execution approval.
 - Accepted Control Plane/Hermes authority boundary and expanded the implementation backlog through AF-057 around the restart-safe single-node coding loop.
+- AF-001 versioned SQLite domain model with immutable identities for work items, runs, stages, assignments, sessions, attempts, leases, worktrees, and artifacts; normalized WorkItem authority; compatibility backfill; and lifecycle state-machine enforcement.
 
 ### Changed
 

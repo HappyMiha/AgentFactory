@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .lifecycle import TRANSITIONS, ensure_transition
 from .models import Budget, Status, WorkItem
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
@@ -188,12 +189,273 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON runtime_setting_versions
         BEGIN SELECT RAISE(ABORT, 'runtime setting history is immutable'); END;
     """),
+    (9, """
+        ALTER TABLE work_items ADD COLUMN identity TEXT;
+        ALTER TABLE work_items ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0);
+        ALTER TABLE work_items ADD COLUMN kind TEXT NOT NULL DEFAULT 'task';
+        ALTER TABLE work_items ADD COLUMN dependencies_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE work_items ADD COLUMN inputs_json TEXT NOT NULL DEFAULT '{}';
+        ALTER TABLE work_items ADD COLUMN expected_outputs_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE work_items ADD COLUMN acceptance_criteria_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE work_items ADD COLUMN permissions_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE work_items ADD COLUMN budget_max_tokens INTEGER NOT NULL DEFAULT 4000;
+        ALTER TABLE work_items ADD COLUMN budget_max_seconds INTEGER NOT NULL DEFAULT 120;
+        ALTER TABLE work_items ADD COLUMN budget_max_cost_usd REAL NOT NULL DEFAULT 0.0;
+        ALTER TABLE work_items ADD COLUMN artifact_ids_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE work_items ADD COLUMN github_number INTEGER;
+        ALTER TABLE work_items ADD COLUMN updated_at TEXT;
+
+        UPDATE work_items SET
+            identity='work-item:' || id,
+            kind=COALESCE(json_extract(payload,'$.kind'),'task'),
+            dependencies_json=COALESCE(json_extract(payload,'$.dependencies'),'[]'),
+            inputs_json=COALESCE(json_extract(payload,'$.inputs'),'{}'),
+            expected_outputs_json=COALESCE(json_extract(payload,'$.expected_outputs'),'[]'),
+            acceptance_criteria_json=COALESCE(json_extract(payload,'$.acceptance_criteria'),'[]'),
+            permissions_json=COALESCE(json_extract(payload,'$.permissions'),'[]'),
+            budget_max_tokens=COALESCE(json_extract(payload,'$.budget.max_tokens'),4000),
+            budget_max_seconds=COALESCE(json_extract(payload,'$.budget.max_seconds'),120),
+            budget_max_cost_usd=COALESCE(json_extract(payload,'$.budget.max_cost_usd'),0.0),
+            artifact_ids_json=COALESCE(json_extract(payload,'$.artifacts'),'[]'),
+            github_number=json_extract(payload,'$.github_number'),
+            updated_at=created_at
+        WHERE json_valid(payload);
+        UPDATE work_items SET identity='work-item:' || id, updated_at=created_at
+         WHERE identity IS NULL;
+        CREATE UNIQUE INDEX idx_work_items_identity ON work_items(identity);
+
+        ALTER TABLE workflow_runs ADD COLUMN identity TEXT;
+        ALTER TABLE workflow_runs ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0);
+        UPDATE workflow_runs SET identity='run:' || id;
+        CREATE UNIQUE INDEX idx_workflow_runs_identity ON workflow_runs(identity);
+
+        ALTER TABLE artifacts ADD COLUMN identity TEXT;
+        ALTER TABLE artifacts ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0);
+        UPDATE artifacts SET identity='artifact:' || id;
+        CREATE UNIQUE INDEX idx_artifacts_identity ON artifacts(identity);
+
+        ALTER TABLE provider_execution_attempts ADD COLUMN identity TEXT;
+        ALTER TABLE provider_execution_attempts ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0);
+        UPDATE provider_execution_attempts SET identity='provider-attempt:' || id;
+        CREATE UNIQUE INDEX idx_provider_attempts_identity ON provider_execution_attempts(identity);
+
+        ALTER TABLE provider_execution_artifacts ADD COLUMN identity TEXT;
+        ALTER TABLE provider_execution_artifacts ADD COLUMN version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0);
+        UPDATE provider_execution_artifacts SET identity='provider-artifact:' || id;
+        CREATE UNIQUE INDEX idx_provider_artifacts_identity ON provider_execution_artifacts(identity);
+
+        CREATE TABLE workflow_stages(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_key TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('pending','running','waiting_approval','succeeded','failed')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(run_id,stage_key)
+        );
+        INSERT INTO workflow_stages(identity,run_id,stage_key,status,created_at,updated_at)
+        SELECT 'stage:legacy:' || id,id,'legacy',
+               CASE status
+                   WHEN 'approved' THEN 'succeeded'
+                   WHEN 'rejected' THEN 'failed'
+                   WHEN 'failed' THEN 'failed'
+                   WHEN 'awaiting_approval' THEN 'waiting_approval'
+                   ELSE 'running'
+               END,
+               created_at,COALESCE(completed_at,created_at)
+          FROM workflow_runs;
+
+        CREATE TABLE assignments(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER REFERENCES workflow_runs(id),
+            stage_id INTEGER REFERENCES workflow_stages(id),
+            agent_id TEXT NOT NULL,
+            runtime TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('pending','active','suspended','succeeded','failed','cancelled')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO assignments(identity,task_id,agent_id,runtime,status,created_at,updated_at)
+        SELECT 'assignment:provider:' || id,task_id,agent_id,provider,
+               CASE status
+                   WHEN 'claimed' THEN 'active'
+                   WHEN 'running' THEN 'active'
+                   WHEN 'succeeded' THEN 'succeeded'
+                   WHEN 'failed' THEN 'failed'
+                   ELSE 'cancelled'
+               END,
+               created_at,COALESCE(finished_at,heartbeat_at,created_at)
+          FROM provider_execution_attempts;
+
+        CREATE TABLE worker_sessions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            runtime TEXT NOT NULL,
+            external_session_id TEXT,
+            status TEXT NOT NULL CHECK(status IN ('starting','running','suspended','succeeded','failed','cancelled')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO worker_sessions(identity,assignment_id,runtime,status,created_at,updated_at)
+        SELECT 'worker-session:provider:' || p.id,a.id,p.provider,
+               CASE p.status
+                   WHEN 'claimed' THEN 'starting'
+                   WHEN 'running' THEN 'running'
+                   WHEN 'succeeded' THEN 'succeeded'
+                   WHEN 'failed' THEN 'failed'
+                   ELSE 'cancelled'
+               END,
+               p.created_at,COALESCE(p.finished_at,p.heartbeat_at,p.created_at)
+          FROM provider_execution_attempts p
+          JOIN assignments a ON a.identity='assignment:provider:' || p.id;
+
+        CREATE TABLE attempts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            provider_attempt_id INTEGER UNIQUE REFERENCES provider_execution_attempts(id),
+            ordinal INTEGER NOT NULL CHECK(ordinal > 0),
+            status TEXT NOT NULL CHECK(status IN ('claimed','running','succeeded','failed','abandoned','cancelled')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(assignment_id,ordinal)
+        );
+        INSERT INTO attempts(identity,assignment_id,provider_attempt_id,ordinal,status,created_at,updated_at)
+        SELECT 'attempt:provider:' || p.id,a.id,p.id,1,p.status,p.created_at,
+               COALESCE(p.finished_at,p.heartbeat_at,p.created_at)
+          FROM provider_execution_attempts p
+          JOIN assignments a ON a.identity='assignment:provider:' || p.id;
+
+        CREATE TABLE leases(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            fencing_token INTEGER NOT NULL CHECK(fencing_token > 0),
+            status TEXT NOT NULL CHECK(status IN ('active','expired','released','revoked')),
+            expires_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(assignment_id,fencing_token)
+        );
+
+        CREATE TABLE worktrees(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            attempt_id INTEGER REFERENCES attempts(id),
+            repository TEXT NOT NULL,
+            base_sha TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            path TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL CHECK(status IN ('provisioning','ready','dirty','retained','cleaned','missing')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TRIGGER work_items_identity_required
+        BEFORE INSERT ON work_items WHEN NEW.identity IS NULL
+        BEGIN SELECT RAISE(ABORT, 'work item identity is required'); END;
+        CREATE TRIGGER workflow_runs_identity_required
+        BEFORE INSERT ON workflow_runs WHEN NEW.identity IS NULL
+        BEGIN SELECT RAISE(ABORT, 'workflow run identity is required'); END;
+        CREATE TRIGGER artifacts_identity_required
+        BEFORE INSERT ON artifacts WHEN NEW.identity IS NULL
+        BEGIN SELECT RAISE(ABORT, 'artifact identity is required'); END;
+        CREATE TRIGGER provider_attempts_identity_required
+        BEFORE INSERT ON provider_execution_attempts WHEN NEW.identity IS NULL
+        BEGIN SELECT RAISE(ABORT, 'provider attempt identity is required'); END;
+        CREATE TRIGGER provider_artifacts_identity_required
+        BEFORE INSERT ON provider_execution_artifacts WHEN NEW.identity IS NULL
+        BEGIN SELECT RAISE(ABORT, 'provider artifact identity is required'); END;
+
+        CREATE TRIGGER work_items_identity_immutable BEFORE UPDATE OF identity ON work_items
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'work item identity is immutable'); END;
+        CREATE TRIGGER workflow_runs_identity_immutable BEFORE UPDATE OF identity ON workflow_runs
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'workflow run identity is immutable'); END;
+        CREATE TRIGGER artifacts_identity_immutable BEFORE UPDATE OF identity ON artifacts
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'artifact identity is immutable'); END;
+        CREATE TRIGGER provider_attempts_identity_immutable BEFORE UPDATE OF identity ON provider_execution_attempts
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'provider attempt identity is immutable'); END;
+        CREATE TRIGGER provider_artifacts_identity_immutable BEFORE UPDATE OF identity ON provider_execution_artifacts
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'provider artifact identity is immutable'); END;
+        CREATE TRIGGER workflow_stages_identity_immutable BEFORE UPDATE OF identity ON workflow_stages
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'stage identity is immutable'); END;
+        CREATE TRIGGER assignments_identity_immutable BEFORE UPDATE OF identity ON assignments
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'assignment identity is immutable'); END;
+        CREATE TRIGGER worker_sessions_identity_immutable BEFORE UPDATE OF identity ON worker_sessions
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'worker session identity is immutable'); END;
+        CREATE TRIGGER attempts_identity_immutable BEFORE UPDATE OF identity ON attempts
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'attempt identity is immutable'); END;
+        CREATE TRIGGER leases_identity_immutable BEFORE UPDATE OF identity ON leases
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'lease identity is immutable'); END;
+        CREATE TRIGGER worktrees_identity_immutable BEFORE UPDATE OF identity ON worktrees
+        WHEN OLD.identity IS NOT NEW.identity BEGIN SELECT RAISE(ABORT, 'worktree identity is immutable'); END;
+
+        CREATE TRIGGER workflow_runs_valid_transition BEFORE UPDATE OF status ON workflow_runs
+        WHEN NOT (
+            (OLD.status='running' AND NEW.status IN ('awaiting_approval','failed')) OR
+            (OLD.status='awaiting_approval' AND NEW.status IN ('approved','rejected','failed'))
+        ) BEGIN SELECT RAISE(ABORT, 'invalid workflow run transition'); END;
+        CREATE TRIGGER work_items_valid_transition BEFORE UPDATE OF status ON work_items
+        WHEN NOT (
+            (OLD.status='pending' AND NEW.status IN ('running','failed')) OR
+            (OLD.status='running' AND NEW.status IN ('completed','failed')) OR
+            (OLD.status='completed' AND NEW.status IN ('approved','rejected')) OR
+            (OLD.status='failed' AND NEW.status='pending')
+        ) BEGIN SELECT RAISE(ABORT, 'invalid work item transition'); END;
+        CREATE TRIGGER artifacts_valid_transition BEFORE UPDATE OF status ON artifacts
+        WHEN NOT (OLD.status='pending' AND NEW.status IN ('approved','rejected'))
+        BEGIN SELECT RAISE(ABORT, 'invalid artifact transition'); END;
+        CREATE TRIGGER provider_attempts_valid_transition BEFORE UPDATE OF status ON provider_execution_attempts
+        WHEN NOT (OLD.status IN ('claimed','running') AND NEW.status IN ('running','succeeded','failed','abandoned') AND OLD.status<>NEW.status)
+        BEGIN SELECT RAISE(ABORT, 'invalid provider attempt transition'); END;
+        CREATE TRIGGER workflow_stages_valid_transition BEFORE UPDATE OF status ON workflow_stages
+        WHEN NOT (
+            (OLD.status='pending' AND NEW.status IN ('running','failed')) OR
+            (OLD.status='running' AND NEW.status IN ('waiting_approval','succeeded','failed')) OR
+            (OLD.status='waiting_approval' AND NEW.status IN ('running','succeeded','failed')) OR
+            (OLD.status='failed' AND NEW.status='pending')
+        ) BEGIN SELECT RAISE(ABORT, 'invalid stage transition'); END;
+        CREATE TRIGGER assignments_valid_transition BEFORE UPDATE OF status ON assignments
+        WHEN NOT (
+            (OLD.status='pending' AND NEW.status IN ('active','cancelled')) OR
+            (OLD.status='active' AND NEW.status IN ('suspended','succeeded','failed','cancelled')) OR
+            (OLD.status='suspended' AND NEW.status IN ('active','failed','cancelled'))
+        ) BEGIN SELECT RAISE(ABORT, 'invalid assignment transition'); END;
+        CREATE TRIGGER worker_sessions_valid_transition BEFORE UPDATE OF status ON worker_sessions
+        WHEN NOT (
+            (OLD.status='starting' AND NEW.status IN ('running','failed','cancelled')) OR
+            (OLD.status='running' AND NEW.status IN ('suspended','succeeded','failed','cancelled')) OR
+            (OLD.status='suspended' AND NEW.status IN ('running','failed','cancelled'))
+        ) BEGIN SELECT RAISE(ABORT, 'invalid worker session transition'); END;
+        CREATE TRIGGER attempts_valid_transition BEFORE UPDATE OF status ON attempts
+        WHEN NOT (OLD.status IN ('claimed','running') AND NEW.status IN ('running','succeeded','failed','abandoned','cancelled') AND OLD.status<>NEW.status)
+        BEGIN SELECT RAISE(ABORT, 'invalid attempt transition'); END;
+        CREATE TRIGGER leases_valid_transition BEFORE UPDATE OF status ON leases
+        WHEN NOT (OLD.status='active' AND NEW.status IN ('expired','released','revoked'))
+        BEGIN SELECT RAISE(ABORT, 'invalid lease transition'); END;
+        CREATE TRIGGER worktrees_valid_transition BEFORE UPDATE OF status ON worktrees
+        WHEN NOT (
+            (OLD.status='provisioning' AND NEW.status IN ('ready','missing','cleaned')) OR
+            (OLD.status='ready' AND NEW.status IN ('dirty','retained','missing')) OR
+            (OLD.status='dirty' AND NEW.status IN ('ready','retained','missing')) OR
+            (OLD.status='retained' AND NEW.status IN ('cleaned','missing')) OR
+            (OLD.status='missing' AND NEW.status IN ('provisioning','cleaned'))
+        ) BEGIN SELECT RAISE(ABORT, 'invalid worktree transition'); END;
+    """),
 )
 
-RUN_TRANSITIONS = {
-    "running": {"awaiting_approval", "failed"},
-    "awaiting_approval": {"approved", "rejected"},
-}
+RUN_TRANSITIONS = TRANSITIONS["run"]
 
 
 def _sha256_snapshot(value: str, field: str) -> str:
@@ -233,6 +495,10 @@ class SQLiteStorage:
             "INSERT INTO events(event_type,entity_type,entity_id,payload) VALUES(?,?,?,?)",
             (kind, entity, str(entity_id), json.dumps(payload)),
         )
+
+    @staticmethod
+    def _identity(kind: str) -> str:
+        return f"{kind}:{uuid.uuid4().hex}"
 
     def event(self, kind: str, entity: str, entity_id: int | str, payload: dict[str, Any]) -> None:
         with self.db:
@@ -292,10 +558,36 @@ class SQLiteStorage:
         return self.db.execute("SELECT * FROM projects WHERE name=?", (name,)).fetchone()
 
     def create_task(self, item: WorkItem) -> int:
+        identity = self._identity("work-item")
+        snapshot = json.dumps(item.to_dict())
         with self.db:
             cur = self.db.execute(
-                "INSERT INTO work_items(project_id,title,description,payload,status) VALUES(?,?,?,?,?)",
-                (item.project_id, item.title, item.description, json.dumps(item.to_dict()), item.status.value),
+                """INSERT INTO work_items(
+                       identity,project_id,title,description,payload,status,kind,
+                       dependencies_json,inputs_json,expected_outputs_json,
+                       acceptance_criteria_json,permissions_json,budget_max_tokens,
+                       budget_max_seconds,budget_max_cost_usd,artifact_ids_json,
+                       github_number,updated_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)""",
+                (
+                    identity,
+                    item.project_id,
+                    item.title,
+                    item.description,
+                    snapshot,
+                    item.status.value,
+                    item.kind,
+                    json.dumps(item.dependencies),
+                    json.dumps(item.inputs),
+                    json.dumps(item.expected_outputs),
+                    json.dumps(item.acceptance_criteria),
+                    json.dumps(item.permissions),
+                    item.budget.max_tokens,
+                    item.budget.max_seconds,
+                    item.budget.max_cost_usd,
+                    json.dumps(item.artifacts),
+                    item.github_number,
+                ),
             )
             item.id = int(cur.lastrowid)
             self._event("task.created", "task", item.id, item.to_dict())
@@ -305,11 +597,50 @@ class SQLiteStorage:
         row = self.db.execute("SELECT * FROM work_items WHERE id=?", (task_id,)).fetchone()
         if not row:
             raise KeyError(f"Unknown task: {task_id}")
-        payload = json.loads(row["payload"])
-        payload["id"] = int(row["id"])
-        payload["budget"] = Budget(**payload["budget"])
-        payload["status"] = Status(row["status"])
-        return WorkItem(**payload)
+        return WorkItem(
+            id=int(row["id"]),
+            project_id=int(row["project_id"]),
+            title=str(row["title"]),
+            description=str(row["description"]),
+            status=Status(row["status"]),
+            kind=str(row["kind"]),
+            dependencies=json.loads(row["dependencies_json"]),
+            inputs=json.loads(row["inputs_json"]),
+            expected_outputs=json.loads(row["expected_outputs_json"]),
+            acceptance_criteria=json.loads(row["acceptance_criteria_json"]),
+            permissions=json.loads(row["permissions_json"]),
+            budget=Budget(
+                max_tokens=int(row["budget_max_tokens"]),
+                max_seconds=int(row["budget_max_seconds"]),
+                max_cost_usd=float(row["budget_max_cost_usd"]),
+            ),
+            artifacts=json.loads(row["artifact_ids_json"]),
+            github_number=row["github_number"],
+        )
+
+    def transition_task(self, task_id: int, target: str) -> None:
+        with self.db:
+            row = self.db.execute(
+                "SELECT status,version FROM work_items WHERE id=?", (task_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown task: {task_id}")
+            source = str(row["status"])
+            ensure_transition("work_item", source, target)
+            updated = self.db.execute(
+                """UPDATE work_items
+                      SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status=? AND version=?""",
+                (target, task_id, source, row["version"]),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(f"Work item {task_id} changed concurrently")
+            self._event(
+                f"task.{target}",
+                "task",
+                task_id,
+                {"previous_state": source, "resulting_state": target},
+            )
 
     def close(self) -> None:
         self.db.close()
@@ -375,10 +706,17 @@ class SQLiteStorage:
         with self.db:
             try:
                 cur = self.db.execute(
-                    "INSERT INTO workflow_runs(project_id,task_id,workflow_id,status) VALUES(?,?,?,'running')",
-                    (project_id, task_id, workflow_id),
+                    """INSERT INTO workflow_runs(
+                           identity,project_id,task_id,workflow_id,status
+                       ) VALUES(?,?,?,?, 'running')""",
+                    (self._identity("run"), project_id, task_id, workflow_id),
                 )
                 run_id = int(cur.lastrowid)
+                self.db.execute(
+                    """INSERT INTO workflow_stages(identity,run_id,stage_key,status)
+                       VALUES(?,?,?,'running')""",
+                    (self._identity("stage"), run_id, "workflow"),
+                )
                 self.db.execute(
                     "INSERT INTO active_workflow_claims(task_id,workflow_id,run_id) VALUES(?,?,?)",
                     (task_id, workflow_id, run_id),
@@ -393,15 +731,27 @@ class SQLiteStorage:
         if not row:
             raise KeyError(f"Unknown run: {run_id}")
         source = str(row["status"])
-        if target not in RUN_TRANSITIONS.get(source, set()):
-            raise ValueError(f"Invalid workflow transition: {source} -> {target}")
+        ensure_transition("run", source, target)
         completed = "CURRENT_TIMESTAMP" if target in {"approved", "rejected", "failed"} else "NULL"
         updated = self.db.execute(
-            f"UPDATE workflow_runs SET status=?,completed_at={completed} WHERE id=? AND status=?",
+            f"UPDATE workflow_runs SET status=?,version=version+1,completed_at={completed} WHERE id=? AND status=?",
             (target, run_id, source),
         )
         if updated.rowcount != 1:
             raise ValueError(f"Workflow run {run_id} changed concurrently")
+        stage_target = {
+            "awaiting_approval": "waiting_approval",
+            "approved": "succeeded",
+            "rejected": "failed",
+            "failed": "failed",
+        }[target]
+        self.db.execute(
+            """UPDATE workflow_stages
+                  SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                WHERE run_id=? AND stage_key='workflow'
+                  AND status IN ('running','waiting_approval')""",
+            (stage_target, run_id),
+        )
         if target in {"approved", "rejected", "failed"}:
             self.db.execute("DELETE FROM active_workflow_claims WHERE run_id=?", (run_id,))
             self.db.execute(
@@ -474,7 +824,11 @@ class SQLiteStorage:
 
     def add_artifact(self, run_id: int, stage: str, agent_id: str, provider: str, content: str) -> int:
         with self.db:
-            cur = self.db.execute("INSERT INTO artifacts(run_id,stage,agent_id,provider,content) VALUES(?,?,?,?,?)", (run_id, stage, agent_id, provider, content))
+            cur = self.db.execute(
+                """INSERT INTO artifacts(identity,run_id,stage,agent_id,provider,content)
+                   VALUES(?,?,?,?,?,?)""",
+                (self._identity("artifact"), run_id, stage, agent_id, provider, content),
+            )
             artifact_id = int(cur.lastrowid)
             self._event("artifact.created", "artifact", artifact_id, {"stage": stage, "provider": provider})
         return artifact_id
@@ -617,8 +971,9 @@ class SQLiteStorage:
         if status not in {"approved", "rejected"}:
             raise ValueError(status)
         with self.db:
+            ensure_transition("artifact", "pending", status)
             updated = self.db.execute(
-                "UPDATE artifacts SET status=?,review_note=? WHERE id=? AND status='pending'",
+                "UPDATE artifacts SET status=?,review_note=?,version=version+1 WHERE id=? AND status='pending'",
                 (status, note, artifact_id),
             )
             if updated.rowcount != 1:
@@ -778,10 +1133,11 @@ class SQLiteStorage:
             else:
                 cur = self.db.execute(
                     """INSERT INTO provider_execution_attempts(
-                           gate_id,provider,agent_id,task_id,request_hash,
+                           identity,gate_id,provider,agent_id,task_id,request_hash,
                            definition_hash,status
-                       ) VALUES(?,?,?,?,?,?,'claimed')""",
+                       ) VALUES(?,?,?,?,?,?,?,'claimed')""",
                     (
+                        self._identity("provider-attempt"),
                         gate_id,
                         row["provider"],
                         row["agent_id"],
@@ -791,6 +1147,30 @@ class SQLiteStorage:
                     ),
                 )
                 attempt_id = int(cur.lastrowid)
+                assignment = self.db.execute(
+                    """INSERT INTO assignments(
+                           identity,task_id,agent_id,runtime,status
+                       ) VALUES(?,?,?,?, 'active') RETURNING id""",
+                    (
+                        self._identity("assignment"),
+                        row["task_id"],
+                        row["agent_id"],
+                        row["provider"],
+                    ),
+                ).fetchone()
+                assignment_id = int(assignment["id"])
+                self.db.execute(
+                    """INSERT INTO worker_sessions(
+                           identity,assignment_id,runtime,status
+                       ) VALUES(?,?,?,'starting')""",
+                    (self._identity("worker-session"), assignment_id, row["provider"]),
+                )
+                self.db.execute(
+                    """INSERT INTO attempts(
+                           identity,assignment_id,provider_attempt_id,ordinal,status
+                       ) VALUES(?,?,?,?, 'claimed')""",
+                    (self._identity("attempt"), assignment_id, attempt_id, 1),
+                )
                 self._event(
                     "provider.execution.claimed",
                     "provider_attempt",
@@ -813,8 +1193,20 @@ class SQLiteStorage:
 
     def mark_provider_attempt_running(self, attempt_id: int, pid: int | None = None) -> None:
         with self.db:
-            updated = self.db.execute("UPDATE provider_execution_attempts SET status='running',pid=?,started_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP WHERE id=? AND status='claimed'", (pid, attempt_id))
+            ensure_transition("attempt", "claimed", "running")
+            updated = self.db.execute("UPDATE provider_execution_attempts SET status='running',version=version+1,pid=?,started_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP WHERE id=? AND status='claimed'", (pid, attempt_id))
             if updated.rowcount != 1: raise ValueError(f"Attempt {attempt_id} is not claimed")
+            self.db.execute(
+                """UPDATE attempts SET status='running',version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE provider_attempt_id=? AND status='claimed'""",
+                (attempt_id,),
+            )
+            self.db.execute(
+                """UPDATE worker_sessions SET status='running',version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE assignment_id=(SELECT assignment_id FROM attempts WHERE provider_attempt_id=?)
+                      AND status='starting'""",
+                (attempt_id,),
+            )
             self._event("provider.execution.running", "provider_attempt", attempt_id, {"pid": pid})
 
     def finish_provider_attempt(self, attempt_id: int, status: str, result: str, metadata: dict[str, Any]) -> int:
@@ -824,11 +1216,37 @@ class SQLiteStorage:
             row = self.db.execute("SELECT * FROM provider_execution_attempts WHERE id=?", (attempt_id,)).fetchone()
             if not row: raise KeyError(f"Unknown attempt: {attempt_id}")
             if row["status"] not in {"claimed", "running"}: raise ValueError(f"Attempt {attempt_id} is already {row['status']}")
-            self.db.execute("UPDATE provider_execution_attempts SET status=?,result=?,metadata=?,finished_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP WHERE id=?", (status, bounded_result, json.dumps(metadata), attempt_id))
+            ensure_transition("attempt", str(row["status"]), status)
+            self.db.execute("UPDATE provider_execution_attempts SET status=?,version=version+1,result=?,metadata=?,finished_at=CURRENT_TIMESTAMP,heartbeat_at=CURRENT_TIMESTAMP WHERE id=?", (status, bounded_result, json.dumps(metadata), attempt_id))
             self.db.execute("UPDATE provider_execution_gates SET status='consumed',consumed_at=CURRENT_TIMESTAMP WHERE id=? AND status='claimed'", (row["gate_id"],))
             content = bounded_result if status == "succeeded" else ""
-            cur = self.db.execute("INSERT INTO provider_execution_artifacts(gate_id,attempt_id,provider,agent_id,content,metadata,status) VALUES(?,?,?,?,?,?,?)", (row["gate_id"], attempt_id, row["provider"], row["agent_id"], content, json.dumps(metadata), status))
+            cur = self.db.execute("INSERT INTO provider_execution_artifacts(identity,gate_id,attempt_id,provider,agent_id,content,metadata,status) VALUES(?,?,?,?,?,?,?,?)", (self._identity("provider-artifact"), row["gate_id"], attempt_id, row["provider"], row["agent_id"], content, json.dumps(metadata), status))
             artifact_id = int(cur.lastrowid)
+            assignment_status = "cancelled" if status == "abandoned" else status
+            session_status = "cancelled" if status == "abandoned" else status
+            self.db.execute(
+                """UPDATE attempts SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE provider_attempt_id=? AND status IN ('claimed','running')""",
+                (status, attempt_id),
+            )
+            self.db.execute(
+                """UPDATE assignments SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=(SELECT assignment_id FROM attempts WHERE provider_attempt_id=?)
+                      AND status='active'""",
+                (assignment_status, attempt_id),
+            )
+            self.db.execute(
+                """UPDATE worker_sessions SET status='running',version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE assignment_id=(SELECT assignment_id FROM attempts WHERE provider_attempt_id=?)
+                      AND status='starting' AND ?='succeeded'""",
+                (attempt_id, status),
+            )
+            self.db.execute(
+                """UPDATE worker_sessions SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE assignment_id=(SELECT assignment_id FROM attempts WHERE provider_attempt_id=?)
+                      AND status IN ('starting','running')""",
+                (session_status, attempt_id),
+            )
             self._event(f"provider.execution.{status}", "provider_attempt", attempt_id, {"artifact_id": artifact_id})
         return artifact_id
 
@@ -843,7 +1261,7 @@ class SQLiteStorage:
 
     def add_provider_artifact(self, gate_id: int, provider: str, agent_id: str, content: str, metadata: dict[str, Any]) -> int:
         with self.db:
-            cur = self.db.execute("INSERT INTO provider_execution_artifacts(gate_id,provider,agent_id,content,metadata) VALUES(?,?,?,?,?)", (gate_id, provider, agent_id, content, json.dumps(metadata)))
+            cur = self.db.execute("INSERT INTO provider_execution_artifacts(identity,gate_id,provider,agent_id,content,metadata) VALUES(?,?,?,?,?,?)", (self._identity("provider-artifact"), gate_id, provider, agent_id, content, json.dumps(metadata)))
             artifact_id = int(cur.lastrowid)
             self._event("provider.artifact.created", "provider_artifact", artifact_id, {"gate_id": gate_id, "provider": provider, "agent_id": agent_id})
         return artifact_id
