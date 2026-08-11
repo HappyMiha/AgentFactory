@@ -172,6 +172,8 @@ The [Worker Runtime contract](worker-runtime.md) owns durable start, resume, hea
 
 The [role-definition registry](role-definitions.md) separates provider-neutral responsibilities from configured agents. Immutable semantic versions type the role's inputs, outputs, evidence, tools, permissions, limits, and incompatible duties. Workflow stages bind a role/version requirement, while per-decision assignment rejects an agent occupying mutually exclusive production and final-review duties.
 
+The [evaluation-aware agent router](agent-routing.md) resolves a role requirement against the latest durable worker qualifications and lifecycle state. Every decision preserves candidate capability, qualification, model independence, quality, risk, cost, latency, load, health, eligibility/exclusion rationale, selected worker, strategy, and ordered fallback chain. Existing least-used model-aware reviewer rotation remains the dedicated review selector.
+
 The [managed worktree service](managed-worktrees.md) is the only component allowed to create task Git worktrees. It binds deterministic branch/path identity to an approved base SHA and live fenced assignment before mutation, detects dirty/missing/orphaned state without destructive adoption, and permits cleanup only after terminal state plus the persisted retention deadline.
 
 The [Execution Context Package builder](execution-context-packages.md) snapshots task scope, acceptance criteria, dependencies, approved base, effective policy, requirements, and prior decisions before dispatch. Its canonical digest is bound to the live fenced assignment and runtime session. Source selection and compaction are deterministic and fully manifested; workers cannot widen or replace the package after launch.

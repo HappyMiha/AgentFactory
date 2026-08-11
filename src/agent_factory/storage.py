@@ -1506,6 +1506,32 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER role_decision_assignments_no_delete BEFORE DELETE ON role_decision_assignments
         BEGIN SELECT RAISE(ABORT, 'role decision assignment is immutable'); END;
     """),
+    (32, """
+        CREATE TABLE agent_routing_decisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            decision_key TEXT NOT NULL UNIQUE,
+            role_id TEXT NOT NULL,
+            role_version TEXT NOT NULL,
+            strategy TEXT NOT NULL CHECK(strategy IN (
+                'pinned','best-qualified','cost-aware','latency-aware',
+                'diversity','canary','tournament','fallback'
+            )),
+            request_json TEXT NOT NULL,
+            eligible_json TEXT NOT NULL,
+            excluded_json TEXT NOT NULL,
+            selected_agent_id TEXT NOT NULL,
+            fallback_chain_json TEXT NOT NULL,
+            rationale TEXT NOT NULL,
+            decision_digest TEXT NOT NULL UNIQUE CHECK(length(decision_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(role_id,role_version) REFERENCES role_definitions(role_id,version)
+        );
+        CREATE TRIGGER agent_routing_decisions_no_update BEFORE UPDATE ON agent_routing_decisions
+        BEGIN SELECT RAISE(ABORT, 'agent routing decision is immutable'); END;
+        CREATE TRIGGER agent_routing_decisions_no_delete BEFORE DELETE ON agent_routing_decisions
+        BEGIN SELECT RAISE(ABORT, 'agent routing decision is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

@@ -12,6 +12,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 - **Provider independence.** Replace a provider without rewriting the role or workflow.
 - **Typed role contracts.** Versioned roles declare provider-neutral inputs, outputs, evidence, tools, permissions, limits, and incompatible duties; workflows reference roles rather than agents.
+- **Evaluation-aware routing.** Pinned, best-qualified, cost, latency, diversity, canary, tournament, and fallback strategies use current qualification and record every eligible/excluded metric plus rationale.
 - **Evidence before progress.** Each stage returns a typed verdict and evidence for every acceptance criterion.
 - **Two separate approval layers.** Permission to call a provider never means permission to accept the delivered work.
 - **Safe-by-default execution.** Fixed executables and arguments, no shell, role allowlists, timeouts, output caps, and process-tree cleanup.
@@ -45,6 +46,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |
 | Role definitions | Ready | AF-010 validates immutable typed role contracts, workflow role requirements, and per-decision duty separation. |
+| Agent routing | Ready | AF-011 filters current compatible qualifications, preserves independent reviewer rotation, and records deterministic strategy/fallback decisions. |
 | Coding delivery loop | Ready | AF-053 joins the worker, validator, reviewer, Founder, and dry-run PR checkpoints without duplicate replay. |
 | Execution telemetry | Ready | AF-056 correlates the single-node loop, enforces local budgets, and exposes operational state to the dashboard. |
 | Local recovery | Ready | AF-057 restores authoritative references, detects separate orphan classes, and verifies evidence/audit integrity. |

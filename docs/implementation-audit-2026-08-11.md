@@ -8,14 +8,14 @@ This audit compares the repository through the AF-050 Claude worker and AF-057 l
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **195 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **199 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-008, AF-010, AF-017, AF-020, AF-036–AF-053, AF-055–AF-057 | 32 |
-| Partial precursors | AF-011, AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032 | 8 |
+| Implemented | AF-001–AF-008, AF-010, AF-011, AF-017, AF-020, AF-036–AF-053, AF-055–AF-057 | 33 |
+| Partial precursors | AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032 | 7 |
 | Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-054 | 17 |
 
 The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice across durable data, fenced scheduling, bounded repair, managed worktrees, immutable context, fully qualified Hermes ACP, controlled fallback, independently qualified writable Codex and Claude execution, deterministic validation, independent evaluation, separate Founder authority, and gated PR planning. Typed role packs and platform expansion remain downstream work.
@@ -34,7 +34,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-008 | Implemented | Restart-persistent immutable iteration snapshots, five deterministic caps, repeated-failure replan/replacement, evidence/failure/escalation terminal guards, and approved limit revisions; `test_engineering_loop.py` | — |
 | AF-009 | Not started | — | Mission intake, source authority, clarification and readiness model absent |
 | AF-010 | Implemented | Immutable provider-neutral semantic role versions, typed input/output/evidence validation, tool/permission/limit contracts, workflow role requirements, independent resolution, and per-decision incompatible-duty rejection; `test_roles.py` | — |
-| AF-011 | Partial | Model-independent reviewer rotation, qualification filtering, durable handoff | General router does not yet score cost, latency, load, exclusions, rationale, and fallback chain |
+| AF-011 | Implemented | Latest-qualification/lifecycle/capability/provider and independence filtering; complete quality/risk/cost/latency/load/health candidate envelopes; immutable rationale and fallback chains; deterministic pinned/best/cost/latency/diversity/canary/tournament/fallback strategies; preserved reviewer rotation; `test_agent_router.py`, `test_reviewer_routing.py` | — |
 | AF-012 | Not started | — | Role pools, arbitration strategies and Workforce Composer absent |
 | AF-013 | Not started | — | Factory Blueprint lifecycle absent |
 | AF-014 | Not started | — | Blueprint-based idempotent mission bootstrap absent |
@@ -96,9 +96,9 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-010 + AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056 + AF-057
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-010 + AF-011 + AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056 + AF-057
 
-Now:  AF-011
+Now:  AF-054
 
 Then: AF-054
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031
