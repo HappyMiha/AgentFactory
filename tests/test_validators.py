@@ -74,7 +74,7 @@ class DeterministicValidatorRunnerTests(unittest.TestCase):
         for category in VALIDATOR_CATEGORIES:
             code = f"print('{category}:ok')"
             if category == "test":
-                code = "from pathlib import Path; Path('validation-marker.txt').write_text('candidate')"
+                code = "from pathlib import Path; p=Path('validation-marker.txt'); p.write_text('candidate'); p.unlink(); print(Path.cwd().name)"
             if failing and category == "lint":
                 code = "print('lint failed'); raise SystemExit(2)"
             commands[category] = (sys.executable, "-c", code)
@@ -95,7 +95,7 @@ class DeterministicValidatorRunnerTests(unittest.TestCase):
         )
         self.assertTrue(result.passed)
         self.assertEqual(len(result.results), 5)
-        self.assertTrue((self.worktree / "validation-marker.txt").is_file())
+        self.assertFalse((self.worktree / "validation-marker.txt").exists())
         self.assertFalse((self.workspace / "validation-marker.txt").exists())
         self.assertEqual(len(self.backend.commands), 5)
         self.assertTrue(all(isinstance(command, tuple) for command in self.backend.commands))

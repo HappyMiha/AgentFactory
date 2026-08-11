@@ -182,6 +182,8 @@ The [Codex implementation worker](codex-implementation-worker.md) is the first q
 
 The [deterministic validator runner](deterministic-validators.md) accepts only five reviewed project-pack command vectors and invokes them without a shell in the fenced candidate worktree. Time, output, environment, command, candidate, and pack digests are persisted with exact acceptance-criterion mappings; validation success requires every category to pass.
 
+The [candidate change service](candidate-changes.md) commits only the AF-049 changed-file set after exact 5/5 AF-052 success, preserves the base branch, and records immutable base/head/diff/worktree evidence. Its pull-request operation is an immutable dry-run plan with a separate pending GitHub gate; candidate readiness never implies push or PR authority.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

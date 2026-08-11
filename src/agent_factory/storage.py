@@ -998,6 +998,42 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER validator_results_no_delete BEFORE DELETE ON validator_results
         BEGIN SELECT RAISE(ABORT, 'validator result is immutable'); END;
     """),
+    (23, """
+        CREATE TABLE candidate_change_artifacts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            codex_result_id INTEGER NOT NULL UNIQUE REFERENCES codex_worker_results(id),
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            stable_task_id TEXT NOT NULL,
+            worktree_id INTEGER NOT NULL REFERENCES worktrees(id),
+            base_sha TEXT NOT NULL,
+            head_sha TEXT NOT NULL UNIQUE,
+            branch TEXT NOT NULL,
+            diff_digest TEXT NOT NULL CHECK(length(diff_digest)=64),
+            changed_files_json TEXT NOT NULL,
+            commit_message TEXT NOT NULL,
+            validation_digest TEXT NOT NULL CHECK(length(validation_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER candidate_change_artifacts_no_update BEFORE UPDATE ON candidate_change_artifacts
+        BEGIN SELECT RAISE(ABORT, 'candidate change artifact is immutable'); END;
+        CREATE TRIGGER candidate_change_artifacts_no_delete BEFORE DELETE ON candidate_change_artifacts
+        BEGIN SELECT RAISE(ABORT, 'candidate change artifact is immutable'); END;
+
+        CREATE TABLE candidate_pr_plans(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            candidate_id INTEGER NOT NULL UNIQUE REFERENCES candidate_change_artifacts(id),
+            github_plan_id INTEGER NOT NULL UNIQUE REFERENCES github_mutation_plans(id),
+            github_gate_id INTEGER NOT NULL UNIQUE REFERENCES github_mutation_gates(id),
+            dry_run INTEGER NOT NULL DEFAULT 1 CHECK(dry_run=1),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER candidate_pr_plans_no_update BEFORE UPDATE ON candidate_pr_plans
+        BEGIN SELECT RAISE(ABORT, 'candidate PR plan is immutable'); END;
+        CREATE TRIGGER candidate_pr_plans_no_delete BEFORE DELETE ON candidate_pr_plans
+        BEGIN SELECT RAISE(ABORT, 'candidate PR plan is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

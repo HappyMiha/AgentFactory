@@ -85,7 +85,8 @@ class SandboxPolicy:
         if not tree.is_dir() or not _within(tree, root) or tree == root:
             raise ValueError("Sandbox worktree must be a distinct directory in the workspace")
         control_root = (root / ".agent-factory").resolve()
-        if _within(tree, control_root):
+        managed_worktrees = (control_root / "worktrees").resolve()
+        if _within(tree, control_root) and not _within(tree, managed_worktrees):
             raise ValueError("Sandbox worktree cannot contain Control Plane state")
         temp_root = (control_root / "sandbox-temp").resolve()
         for path in temporary:

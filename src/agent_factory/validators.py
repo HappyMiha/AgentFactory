@@ -134,6 +134,13 @@ class ValidatorRunner:
             result = self.sandbox.execute(
                 assignment_id, fencing_token, policy, command
             )
+            effective_status = "failed" if result.changed_files else result.status
+            effective_stderr = result.stderr
+            if result.changed_files:
+                effective_stderr = (
+                    effective_stderr + "\nValidator modified candidate files: "
+                    + ", ".join(result.changed_files)
+                ).strip()
             environment = {
                 "platform": platform.system().casefold(),
                 "python": platform.python_version(),
@@ -157,8 +164,8 @@ class ValidatorRunner:
                         assignment_id, attempt_id, worktree_id, candidate_digest,
                         pack.pack_id, pack.digest, category,
                         json.dumps(command, separators=(",", ":")),
-                        result.command_digest, result.status, result.returncode,
-                        result.stdout, result.stderr,
+                        result.command_digest, effective_status, result.returncode,
+                        result.stdout, effective_stderr,
                         json.dumps(environment, sort_keys=True),
                         json.dumps(normalized_mappings[category], separators=(",", ":")),
                         str(Path(result.evidence_directory).relative_to(self.workspace)),
@@ -167,7 +174,7 @@ class ValidatorRunner:
                 )
                 result_id = int(cursor.lastrowid)
                 self.storage._event(
-                    f"validator.{result.status}", "validator_result", result_id,
+                    f"validator.{effective_status}", "validator_result", result_id,
                     {
                         "task_id": task.id, "attempt_id": attempt_id,
                         "worktree_id": worktree_id, "candidate_digest": candidate_digest,
@@ -176,7 +183,7 @@ class ValidatorRunner:
                     },
                 )
             recorded.append(ValidatorResult(
-                result_id, category, result.status, result.returncode,
+                result_id, category, effective_status, result.returncode,
                 result.command_digest, result.evidence_digest,
                 normalized_mappings[category],
             ))

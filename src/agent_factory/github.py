@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 Runner = Callable[[list[str]], dict[str, Any]]
-ALLOWED_ACTIONS = frozenset({"create_issue", "update_issue", "comment", "project_field"})
+ALLOWED_ACTIONS = frozenset({"create_issue", "update_issue", "comment", "project_field", "create_pull_request"})
 REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 ACTION_FIELDS = {
     "create_issue": frozenset(
@@ -31,6 +31,9 @@ ACTION_FIELDS = {
             "field_id",
             "option_id",
         }
+    ),
+    "create_pull_request": frozenset(
+        {"action", "idempotency_key", "title", "body", "base", "head"}
     ),
 }
 
@@ -195,6 +198,14 @@ class GitHubClient:
                 repo,
                 "--body",
                 str(operation["body"]),
+            ]
+        if action == "create_pull_request":
+            return [
+                "pr", "create", "--repo", repo,
+                "--title", str(operation["title"]),
+                "--body", str(operation["body"]),
+                "--base", str(operation["base"]),
+                "--head", str(operation["head"]),
             ]
         return [
             "project",

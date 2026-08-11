@@ -22,6 +22,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
 - **Writable Codex worker.** A qualified fixed `codex exec` profile writes only in its leased task worktree and returns immutable changed-file, diff, command, exit, and handoff evidence without merge, push, issue, or acceptance authority.
 - **Deterministic candidate validation.** Project packs declare five shell-free command vectors that run only in the candidate worktree and produce bounded, criterion-mapped primary evidence.
+- **Immutable candidate and PR plan.** Only a 5/5 validated worker diff becomes a stable-task-ID commit on its task branch; push and pull-request creation remain separately gated.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.

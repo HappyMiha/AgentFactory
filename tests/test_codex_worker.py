@@ -9,14 +9,17 @@ import unittest
 from pathlib import Path
 
 from agent_factory.codex_worker import CODEX_EXEC_ARGS, CodexCLIProcessDriver
+from agent_factory.candidate_changes import CandidateChangeService
 from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.live_stages import LiveStageExecution
 from agent_factory.models import Agent, WorkItem
 from agent_factory.policy import PolicyRequest
 from agent_factory.providers import ProcessSupervisor
+from agent_factory.sandbox import SandboxBackend, SandboxManager
 from agent_factory.storage import SQLiteStorage
 from agent_factory.worker_runtime import CodexCLIWorkerRuntime, RuntimeBinding, RuntimeLaunch
 from agent_factory.worktrees import WorktreeManager
+from agent_factory.validators import VALIDATOR_CATEGORIES, ValidatorPack, ValidatorRunner
 
 
 FAKE_CODEX = r'''
@@ -51,6 +54,17 @@ class RecordingSupervisor(ProcessSupervisor):
     def terminate_tree(self, proc):
         self.terminations += 1
         return super().terminate_tree(proc)
+
+
+class DirectBackend(SandboxBackend):
+    name = "candidate-test"
+
+    def availability(self):
+        return True, "test"
+
+    def wrap(self, policy, command, control_dir):
+        del policy, control_dir
+        return list(command)
 
 
 class CodexImplementationWorkerTests(unittest.TestCase):
@@ -203,6 +217,66 @@ class CodexImplementationWorkerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "not qualified"):
             CodexCLIWorkerRuntime(self.storage, driver).start(launch)
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM codex_worker_results").fetchone()[0], 0)
+
+    def validated_candidate(self, *, failing=False):
+        launch, worktree, driver, _ = self.fixture()
+        runtime = CodexCLIWorkerRuntime(self.storage, driver)
+        runtime.finalize(runtime.start(launch).id)
+        worker_result = self.storage.db.execute(
+            "SELECT * FROM codex_worker_results ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        commands = {}
+        for category in VALIDATOR_CATEGORIES:
+            code = "raise SystemExit(2)" if failing and category == "lint" else "print('ok')"
+            commands[category] = (sys.executable, "-c", code)
+        pack = ValidatorPack.create("candidate-pack", commands)
+        ValidatorRunner(
+            self.storage, self.workspace,
+            SandboxManager(self.storage, self.workspace, backend=DirectBackend()),
+        ).run(
+            assignment_id=launch.assignment_id, fencing_token=launch.fencing_token,
+            attempt_id=launch.binding.attempt_id, worktree_id=worktree.id,
+            candidate_digest=worker_result["diff_digest"], pack=pack,
+            criterion_mappings={
+                category: ("A scoped file changes",) for category in VALIDATOR_CATEGORIES
+            }, max_seconds=5,
+        )
+        return worker_result, worktree
+
+    def test_validated_candidate_commit_and_pr_plan_preserve_base_branch(self):
+        worker_result, worktree = self.validated_candidate()
+        base_before = self.git_run("rev-parse", "HEAD").stdout.strip()
+        service = CandidateChangeService(self.storage, self.workspace, git_executable=self.git)
+        candidate = service.create(worker_result["id"], stable_task_id="AF-051")
+        self.assertEqual(candidate.base_sha, self.base_sha)
+        self.assertEqual(candidate.changed_files, ("src/change.py",))
+        self.assertIn("AF-051", candidate.commit_message)
+        self.assertEqual(self.git_run("rev-parse", "HEAD").stdout.strip(), base_before)
+        self.assertEqual(
+            subprocess.run(
+                [self.git, "-C", worktree.path, "log", "-1", "--pretty=%s"],
+                capture_output=True, text=True, check=True,
+            ).stdout.strip(),
+            "AF-051: candidate change",
+        )
+        plan_id, gate_id = service.plan_pull_request(
+            candidate.id, repo="example/repository", base_branch="main",
+            title="AF-051 candidate", body="Validated candidate",
+        )
+        plan = json.loads(self.storage.github_plan(plan_id)["plan_json"])
+        self.assertEqual(plan["operations"][0]["action"], "create_pull_request")
+        self.assertEqual(
+            self.storage.db.execute("SELECT status FROM github_mutation_gates WHERE id=?", (gate_id,)).fetchone()[0],
+            "pending",
+        )
+
+    def test_failed_validation_cannot_become_pr_ready(self):
+        worker_result, _ = self.validated_candidate(failing=True)
+        with self.assertRaisesRegex(PermissionError, "Failed or incomplete"):
+            CandidateChangeService(self.storage, self.workspace, git_executable=self.git).create(
+                worker_result["id"], stable_task_id="AF-051"
+            )
+        self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM candidate_change_artifacts").fetchone()[0], 0)
 
 
 if __name__ == "__main__":
