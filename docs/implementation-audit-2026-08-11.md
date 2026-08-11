@@ -1,6 +1,6 @@
 # Implementation audit — 2026-08-11
 
-This audit compares the repository through the AF-046 implementation with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
+This audit compares the repository through the AF-049 implementation with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
 
 ## Audit method
 
@@ -8,15 +8,15 @@ This audit compares the repository through the AF-046 implementation with the ac
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **158 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **161 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-007, AF-017, AF-036–AF-046, AF-048, AF-055 | 21 |
+| Implemented | AF-001–AF-007, AF-017, AF-036–AF-046, AF-048, AF-049, AF-055 | 22 |
 | Partial precursors | AF-008, AF-010, AF-011, AF-018–AF-020, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047, AF-051, AF-052, AF-056, AF-057 | 16 |
-| Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-049, AF-050, AF-053, AF-054 | 20 |
+| Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-050, AF-053, AF-054 | 19 |
 
 The product has a tested durable-data, fenced-scheduler, managed-worktree, immutable-context, concrete Hermes ACP, and local-operator foundation, but it does **not** yet have the single-node coding vertical slice. In particular, no qualified writable Codex worker runs allowlisted project validators or completes the bounded repair/recovery loop.
 
@@ -72,7 +72,7 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 | AF-046 | Implemented | Durable live-stage waiting, exact pre-process runtime authorization, immutable gate-to-attempt consumption, rejection/expiry denial, and dependency-ready continuation; `test_live_stages.py`, `test_worker_runtime.py`, `test_hermes_acp.py` | — |
 | AF-047 | Partial | AF-005 generic qualification, quarantine and handoff | No Hermes-specific ACP/version/workspace/cancellation/tool/artifact qualification or controlled runtime fallback |
 | AF-048 | Implemented | Fenced deterministic Git worktree provisioning, exclusive task/lease ownership, startup reconciliation, retention and branch-preserving cleanup; `test_worktrees.py` | — |
-| AF-049 | Not started | Generic Codex CLI provider exists | No leased-worktree Codex implementation worker, candidate handoff, write boundary, or merge/push prohibition contract |
+| AF-049 | Implemented | Qualified fixed Codex exec profile, leased-worktree native sandbox boundary, immutable command/diff/exit/handoff result, forbidden authority profile, and process-tree timeout/cancel; `test_codex_worker.py` | — |
 | AF-050 | Not started | Generic Claude CLI provider exists | No separately qualified writable Claude Code worker profile |
 | AF-051 | Partial | Generic artifacts and approval-gated GitHub plans exist | No immutable candidate-change artifact binding base/head SHA, diff digest, files and worktree identity |
 | AF-052 | Partial | Workflow validation stage and evidence contracts exist | No shell-free allowlisted command-vector runner, project pack, candidate-worktree execution, or command evidence envelope |
@@ -84,7 +84,7 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 
 ## Backlog decisions from the audit
 
-1. **AF-007 closes M1; AF-017, AF-044 through AF-046, AF-048, and AF-055 supply isolation, runtime, concrete ACP, exact live approvals, worktree, and immutable-context boundaries.** AF-049 can now build the first writable worker.
+1. **AF-007 closes M1; AF-017, AF-044 through AF-046, AF-048, AF-049, and AF-055 supply isolation, runtime, concrete ACP, exact live approvals, worktree, the first writable worker, and immutable-context boundaries.** AF-052 can now add deterministic candidate validation.
 2. **Use Hermes ACP for mutable sessions.** Installed Hermes 0.20.0 exposes an ACP stdio server, structured events and permission bridging. `hermes --oneshot` states that approvals are auto-bypassed, so it is limited to qualification or read-only probes.
 3. **Keep worktree authority in AgentFactory.** AF-048 creates and owns the worktree; AF-045 passes it to Hermes as the working directory. Managed sessions must not invoke Hermes `--worktree`.
 4. **Make context and worktree prerequisites of Hermes.** AF-045 now depends on AF-048 and AF-055, preventing an unscoped runtime session.
@@ -96,10 +96,9 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044 + AF-045 + AF-046 + AF-048 + AF-055
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-055
 
-Now:  AF-049
-      -> AF-052 -> AF-020 + AF-051
+Now:  AF-052 -> AF-020 + AF-051
       -> AF-008 -> AF-053 -> AF-056 -> AF-057
 
 Then: AF-047 + AF-050 + AF-054

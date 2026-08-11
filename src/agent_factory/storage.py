@@ -933,6 +933,39 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON stage_approval_consumptions
         BEGIN SELECT RAISE(ABORT, 'stage approval consumption is immutable'); END;
     """),
+    (21, """
+        CREATE TABLE codex_worker_results(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            worker_session_id INTEGER NOT NULL UNIQUE REFERENCES worker_sessions(id),
+            approval_consumption_id INTEGER NOT NULL UNIQUE REFERENCES stage_approval_consumptions(id),
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            attempt_id INTEGER NOT NULL UNIQUE REFERENCES attempts(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            worktree_id INTEGER NOT NULL REFERENCES worktrees(id),
+            context_package_id INTEGER NOT NULL REFERENCES execution_context_packages(id),
+            codex_version TEXT NOT NULL,
+            permission_profile_json TEXT NOT NULL,
+            invocation_json TEXT NOT NULL,
+            executed_commands_json TEXT NOT NULL,
+            changed_files_json TEXT NOT NULL,
+            diff_digest TEXT NOT NULL CHECK(length(diff_digest)=64),
+            status TEXT NOT NULL CHECK(status IN ('succeeded','failed','timed_out','cancelled','output_limited')),
+            exit_code INTEGER,
+            handoff_json TEXT NOT NULL,
+            evidence_directory TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL CHECK(length(evidence_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_codex_worker_scope
+            ON codex_worker_results(task_id,run_id,stage_id,assignment_id);
+        CREATE TRIGGER codex_worker_results_no_update BEFORE UPDATE ON codex_worker_results
+        BEGIN SELECT RAISE(ABORT, 'Codex worker result is immutable'); END;
+        CREATE TRIGGER codex_worker_results_no_delete BEFORE DELETE ON codex_worker_results
+        BEGIN SELECT RAISE(ABORT, 'Codex worker result is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -2519,6 +2552,104 @@ class SQLiteStorage:
                 int(row["id"]),
                 {"external_session_id": external_session_id},
             )
+
+    def record_codex_worker_result(
+        self,
+        *,
+        worker_session_id: int,
+        task_id: int,
+        run_id: int,
+        stage_key: str,
+        attempt_id: int,
+        assignment_id: int,
+        worktree_id: int,
+        context_digest: str,
+        codex_version: str,
+        permission_profile: dict[str, Any],
+        invocation: list[str],
+        executed_commands: list[dict[str, Any]],
+        changed_files: list[str],
+        diff_digest: str,
+        status: str,
+        exit_code: int | None,
+        handoff: dict[str, Any],
+        evidence_directory: str,
+        evidence_digest: str,
+    ) -> int:
+        if status not in {"succeeded", "failed", "timed_out", "cancelled", "output_limited"}:
+            raise ValueError(f"Unknown Codex worker result status: {status}")
+        _sha256_snapshot(diff_digest, "Codex diff digest")
+        _sha256_snapshot(evidence_digest, "Codex evidence digest")
+        with self.db:
+            session = self.db.execute(
+                "SELECT * FROM worker_sessions WHERE id=?", (worker_session_id,)
+            ).fetchone()
+            stage = self.db.execute(
+                "SELECT id FROM workflow_stages WHERE run_id=? AND stage_key=?",
+                (run_id, stage_key),
+            ).fetchone()
+            consumption = self.db.execute(
+                """SELECT * FROM stage_approval_consumptions
+                    WHERE attempt_id=? AND assignment_id=? AND run_id=?""",
+                (attempt_id, assignment_id, run_id),
+            ).fetchone()
+            worktree = self.managed_worktree(worktree_id)
+            context = self.execution_context_package(context_digest)
+            if (
+                not session
+                or int(session["assignment_id"]) != assignment_id
+                or str(session["runtime"]) != "codex-cli"
+                or int(session["context_package_id"] or 0) != int(context["id"])
+            ):
+                raise PermissionError("Codex result session scope does not match")
+            if not stage or not consumption or int(consumption["stage_id"]) != int(stage["id"]):
+                raise PermissionError("Codex result lacks its exact stage approval consumption")
+            if (
+                int(worktree["assignment_id"]) != assignment_id
+                or int(worktree["attempt_id"] or 0) != attempt_id
+                or int(context["task_id"]) != task_id
+                or int(context["run_id"]) != run_id
+            ):
+                raise PermissionError("Codex result worktree or context scope does not match")
+            existing = self.db.execute(
+                "SELECT id FROM codex_worker_results WHERE worker_session_id=?",
+                (worker_session_id,),
+            ).fetchone()
+            if existing:
+                return int(existing["id"])
+            cursor = self.db.execute(
+                """INSERT INTO codex_worker_results(
+                       identity,worker_session_id,approval_consumption_id,task_id,
+                       run_id,stage_id,attempt_id,assignment_id,worktree_id,
+                       context_package_id,codex_version,permission_profile_json,
+                       invocation_json,executed_commands_json,changed_files_json,
+                       diff_digest,status,exit_code,handoff_json,evidence_directory,
+                       evidence_digest
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("codex-worker-result"), worker_session_id,
+                    int(consumption["id"]), task_id, run_id, int(stage["id"]),
+                    attempt_id, assignment_id, worktree_id, int(context["id"]),
+                    codex_version, json.dumps(permission_profile, sort_keys=True),
+                    json.dumps(invocation, separators=(",", ":")),
+                    json.dumps(executed_commands, sort_keys=True),
+                    json.dumps(sorted(set(changed_files)), separators=(",", ":")),
+                    diff_digest, status, exit_code, json.dumps(handoff, sort_keys=True),
+                    evidence_directory, evidence_digest,
+                ),
+            )
+            result_id = int(cursor.lastrowid)
+            self._event(
+                f"codex.worker.{status}", "codex_worker_result", result_id,
+                {
+                    "task_id": task_id, "run_id": run_id, "stage_id": stage_key,
+                    "attempt_id": attempt_id, "assignment_id": assignment_id,
+                    "worktree_id": worktree_id, "diff_digest": diff_digest,
+                    "changed_files": sorted(set(changed_files)),
+                    "evidence_digest": evidence_digest,
+                },
+            )
+        return result_id
 
     def create_runtime_session(
         self,

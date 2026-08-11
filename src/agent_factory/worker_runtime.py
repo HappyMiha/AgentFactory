@@ -538,3 +538,8 @@ class HermesACPWorkerRuntime(WorkerRuntime):
             raise PermissionError(
                 "Mutable Hermes ACP sessions require a permission bridge"
             )
+
+
+class CodexCLIWorkerRuntime(WorkerRuntime):
+    def __init__(self, storage: SQLiteStorage, driver: RuntimeDriver):
+        super().__init__(storage, driver, runtime_id="codex-cli")

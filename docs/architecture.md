@@ -178,6 +178,8 @@ The [Hermes ACP runtime](hermes-acp-runtime.md) is the concrete stdio process bo
 
 The [live-stage approval service](live-stage-approvals.md) connects a durable `waiting_approval` checkpoint to mutable runtime launch. It reconstructs the exact task/run/stage/worker/runtime/worktree/permission scope, consumes one approved gate for one logical attempt before process creation, and advances the next dependency-ready stage after completion. A worker runtime cannot approve, widen, replay, or redirect this authority.
 
+The [Codex implementation worker](codex-implementation-worker.md) is the first qualified writable worker. Its fixed non-interactive profile roots Codex native workspace-write isolation at the leased AF-048 worktree, streams structured JSONL events, and stores an immutable candidate result with commands, changed files, diff digest, exit state, and handoff. Merge, push, issue closure, secret access, and final approval never enter the worker authority set.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

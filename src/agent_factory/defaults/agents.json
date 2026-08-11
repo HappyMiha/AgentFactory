@@ -38,7 +38,7 @@
       "provider": "codex",
       "model": "openai:gpt-5.6-sol",
       "instructions": "Produce the smallest reviewable implementation artifact that satisfies the approved task.",
-      "permissions": ["read_project", "create_artifact", "propose_code"]
+      "permissions": ["read_project", "create_artifact", "propose_code", "worktree_write", "tool_use"]
     },
     {
       "id": "coding-worker-claude",

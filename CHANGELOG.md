@@ -34,6 +34,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-055 immutable Execution Context Packages with fenced dispatch scope, canonical SHA-256 identity, explicit source inclusion/exclusion/supersession, deterministic byte/token compaction, and runtime digest enforcement.
 - AF-045 concrete Hermes ACP stdio driver with exact version/check qualification, durable task/run/stage/attempt/worktree/context bindings, normalized protocol events, permission bridging, stable restart reattachment, and process-tree cancellation.
 - AF-046 durable per-stage live execution approvals with exact runtime scope, immutable gate-to-attempt consumption, pre-process rejection/expiry enforcement, and automatic dependency-ready continuation.
+- AF-049 qualified writable Codex CLI worker with a fixed workspace-write profile, leased-worktree scope, JSONL command/handoff evidence, immutable candidate results, and complete process-tree timeout/cancellation.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
