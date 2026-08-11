@@ -626,6 +626,54 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'invalid scoped approval transition'); END;
     """),
+    (13, """
+        CREATE TABLE worker_qualifications(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            worker_id TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            capabilities_json TEXT NOT NULL,
+            dimensions_json TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('qualified','failed','expired','quarantined')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            valid_until TEXT NOT NULL
+        );
+        CREATE INDEX idx_worker_qualification_route
+            ON worker_qualifications(status,role,valid_until,worker_id,id);
+        CREATE TRIGGER worker_qualifications_no_update BEFORE UPDATE ON worker_qualifications
+        BEGIN SELECT RAISE(ABORT, 'worker qualifications are immutable'); END;
+        CREATE TRIGGER worker_qualifications_no_delete BEFORE DELETE ON worker_qualifications
+        BEGIN SELECT RAISE(ABORT, 'worker qualifications are immutable'); END;
+
+        CREATE TABLE worker_lifecycle(
+            worker_id TEXT PRIMARY KEY,
+            state TEXT NOT NULL CHECK(state IN ('active','draining','quarantined','offline')),
+            reason TEXT NOT NULL DEFAULT '',
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE worker_handoffs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            source_worker_id TEXT NOT NULL,
+            replacement_worker_id TEXT NOT NULL,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER REFERENCES workflow_runs(id),
+            stage_id TEXT NOT NULL,
+            attempt_id TEXT,
+            context_digest TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER worker_handoffs_no_update BEFORE UPDATE ON worker_handoffs
+        BEGIN SELECT RAISE(ABORT, 'worker handoffs are immutable'); END;
+        CREATE TRIGGER worker_handoffs_no_delete BEFORE DELETE ON worker_handoffs
+        BEGIN SELECT RAISE(ABORT, 'worker handoffs are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1465,6 +1513,207 @@ class SQLiteStorage:
                 {"active": active, "actor": actor, "reason": reason, "cancelled": cancelled},
             )
         return True
+
+    def record_worker_qualification(
+        self,
+        *,
+        worker_id: str,
+        provider_id: str,
+        role: str,
+        capabilities: list[str],
+        dimensions: dict[str, Any],
+        evidence: dict[str, Any],
+        status: str,
+        ttl_seconds: int,
+    ) -> int:
+        if status not in {"qualified", "failed"}:
+            raise ValueError(status)
+        required_dimensions = {
+            "availability",
+            "reliability",
+            "quality",
+            "safety",
+            "performance",
+            "cost",
+            "freshness",
+            "drift",
+        }
+        if set(dimensions) != required_dimensions:
+            raise ValueError("Qualification health dimensions are incomplete")
+        evidence_json = json.dumps(
+            evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        evidence_digest = hashlib.sha256(evidence_json.encode("utf-8")).hexdigest()
+        capabilities_json = json.dumps(sorted(set(capabilities)), separators=(",", ":"))
+        with self.db:
+            cur = self.db.execute(
+                """INSERT INTO worker_qualifications(
+                       identity,worker_id,provider_id,role,capabilities_json,
+                       dimensions_json,evidence_json,evidence_digest,status,valid_until
+                   ) VALUES(?,?,?,?,?,?,?,?,?,datetime('now', ?))""",
+                (
+                    self._identity("worker-qualification"),
+                    worker_id,
+                    provider_id,
+                    role,
+                    capabilities_json,
+                    json.dumps(dimensions, sort_keys=True, separators=(",", ":")),
+                    evidence_json,
+                    evidence_digest,
+                    status,
+                    f"+{ttl_seconds} seconds",
+                ),
+            )
+            qualification_id = int(cur.lastrowid)
+            current = self.db.execute(
+                "SELECT state FROM worker_lifecycle WHERE worker_id=?", (worker_id,)
+            ).fetchone()
+            if not current:
+                self.db.execute(
+                    """INSERT INTO worker_lifecycle(worker_id,state,reason)
+                       VALUES(?,?,?)""",
+                    (
+                        worker_id,
+                        "active" if status == "qualified" else "offline",
+                        "qualification passed" if status == "qualified" else "qualification failed",
+                    ),
+                )
+            self._event(
+                f"worker.qualification.{status}",
+                "worker_qualification",
+                qualification_id,
+                {
+                    "worker_id": worker_id,
+                    "provider_id": provider_id,
+                    "role": role,
+                    "capabilities": sorted(set(capabilities)),
+                    "evidence_digest": evidence_digest,
+                },
+            )
+        return qualification_id
+
+    def set_worker_lifecycle(self, worker_id: str, state: str, *, reason: str) -> None:
+        allowed = {
+            "active": {"draining", "quarantined", "offline"},
+            "draining": {"active", "quarantined", "offline"},
+            "quarantined": {"active", "offline"},
+            "offline": {"active", "quarantined"},
+        }
+        if state not in allowed:
+            raise ValueError(state)
+        if not reason.strip():
+            raise ValueError("Worker lifecycle reason is required")
+        with self.db:
+            row = self.db.execute(
+                "SELECT state FROM worker_lifecycle WHERE worker_id=?", (worker_id,)
+            ).fetchone()
+            if not row:
+                self.db.execute(
+                    "INSERT INTO worker_lifecycle(worker_id,state,reason) VALUES(?,?,?)",
+                    (worker_id, state, reason),
+                )
+                previous = None
+            else:
+                previous = str(row["state"])
+                if previous == state:
+                    return
+                if state not in allowed[previous]:
+                    raise ValueError(f"Invalid worker lifecycle transition: {previous} -> {state}")
+                self.db.execute(
+                    """UPDATE worker_lifecycle
+                          SET state=?,reason=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                        WHERE worker_id=? AND state=?""",
+                    (state, reason, worker_id, previous),
+                )
+            self._event(
+                f"worker.{state}",
+                "worker",
+                worker_id,
+                {"worker_id": worker_id, "previous_state": previous, "reason": reason},
+            )
+
+    def select_qualified_worker(
+        self,
+        *,
+        role: str,
+        required_capabilities: set[str],
+        excluded_workers: set[str] | None = None,
+    ) -> str | None:
+        excluded_workers = excluded_workers or set()
+        rows = self.db.execute(
+            """SELECT q.*,COALESCE(l.state,'offline') lifecycle_state
+                 FROM worker_qualifications q
+                 LEFT JOIN worker_lifecycle l ON l.worker_id=q.worker_id
+                WHERE q.id=(
+                    SELECT MAX(latest.id) FROM worker_qualifications latest
+                     WHERE latest.worker_id=q.worker_id
+                )
+                  AND q.status='qualified' AND q.role=?
+                  AND q.valid_until>CURRENT_TIMESTAMP
+                  AND COALESCE(l.state,'offline')='active'
+                ORDER BY q.worker_id""",
+            (role,),
+        ).fetchall()
+        for row in rows:
+            if row["worker_id"] in excluded_workers:
+                continue
+            capabilities = set(json.loads(row["capabilities_json"]))
+            if required_capabilities <= capabilities:
+                return str(row["worker_id"])
+        return None
+
+    def create_worker_handoff(
+        self,
+        *,
+        source_worker_id: str,
+        replacement_worker_id: str,
+        task_id: int,
+        run_id: int | None,
+        stage_id: str,
+        attempt_id: str | None,
+        context_digest: str,
+        evidence: dict[str, Any],
+        reason: str,
+    ) -> int:
+        _sha256_snapshot(context_digest, "context_digest")
+        if source_worker_id == replacement_worker_id:
+            raise ValueError("Worker handoff requires a distinct replacement")
+        with self.db:
+            cur = self.db.execute(
+                """INSERT INTO worker_handoffs(
+                       identity,source_worker_id,replacement_worker_id,task_id,
+                       run_id,stage_id,attempt_id,context_digest,evidence_json,reason
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("worker-handoff"),
+                    source_worker_id,
+                    replacement_worker_id,
+                    task_id,
+                    run_id,
+                    stage_id,
+                    attempt_id,
+                    context_digest,
+                    json.dumps(evidence, sort_keys=True),
+                    reason,
+                ),
+            )
+            handoff_id = int(cur.lastrowid)
+            self._event(
+                "worker.handoff.created",
+                "worker_handoff",
+                handoff_id,
+                {
+                    "task_id": task_id,
+                    "run_id": run_id,
+                    "stage_id": stage_id,
+                    "attempt_id": attempt_id,
+                    "source_worker_id": source_worker_id,
+                    "replacement_worker_id": replacement_worker_id,
+                    "context_digest": context_digest,
+                    "reason": reason,
+                },
+            )
+        return handoff_id
 
     def runtime_settings(self):
         return self.db.execute(
