@@ -1423,6 +1423,39 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER runtime_transfer_authorizations_no_delete BEFORE DELETE ON runtime_transfer_authorizations
         BEGIN SELECT RAISE(ABORT, 'runtime transfer authorization is immutable'); END;
     """),
+    (30, """
+        CREATE TABLE claude_worker_results(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            worker_session_id INTEGER NOT NULL UNIQUE REFERENCES worker_sessions(id),
+            approval_consumption_id INTEGER NOT NULL UNIQUE REFERENCES stage_approval_consumptions(id),
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            attempt_id INTEGER NOT NULL UNIQUE REFERENCES attempts(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            worktree_id INTEGER NOT NULL REFERENCES worktrees(id),
+            context_package_id INTEGER NOT NULL REFERENCES execution_context_packages(id),
+            claude_version TEXT NOT NULL,
+            producer_model TEXT NOT NULL,
+            qualification_json TEXT NOT NULL,
+            permission_profile_json TEXT NOT NULL,
+            invocation_json TEXT NOT NULL,
+            tool_calls_json TEXT NOT NULL,
+            changed_files_json TEXT NOT NULL,
+            diff_digest TEXT NOT NULL CHECK(length(diff_digest)=64),
+            status TEXT NOT NULL CHECK(status IN ('succeeded','failed','timed_out','cancelled','output_limited')),
+            exit_code INTEGER,
+            handoff_json TEXT NOT NULL,
+            evidence_directory TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL UNIQUE CHECK(length(evidence_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER claude_worker_results_no_update BEFORE UPDATE ON claude_worker_results
+        BEGIN SELECT RAISE(ABORT, 'Claude worker result is immutable'); END;
+        CREATE TRIGGER claude_worker_results_no_delete BEFORE DELETE ON claude_worker_results
+        BEGIN SELECT RAISE(ABORT, 'Claude worker result is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

@@ -84,7 +84,7 @@ The shipped command contract is:
 claude -p --output-format text --permission-mode plan --disable-slash-commands
 ```
 
-Authentication remains in Claude Code's own profile.
+Authentication remains in Claude Code's own profile. The generic provider command above stays plan-only. AF-050's separately qualified writable profile is documented in [Claude Code implementation worker](claude-code-worker.md); it is available only through the fenced `claude-cli` Worker Runtime and cannot be selected by planning roles.
 
 ## Gemini CLI
 

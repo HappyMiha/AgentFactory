@@ -1,0 +1,7 @@
+# Claude Code implementation worker
+
+AF-050 provides a separately qualified `claude-cli` Worker Runtime for the exact `Implementation Worker` role. It consumes the same durable task, workflow stage, attempt, fencing lease, AF-048 worktree, AF-055 context package, and AF-046 approval envelope as the Codex worker; changing providers does not replace that Control Plane contract.
+
+The reviewed non-interactive invocation uses Claude Code print mode with `stream-json`, `dontAsk`, an empty setting-source list, strict empty MCP configuration, and only `Read`, `Edit`, `Write`, `Glob`, and `Grep`. Path-qualified `Read(./**)` and `Edit(./**)` rules are rooted at the child process cwd, which is the leased worktree. The profile has no Bash, web, MCP, extra-directory, permission-bypass, merge, push, issue-closing, or acceptance authority. This follows the official [CLI reference](https://code.claude.com/docs/en/cli-reference), [permissions](https://code.claude.com/docs/en/permissions), and [tools reference](https://code.claude.com/docs/en/tools-reference).
+
+Qualification verifies executable discovery, semantic version output, every required CLI flag, workspace containment, the exact permission-profile digest, a successful immutable result, and the stream-JSON tool/usage/handoff contract. Only then is the Claude worker routable for the same qualified implementation capabilities as Codex; a plan-only Claude role stays incompatible. Timeout and operator cancellation use the shared complete process-tree supervisor.

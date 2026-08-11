@@ -22,6 +22,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
 - **Writable Codex worker.** A qualified fixed `codex exec` profile writes only in its leased task worktree and returns immutable changed-file, diff, command, exit, and handoff evidence without merge, push, issue, or acceptance authority.
+- **Writable Claude alternative.** A separately qualified Claude Code `stream-json` profile exposes only path-scoped file tools in the leased worktree; planning roles never enter this profile, and compatible Codex/Claude replacement preserves the task/workflow contract.
 - **Deterministic candidate validation.** Project packs declare five shell-free command vectors that run only in the candidate worktree and produce bounded, criterion-mapped primary evidence.
 - **Immutable candidate and PR plan.** Only a 5/5 validated worker diff becomes a stable-task-ID commit on its task branch; push and pull-request creation remain separately gated.
 - **Independent criterion evaluation.** Model review starts only after deterministic validation, excludes the producing model, and records versioned evidence, confidence, concerns, and dissent for every required criterion.
@@ -46,6 +47,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Execution telemetry | Ready | AF-056 correlates the single-node loop, enforces local budgets, and exposes operational state to the dashboard. |
 | Local recovery | Ready | AF-057 restores authoritative references, detects separate orphan classes, and verifies evidence/audit integrity. |
 | Hermes qualification | Ready | AF-047 persists the complete qualification matrix and gates read-only fallback or checkpointed new-lease runtime transfer. |
+| Claude Code worker | Ready | AF-050 provides an independently qualified file-only writable implementation profile compatible with the shared Worker Runtime. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
 | Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, Ollama, and Firecrawl adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |

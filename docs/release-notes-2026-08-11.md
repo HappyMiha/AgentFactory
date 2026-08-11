@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-047 Hermes-qualification slice and AF-057 local recovery. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-050 Claude-worker slice and AF-057 local recovery. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **30 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-049, AF-051–AF-053, and AF-055–AF-057.
+- Completed **31 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-053, and AF-055–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **187 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified restart-safe single-node coding-worker vertical slice is implemented but not released; AF-050 retains the optional Claude worker profile.
+- Verified **191 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified restart-safe two-worker single-node coding vertical slice is implemented but not released; AF-054 retains the typed role-pack work.
 
 ## Implemented backlog items and implementation commits
 
@@ -40,6 +40,7 @@ These notes describe the implemented, tested repository state through the AF-047
 | AF-017 | Fail-closed writable-worker sandbox and preserved teardown evidence | 2026-08-11 22:17 CEST | This AF-017 task commit |
 | AF-020 | Deterministic-first independent criterion verdicts with primary-evidence closure | 2026-08-11 23:46 CEST | This AF-020 task commit |
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
+| AF-050 | Separately qualified file-only Claude Code worker and compatible routing | 2026-08-12 00:52 CEST | This AF-050 task commit |
 | AF-051 | Validated immutable candidate commit and separately gated PR plan | 2026-08-11 23:43 CEST | This AF-051 task commit |
 | AF-052 | Five-category shell-free validator packs and criterion-mapped bounded evidence | 2026-08-11 23:37 CEST | This AF-052 task commit |
 | AF-053 | Replay-safe end-to-end coding delivery with separate Founder and PR gates | 2026-08-12 00:07 CEST | This AF-053 task commit |
@@ -75,6 +76,10 @@ Hermes qualification now persists one immutable matrix covering executable disco
 
 Validation is now driven by reviewed project packs with required test, lint, type-check, build, and security-scan vectors; workers cannot submit a shell string or replace a vector at runtime. Every command runs through the fenced AF-017 boundary with the candidate worktree as cwd, denied network, and bounded time/output. Immutable records bind candidate and pack digests to command/exit/environment evidence and exact declared acceptance criteria, so a generic green process can no longer masquerade as criterion-complete validation.
 
+## AF-050 implementation detail
+
+Claude Code now has its own qualified `claude-cli` Worker Runtime rather than reusing the plan-only provider command. The fixed non-interactive profile accepts only `Read`, `Edit`, `Write`, `Glob`, and `Grep`, roots its permission rules at the leased worktree, loads no setting source or MCP server, and excludes Bash, web, extra directories, permission bypass, push, merge, issue, and acceptance authority. Stream-JSON tool, usage, handoff, changed-file, diff, version, invocation, and evidence identities are immutable. A successful exact-profile result creates the role/capability qualification used for Codex/Claude compatibility routing; planning roles remain incompatible, and timeout/cancel terminate the full process tree.
+
 ## AF-051 implementation detail
 
 Only the exact AF-049 diff with five successful AF-052 categories can now become a committed candidate artifact. Agent Factory stages the worker-declared file set on the deterministic task branch, requires an `AF-NNN` commit prefix, verifies the base branch SHA did not move, and records immutable base/head/worktree/diff/validation identity. The pull request remains an immutable GitHub dry-run operation behind its own pending gate; failed or candidate-mutating validation produces neither a candidate artifact nor PR-ready plan.
@@ -101,7 +106,6 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## What is explicitly not in this snapshot
 
-- AF-050 optional Claude writable-worker alternative.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
 
 ## Backlog changes made by this release audit
@@ -115,4 +119,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008, AF-017, AF-020, AF-044 through AF-049, AF-051 through AF-053, and AF-055 through AF-057 are complete. AF-050 is the next optional-worker slice.
+M1, AF-008, AF-017, AF-020, AF-044 through AF-053, and AF-055 through AF-057 are complete. AF-054 is the next typed role-pack slice.

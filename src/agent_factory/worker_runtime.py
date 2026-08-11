@@ -543,3 +543,8 @@ class HermesACPWorkerRuntime(WorkerRuntime):
 class CodexCLIWorkerRuntime(WorkerRuntime):
     def __init__(self, storage: SQLiteStorage, driver: RuntimeDriver):
         super().__init__(storage, driver, runtime_id="codex-cli")
+
+
+class ClaudeCodeWorkerRuntime(WorkerRuntime):
+    def __init__(self, storage: SQLiteStorage, driver: RuntimeDriver):
+        super().__init__(storage, driver, runtime_id="claude-cli")
