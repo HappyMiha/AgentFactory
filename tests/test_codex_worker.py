@@ -13,6 +13,7 @@ from agent_factory.candidate_changes import CandidateChangeService
 from agent_factory.coding_delivery import CodingDeliveryService
 from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.evaluation import EvaluationService
+from agent_factory.execution_telemetry import ExecutionBudgets, ExecutionTelemetryService
 from agent_factory.live_stages import LiveStageExecution
 from agent_factory.models import Agent, WorkItem
 from agent_factory.policy import PolicyRequest
@@ -492,6 +493,17 @@ class CodexImplementationWorkerTests(unittest.TestCase):
         )
         self.assertEqual(replay_ready, ready)
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM candidate_pr_plans").fetchone()[0], 1)
+        telemetry = ExecutionTelemetryService(self.storage)
+        trace = telemetry.create(
+            task_id=int(worker_result["task_id"]), run_id=int(worker_result["run_id"]),
+            budgets=ExecutionBudgets(1000, 5.0, 8, 3, 20),
+        )
+        link_types = set(telemetry.link_delivery(trace.id, delivery.id))
+        self.assertTrue({
+            "task", "workflow", "worker_process", "worktree", "validator",
+            "coding_delivery", "candidate", "evaluation", "stage_approval",
+            "founder_approval", "github_approval",
+        } <= link_types)
 
     def test_validation_failure_returns_to_same_or_policy_replacement_worker(self):
         worker_result, _ = self.validated_candidate(failing=True)

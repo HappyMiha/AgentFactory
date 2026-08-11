@@ -173,6 +173,13 @@ class WebHostTests(unittest.TestCase):
                         "awaiting_approval": 0,
                     },
                 )
+                self.assertEqual(
+                    set(dashboard.json()["operations"]),
+                    {
+                        "active_sessions", "queued_tasks", "active_leases",
+                        "active_worktrees", "failures", "budgets",
+                    },
+                )
 
     def test_typed_resources_pagination_missing_and_malformed_requests(self):
         with tempfile.TemporaryDirectory() as tmp:

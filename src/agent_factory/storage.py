@@ -1253,6 +1253,109 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER coding_delivery_iterations_no_delete BEFORE DELETE ON coding_delivery_iterations
         BEGIN SELECT RAISE(ABORT, 'coding delivery iteration is immutable'); END;
     """),
+    (27, """
+        CREATE TABLE execution_traces(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            correlation_root TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL UNIQUE REFERENCES workflow_runs(id),
+            status TEXT NOT NULL DEFAULT 'active'
+                CHECK(status IN ('active','paused','completed','failed')),
+            max_tokens INTEGER NOT NULL CHECK(max_tokens > 0),
+            max_cost_usd REAL NOT NULL CHECK(max_cost_usd >= 0),
+            max_stages INTEGER NOT NULL CHECK(max_stages > 0),
+            max_retries INTEGER NOT NULL CHECK(max_retries >= 0),
+            max_tool_calls INTEGER NOT NULL CHECK(max_tool_calls >= 0),
+            duration_ms INTEGER NOT NULL DEFAULT 0 CHECK(duration_ms >= 0),
+            retries INTEGER NOT NULL DEFAULT 0 CHECK(retries >= 0),
+            tokens INTEGER NOT NULL DEFAULT 0 CHECK(tokens >= 0),
+            estimated_cost_usd REAL NOT NULL DEFAULT 0 CHECK(estimated_cost_usd >= 0),
+            tool_calls INTEGER NOT NULL DEFAULT 0 CHECK(tool_calls >= 0),
+            stages_reserved INTEGER NOT NULL DEFAULT 0 CHECK(stages_reserved >= 0),
+            terminal_reason TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE execution_trace_links(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            entity_type TEXT NOT NULL CHECK(entity_type IN (
+                'task','workflow','hermes_session','worker_process','worktree',
+                'validator','stage_approval','founder_approval','github_approval',
+                'coding_delivery','candidate','evaluation'
+            )),
+            entity_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(trace_id,entity_type,entity_id)
+        );
+        CREATE TABLE execution_usage_samples(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            idempotency_key TEXT NOT NULL,
+            stage_key TEXT NOT NULL,
+            duration_ms INTEGER NOT NULL CHECK(duration_ms >= 0),
+            tokens INTEGER NOT NULL CHECK(tokens >= 0),
+            estimated_cost_usd REAL NOT NULL CHECK(estimated_cost_usd >= 0),
+            tool_calls INTEGER NOT NULL CHECK(tool_calls >= 0),
+            terminal_reason TEXT,
+            metadata_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(trace_id,idempotency_key)
+        );
+        CREATE TABLE execution_stage_reservations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            stage_key TEXT NOT NULL,
+            estimated_tokens INTEGER NOT NULL CHECK(estimated_tokens >= 0),
+            estimated_cost_usd REAL NOT NULL CHECK(estimated_cost_usd >= 0),
+            estimated_tool_calls INTEGER NOT NULL CHECK(estimated_tool_calls >= 0),
+            decision TEXT NOT NULL CHECK(decision IN ('allowed','blocked')),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(trace_id,stage_key)
+        );
+        CREATE TABLE execution_retry_records(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            retry_number INTEGER NOT NULL CHECK(retry_number > 0),
+            reason TEXT NOT NULL,
+            decision TEXT NOT NULL CHECK(decision IN ('allowed','blocked')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(trace_id,retry_number)
+        );
+        CREATE INDEX idx_execution_trace_links ON execution_trace_links(trace_id,entity_type,id);
+        CREATE TRIGGER execution_trace_scope_immutable
+        BEFORE UPDATE OF correlation_root,task_id,run_id,max_tokens,max_cost_usd,
+                         max_stages,max_retries,max_tool_calls
+        ON execution_traces
+        BEGIN SELECT RAISE(ABORT, 'execution trace scope is immutable'); END;
+        CREATE TRIGGER execution_trace_terminal_no_update BEFORE UPDATE ON execution_traces
+        WHEN OLD.status IN ('completed','failed')
+        BEGIN SELECT RAISE(ABORT, 'terminal execution trace is immutable'); END;
+        CREATE TRIGGER execution_trace_links_no_update BEFORE UPDATE ON execution_trace_links
+        BEGIN SELECT RAISE(ABORT, 'execution trace link is immutable'); END;
+        CREATE TRIGGER execution_usage_no_update BEFORE UPDATE ON execution_usage_samples
+        BEGIN SELECT RAISE(ABORT, 'execution usage sample is immutable'); END;
+        CREATE TRIGGER execution_reservations_no_update BEFORE UPDATE ON execution_stage_reservations
+        BEGIN SELECT RAISE(ABORT, 'execution stage reservation is immutable'); END;
+        CREATE TRIGGER execution_retries_no_update BEFORE UPDATE ON execution_retry_records
+        BEGIN SELECT RAISE(ABORT, 'execution retry record is immutable'); END;
+        CREATE TRIGGER execution_traces_no_delete BEFORE DELETE ON execution_traces
+        BEGIN SELECT RAISE(ABORT, 'execution trace history is immutable'); END;
+        CREATE TRIGGER execution_trace_links_no_delete BEFORE DELETE ON execution_trace_links
+        BEGIN SELECT RAISE(ABORT, 'execution trace link is immutable'); END;
+        CREATE TRIGGER execution_usage_no_delete BEFORE DELETE ON execution_usage_samples
+        BEGIN SELECT RAISE(ABORT, 'execution usage sample is immutable'); END;
+        CREATE TRIGGER execution_reservations_no_delete BEFORE DELETE ON execution_stage_reservations
+        BEGIN SELECT RAISE(ABORT, 'execution stage reservation is immutable'); END;
+        CREATE TRIGGER execution_retries_no_delete BEFORE DELETE ON execution_retry_records
+        BEGIN SELECT RAISE(ABORT, 'execution retry record is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

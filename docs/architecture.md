@@ -190,6 +190,8 @@ The [persistent engineering loop](persistent-engineering-loop.md) binds one obje
 
 The [coding delivery loop](coding-delivery-loop.md) binds the persisted AF-049 implementation lineage to exact AF-052 validation, AF-051 candidate creation, AF-020 independent review, an AF-008 repair record, a separate Founder workflow gate, and finally an AF-051 pending GitHub PR gate. Completed checkpoints are replayed from immutable state, so a supported retry does not rerun the provider, reprovision the worktree, recommit the candidate, rereview evidence, or duplicate the external-mutation plan.
 
+The [execution telemetry service](execution-telemetry.md) assigns one correlation root to task/workflow, Hermes and Codex sessions, worktree, validator, approval, candidate, evaluation, and delivery identities. Immutable samples retain duration, retries, tokens, estimated cost, tool calls, and terminal reason. Durable preflight reservations pause before token, cost, stage, retry, or tool-call caps can be exceeded, and the Local Control Center dashboard exposes live queue/session/lease/worktree/failure/budget state.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

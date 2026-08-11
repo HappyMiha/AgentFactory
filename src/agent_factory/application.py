@@ -224,6 +224,33 @@ class SettingsView:
 
 
 @dataclass(frozen=True)
+class BudgetStateView:
+    correlation_root: str
+    status: str
+    tokens: int
+    max_tokens: int
+    estimated_cost_usd: float
+    max_cost_usd: float
+    stages_reserved: int
+    max_stages: int
+    retries: int
+    max_retries: int
+    tool_calls: int
+    max_tool_calls: int
+    terminal_reason: str | None
+
+
+@dataclass(frozen=True)
+class OperationalStateView:
+    active_sessions: int
+    queued_tasks: int
+    active_leases: int
+    active_worktrees: int
+    failures: int
+    budgets: tuple[BudgetStateView, ...]
+
+
+@dataclass(frozen=True)
 class ProjectChange:
     project_id: int
     created: bool
@@ -990,6 +1017,36 @@ class AgentFactoryService:
             max_output_chars=int(execution.get("max_output_chars", 100_000)),
             config_sources=sources,
             runtime_settings=runtime_settings,
+        )
+
+    def operational_state(self) -> OperationalStateView:
+        scalar = lambda query: int(self.storage.db.execute(query).fetchone()[0])
+        traces = self.storage.db.execute(
+            "SELECT * FROM execution_traces ORDER BY id DESC LIMIT 20"
+        ).fetchall()
+        return OperationalStateView(
+            active_sessions=scalar(
+                "SELECT COUNT(*) FROM worker_sessions WHERE status IN ('starting','running','suspended')"
+            ),
+            queued_tasks=scalar("SELECT COUNT(*) FROM work_items WHERE status='pending'"),
+            active_leases=scalar("SELECT COUNT(*) FROM leases WHERE status='active'"),
+            active_worktrees=scalar(
+                "SELECT COUNT(*) FROM worktrees WHERE status IN ('provisioning','ready','dirty','retained')"
+            ),
+            failures=scalar(
+                """SELECT COUNT(*) FROM events WHERE event_type LIKE '%.failed'
+                    OR event_type LIKE '%.rejected' OR event_type LIKE '%.blocked'"""
+            ),
+            budgets=tuple(BudgetStateView(
+                correlation_root=str(row["correlation_root"]), status=str(row["status"]),
+                tokens=int(row["tokens"]), max_tokens=int(row["max_tokens"]),
+                estimated_cost_usd=float(row["estimated_cost_usd"]),
+                max_cost_usd=float(row["max_cost_usd"]),
+                stages_reserved=int(row["stages_reserved"]), max_stages=int(row["max_stages"]),
+                retries=int(row["retries"]), max_retries=int(row["max_retries"]),
+                tool_calls=int(row["tool_calls"]), max_tool_calls=int(row["max_tool_calls"]),
+                terminal_reason=(str(row["terminal_reason"]) if row["terminal_reason"] else None),
+            ) for row in traces),
         )
 
     # Commands reuse storage, workflow, policy, approval, and audit paths.

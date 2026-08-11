@@ -22,6 +22,7 @@ from .application import (
     EventView,
     FounderDecisionPacket,
     FounderDecisionReceipt,
+    OperationalStateView,
     ProjectView,
     ProviderView,
     ReviewView,
@@ -69,6 +70,7 @@ class DashboardResponse(BaseModel):
     providers: list[ProviderView]
     pending_approvals: list[ApprovalView]
     recent_failures: list[EventView]
+    operations: OperationalStateView
 
 
 class ConfirmedCommand(BaseModel):
@@ -273,6 +275,7 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             providers=service.providers(),
             pending_approvals=[item for item in approvals if item.status == "pending"],
             recent_failures=failures,
+            operations=service.operational_state(),
         )
 
     @app.get("/api/projects", response_model=Page[ProjectView])

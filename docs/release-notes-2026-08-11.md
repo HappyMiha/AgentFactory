@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-053 end-to-end coding-delivery slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-056 execution-telemetry slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **27 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, and AF-055.
+- Completed **28 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, AF-055, and AF-056.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **178 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The coding-worker vertical slice is implemented but not released: AF-047, AF-050, AF-056, and AF-057 still contain qualification, optional-worker, telemetry, and recovery work.
+- Verified **181 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The coding-worker vertical slice is implemented but not released: AF-047, AF-050, and AF-057 still contain qualification, optional-worker, and recovery work.
 
 ## Implemented backlog items and implementation commits
 
@@ -29,6 +29,7 @@ These notes describe the implemented, tested repository state through the AF-053
 | AF-046 | Exact durable live-stage gates, one-attempt consumption and automatic dependency-ready continuation | 2026-08-11 23:18 CEST | This AF-046 task commit |
 | AF-048 | Fenced deterministic Git worktrees, reconciliation, retention and branch-preserving cleanup | 2026-08-11 22:35 CEST | This AF-048 task commit |
 | AF-055 | Immutable bounded execution context packages and runtime digest enforcement | 2026-08-11 22:46 CEST | This AF-055 task commit |
+| AF-056 | Correlated execution telemetry, enforced budgets, and dashboard operational state | 2026-08-12 00:16 CEST | This AF-056 task commit |
 
 ### Safe Extensibility
 
@@ -84,10 +85,14 @@ The engineering loop now persists the objective, structured plan, diff digest, v
 
 The first coding-delivery integration now binds an immutable Codex result back to its claimed assignment and managed worktree, consumes its exact validator snapshot, creates one replay-safe candidate commit, runs one independent evidence review, and records success or repair in the bounded engineering loop. Validation failure returns to the same worker unless a policy selector supplies a compatible replacement, and the configured repair cap fails exhausted delivery deterministically. Accepted review evidence opens a separate Founder gate; only Founder approval creates a PR-ready dry-run plan with another pending GitHub gate. Supported replay creates no additional worker result, worktree, commit, review, Founder gate, PR plan, provider call, or live GitHub mutation.
 
+## AF-056 implementation detail
+
+Every workflow can now own one immutable correlation root and exact budget scope. Hydration links the task, workflow, Hermes session when present, Codex process, worktree, validator results, candidate, evaluation, delivery, and distinct stage/Founder/GitHub approvals. Idempotent samples retain duration, retries, tokens, estimated cost, tool calls, metadata, and terminal reason across restart. Stage preflight records and blocks token, cost, stage, and tool-call overages; retry overages and actual usage crossings pause the trace too. The Local Control Center dashboard now reports active sessions, queued tasks, leases, worktrees, failures, and recent budget state without waiting for the later OpenTelemetry export.
+
 ## What is explicitly not in this snapshot
 
 - AF-050 optional Claude writable-worker alternative.
-- AF-056 enforced budgets/end-to-end telemetry and AF-057 local crash recovery.
+- AF-057 local crash recovery.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
 
 ## Backlog changes made by this release audit
@@ -101,4 +106,4 @@ The first coding-delivery integration now binds an immutable Codex result back t
 
 ## Next release target
 
-M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051 through AF-053, and AF-055 are complete. AF-056 is the next critical-path slice for end-to-end execution telemetry and enforced budgets.
+M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051 through AF-053, AF-055, and AF-056 are complete. AF-057 is the next critical-path slice for local recovery and orphan reconciliation.
