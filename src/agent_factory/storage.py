@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import sqlite3
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -453,6 +455,41 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
             (OLD.status='missing' AND NEW.status IN ('provisioning','cleaned'))
         ) BEGIN SELECT RAISE(ABORT, 'invalid worktree transition'); END;
     """),
+    (10, """
+        ALTER TABLE events ADD COLUMN identity TEXT;
+        ALTER TABLE events ADD COLUMN correlation_root TEXT;
+        ALTER TABLE events ADD COLUMN correlation_json TEXT;
+        ALTER TABLE events ADD COLUMN previous_hash TEXT;
+        ALTER TABLE events ADD COLUMN record_hash TEXT;
+
+        CREATE TABLE outbox_messages(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            event_id INTEGER NOT NULL UNIQUE REFERENCES events(id),
+            topic TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            correlation_json TEXT NOT NULL,
+            delivery_key TEXT NOT NULL UNIQUE,
+            status TEXT NOT NULL DEFAULT 'pending'
+                CHECK(status IN ('pending','dispatching','delivered','failed')),
+            attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+            available_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            claimed_by TEXT,
+            claim_token TEXT,
+            last_error TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            delivered_at TEXT
+        );
+        CREATE INDEX idx_outbox_ready
+            ON outbox_messages(status,available_at,id);
+        CREATE TRIGGER outbox_valid_transition
+        BEFORE UPDATE OF status ON outbox_messages
+        WHEN NOT (
+            (OLD.status IN ('pending','failed') AND NEW.status='dispatching') OR
+            (OLD.status='dispatching' AND NEW.status IN ('delivered','failed'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid outbox transition'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -480,6 +517,7 @@ class SQLiteStorage:
         self.db.execute("PRAGMA busy_timeout=10000")
         self.db.execute("PRAGMA journal_mode=WAL")
         self._migrate()
+        self._ensure_audit_chain()
 
     def _migrate(self) -> None:
         self.db.execute("CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)")
@@ -490,10 +528,266 @@ class SQLiteStorage:
             # executescript commits implicitly, so each migration owns its explicit transaction.
             self.db.executescript(f"BEGIN IMMEDIATE;\n{script}\nINSERT INTO schema_migrations(version) VALUES({version});\nCOMMIT;")
 
+    @staticmethod
+    def _audit_digest(
+        *,
+        identity: str,
+        event_type: str,
+        entity_type: str,
+        entity_id: str,
+        payload: str,
+        correlation_json: str,
+        created_at: str,
+        previous_hash: str,
+    ) -> str:
+        material = json.dumps(
+            {
+                "identity": identity,
+                "event_type": event_type,
+                "entity_type": entity_type,
+                "entity_id": entity_id,
+                "payload": json.loads(payload),
+                "correlation": json.loads(correlation_json),
+                "created_at": created_at,
+                "previous_hash": previous_hash,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
+        return hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+    def _correlation(
+        self, entity: str, entity_id: int | str, payload: dict[str, Any]
+    ) -> dict[str, str | int | None]:
+        correlation: dict[str, str | int | None] = {
+            "mission_id": payload.get("mission_id") or payload.get("project_id"),
+            "task_id": payload.get("task_id"),
+            "run_id": payload.get("run_id"),
+            "stage_id": payload.get("stage_id") or payload.get("stage"),
+            "attempt_id": payload.get("attempt_id"),
+            "worker_session_id": payload.get("worker_session_id"),
+        }
+        numeric_id = int(entity_id) if str(entity_id).isdigit() else None
+        if entity == "project":
+            correlation["mission_id"] = entity_id
+        elif entity == "task":
+            correlation["task_id"] = entity_id
+        elif entity == "run":
+            correlation["run_id"] = entity_id
+        elif entity == "stage":
+            correlation["stage_id"] = entity_id
+        elif entity == "provider_attempt":
+            correlation["attempt_id"] = entity_id
+
+        run_id = correlation["run_id"]
+        task_id = correlation["task_id"]
+        if numeric_id is not None and entity == "approval":
+            row = self.db.execute(
+                "SELECT run_id FROM approval_gates WHERE id=?", (numeric_id,)
+            ).fetchone()
+            run_id = int(row["run_id"]) if row else run_id
+        elif numeric_id is not None and entity == "artifact":
+            row = self.db.execute(
+                "SELECT run_id,stage FROM artifacts WHERE id=?", (numeric_id,)
+            ).fetchone()
+            if row:
+                run_id = int(row["run_id"])
+                correlation["stage_id"] = correlation["stage_id"] or row["stage"]
+        elif numeric_id is not None and entity == "review_assignment":
+            row = self.db.execute(
+                "SELECT run_id,stage FROM reviewer_assignments WHERE id=?", (numeric_id,)
+            ).fetchone()
+            if row:
+                run_id = int(row["run_id"])
+                correlation["stage_id"] = correlation["stage_id"] or row["stage"]
+        elif numeric_id is not None and entity == "provider_gate":
+            row = self.db.execute(
+                "SELECT task_id FROM provider_execution_gates WHERE id=?", (numeric_id,)
+            ).fetchone()
+            task_id = int(row["task_id"]) if row else task_id
+        elif numeric_id is not None and entity == "provider_attempt":
+            row = self.db.execute(
+                "SELECT task_id FROM provider_execution_attempts WHERE id=?", (numeric_id,)
+            ).fetchone()
+            if row:
+                task_id = int(row["task_id"])
+                session = self.db.execute(
+                    """SELECT s.identity
+                         FROM attempts a
+                         JOIN worker_sessions s ON s.assignment_id=a.assignment_id
+                        WHERE a.provider_attempt_id=?""",
+                    (numeric_id,),
+                ).fetchone()
+                if session:
+                    correlation["worker_session_id"] = session["identity"]
+
+        if run_id is not None:
+            correlation["run_id"] = run_id
+            row = self.db.execute(
+                "SELECT task_id FROM workflow_runs WHERE id=?", (run_id,)
+            ).fetchone()
+            task_id = int(row["task_id"]) if row else task_id
+        if task_id is not None:
+            correlation["task_id"] = task_id
+            row = self.db.execute(
+                "SELECT project_id FROM work_items WHERE id=?", (task_id,)
+            ).fetchone()
+            if row:
+                correlation["mission_id"] = int(row["project_id"])
+        return correlation
+
+    def _ensure_audit_chain(self) -> None:
+        """One-time compatibility backfill followed by immutable audit guards."""
+
+        previous_hash = ""
+        with self.db:
+            self._begin_immediate()
+            rows = self.db.execute("SELECT * FROM events ORDER BY id").fetchall()
+            for row in rows:
+                if row["identity"] and row["record_hash"] and row["correlation_json"]:
+                    previous_hash = str(row["record_hash"])
+                    continue
+                decoded_payload = json.loads(row["payload"])
+                payload = decoded_payload if isinstance(decoded_payload, dict) else {}
+                correlation = self._correlation(
+                    str(row["entity_type"]), str(row["entity_id"]), payload
+                )
+                correlation_json = json.dumps(
+                    correlation, sort_keys=True, separators=(",", ":")
+                )
+                identity = f"event:{row['id']}"
+                digest = self._audit_digest(
+                    identity=identity,
+                    event_type=str(row["event_type"]),
+                    entity_type=str(row["entity_type"]),
+                    entity_id=str(row["entity_id"]),
+                    payload=str(row["payload"]),
+                    correlation_json=correlation_json,
+                    created_at=str(row["created_at"]),
+                    previous_hash=previous_hash,
+                )
+                self.db.execute(
+                    """UPDATE events
+                          SET identity=?,correlation_root=?,correlation_json=?,
+                              previous_hash=?,record_hash=?
+                        WHERE id=?""",
+                    (
+                        identity,
+                        self._correlation_root(correlation),
+                        correlation_json,
+                        previous_hash,
+                        digest,
+                        row["id"],
+                    ),
+                )
+                self.db.execute(
+                    """INSERT OR IGNORE INTO outbox_messages(
+                           identity,event_id,topic,payload,correlation_json,
+                           delivery_key,status,delivered_at
+                       ) VALUES(?,?,?,?,?,?,'delivered',CURRENT_TIMESTAMP)""",
+                    (
+                        f"outbox:{row['id']}",
+                        row["id"],
+                        row["event_type"],
+                        row["payload"],
+                        correlation_json,
+                        identity,
+                    ),
+                )
+                previous_hash = digest
+            self.db.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_events_identity ON events(identity)"
+            )
+            self.db.executescript(
+                """
+                CREATE TRIGGER IF NOT EXISTS events_identity_required
+                BEFORE INSERT ON events
+                WHEN NEW.identity IS NULL OR NEW.correlation_json IS NULL
+                  OR NEW.previous_hash IS NULL OR NEW.record_hash IS NULL
+                BEGIN SELECT RAISE(ABORT, 'complete audit envelope is required'); END;
+                CREATE TRIGGER IF NOT EXISTS events_no_update
+                BEFORE UPDATE ON events
+                BEGIN SELECT RAISE(ABORT, 'audit records are immutable'); END;
+                CREATE TRIGGER IF NOT EXISTS events_no_delete
+                BEFORE DELETE ON events
+                BEGIN SELECT RAISE(ABORT, 'audit records are immutable'); END;
+                """
+            )
+
+    @staticmethod
+    def _correlation_root(correlation: dict[str, str | int | None]) -> str:
+        for key in (
+            "mission_id",
+            "task_id",
+            "run_id",
+            "stage_id",
+            "attempt_id",
+            "worker_session_id",
+        ):
+            value = correlation.get(key)
+            if value is not None:
+                return f"{key}:{value}"
+        return "control-plane"
+
+    def _begin_immediate(self) -> None:
+        if not self.db.in_transaction:
+            self.db.execute("BEGIN IMMEDIATE")
+
     def _event(self, kind: str, entity: str, entity_id: int | str, payload: dict[str, Any]) -> None:
+        self._begin_immediate()
+        identity = self._identity("event")
+        payload_json = json.dumps(payload, ensure_ascii=False)
+        correlation = self._correlation(entity, entity_id, payload)
+        correlation_json = json.dumps(
+            correlation, sort_keys=True, separators=(",", ":")
+        )
+        previous = self.db.execute(
+            "SELECT record_hash FROM events ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        previous_hash = str(previous["record_hash"]) if previous else ""
+        created_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
+        record_hash = self._audit_digest(
+            identity=identity,
+            event_type=kind,
+            entity_type=entity,
+            entity_id=str(entity_id),
+            payload=payload_json,
+            correlation_json=correlation_json,
+            created_at=created_at,
+            previous_hash=previous_hash,
+        )
+        cur = self.db.execute(
+            """INSERT INTO events(
+                   identity,event_type,entity_type,entity_id,payload,created_at,
+                   correlation_root,correlation_json,previous_hash,record_hash
+               ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+            (
+                identity,
+                kind,
+                entity,
+                str(entity_id),
+                payload_json,
+                created_at,
+                self._correlation_root(correlation),
+                correlation_json,
+                previous_hash,
+                record_hash,
+            ),
+        )
+        event_id = int(cur.lastrowid)
         self.db.execute(
-            "INSERT INTO events(event_type,entity_type,entity_id,payload) VALUES(?,?,?,?)",
-            (kind, entity, str(entity_id), json.dumps(payload)),
+            """INSERT INTO outbox_messages(
+                   identity,event_id,topic,payload,correlation_json,delivery_key
+               ) VALUES(?,?,?,?,?,?)""",
+            (
+                self._identity("outbox"),
+                event_id,
+                kind,
+                payload_json,
+                correlation_json,
+                identity,
+            ),
         )
 
     @staticmethod
@@ -503,6 +797,134 @@ class SQLiteStorage:
     def event(self, kind: str, entity: str, entity_id: int | str, payload: dict[str, Any]) -> None:
         with self.db:
             self._event(kind, entity, entity_id, payload)
+
+    def verify_audit_chain(self) -> dict[str, Any]:
+        failures: list[dict[str, Any]] = []
+        expected_previous = ""
+        rows = self.db.execute("SELECT * FROM events ORDER BY id").fetchall()
+        required_correlation = {
+            "mission_id",
+            "task_id",
+            "run_id",
+            "stage_id",
+            "attempt_id",
+            "worker_session_id",
+        }
+        for row in rows:
+            reasons: list[str] = []
+            try:
+                correlation = json.loads(row["correlation_json"])
+                if set(correlation) != required_correlation:
+                    reasons.append("correlation envelope is incomplete")
+            except (TypeError, json.JSONDecodeError):
+                correlation = {}
+                reasons.append("correlation envelope is invalid JSON")
+            if row["previous_hash"] != expected_previous:
+                reasons.append("previous hash does not match")
+            try:
+                expected_hash = self._audit_digest(
+                    identity=str(row["identity"]),
+                    event_type=str(row["event_type"]),
+                    entity_type=str(row["entity_type"]),
+                    entity_id=str(row["entity_id"]),
+                    payload=str(row["payload"]),
+                    correlation_json=str(row["correlation_json"]),
+                    created_at=str(row["created_at"]),
+                    previous_hash=str(row["previous_hash"]),
+                )
+                if row["record_hash"] != expected_hash:
+                    reasons.append("record hash does not match")
+            except (TypeError, ValueError, json.JSONDecodeError):
+                reasons.append("record cannot be canonicalized")
+            if reasons:
+                failures.append({"event_id": int(row["id"]), "reasons": reasons})
+            expected_previous = str(row["record_hash"])
+        return {"ok": not failures, "checked": len(rows), "failures": failures}
+
+    def outbox_messages(self, status: str | None = None):
+        if status is None:
+            return self.db.execute("SELECT * FROM outbox_messages ORDER BY id").fetchall()
+        if status not in {"pending", "dispatching", "delivered", "failed"}:
+            raise ValueError(status)
+        return self.db.execute(
+            "SELECT * FROM outbox_messages WHERE status=? ORDER BY id", (status,)
+        ).fetchall()
+
+    def claim_outbox(self, consumer: str, limit: int = 25):
+        if not consumer.strip():
+            raise ValueError("Outbox consumer is required")
+        if limit < 1 or limit > 100:
+            raise ValueError("Outbox claim limit must be between 1 and 100")
+        claimed_ids: list[int] = []
+        with self.db:
+            self._begin_immediate()
+            rows = self.db.execute(
+                """SELECT id FROM outbox_messages
+                    WHERE status IN ('pending','failed')
+                      AND available_at<=CURRENT_TIMESTAMP
+                    ORDER BY id LIMIT ?""",
+                (limit,),
+            ).fetchall()
+            for row in rows:
+                claim_token = uuid.uuid4().hex
+                updated = self.db.execute(
+                    """UPDATE outbox_messages
+                          SET status='dispatching',attempts=attempts+1,
+                              claimed_by=?,claim_token=?,last_error=NULL
+                        WHERE id=? AND status IN ('pending','failed')""",
+                    (consumer, claim_token, row["id"]),
+                )
+                if updated.rowcount == 1:
+                    claimed_ids.append(int(row["id"]))
+        if not claimed_ids:
+            return []
+        placeholders = ",".join("?" for _ in claimed_ids)
+        return self.db.execute(
+            f"SELECT * FROM outbox_messages WHERE id IN ({placeholders}) ORDER BY id",
+            claimed_ids,
+        ).fetchall()
+
+    def acknowledge_outbox(self, message_id: int, claim_token: str) -> bool:
+        with self.db:
+            self._begin_immediate()
+            row = self.db.execute(
+                "SELECT status,claim_token FROM outbox_messages WHERE id=?", (message_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown outbox message: {message_id}")
+            if row["status"] == "delivered":
+                return False
+            if row["status"] != "dispatching" or row["claim_token"] != claim_token:
+                raise PermissionError("Outbox claim token is invalid or stale")
+            updated = self.db.execute(
+                """UPDATE outbox_messages
+                      SET status='delivered',delivered_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='dispatching' AND claim_token=?""",
+                (message_id, claim_token),
+            )
+            return updated.rowcount == 1
+
+    def fail_outbox(
+        self, message_id: int, claim_token: str, error: str, retry_seconds: int = 0
+    ) -> None:
+        if retry_seconds < 0 or retry_seconds > 86_400:
+            raise ValueError("retry_seconds must be between 0 and 86400")
+        with self.db:
+            self._begin_immediate()
+            updated = self.db.execute(
+                """UPDATE outbox_messages
+                      SET status='failed',last_error=?,
+                          available_at=datetime('now', ?),claim_token=NULL
+                    WHERE id=? AND status='dispatching' AND claim_token=?""",
+                (error[:2000], f"+{retry_seconds} seconds", message_id, claim_token),
+            )
+            if updated.rowcount != 1:
+                row = self.db.execute(
+                    "SELECT id FROM outbox_messages WHERE id=?", (message_id,)
+                ).fetchone()
+                if not row:
+                    raise KeyError(f"Unknown outbox message: {message_id}")
+                raise PermissionError("Outbox claim token is invalid or stale")
 
     def runtime_settings(self):
         return self.db.execute(
@@ -647,7 +1069,12 @@ class SQLiteStorage:
 
     def integrity_check(self) -> dict[str, Any]:
         messages = [str(row[0]) for row in self.db.execute("PRAGMA integrity_check")]
-        return {"ok": messages == ["ok"], "messages": messages}
+        audit = self.verify_audit_chain()
+        return {
+            "ok": messages == ["ok"] and audit["ok"],
+            "messages": messages,
+            "audit": audit,
+        }
 
     def online_backup(self, destination: Path) -> Path:
         destination = destination.resolve()
