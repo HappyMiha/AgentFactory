@@ -166,6 +166,8 @@ artifact: final workflow acceptance, merge, and external closure remain separate
 
 Provider approval consumption is atomic. The database records an execution attempt before a subprocess starts. An interrupted attempt is reconciled to a terminal abandoned state, and retry requires a new gate.
 
+Writable worker processes additionally cross the [local sandbox boundary](local-sandbox.md). A live fenced assignment, immutable path/limit policy, and qualified OS backend are prerequisites. Unsupported hosts fail before launch; a process group or prompt instruction is never treated as filesystem or network isolation. Teardown preserves bounded execution evidence and the candidate change manifest outside the worker's writable roots.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

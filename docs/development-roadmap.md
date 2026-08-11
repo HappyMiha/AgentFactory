@@ -40,9 +40,9 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 The implementation order is:
 
 ```text
-DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007
+DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017
 
-NOW   AF-017 + AF-044 + AF-048 + AF-055
+NOW   AF-044 + AF-048 + AF-055
       -> AF-045
       -> AF-046 + AF-049
       -> AF-052 -> AF-020 + AF-051
@@ -83,9 +83,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 11 August 2026, 15 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007` and `AF-036` through `AF-043`. Eighteen tasks have partial precursors and 24 are not started. Partial work never satisfies a dependency.
+As of 11 August 2026, 16 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-007`, `AF-017`, and `AF-036` through `AF-043`. Seventeen tasks have partial precursors and 24 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next independently startable tasks are `AF-017`, `AF-044`, `AF-048`, and `AF-055`; the presence of Hermes on the host does not advance `AF-044` or `AF-045` until the runtime contract and ACP adapter exist in AgentFactory.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The next independently startable tasks are `AF-044`, `AF-048`, and `AF-055`; the presence of Hermes on the host does not advance `AF-044` or `AF-045` until the runtime contract and ACP adapter exist in AgentFactory.
 
 ## R0.2 — Local Control Center MVP
 
@@ -131,7 +131,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
-**Progress:** AF-001 through AF-007 are implemented and tested, completing M1. AF-017, AF-044, AF-048, and AF-055 are the next independently startable tasks; AF-045, AF-046, AF-056, and AF-057 remain downstream of explicit prerequisites.
+**Progress:** AF-001 through AF-007 and AF-017 are implemented and tested. AF-044, AF-048, and AF-055 are the next independently startable tasks; AF-045, AF-046, AF-056, and AF-057 remain downstream of explicit prerequisites.
 
 ## R2 — Mission Factory
 

@@ -14,6 +14,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Evidence before progress.** Each stage returns a typed verdict and evidence for every acceptance criterion.
 - **Two separate approval layers.** Permission to call a provider never means permission to accept the delivered work.
 - **Safe-by-default execution.** Fixed executables and arguments, no shell, role allowlists, timeouts, output caps, and process-tree cleanup.
+- **Fail-closed writable isolation.** Qualified OS sandbox backends restrict future writable workers to one task worktree and declared temporary paths, with network denied and teardown evidence preserved.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.

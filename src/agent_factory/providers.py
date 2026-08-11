@@ -19,7 +19,7 @@ SENSITIVE_ENV_MARKERS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "API_KEY",
 PASSING_VERDICTS = ("COMPLETE", "PASS", "ALIGNED", "CONDITIONALLY_ALIGNED")
 
 
-class _BoundedCapture:
+class BoundedCapture:
     """Drain both text streams concurrently while retaining a combined hard limit."""
 
     def __init__(self, proc: subprocess.Popen[str], max_chars: int):
@@ -383,7 +383,7 @@ class CLIProvider(Provider):
                     },
                 )
 
-            capture = _BoundedCapture(proc, self.max_output_chars)
+            capture = BoundedCapture(proc, self.max_output_chars)
             capture.start()
             writer: threading.Thread | None = None
             if stdin is not None:

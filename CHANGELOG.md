@@ -28,6 +28,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-005 normalized provider adapter contract, eight-dimensional health evidence, immutable worker qualifications, lifecycle quarantine/draining, compatible replacement routing, and durable recovery handoffs.
 - AF-006 version-pinned durable workflow runs, dependency-aware stage checkpoints, restart resume, durable waiting-approval state, and generic provider/worktree/GitHub mutation idempotency reservations.
 - AF-007 dependency readiness scheduler with atomic durable assignments, TTL leases, monotonic fencing tokens, fenced artifact/commit boundaries, and serialized or escalated hierarchical conflict domains.
+- AF-017 fail-closed writable-worker sandbox policies, Bubblewrap and macOS enforcement backends, audited path denials, external process/time/output/network controls, and preserved teardown evidence.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
