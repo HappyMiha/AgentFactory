@@ -27,6 +27,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Persistent bounded repair.** Every objective, plan, diff, validator/critic result, and budget delta survives restart; fixed limits pause the loop and repeated failures force replan or worker replacement.
 - **End-to-end coding delivery.** Persisted implementation output advances through validation, independent review, bounded repair, a separate Founder gate, and a replay-safe PR-ready plan that never auto-merges.
 - **Enforced execution budgets.** One correlation root retains duration, retries, tokens, estimated cost, tool calls, terminal reason, and linked runtime entities; stage preflight blocks work beyond token, cost, stage, retry, or tool caps.
+- **Qualified local recovery.** Restart reconstructs stage, lease, session, context, worktree, and approval authority; provider, Hermes, and worktree orphans are reported separately without destructive cleanup.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.
@@ -42,6 +43,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |
 | Coding delivery loop | Ready | AF-053 joins the worker, validator, reviewer, Founder, and dry-run PR checkpoints without duplicate replay. |
 | Execution telemetry | Ready | AF-056 correlates the single-node loop, enforces local budgets, and exposes operational state to the dashboard. |
+| Local recovery | Ready | AF-057 restores authoritative references, detects separate orphan classes, and verifies evidence/audit integrity. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
 | Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, Ollama, and Firecrawl adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |

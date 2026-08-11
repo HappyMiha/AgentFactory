@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-056 execution-telemetry slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-057 local-recovery slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **28 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, AF-055, and AF-056.
+- Completed **29 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, and AF-055–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **181 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The coding-worker vertical slice is implemented but not released: AF-047, AF-050, and AF-057 still contain qualification, optional-worker, and recovery work.
+- Verified **184 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The restart-safe single-node coding-worker vertical slice is implemented but not released; AF-047 and AF-050 retain qualification and optional-worker work.
 
 ## Implemented backlog items and implementation commits
 
@@ -30,6 +30,7 @@ These notes describe the implemented, tested repository state through the AF-056
 | AF-048 | Fenced deterministic Git worktrees, reconciliation, retention and branch-preserving cleanup | 2026-08-11 22:35 CEST | This AF-048 task commit |
 | AF-055 | Immutable bounded execution context packages and runtime digest enforcement | 2026-08-11 22:46 CEST | This AF-055 task commit |
 | AF-056 | Correlated execution telemetry, enforced budgets, and dashboard operational state | 2026-08-12 00:16 CEST | This AF-056 task commit |
+| AF-057 | Restart reconstruction, separate orphan detection, and evidence-ledger restore verification | 2026-08-12 00:23 CEST | This AF-057 task commit |
 
 ### Safe Extensibility
 
@@ -89,10 +90,14 @@ The first coding-delivery integration now binds an immutable Codex result back t
 
 Every workflow can now own one immutable correlation root and exact budget scope. Hydration links the task, workflow, Hermes session when present, Codex process, worktree, validator results, candidate, evaluation, delivery, and distinct stage/Founder/GitHub approvals. Idempotent samples retain duration, retries, tokens, estimated cost, tool calls, metadata, and terminal reason across restart. Stage preflight records and blocks token, cost, stage, and tool-call overages; retry overages and actual usage crossings pause the trace too. The Local Control Center dashboard now reports active sessions, queued tasks, leases, worktrees, failures, and recent budget state without waiting for the later OpenTelemetry export.
 
+## AF-057 implementation detail
+
+Local restart recovery now reconstructs the authoritative stage, fenced lease, Hermes session reference, context digest, managed worktree, and pending approvals from SQLite without inventing replacement identity. Provider processes, Hermes sessions, and worktrees are reported as separate orphan classes; inspection is deliberately non-destructive, leaving termination and cleanup under human authorization. Restore qualification verifies SQLite integrity, foreign keys, every stored artifact digest, and audit-chain continuity. Crash-boundary replay tests also prove that a newer fencing token rejects stale commits, an exact commit completed immediately before termination is adopted rather than repeated, and supported checkpoints do not duplicate approvals, provider calls, PR plans, or external GitHub operations.
+
 ## What is explicitly not in this snapshot
 
 - AF-050 optional Claude writable-worker alternative.
-- AF-057 local crash recovery.
+- AF-047 remaining Hermes qualification coverage.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
 
 ## Backlog changes made by this release audit
@@ -106,4 +111,4 @@ Every workflow can now own one immutable correlation root and exact budget scope
 
 ## Next release target
 
-M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051 through AF-053, AF-055, and AF-056 are complete. AF-057 is the next critical-path slice for local recovery and orphan reconciliation.
+M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051 through AF-053, and AF-055 through AF-057 are complete. AF-047 is the next qualification slice.

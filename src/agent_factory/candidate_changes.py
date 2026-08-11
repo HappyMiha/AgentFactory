@@ -101,9 +101,33 @@ class CandidateChangeService:
         changed_files = tuple(json.loads(result["changed_files_json"]))
         if not changed_files:
             raise ValueError("Candidate has no changed files")
-        self._git(path, "add", "--", *changed_files)
         message = f"{stable_task_id}: candidate change"
-        self._git(path, "commit", "-m", message)
+        head_before = self._git(path, "rev-parse", "HEAD").casefold()
+        if head_before == str(worktree["base_sha"]).casefold():
+            self._git(path, "add", "--", *changed_files)
+            self._git(path, "commit", "-m", message)
+        else:
+            tracked_status = self._git(path, "status", "--porcelain", "--untracked-files=no")
+            committed_files = tuple(sorted(filter(None, self._git(
+                path, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"
+            ).splitlines())))
+            recoverable = (
+                not tracked_status
+                and self._git(path, "rev-parse", "HEAD^").casefold()
+                == str(worktree["base_sha"]).casefold()
+                and self._git(path, "log", "-1", "--pretty=%s") == message
+                and committed_files == tuple(sorted(changed_files))
+            )
+            if not recoverable:
+                raise RuntimeError(
+                    "Worktree HEAD is not the recoverable candidate commit: "
+                    f"tracked_status={tracked_status!r}, "
+                    f"parent={self._git(path, 'rev-parse', 'HEAD^').casefold()}, "
+                    f"base={str(worktree['base_sha']).casefold()}, "
+                    f"message={self._git(path, 'log', '-1', '--pretty=%s')!r}, "
+                    f"files={committed_files!r}, "
+                    f"diff={self._git(path, 'diff', '--', *changed_files)!r}"
+                )
         head_sha = self._git(path, "rev-parse", "HEAD").casefold()
         if self._git(repository, "rev-parse", base_branch) != base_before:
             raise RuntimeError("Base branch changed while creating candidate")

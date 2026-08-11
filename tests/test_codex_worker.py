@@ -15,6 +15,7 @@ from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.evaluation import EvaluationService
 from agent_factory.execution_telemetry import ExecutionBudgets, ExecutionTelemetryService
 from agent_factory.live_stages import LiveStageExecution
+from agent_factory.local_recovery import LocalRecoveryService
 from agent_factory.models import Agent, WorkItem
 from agent_factory.policy import PolicyRequest
 from agent_factory.providers import ProcessSupervisor
@@ -284,6 +285,35 @@ class CodexImplementationWorkerTests(unittest.TestCase):
             )
         self.assertEqual(self.storage.db.execute("SELECT COUNT(*) FROM candidate_change_artifacts").fetchone()[0], 0)
 
+    def test_restart_after_local_commit_adopts_exact_commit_without_duplicate(self):
+        worker_result, worktree = self.validated_candidate()
+        git_environment = CandidateChangeService._environment()
+        subprocess.run(
+            [self.git, "-C", worktree.path, "add", "--", "src/change.py"],
+            check=True, capture_output=True, text=True, env=git_environment,
+        )
+        subprocess.run(
+            [self.git, "-C", worktree.path, "commit", "-m", "AF-057: candidate change"],
+            check=True, capture_output=True, text=True, env=git_environment,
+        )
+        committed_head = subprocess.run(
+            [self.git, "-C", worktree.path, "rev-parse", "HEAD"],
+            check=True, capture_output=True, text=True, env=git_environment,
+        ).stdout.strip()
+
+        candidate = CandidateChangeService(
+            self.storage, self.workspace, git_executable=self.git
+        ).create(worker_result["id"], stable_task_id="AF-057")
+
+        self.assertEqual(candidate.head_sha, committed_head)
+        self.assertEqual(
+            subprocess.run(
+                [self.git, "-C", worktree.path, "rev-list", "--count", self.base_sha + "..HEAD"],
+                check=True, capture_output=True, text=True, env=git_environment,
+            ).stdout.strip(),
+            "1",
+        )
+
     @staticmethod
     def review_payload(request):
         return {
@@ -504,6 +534,19 @@ class CodexImplementationWorkerTests(unittest.TestCase):
             "coding_delivery", "candidate", "evaluation", "stage_approval",
             "founder_approval", "github_approval",
         } <= link_types)
+        before_restart = LocalRecoveryService(self.storage).snapshot(int(worker_result["run_id"]))
+        self.assertIsNotNone(before_restart.lease)
+        self.assertIsNotNone(before_restart.context)
+        self.assertIsNotNone(before_restart.worktree)
+        self.assertIn("github", {item["kind"] for item in before_restart.pending_approvals})
+        self.storage.close()
+        self.storage = SQLiteStorage(self.workspace / ".agent-factory" / "state.db")
+        restored = LocalRecoveryService(self.storage).snapshot(int(worker_result["run_id"]))
+        self.assertEqual(restored.stages, before_restart.stages)
+        self.assertEqual(restored.lease["fencing_token"], before_restart.lease["fencing_token"])
+        self.assertEqual(restored.context["digest"], before_restart.context["digest"])
+        self.assertEqual(restored.worktree["id"], before_restart.worktree["id"])
+        self.assertEqual(restored.pending_approvals, before_restart.pending_approvals)
 
     def test_validation_failure_returns_to_same_or_policy_replacement_worker(self):
         worker_result, _ = self.validated_candidate(failing=True)

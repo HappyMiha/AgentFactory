@@ -8,17 +8,17 @@ This audit compares the repository through the AF-051 candidate slice, including
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **181 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **184 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, AF-055, AF-056 | 28 |
-| Partial precursors | AF-010, AF-011, AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047, AF-057 | 11 |
+| Implemented | AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, AF-055–AF-057 | 29 |
+| Partial precursors | AF-010, AF-011, AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047 | 10 |
 | Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-050, AF-054 | 18 |
 
-The product now has a tested, correlated, budget-enforced single-node coding vertical slice across durable data, fenced scheduling, bounded repair, managed worktrees, immutable context, writable Codex execution, deterministic validation, independent evaluation, separate Founder authority, and gated PR planning. It does **not** yet qualify AF-057 recovery at every mutation boundary.
+The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice across durable data, fenced scheduling, bounded repair, managed worktrees, immutable context, writable Codex execution, deterministic validation, independent evaluation, separate Founder authority, and gated PR planning. Broader provider qualification and platform expansion remain downstream work.
 
 ## Task-by-task findings
 
@@ -80,11 +80,11 @@ The product now has a tested, correlated, budget-enforced single-node coding ver
 | AF-054 | Not started | Some legacy agent roles exist | No typed software-engineering role pack or duty-separation enforcement |
 | AF-055 | Implemented | Fenced canonical dispatch packages, immutable SHA-256 identity, required task/dependency/base/policy scope, explicit included/excluded/superseded sources, deterministic byte/token compaction and runtime digest binding; `test_context_packages.py`, `test_worker_runtime.py` | — |
 | AF-056 | Implemented | One correlation root across delivery entities, immutable duration/retry/token/cost/tool/terminal telemetry, enforced token/cost/stage/retry/tool caps, and dashboard queue/session/lease/worktree/failure/budget state; `test_execution_telemetry.py`, `test_codex_worker.py`, `test_web.py` | — |
-| AF-057 | Partial | Legacy interrupted provider-attempt reconciliation and integrity checks | No Hermes/process/worktree orphan reconciliation, fencing protection for commits, or mutation-boundary crash qualification |
+| AF-057 | Implemented | Restart snapshots for stage/lease/Hermes/context/worktree/approval identity, separate provider/Hermes/worktree orphan sets, stale-fence denial, replay qualification, and artifact/audit/foreign-key restore verification; `test_local_recovery.py`, `test_hermes_acp.py`, `test_worktrees.py`, `test_codex_worker.py`, `test_scheduler.py` | — |
 
 ## Backlog decisions from the audit
 
-1. **AF-056 adds single-root correlation, retained usage, enforced budgets, and dashboard operational state to the AF-053 coding loop.** AF-057 can now qualify restart and mutation-boundary recovery.
+1. **AF-057 completes restart and mutation-boundary qualification for the correlated, budgeted AF-053 coding loop.** The restart-safe single-node critical path is complete.
 2. **Use Hermes ACP for mutable sessions.** Installed Hermes 0.20.0 exposes an ACP stdio server, structured events and permission bridging. `hermes --oneshot` states that approvals are auto-bypassed, so it is limited to qualification or read-only probes.
 3. **Keep worktree authority in AgentFactory.** AF-048 creates and owns the worktree; AF-045 passes it to Hermes as the working directory. Managed sessions must not invoke Hermes `--worktree`.
 4. **Make context and worktree prerequisites of Hermes.** AF-045 now depends on AF-048 and AF-055, preventing an unscoped runtime session.
@@ -96,9 +96,9 @@ The product now has a tested, correlated, budget-enforced single-node coding ver
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-051 + AF-052 + AF-053 + AF-055 + AF-056 + AF-057
 
-Now:  AF-057
+Now:  AF-047
 
 Then: AF-047 + AF-050 + AF-054
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031

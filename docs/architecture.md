@@ -192,6 +192,8 @@ The [coding delivery loop](coding-delivery-loop.md) binds the persisted AF-049 i
 
 The [execution telemetry service](execution-telemetry.md) assigns one correlation root to task/workflow, Hermes and Codex sessions, worktree, validator, approval, candidate, evaluation, and delivery identities. Immutable samples retain duration, retries, tokens, estimated cost, tool calls, and terminal reason. Durable preflight reservations pause before token, cost, stage, retry, or tool-call caps can be exceeded, and the Local Control Center dashboard exposes live queue/session/lease/worktree/failure/budget state.
 
+The [local recovery service](local-recovery.md) reconstructs durable stage, lease, Hermes reference, context digest, worktree, and pending approval state after restart. Provider PIDs, Hermes sessions, and filesystem worktrees are classified as separate orphan sets. Inspection is non-destructive; artifact digests, audit continuity, database integrity, and foreign keys must all verify before state is trusted, while cleanup remains an explicit human-authorized operation.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

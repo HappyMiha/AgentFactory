@@ -10,6 +10,7 @@ from pathlib import Path
 
 from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.live_stages import LiveStageExecution
+from agent_factory.local_recovery import LocalRecoveryService
 from agent_factory.hermes_acp import (
     HERMES_ACP_TOOLS,
     HermesACPProcessDriver,
@@ -288,6 +289,16 @@ class HermesACPProcessDriverTests(unittest.TestCase):
             first_driver._connection(session.external_session_id).wait_terminal(5),
             "succeeded",
         )
+        recovered = LocalRecoveryService(self.storage).snapshot(self.run_id)
+        self.assertEqual(
+            recovered.hermes_session["external_session_id"], session.external_session_id
+        )
+        orphans = LocalRecoveryService(
+            self.storage, process_alive=lambda pid: False
+        ).detect_orphans()
+        self.assertIn(recovered.hermes_session["id"], orphans.hermes_session_ids)
+        self.assertEqual(orphans.provider_process_ids, ())
+        self.assertEqual(orphans.worktree_paths, ())
         self.storage.suspend_runtime_session(session.id, reason="Control Plane restart")
         first_driver.detach(session.external_session_id)
 

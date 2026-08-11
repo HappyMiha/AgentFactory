@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from agent_factory.models import WorkItem
+from agent_factory.local_recovery import LocalRecoveryService
 from agent_factory.storage import SQLiteStorage
 from agent_factory.worktrees import WorktreeError, WorktreeManager
 
@@ -158,7 +159,13 @@ class WorktreeManagerTests(unittest.TestCase):
             cwd=self.repository,
         )
 
-        report = self.manager.reconcile(self.repository)
+        orphan_report = LocalRecoveryService(
+            self.storage, process_alive=lambda pid: True
+        ).detect_orphans(repository=self.repository, worktrees=self.manager)
+        report = orphan_report.worktree_reconciliation
+        self.assertEqual(orphan_report.provider_process_ids, ())
+        self.assertEqual(orphan_report.hermes_session_ids, ())
+        self.assertIn(str(orphan), orphan_report.worktree_paths)
         self.assertIn(dirty.id, report.dirty_ids)
         self.assertIn(missing.id, report.missing_ids)
         self.assertIn(str(orphan), report.orphaned_paths)

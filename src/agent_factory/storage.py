@@ -1356,6 +1356,24 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER execution_retries_no_delete BEFORE DELETE ON execution_retry_records
         BEGIN SELECT RAISE(ABORT, 'execution retry record is immutable'); END;
     """),
+    (28, """
+        CREATE TABLE recovery_inspections(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER REFERENCES workflow_runs(id),
+            snapshot_json TEXT NOT NULL,
+            snapshot_digest TEXT NOT NULL UNIQUE CHECK(length(snapshot_digest)=64),
+            integrity_json TEXT NOT NULL,
+            orphan_provider_processes_json TEXT NOT NULL,
+            orphan_hermes_sessions_json TEXT NOT NULL,
+            orphan_worktrees_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER recovery_inspections_no_update BEFORE UPDATE ON recovery_inspections
+        BEGIN SELECT RAISE(ABORT, 'recovery inspection is immutable'); END;
+        CREATE TRIGGER recovery_inspections_no_delete BEFORE DELETE ON recovery_inspections
+        BEGIN SELECT RAISE(ABORT, 'recovery inspection is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
