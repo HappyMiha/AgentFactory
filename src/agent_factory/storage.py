@@ -1080,6 +1080,116 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER criterion_verdicts_no_delete BEFORE DELETE ON criterion_verdicts
         BEGIN SELECT RAISE(ABORT, 'criterion verdict is immutable'); END;
     """),
+    (25, """
+        CREATE TABLE engineering_loops(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL UNIQUE REFERENCES workflow_runs(id),
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            objective TEXT NOT NULL,
+            worker_id TEXT NOT NULL,
+            repeated_failure_action TEXT NOT NULL
+                CHECK(repeated_failure_action IN ('replan','replace_worker')),
+            status TEXT NOT NULL DEFAULT 'active'
+                CHECK(status IN ('active','paused','accepted','failed','escalated')),
+            max_iterations INTEGER NOT NULL CHECK(max_iterations > 0),
+            max_seconds INTEGER NOT NULL CHECK(max_seconds > 0),
+            max_tokens INTEGER NOT NULL CHECK(max_tokens > 0),
+            max_cost_usd REAL NOT NULL CHECK(max_cost_usd >= 0),
+            max_tool_failures INTEGER NOT NULL CHECK(max_tool_failures >= 0),
+            current_iteration INTEGER NOT NULL DEFAULT 0 CHECK(current_iteration >= 0),
+            consumed_seconds INTEGER NOT NULL DEFAULT 0 CHECK(consumed_seconds >= 0),
+            consumed_tokens INTEGER NOT NULL DEFAULT 0 CHECK(consumed_tokens >= 0),
+            consumed_cost_usd REAL NOT NULL DEFAULT 0 CHECK(consumed_cost_usd >= 0),
+            tool_failures INTEGER NOT NULL DEFAULT 0 CHECK(tool_failures >= 0),
+            last_failure_signature TEXT,
+            consecutive_failure_count INTEGER NOT NULL DEFAULT 0
+                CHECK(consecutive_failure_count >= 0),
+            termination_reason TEXT,
+            termination_actor TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE engineering_iterations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            loop_id INTEGER NOT NULL REFERENCES engineering_loops(id),
+            iteration_number INTEGER NOT NULL CHECK(iteration_number > 0),
+            objective TEXT NOT NULL,
+            plan_json TEXT NOT NULL,
+            diff_digest TEXT NOT NULL CHECK(length(diff_digest)=64),
+            validator_results_json TEXT NOT NULL,
+            critic_result_json TEXT NOT NULL,
+            budget_usage_json TEXT NOT NULL,
+            failure_signature TEXT,
+            consecutive_failure_count INTEGER NOT NULL CHECK(consecutive_failure_count >= 0),
+            accepted_evidence INTEGER NOT NULL CHECK(accepted_evidence IN (0,1)),
+            outcome TEXT NOT NULL CHECK(outcome IN (
+                'repair','replan','replace_worker','paused','accepted','failed'
+            )),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(loop_id,iteration_number)
+        );
+        CREATE TABLE engineering_loop_limit_revisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            loop_id INTEGER NOT NULL REFERENCES engineering_loops(id),
+            previous_limits_json TEXT NOT NULL,
+            new_limits_json TEXT NOT NULL,
+            approved_by TEXT NOT NULL,
+            approval_note TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_engineering_iterations_loop
+            ON engineering_iterations(loop_id,iteration_number);
+        CREATE TRIGGER engineering_loop_scope_immutable
+        BEFORE UPDATE OF run_id,task_id,objective,worker_id,repeated_failure_action
+        ON engineering_loops
+        BEGIN SELECT RAISE(ABORT, 'engineering loop scope is immutable'); END;
+        CREATE TRIGGER engineering_loop_transition
+        BEFORE UPDATE OF status ON engineering_loops
+        WHEN NOT (
+            OLD.status=NEW.status OR
+            (OLD.status='active' AND NEW.status IN ('paused','accepted','failed','escalated')) OR
+            (OLD.status='paused' AND NEW.status IN ('active','failed','escalated'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid engineering loop transition'); END;
+        CREATE TRIGGER engineering_loop_accept_requires_evidence
+        BEFORE UPDATE OF status ON engineering_loops
+        WHEN NEW.status='accepted' AND NOT EXISTS (
+            SELECT 1 FROM engineering_iterations i
+             WHERE i.loop_id=NEW.id AND i.outcome='accepted' AND i.accepted_evidence=1
+        )
+        BEGIN SELECT RAISE(ABORT, 'engineering loop acceptance requires evidence'); END;
+        CREATE TRIGGER engineering_loop_failure_requires_iteration
+        BEFORE UPDATE OF status ON engineering_loops
+        WHEN NEW.status='failed' AND NOT EXISTS (
+            SELECT 1 FROM engineering_iterations i
+             WHERE i.loop_id=NEW.id AND i.outcome='failed'
+        )
+        BEGIN SELECT RAISE(ABORT, 'engineering loop failure requires an explicit iteration'); END;
+        CREATE TRIGGER engineering_loop_escalation_requires_actor
+        BEFORE UPDATE OF status ON engineering_loops
+        WHEN NEW.status='escalated' AND (
+            NEW.termination_actor IS NULL OR trim(NEW.termination_actor)='' OR
+            NEW.termination_reason IS NULL OR trim(NEW.termination_reason)=''
+        )
+        BEGIN SELECT RAISE(ABORT, 'engineering loop escalation requires a human actor'); END;
+        CREATE TRIGGER engineering_loop_terminal_no_update
+        BEFORE UPDATE ON engineering_loops
+        WHEN OLD.status IN ('accepted','failed','escalated')
+        BEGIN SELECT RAISE(ABORT, 'terminal engineering loop is immutable'); END;
+        CREATE TRIGGER engineering_loops_no_delete BEFORE DELETE ON engineering_loops
+        BEGIN SELECT RAISE(ABORT, 'engineering loop history is immutable'); END;
+        CREATE TRIGGER engineering_iterations_no_update BEFORE UPDATE ON engineering_iterations
+        BEGIN SELECT RAISE(ABORT, 'engineering iteration is immutable'); END;
+        CREATE TRIGGER engineering_iterations_no_delete BEFORE DELETE ON engineering_iterations
+        BEGIN SELECT RAISE(ABORT, 'engineering iteration is immutable'); END;
+        CREATE TRIGGER engineering_limit_revisions_no_update BEFORE UPDATE ON engineering_loop_limit_revisions
+        BEGIN SELECT RAISE(ABORT, 'engineering limit revision is immutable'); END;
+        CREATE TRIGGER engineering_limit_revisions_no_delete BEFORE DELETE ON engineering_loop_limit_revisions
+        BEGIN SELECT RAISE(ABORT, 'engineering limit revision is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

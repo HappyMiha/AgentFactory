@@ -24,6 +24,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Deterministic candidate validation.** Project packs declare five shell-free command vectors that run only in the candidate worktree and produce bounded, criterion-mapped primary evidence.
 - **Immutable candidate and PR plan.** Only a 5/5 validated worker diff becomes a stable-task-ID commit on its task branch; push and pull-request creation remain separately gated.
 - **Independent criterion evaluation.** Model review starts only after deterministic validation, excludes the producing model, and records versioned evidence, confidence, concerns, and dissent for every required criterion.
+- **Persistent bounded repair.** Every objective, plan, diff, validator/critic result, and budget delta survives restart; fixed limits pause the loop and repeated failures force replan or worker replacement.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.
@@ -36,6 +37,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Agent registry | Ready | List, enable, disable, and replace provider/model assignments. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
+| Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
 | Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, Ollama, and Firecrawl adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |

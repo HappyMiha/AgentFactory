@@ -186,6 +186,8 @@ The [candidate change service](candidate-changes.md) commits only the AF-049 cha
 
 The [independent evaluation service](independent-evaluation.md) reconstructs the candidate's exact five-validator snapshot before any reviewer callback, rejects the candidate-producing model, and persists a versioned rubric result plus one immutable evidence/confidence/concerns/dissent verdict per required criterion. Missing primary evidence or any failed criterion makes acceptance fail closed.
 
+The [persistent engineering loop](persistent-engineering-loop.md) binds one objective and worker policy to a durable run, stores every plan/diff/validator/critic/budget iteration immutably, pauses at deterministic iteration/time/token/cost/tool-failure caps, and converts a repeated identical failure into the configured replan or replacement action. Database constraints restrict terminal state to evidence-backed acceptance, explicit failure, or attributable human escalation.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:

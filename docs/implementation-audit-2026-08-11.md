@@ -8,17 +8,17 @@ This audit compares the repository through the AF-051 candidate slice, including
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **170 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **175 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-007, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, AF-055 | 25 |
-| Partial precursors | AF-008, AF-010, AF-011, AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047, AF-056, AF-057 | 13 |
+| Implemented | AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051, AF-052, AF-055 | 26 |
+| Partial precursors | AF-010, AF-011, AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032, AF-047, AF-056, AF-057 | 12 |
 | Not started | AF-009, AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035, AF-050, AF-053, AF-054 | 19 |
 
-The product has a tested durable-data, fenced-scheduler, managed-worktree, immutable-context, concrete Hermes ACP, and local-operator foundation, but it does **not** yet have the single-node coding vertical slice. In particular, no qualified writable Codex worker runs allowlisted project validators or completes the bounded repair/recovery loop.
+The product has tested durable data, fenced scheduling, a bounded repair loop, managed worktrees, immutable context, writable Codex execution, deterministic validators, independent evaluation, concrete Hermes ACP, and a local operator foundation. It does **not** yet connect those components into the single-node AF-053 coding vertical slice or qualify AF-057 recovery at every mutation boundary.
 
 ## Task-by-task findings
 
@@ -31,7 +31,7 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 | AF-005 | Implemented | Normalized provider contract, eight health dimensions, qualification and handoff; `test_adapter_qualification.py` | — |
 | AF-006 | Implemented | Version-pinned durable stages, resume and mutation reservations; `test_durable_workflow.py` | — |
 | AF-007 | Implemented | Leaf-task/dependency readiness, atomic assignments and TTL leases, monotonic fencing, fenced artifact/commit boundaries, conflict serialization/escalation; `test_scheduler.py` | — |
-| AF-008 | Partial | Durable stage checkpoints and existing delivery workflow | No persisted multi-iteration objective/plan/diff/critic/budget loop or repeated-failure replan rule |
+| AF-008 | Implemented | Restart-persistent immutable iteration snapshots, five deterministic caps, repeated-failure replan/replacement, evidence/failure/escalation terminal guards, and approved limit revisions; `test_engineering_loop.py` | — |
 | AF-009 | Not started | — | Mission intake, source authority, clarification and readiness model absent |
 | AF-010 | Partial | Simple agent roles and role allowlists | No versioned provider-neutral typed role input/output/evidence contract or incompatible-duty validation |
 | AF-011 | Partial | Model-independent reviewer rotation, qualification filtering, durable handoff | General router does not yet score cost, latency, load, exclusions, rationale, and fallback chain |
@@ -84,7 +84,7 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 
 ## Backlog decisions from the audit
 
-1. **AF-007 closes M1; AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055 supply isolation, runtime, exact live approvals, worktree, writable worker, candidate, validation, independent evaluation, and immutable-context boundaries.** AF-008 can now add the bounded repair loop.
+1. **AF-008 completes the bounded persistent repair primitive; AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051, AF-052, and AF-055 supply isolation, runtime, exact live approvals, worktree, writable worker, candidate, validation, independent evaluation, and immutable-context boundaries.** AF-053 can now integrate the complete coding loop.
 2. **Use Hermes ACP for mutable sessions.** Installed Hermes 0.20.0 exposes an ACP stdio server, structured events and permission bridging. `hermes --oneshot` states that approvals are auto-bypassed, so it is limited to qualification or read-only probes.
 3. **Keep worktree authority in AgentFactory.** AF-048 creates and owns the worktree; AF-045 passes it to Hermes as the working directory. Managed sessions must not invoke Hermes `--worktree`.
 4. **Make context and worktree prerequisites of Hermes.** AF-045 now depends on AF-048 and AF-055, preventing an unscoped runtime session.
@@ -96,10 +96,10 @@ The product has a tested durable-data, fenced-scheduler, managed-worktree, immut
 ## Rebased delivery order
 
 ```text
-Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007; AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-051 + AF-052 + AF-055
+Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-048 + AF-049 + AF-051 + AF-052 + AF-055
 
-Now:  AF-008
-      -> AF-053 -> AF-056 -> AF-057
+Now:  AF-053
+      -> AF-056 -> AF-057
 
 Then: AF-047 + AF-050 + AF-054
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031
