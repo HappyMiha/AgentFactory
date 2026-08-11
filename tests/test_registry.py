@@ -34,6 +34,7 @@ class RegistryTests(unittest.TestCase):
         self.assertIn("policy-guardian", ids)
         self.assertIn("coding-worker-codex", ids)
         self.assertIn("coding-worker-antigravity", ids)
+        self.assertIn("web-researcher-firecrawl", ids)
         self.assertIn("validation-agent", ids)
         self.assertIn("proxy-reviewer-claude", ids)
         self.assertIn("proxy-reviewer-gemini", ids)
@@ -41,6 +42,15 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(
             AgentRegistry().get("validation-agent").role, "Proxy Reviewer"
         )
+        researcher = AgentRegistry().get("web-researcher-firecrawl")
+        self.assertEqual(researcher.role, "Web Researcher")
+        self.assertEqual(researcher.provider, "firecrawl")
+        self.assertEqual(
+            researcher.permissions,
+            ["search_web", "scrape_web", "create_artifact"],
+        )
+        self.assertNotIn("read_project", researcher.permissions)
+        self.assertNotIn("propose_code", researcher.permissions)
 
     def test_explicit_config_directory_overrides_packaged_defaults(self):
         with tempfile.TemporaryDirectory() as tmp:

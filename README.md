@@ -26,7 +26,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Agent registry | Ready | List, enable, disable, and replace provider/model assignments. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
-| Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, and Ollama adapters; every live call requires a one-use gate. |
+| Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, Ollama, and Firecrawl adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |
 | Human approval gates | Ready | Provider gates are scoped to one provider, agent, and work item; final acceptance is separate. |
 | SQLite state and audit | Ready | Versioned migrations, WAL mode, integrity checks, backup support, and interrupted-attempt reconciliation. |
@@ -165,8 +165,11 @@ agent-factory approvals approve 1 --note "Evidence reviewed"
 | `antigravity` | Plan mode plus OS sandbox | Non-interactive implementation proposals, planning, and independent review. |
 | `ollama` | Local, no tools | Private local artifacts and low-cost review. |
 | `openclaw` | Disabled | Health probe only until a no-tools execution profile is available. |
+| `firecrawl` | Read-only web research | Bounded public-web evidence gathering by the dedicated `Web Researcher` role. |
 
 Antigravity CLI 1.1.9 requires its non-interactive prompt as a process argument. Agent Factory excludes that prompt from retained command metadata, but local process inspection may still see it while the provider runs. Use Antigravity only for non-secret work-item content.
+
+The Firecrawl adapter has no project-reading or code-writing permission. It runs `firecrawl agent` with a five-credit ceiling, requires a one-use provider gate, and returns web evidence as an untrusted artifact for human or independent-agent review.
 
 Provider authentication belongs to each CLI's own profile or operating-system keyring. Never put credentials in work-item or provider prompts. Agent Factory filters sensitive environment-variable names, but comprehensive value-aware output redaction is not implemented; inspect artifacts before sharing them. See [Provider setup](docs/providers.md).
 

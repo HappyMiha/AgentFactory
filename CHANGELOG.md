@@ -19,6 +19,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - Independent rotating policy post-checks that cannot reuse the implementation or validation producer models.
 - Guarded Antigravity CLI adapter with native Windows and Unix executable discovery, plan mode, OS sandboxing, and a replaceable implementation worker.
 - Immutable approval snapshots that bind each provider gate to the full work item, agent definition, provider catalog, and execution policy.
+- Guarded Firecrawl CLI integration with a least-privilege `Web Researcher` role, source-oriented instructions, fixed five-credit ceiling, and one-use execution approval.
 
 ### Changed
 

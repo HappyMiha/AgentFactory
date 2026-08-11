@@ -13,6 +13,7 @@ Providers are replaceable execution backends. Agent roles and workflows refer to
 | `antigravity` | Antigravity CLI | Plan mode plus OS sandbox | Non-interactive implementation proposals, planning, and independent review. |
 | `ollama` | Ollama CLI | Local model, no tools | Private local artifacts and economical review. |
 | `openclaw` | OpenClaw CLI | Health-only | Version discovery; execution is intentionally disabled. |
+| `firecrawl` | Firecrawl CLI | Read-only, gated, five-credit ceiling | Public web search, scraping, and source-backed research artifacts. |
 
 Running `agent-factory providers status` is read-only. A healthy executable does not imply authenticated access or permission to execute.
 
@@ -196,6 +197,45 @@ Official installation guide: [Install OpenClaw](https://docs.openclaw.ai/install
 The adapter runs only a version health probe. `allow_execution` is false, the role allowlist is empty, and no agent may invoke it. Enabling execution requires a dedicated no-tools profile and negative integration tests proving that it cannot use filesystem, shell, network, messaging, or gateway tools.
 
 Do not point the factory at a general-purpose profile.
+
+## Firecrawl
+
+Official references: [Firecrawl CLI](https://docs.firecrawl.dev/sdks/cli) and [Firecrawl API v2](https://docs.firecrawl.dev/api-reference/v2-introduction).
+
+Firecrawl is assigned to the dedicated `Web Researcher` role. The shipped agent has only `search_web`, `scrape_web`, and `create_artifact` permissions. It cannot read the project, propose code, review another agent, issue policy verdicts, merge, or close work.
+
+Install and authenticate the CLI in its own user profile. Browser authentication avoids placing a key in shell history:
+
+```powershell
+npm.cmd install -g firecrawl-cli@latest
+firecrawl config --browser
+firecrawl view-config
+agent-factory providers status
+```
+
+For non-interactive provisioning, pass the API key to Firecrawl's setup command directly and never save it in repository files:
+
+```powershell
+npx -y firecrawl-cli@latest init --all --yes --api-key <FIRECRAWL_API_KEY>
+```
+
+The reviewed execution contract is:
+
+```text
+firecrawl agent --wait --json --max-credits 5 <provider-prompt>
+```
+
+The prompt is a process argument because the Firecrawl agent command has no stdin prompt mode. Agent Factory excludes prompt contents from retained command metadata, but local process inspection can see them during execution. Never put credentials or private project data in a Firecrawl task.
+
+Every call still requires a gate scoped to the exact provider, agent, and work item:
+
+```bash
+agent-factory providers request firecrawl --agent web-researcher-firecrawl --task-id 1
+agent-factory providers approve 1 --note "Bounded public-web research; maximum five credits"
+agent-factory providers invoke 1
+```
+
+Retrieved pages are untrusted input. The role instructions require source URLs and forbid forms, target-site authentication, access-control bypass, and browser actions with external side effects. Firecrawl authentication remains in Firecrawl's own profile and is not passed through Agent Factory's subprocess environment.
 
 ## Review provider status
 

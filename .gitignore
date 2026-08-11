@@ -10,6 +10,7 @@ dist/
 venv/
 .env
 .agent-factory/
+.firecrawl/
 *.db
 *.db-shm
 *.db-wal

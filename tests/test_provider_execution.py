@@ -407,6 +407,7 @@ class ProviderExecutionTests(unittest.TestCase):
                 "antigravity",
                 "ollama",
                 "openclaw",
+                "firecrawl",
             },
         )
         antigravity = providers["antigravity"]
@@ -426,6 +427,15 @@ class ProviderExecutionTests(unittest.TestCase):
         self.assertTrue(antigravity.allow_execution)
         self.assertIn("Implementation Worker", antigravity.allowed_roles)
         self.assertFalse(providers["openclaw"].allow_execution)
+        firecrawl = providers["firecrawl"]
+        self.assertEqual(
+            firecrawl.args,
+            ("agent", "--wait", "--json", "--max-credits", "5"),
+        )
+        self.assertEqual(firecrawl.prompt_transport, "argument")
+        self.assertEqual(firecrawl.allowed_roles, frozenset({"Web Researcher"}))
+        self.assertEqual(firecrawl.max_prompt_chars, 12000)
+        self.assertIn(".env", firecrawl.protected_paths)
 
     def test_provider_gate_is_one_time_and_audited(self):
         with tempfile.TemporaryDirectory() as tmp:
