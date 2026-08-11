@@ -21,6 +21,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
 - **Writable Codex worker.** A qualified fixed `codex exec` profile writes only in its leased task worktree and returns immutable changed-file, diff, command, exit, and handoff evidence without merge, push, issue, or acceptance authority.
+- **Deterministic candidate validation.** Project packs declare five shell-free command vectors that run only in the candidate worktree and produce bounded, criterion-mapped primary evidence.
 - **Reviewable GitHub changes.** Mutations start as immutable, hashed plans and are dry-run by default.
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.

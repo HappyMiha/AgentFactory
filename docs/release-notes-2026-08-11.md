@@ -1,13 +1,13 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-049 implementation. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-052 implementation. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **22 of 57** backlog tasks: AF-001–AF-007, AF-017, AF-036–AF-046, AF-048, AF-049, and AF-055.
+- Completed **23 of 57** backlog tasks: AF-001–AF-007, AF-017, AF-036–AF-046, AF-048, AF-049, AF-052, and AF-055.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **161 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- Verified **164 automated tests** and the offline backlog manifest validation on Python 3.11.15.
 - The coding-worker vertical slice is not released: AF-047, AF-051–AF-053, AF-056, and AF-057 still contain required work.
 
 ## Implemented backlog items and implementation commits
@@ -35,6 +35,7 @@ These notes describe the implemented, tested repository state through the AF-049
 |---|---|---|---|
 | AF-017 | Fail-closed writable-worker sandbox and preserved teardown evidence | 2026-08-11 22:17 CEST | This AF-017 task commit |
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
+| AF-052 | Five-category shell-free validator packs and criterion-mapped bounded evidence | 2026-08-11 23:37 CEST | This AF-052 task commit |
 
 ### Local Control Center MVP
 
@@ -59,10 +60,14 @@ Mutable Direct CLI and Hermes ACP launches now reconstruct the complete project/
 
 The first writable implementation worker now qualifies the installed Codex CLI and launches a fixed non-interactive `workspace-write` profile rooted at the leased AF-048 worktree. It consumes only the AF-046-authorized attempt, records JSONL command execution plus the final handoff, and stores immutable changed-file, canonical diff-digest, version, invocation, exit, and evidence metadata. The profile has no extra write directory or bypass flag, explicitly excludes merge/push/issue/final-approval authority, and complete process-tree termination is exercised for both deadline and operator cancellation.
 
+## AF-052 implementation detail
+
+Validation is now driven by reviewed project packs with required test, lint, type-check, build, and security-scan vectors; workers cannot submit a shell string or replace a vector at runtime. Every command runs through the fenced AF-017 boundary with the candidate worktree as cwd, denied network, and bounded time/output. Immutable records bind candidate and pack digests to command/exit/environment evidence and exact declared acceptance criteria, so a generic green process can no longer masquerade as criterion-complete validation.
+
 ## What is explicitly not in this snapshot
 
 - AF-050 optional Claude writable-worker alternative.
-- AF-052 shell-free deterministic project validators and AF-020 complete independent criterion verdicts.
+- AF-020 complete independent criterion verdicts.
 - AF-053 bounded coding delivery/repair loop.
 - AF-056 enforced budgets/end-to-end telemetry and AF-057 local crash recovery.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
@@ -78,4 +83,4 @@ The first writable implementation worker now qualifies the installed Codex CLI a
 
 ## Next release target
 
-M1, AF-017, AF-044 through AF-046, AF-048, AF-049, and AF-055 are complete. AF-052 is the next critical-path slice and will add shell-free validators for the immutable Codex candidate.
+M1, AF-017, AF-044 through AF-046, AF-048, AF-049, AF-052, and AF-055 are complete. AF-020 and AF-051 are the next critical-path slices for independent verdicts and an approval-gated PR-ready candidate.

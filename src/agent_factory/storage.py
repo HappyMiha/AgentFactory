@@ -966,6 +966,38 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER codex_worker_results_no_delete BEFORE DELETE ON codex_worker_results
         BEGIN SELECT RAISE(ABORT, 'Codex worker result is immutable'); END;
     """),
+    (22, """
+        CREATE TABLE validator_results(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            attempt_id INTEGER NOT NULL REFERENCES attempts(id),
+            worktree_id INTEGER NOT NULL REFERENCES worktrees(id),
+            candidate_digest TEXT NOT NULL CHECK(length(candidate_digest)=64),
+            pack_id TEXT NOT NULL,
+            pack_digest TEXT NOT NULL CHECK(length(pack_digest)=64),
+            category TEXT NOT NULL CHECK(category IN ('test','lint','type_check','build','security_scan')),
+            command_json TEXT NOT NULL,
+            command_digest TEXT NOT NULL CHECK(length(command_digest)=64),
+            status TEXT NOT NULL CHECK(status IN ('succeeded','failed','timed_out','output_limited')),
+            exit_code INTEGER,
+            stdout TEXT NOT NULL,
+            stderr TEXT NOT NULL,
+            environment_json TEXT NOT NULL,
+            criterion_mappings_json TEXT NOT NULL,
+            evidence_directory TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL CHECK(length(evidence_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(attempt_id,candidate_digest,category)
+        );
+        CREATE INDEX idx_validator_candidate
+            ON validator_results(task_id,candidate_digest,category);
+        CREATE TRIGGER validator_results_no_update BEFORE UPDATE ON validator_results
+        BEGIN SELECT RAISE(ABORT, 'validator result is immutable'); END;
+        CREATE TRIGGER validator_results_no_delete BEFORE DELETE ON validator_results
+        BEGIN SELECT RAISE(ABORT, 'validator result is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

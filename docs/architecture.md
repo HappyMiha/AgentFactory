@@ -180,6 +180,8 @@ The [live-stage approval service](live-stage-approvals.md) connects a durable `w
 
 The [Codex implementation worker](codex-implementation-worker.md) is the first qualified writable worker. Its fixed non-interactive profile roots Codex native workspace-write isolation at the leased AF-048 worktree, streams structured JSONL events, and stores an immutable candidate result with commands, changed files, diff digest, exit state, and handoff. Merge, push, issue closure, secret access, and final approval never enter the worker authority set.
 
+The [deterministic validator runner](deterministic-validators.md) accepts only five reviewed project-pack command vectors and invokes them without a shell in the fenced candidate worktree. Time, output, environment, command, candidate, and pack digests are persisted with exact acceptance-criterion mappings; validation success requires every category to pass.
+
 ## Workflow contracts
 
 Real providers must return structured JSON:
