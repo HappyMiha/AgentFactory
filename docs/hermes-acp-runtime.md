@@ -18,6 +18,8 @@ This narrow version constraint binds the known upstream `hermes-acp` toolset and
 
 Every session row binds the AF-044 worker session to task, durable run, active stage, logical attempt, assignment/fencing token, agent role, AF-048 worktree, AF-055 context package, exact tool list, executable/version/protocol evidence, and stable Hermes session ID. Scope columns and external identity are immutable.
 
+AF-047 stores a second immutable qualification envelope only after all ten checks pass: executable resolution, version constraint, `hermes-acp --check`, session lifecycle, process-tree cancellation, workspace confinement, exact tools, permission bridging, usage reporting, and candidate-artifact normalization. Failed sessions can quarantine the worker. A fallback authorization can target only an actively qualified Codex or Claude read-only profile before any mutable action; mutable runtime transfer has a separate record bound to an exact checkpoint and newer fencing lease.
+
 `session/new` receives the already-created worktree as its absolute `cwd`; AgentFactory never passes a Hermes worktree-creation option. The only prompt content is the canonical AF-055 package whose digest was verified before launch.
 
 On Control Plane restart, a new driver reads the durable binding, requalifies the executable and worktree, performs ACP initialize, and calls `session/load` with the same external session ID and worktree. AF-057 remains responsible for deciding whether interrupted mutable work may be replayed; AF-045 restores identity and protocol attachment without inventing a new session.

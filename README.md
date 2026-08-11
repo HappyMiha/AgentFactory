@@ -19,6 +19,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path with durable ownership, reconciliation, and retention controls.
 - **Immutable dispatch context.** Every Worker Runtime launch is bound to a content-addressed, size-bounded package with explicit included, excluded, and superseded sources.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
+- **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
 - **Writable Codex worker.** A qualified fixed `codex exec` profile writes only in its leased task worktree and returns immutable changed-file, diff, command, exit, and handoff evidence without merge, push, issue, or acceptance authority.
 - **Deterministic candidate validation.** Project packs declare five shell-free command vectors that run only in the candidate worktree and produce bounded, criterion-mapped primary evidence.
@@ -44,6 +45,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Coding delivery loop | Ready | AF-053 joins the worker, validator, reviewer, Founder, and dry-run PR checkpoints without duplicate replay. |
 | Execution telemetry | Ready | AF-056 correlates the single-node loop, enforces local budgets, and exposes operational state to the dashboard. |
 | Local recovery | Ready | AF-057 restores authoritative references, detects separate orphan classes, and verifies evidence/audit integrity. |
+| Hermes qualification | Ready | AF-047 persists the complete qualification matrix and gates read-only fallback or checkpointed new-lease runtime transfer. |
 | Workflow engine | Ready | Dependency validation, cycle detection, ordered stages, typed verdicts, and evidence checks. |
 | Provider runtime | Guarded advisory | Deterministic, Codex, Claude, Gemini, Antigravity, Ollama, and Firecrawl adapters; every live call requires a one-use gate. |
 | OpenClaw adapter | Health-only | Execution stays disabled until a dedicated no-tools profile is proven. |

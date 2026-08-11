@@ -15,6 +15,7 @@ from agent_factory.hermes_acp import (
     HERMES_ACP_TOOLS,
     HermesACPProcessDriver,
 )
+from agent_factory.hermes_qualification import HermesQualificationService
 from agent_factory.models import Agent, WorkItem
 from agent_factory.policy import PolicyRequest
 from agent_factory.storage import SQLiteStorage
@@ -72,6 +73,7 @@ for line in sys.stdin:
             time.sleep(60)
             continue
         send({"jsonrpc":"2.0","method":"session/update","params":{"sessionId":params["sessionId"],"update":{"sessionUpdate":"tool_call","toolCallId":"tool-1","title":"write file","kind":"edit","content":[{"type":"diff","path":"change.py","oldText":"","newText":"change"}]}}})
+        send({"jsonrpc":"2.0","method":"session/update","params":{"sessionId":params["sessionId"],"update":{"sessionUpdate":"usage_update","usage":{"inputTokens":12,"outputTokens":4}}}})
         send({"jsonrpc":"2.0","id":900,"method":"session/request_permission","params":{"sessionId":params["sessionId"],"toolCall":{"toolCallId":"permission-1","title":"write file"},"options":[{"optionId":"allow_once","kind":"allow_once","name":"Allow once"},{"optionId":"deny","kind":"reject_once","name":"Deny"}]}})
         permission = json.loads(sys.stdin.readline())
         record({"permission_response": permission.get("result")})
@@ -280,6 +282,35 @@ class HermesACPProcessDriverTests(unittest.TestCase):
             next(record for record in records if "permission_response" in record)["permission_response"],
             {"outcome": {"optionId": "allow_once", "outcome": "selected"}},
         )
+
+    def test_full_qualification_matrix_is_immutable_and_routable(self):
+        driver = self.driver()
+        runtime = HermesACPWorkerRuntime(self.storage, driver)
+        session = runtime.start(self.launch())
+        result = runtime.finalize(session.id)
+        self.assertEqual(result.status, "succeeded")
+        qualification = HermesQualificationService(self.storage).qualify(
+            worker_id="hermes-worker", role="Implementation Worker",
+            session_id=session.id, health=driver.health(Path(self.worktree.path)),
+            cancellation_evidence={
+                "process_tree_terminated": True,
+                "worktree": str(self.worktree.path),
+                "probe": "separate cancellation qualification",
+            },
+        )
+        self.assertEqual(qualification.status, "qualified")
+        self.assertTrue(all(qualification.checks.values()))
+        self.assertEqual(
+            self.storage.select_qualified_worker(
+                role="Implementation Worker", required_capabilities={"hermes_acp"}
+            ),
+            "hermes-worker",
+        )
+        with self.assertRaisesRegex(sqlite3.DatabaseError, "immutable"):
+            self.storage.db.execute(
+                "UPDATE hermes_qualification_runs SET checks_json='{}' WHERE id=?",
+                (qualification.id,),
+            )
 
     def test_restart_loads_the_same_stable_hermes_identity(self):
         first_driver = self.driver()

@@ -1374,6 +1374,55 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER recovery_inspections_no_delete BEFORE DELETE ON recovery_inspections
         BEGIN SELECT RAISE(ABORT, 'recovery inspection is immutable'); END;
     """),
+    (29, """
+        CREATE TABLE hermes_qualification_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            worker_qualification_id INTEGER NOT NULL UNIQUE REFERENCES worker_qualifications(id),
+            worker_session_id INTEGER NOT NULL UNIQUE REFERENCES worker_sessions(id),
+            checks_json TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL UNIQUE CHECK(length(evidence_digest)=64),
+            status TEXT NOT NULL CHECK(status IN ('qualified','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER hermes_qualification_runs_no_update BEFORE UPDATE ON hermes_qualification_runs
+        BEGIN SELECT RAISE(ABORT, 'Hermes qualification run is immutable'); END;
+        CREATE TRIGGER hermes_qualification_runs_no_delete BEFORE DELETE ON hermes_qualification_runs
+        BEGIN SELECT RAISE(ABORT, 'Hermes qualification run is immutable'); END;
+
+        CREATE TABLE runtime_fallback_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            source_session_id INTEGER NOT NULL UNIQUE REFERENCES worker_sessions(id),
+            target_qualification_id INTEGER NOT NULL REFERENCES worker_qualifications(id),
+            target_worker_id TEXT NOT NULL,
+            target_runtime TEXT NOT NULL CHECK(target_runtime IN ('codex-cli','claude-cli')),
+            required_capabilities_json TEXT NOT NULL,
+            read_only INTEGER NOT NULL CHECK(read_only=1),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER runtime_fallback_authorizations_no_update BEFORE UPDATE ON runtime_fallback_authorizations
+        BEGIN SELECT RAISE(ABORT, 'runtime fallback authorization is immutable'); END;
+        CREATE TRIGGER runtime_fallback_authorizations_no_delete BEFORE DELETE ON runtime_fallback_authorizations
+        BEGIN SELECT RAISE(ABORT, 'runtime fallback authorization is immutable'); END;
+
+        CREATE TABLE runtime_transfer_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            source_session_id INTEGER NOT NULL UNIQUE REFERENCES worker_sessions(id),
+            checkpoint_id INTEGER NOT NULL REFERENCES stage_checkpoints(id),
+            target_assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            target_lease_id INTEGER NOT NULL REFERENCES leases(id),
+            target_fencing_token INTEGER NOT NULL CHECK(target_fencing_token>0),
+            target_runtime TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER runtime_transfer_authorizations_no_update BEFORE UPDATE ON runtime_transfer_authorizations
+        BEGIN SELECT RAISE(ABORT, 'runtime transfer authorization is immutable'); END;
+        CREATE TRIGGER runtime_transfer_authorizations_no_delete BEFORE DELETE ON runtime_transfer_authorizations
+        BEGIN SELECT RAISE(ABORT, 'runtime transfer authorization is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

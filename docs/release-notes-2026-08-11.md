@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-057 local-recovery slice. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-047 Hermes-qualification slice and AF-057 local recovery. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **29 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-046, AF-048, AF-049, AF-051–AF-053, and AF-055–AF-057.
+- Completed **30 of 57** backlog tasks: AF-001–AF-008, AF-017, AF-020, AF-036–AF-049, AF-051–AF-053, and AF-055–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **184 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The restart-safe single-node coding-worker vertical slice is implemented but not released; AF-047 and AF-050 retain qualification and optional-worker work.
+- Verified **187 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified restart-safe single-node coding-worker vertical slice is implemented but not released; AF-050 retains the optional Claude worker profile.
 
 ## Implemented backlog items and implementation commits
 
@@ -27,6 +27,7 @@ These notes describe the implemented, tested repository state through the AF-057
 | AF-044 | Shared lifecycle-aware Direct CLI/Hermes ACP runtime contract | 2026-08-11 22:27 CEST | This AF-044 task commit |
 | AF-045 | Version-qualified Hermes ACP stdio lifecycle, durable scope and restart identity | 2026-08-11 23:05 CEST | This AF-045 task commit |
 | AF-046 | Exact durable live-stage gates, one-attempt consumption and automatic dependency-ready continuation | 2026-08-11 23:18 CEST | This AF-046 task commit |
+| AF-047 | Immutable Hermes qualification, quarantine, and controlled runtime fallback/transfer | 2026-08-12 00:42 CEST | This AF-047 task commit |
 | AF-048 | Fenced deterministic Git worktrees, reconciliation, retention and branch-preserving cleanup | 2026-08-11 22:35 CEST | This AF-048 task commit |
 | AF-055 | Immutable bounded execution context packages and runtime digest enforcement | 2026-08-11 22:46 CEST | This AF-055 task commit |
 | AF-056 | Correlated execution telemetry, enforced budgets, and dashboard operational state | 2026-08-12 00:16 CEST | This AF-056 task commit |
@@ -66,6 +67,10 @@ Mutable Direct CLI and Hermes ACP launches now reconstruct the complete project/
 
 The first writable implementation worker now qualifies the installed Codex CLI and launches a fixed non-interactive `workspace-write` profile rooted at the leased AF-048 worktree. It consumes only the AF-046-authorized attempt, records JSONL command execution plus the final handoff, and stores immutable changed-file, canonical diff-digest, version, invocation, exit, and evidence metadata. The profile has no extra write directory or bypass flag, explicitly excludes merge/push/issue/final-approval authority, and complete process-tree termination is exercised for both deadline and operator cancellation.
 
+## AF-047 implementation detail
+
+Hermes qualification now persists one immutable matrix covering executable discovery, version constraints, `hermes-acp --check`, complete session lifecycle, process-tree cancellation, workspace confinement, exact tool restrictions, permission bridging, usage reporting, and normalized candidate artifacts. A failed Hermes runtime can quarantine its worker. Controlled direct fallback targets only an actively qualified Codex or Claude profile with compatible read-only capabilities, only after Hermes failure, and only before any mutable event. Mutable work cannot use that path: its separate transfer authorization requires an exact source-stage checkpoint, release of the old fencing authority, and a newer active lease for the target runtime.
+
 ## AF-052 implementation detail
 
 Validation is now driven by reviewed project packs with required test, lint, type-check, build, and security-scan vectors; workers cannot submit a shell string or replace a vector at runtime. Every command runs through the fenced AF-017 boundary with the candidate worktree as cwd, denied network, and bounded time/output. Immutable records bind candidate and pack digests to command/exit/environment evidence and exact declared acceptance criteria, so a generic green process can no longer masquerade as criterion-complete validation.
@@ -97,7 +102,6 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 ## What is explicitly not in this snapshot
 
 - AF-050 optional Claude writable-worker alternative.
-- AF-047 remaining Hermes qualification coverage.
 - PostgreSQL, object storage, Redis/Qdrant-style production services, multi-tenancy and clustered deployment.
 
 ## Backlog changes made by this release audit
@@ -111,4 +115,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008, AF-017, AF-020, AF-044 through AF-046, AF-048, AF-049, AF-051 through AF-053, and AF-055 through AF-057 are complete. AF-047 is the next qualification slice.
+M1, AF-008, AF-017, AF-020, AF-044 through AF-049, AF-051 through AF-053, and AF-055 through AF-057 are complete. AF-050 is the next optional-worker slice.
