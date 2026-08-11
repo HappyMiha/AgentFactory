@@ -26,6 +26,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-003 evidence ledger with SHA-256 artifact envelopes, typed criterion mappings, explicit verifier decisions, primary-evidence closure gates, immutable accepted evidence, and integrity verification.
 - AF-004 durable Control Plane policy with allow/deny/require-approval decisions, exact one-use execution approvals, immutable decision records, persistent emergency stop, dispatch blocking, and mutable-session cancellation.
 - AF-005 normalized provider adapter contract, eight-dimensional health evidence, immutable worker qualifications, lifecycle quarantine/draining, compatible replacement routing, and durable recovery handoffs.
+- AF-006 version-pinned durable workflow runs, dependency-aware stage checkpoints, restart resume, durable waiting-approval state, and generic provider/worktree/GitHub mutation idempotency reservations.
 
 ### Changed
 

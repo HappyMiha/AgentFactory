@@ -674,6 +674,55 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER worker_handoffs_no_delete BEFORE DELETE ON worker_handoffs
         BEGIN SELECT RAISE(ABORT, 'worker handoffs are immutable'); END;
     """),
+    (14, """
+        ALTER TABLE workflow_runs ADD COLUMN workflow_version TEXT NOT NULL DEFAULT 'legacy';
+        ALTER TABLE workflow_runs ADD COLUMN definition_digest TEXT;
+        ALTER TABLE workflow_runs ADD COLUMN definition_json TEXT;
+        ALTER TABLE workflow_runs ADD COLUMN checkpoint_sequence INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE workflow_stages ADD COLUMN dependencies_json TEXT NOT NULL DEFAULT '[]';
+        ALTER TABLE workflow_stages ADD COLUMN definition_json TEXT;
+        CREATE TRIGGER workflow_run_definition_immutable
+        BEFORE UPDATE OF workflow_id,workflow_version,definition_digest,definition_json
+        ON workflow_runs
+        BEGIN SELECT RAISE(ABORT, 'workflow definition is immutable for a run'); END;
+
+        CREATE TABLE stage_checkpoints(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            sequence INTEGER NOT NULL CHECK(sequence > 0),
+            state TEXT NOT NULL CHECK(state IN ('pending','running','waiting_approval','succeeded','failed')),
+            payload_json TEXT NOT NULL,
+            payload_digest TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(run_id,sequence)
+        );
+        CREATE TRIGGER stage_checkpoints_no_update BEFORE UPDATE ON stage_checkpoints
+        BEGIN SELECT RAISE(ABORT, 'stage checkpoints are immutable'); END;
+        CREATE TRIGGER stage_checkpoints_no_delete BEFORE DELETE ON stage_checkpoints
+        BEGIN SELECT RAISE(ABORT, 'stage checkpoints are immutable'); END;
+
+        CREATE TABLE workflow_mutations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            operation TEXT NOT NULL CHECK(operation IN ('provider_call','worktree','github')),
+            idempotency_key TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'reserved'
+                CHECK(status IN ('reserved','completed','failed')),
+            result_json TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT,
+            UNIQUE(run_id,operation,idempotency_key)
+        );
+        CREATE TRIGGER workflow_mutation_scope_immutable
+        BEFORE UPDATE OF run_id,stage_id,operation,idempotency_key,request_digest
+        ON workflow_mutations
+        BEGIN SELECT RAISE(ABORT, 'workflow mutation scope is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -1951,6 +2000,261 @@ class SQLiteStorage:
             except sqlite3.IntegrityError as exc:
                 raise ValueError(f"Active workflow already exists for task {task_id} and workflow {workflow_id}") from exc
         return run_id
+
+    def start_durable_run(
+        self,
+        *,
+        project_id: int,
+        task_id: int,
+        workflow_id: str,
+        workflow_version: str,
+        definition: dict[str, Any],
+        stages: list[dict[str, Any]],
+    ) -> int:
+        self._assert_dispatch_allowed()
+        task = self.db.execute(
+            "SELECT project_id FROM work_items WHERE id=?", (task_id,)
+        ).fetchone()
+        if not task:
+            raise KeyError(f"Unknown task: {task_id}")
+        if int(task["project_id"]) != project_id:
+            raise ValueError(f"Task {task_id} does not belong to project {project_id}")
+        definition_json = json.dumps(
+            definition, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        definition_digest = hashlib.sha256(definition_json.encode("utf-8")).hexdigest()
+        with self.db:
+            try:
+                cur = self.db.execute(
+                    """INSERT INTO workflow_runs(
+                           identity,project_id,task_id,workflow_id,status,
+                           workflow_version,definition_digest,definition_json
+                       ) VALUES(?,?,?,?, 'running',?,?,?)""",
+                    (
+                        self._identity("run"),
+                        project_id,
+                        task_id,
+                        workflow_id,
+                        workflow_version,
+                        definition_digest,
+                        definition_json,
+                    ),
+                )
+                run_id = int(cur.lastrowid)
+                self.db.execute(
+                    "INSERT INTO active_workflow_claims(task_id,workflow_id,run_id) VALUES(?,?,?)",
+                    (task_id, workflow_id, run_id),
+                )
+                for stage in stages:
+                    self.db.execute(
+                        """INSERT INTO workflow_stages(
+                               identity,run_id,stage_key,status,dependencies_json,
+                               definition_json
+                           ) VALUES(?,?,?,'pending',?,?)""",
+                        (
+                            self._identity("stage"),
+                            run_id,
+                            stage["id"],
+                            json.dumps(stage.get("depends_on", []), separators=(",", ":")),
+                            json.dumps(
+                                stage, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+                            ),
+                        ),
+                    )
+                self._event(
+                    "workflow.started",
+                    "run",
+                    run_id,
+                    {
+                        "task_id": task_id,
+                        "workflow": workflow_id,
+                        "workflow_version": workflow_version,
+                        "definition_digest": definition_digest,
+                    },
+                )
+            except sqlite3.IntegrityError as exc:
+                raise ValueError(
+                    f"Active workflow already exists for task {task_id} and workflow {workflow_id}"
+                ) from exc
+        return run_id
+
+    def durable_run(self, run_id: int):
+        row = self.db.execute(
+            "SELECT * FROM workflow_runs WHERE id=? AND definition_digest IS NOT NULL",
+            (run_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown durable workflow run: {run_id}")
+        return row
+
+    def durable_stages(self, run_id: int):
+        self.durable_run(run_id)
+        return self.db.execute(
+            "SELECT * FROM workflow_stages WHERE run_id=? ORDER BY id", (run_id,)
+        ).fetchall()
+
+    def transition_durable_stage(
+        self, run_id: int, stage_key: str, target: str, payload: dict[str, Any]
+    ) -> None:
+        with self.db:
+            row = self.db.execute(
+                """SELECT s.*,r.checkpoint_sequence,r.task_id
+                     FROM workflow_stages s
+                     JOIN workflow_runs r ON r.id=s.run_id
+                    WHERE s.run_id=? AND s.stage_key=?""",
+                (run_id, stage_key),
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown stage {stage_key} for run {run_id}")
+            source = str(row["status"])
+            ensure_transition("stage", source, target)
+            if target == "running":
+                succeeded = {
+                    value[0]
+                    for value in self.db.execute(
+                        "SELECT stage_key FROM workflow_stages WHERE run_id=? AND status='succeeded'",
+                        (run_id,),
+                    )
+                }
+                missing = set(json.loads(row["dependencies_json"])) - succeeded
+                if missing:
+                    raise ValueError(f"Stage {stage_key} dependencies are incomplete: {sorted(missing)}")
+            sequence = int(row["checkpoint_sequence"]) + 1
+            payload_json = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            )
+            payload_digest = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+            updated = self.db.execute(
+                """UPDATE workflow_stages
+                      SET status=?,version=version+1,updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status=?""",
+                (target, row["id"], source),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(f"Stage {stage_key} changed concurrently")
+            self.db.execute(
+                "UPDATE workflow_runs SET checkpoint_sequence=? WHERE id=?",
+                (sequence, run_id),
+            )
+            self.db.execute(
+                """INSERT INTO stage_checkpoints(
+                       identity,run_id,stage_id,sequence,state,payload_json,payload_digest
+                   ) VALUES(?,?,?,?,?,?,?)""",
+                (
+                    self._identity("checkpoint"),
+                    run_id,
+                    row["id"],
+                    sequence,
+                    target,
+                    payload_json,
+                    payload_digest,
+                ),
+            )
+            self._event(
+                f"stage.{target}",
+                "stage",
+                row["id"],
+                {
+                    "task_id": row["task_id"],
+                    "run_id": run_id,
+                    "stage_id": stage_key,
+                    "sequence": sequence,
+                    "payload_digest": payload_digest,
+                },
+            )
+
+    def reserve_workflow_mutation(
+        self,
+        *,
+        run_id: int,
+        stage_key: str,
+        operation: str,
+        idempotency_key: str,
+        request: dict[str, Any],
+    ):
+        if operation not in {"provider_call", "worktree", "github"}:
+            raise ValueError(operation)
+        if not idempotency_key.strip():
+            raise ValueError("Mutation idempotency key is required")
+        request_json = json.dumps(request, sort_keys=True, separators=(",", ":"))
+        request_digest = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+        created = False
+        with self.db:
+            stage = self.db.execute(
+                "SELECT id FROM workflow_stages WHERE run_id=? AND stage_key=?",
+                (run_id, stage_key),
+            ).fetchone()
+            if not stage:
+                raise KeyError(f"Unknown stage {stage_key} for run {run_id}")
+            existing = self.db.execute(
+                """SELECT * FROM workflow_mutations
+                    WHERE run_id=? AND operation=? AND idempotency_key=?""",
+                (run_id, operation, idempotency_key),
+            ).fetchone()
+            if existing:
+                if int(existing["stage_id"]) != int(stage["id"]) or existing["request_digest"] != request_digest:
+                    raise ValueError("Idempotency key was already bound to a different mutation")
+                return existing, created
+            cur = self.db.execute(
+                """INSERT INTO workflow_mutations(
+                       identity,run_id,stage_id,operation,idempotency_key,request_digest
+                   ) VALUES(?,?,?,?,?,?)""",
+                (
+                    self._identity("workflow-mutation"),
+                    run_id,
+                    stage["id"],
+                    operation,
+                    idempotency_key,
+                    request_digest,
+                ),
+            )
+            mutation_id = int(cur.lastrowid)
+            created = True
+            self._event(
+                "workflow.mutation.reserved",
+                "workflow_mutation",
+                mutation_id,
+                {
+                    "run_id": run_id,
+                    "stage_id": stage_key,
+                    "operation": operation,
+                    "idempotency_key": idempotency_key,
+                    "request_digest": request_digest,
+                },
+            )
+        return self.db.execute(
+            "SELECT * FROM workflow_mutations WHERE id=?", (mutation_id,)
+        ).fetchone(), created
+
+    def complete_workflow_mutation(
+        self, mutation_id: int, result: dict[str, Any]
+    ) -> bool:
+        result_json = json.dumps(result, sort_keys=True, separators=(",", ":"))
+        with self.db:
+            row = self.db.execute(
+                "SELECT * FROM workflow_mutations WHERE id=?", (mutation_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown workflow mutation: {mutation_id}")
+            if row["status"] == "completed":
+                if row["result_json"] != result_json:
+                    raise ValueError("Completed mutation result is immutable")
+                return False
+            if row["status"] != "reserved":
+                raise ValueError(f"Workflow mutation {mutation_id} is {row['status']}")
+            self.db.execute(
+                """UPDATE workflow_mutations
+                      SET status='completed',result_json=?,completed_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND status='reserved'""",
+                (result_json, mutation_id),
+            )
+            self._event(
+                "workflow.mutation.completed",
+                "workflow_mutation",
+                mutation_id,
+                {"run_id": row["run_id"], "operation": row["operation"]},
+            )
+        return True
 
     def _transition_run(self, run_id: int, target: str, *, event_payload: dict[str, Any] | None = None) -> None:
         row = self.db.execute("SELECT status,task_id,workflow_id FROM workflow_runs WHERE id=?", (run_id,)).fetchone()
