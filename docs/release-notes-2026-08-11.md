@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-018 Tool-Gateway, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-019 credential-broker, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **41 of 57** backlog tasks: AF-001–AF-018, AF-020, and AF-036–AF-057.
+- Completed **42 of 57** backlog tasks: AF-001–AF-020 and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **227 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified coding/mission slices and centralized Tool/MCP Gateway are implemented but not released; AF-019 credential broker is next.
+- Verified **231 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified coding/mission slices, Tool Gateway, and zero-exposure credential broker are implemented but not released; AF-021 red-team containment is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -39,6 +39,7 @@ These notes describe the implemented, tested repository state through the AF-018
 |---|---|---|---|
 | AF-017 | Fail-closed writable-worker sandbox and preserved teardown evidence | 2026-08-11 22:17 CEST | This AF-017 task commit |
 | AF-018 | Complete tool contracts, intersected authority, and audited connector lifecycle | 2026-08-12 04:24 CEST | This AF-018 task commit |
+| AF-019 | Exact short-lived scopes, zero-secret persistence, and audited revocation | 2026-08-12 04:30 CEST | This AF-019 task commit |
 | AF-020 | Deterministic-first independent criterion verdicts with primary-evidence closure | 2026-08-11 23:46 CEST | This AF-020 task commit |
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
 | AF-050 | Separately qualified file-only Claude Code worker and compatible routing | 2026-08-12 00:52 CEST | This AF-050 task commit |
@@ -102,6 +103,10 @@ Memory writes now declare store/type, tenant/mission/task scope, purpose, author
 ## AF-018 implementation detail
 
 Tools now use immutable semantic-version descriptors that require object input/output schemas, explicit side effects, risk tier, capabilities, timeout, and evidence fields. Dynamic MCP discovery records every announced name but grants only the intersection of mission, role, and policy allowlists. Invocation additionally verifies a healthy matching connector, capabilities, schemas, bounded timeout, and complete evidence before persisting request/evidence digests. Native, MCP, CLI, and HTTP connector versions retain manifests and human approval when production mutation is possible; instance install, health success/failure, disable, upgrade, and removal each create attributed immutable lifecycle and audit evidence.
+
+## AF-019 implementation detail
+
+Credential values now remain only inside a process-memory lease vault. Persistent issuance records contain an opaque handle and exact tenant, mission, tool, operation, environment-key, expiry, and optional human scope-expansion approval, with no value-derived material. A firewall rejects value/handle content in prompts or arguments; exact-scope execution receives the value only through one environment mapping. Nested output and exceptions are redacted before use evidence and audit events persist. TTL expiry and explicit revocation delete the in-memory value and deny future use while retaining attributed, non-secret lifecycle evidence; automated tests scan all relevant SQLite surfaces for the credential value.
 
 ## AF-046 implementation detail
 
@@ -174,4 +179,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-018, AF-020, and AF-044 through AF-057 are complete. AF-019 credential broker is next.
+M1, AF-008 through AF-020, and AF-044 through AF-057 are complete. AF-021 red-team containment is next.

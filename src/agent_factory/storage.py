@@ -2145,6 +2145,66 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER tool_invocations_no_delete BEFORE DELETE ON tool_invocations
         BEGIN SELECT RAISE(ABORT, 'tool invocation is immutable'); END;
     """),
+    (41, """
+        CREATE TABLE credential_issuances(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            handle TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            mission_id TEXT NOT NULL,
+            tool_key TEXT NOT NULL,
+            operations_json TEXT NOT NULL,
+            environment_key TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            approved_by TEXT,
+            status TEXT NOT NULL CHECK(status IN ('active','revoked','expired')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version>0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_credentials_scope
+            ON credential_issuances(tenant_id,mission_id,tool_key,status,expires_at);
+        CREATE TRIGGER credential_issuance_scope_immutable
+        BEFORE UPDATE OF identity,handle,tenant_id,mission_id,tool_key,operations_json,
+                         environment_key,expires_at,approved_by ON credential_issuances
+        BEGIN SELECT RAISE(ABORT, 'credential scope is immutable'); END;
+        CREATE TRIGGER credential_issuances_no_delete BEFORE DELETE ON credential_issuances
+        BEGIN SELECT RAISE(ABORT, 'credential issuance history is immutable'); END;
+
+        CREATE TABLE credential_lifecycle_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            credential_id INTEGER NOT NULL REFERENCES credential_issuances(id),
+            event_type TEXT NOT NULL CHECK(event_type IN ('issued','used','revoked','expired','denied')),
+            actor TEXT NOT NULL,
+            scope_json TEXT NOT NULL,
+            detail TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER credential_lifecycle_events_no_update
+        BEFORE UPDATE ON credential_lifecycle_events
+        BEGIN SELECT RAISE(ABORT, 'credential lifecycle event is immutable'); END;
+        CREATE TRIGGER credential_lifecycle_events_no_delete
+        BEFORE DELETE ON credential_lifecycle_events
+        BEGIN SELECT RAISE(ABORT, 'credential lifecycle event is immutable'); END;
+
+        CREATE TABLE credential_use_evidence(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            credential_id INTEGER NOT NULL REFERENCES credential_issuances(id),
+            tool_key TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            request_digest TEXT NOT NULL CHECK(length(request_digest)=64),
+            outcome TEXT NOT NULL CHECK(outcome IN ('succeeded','failed','denied')),
+            sanitized_result_json TEXT NOT NULL,
+            result_digest TEXT NOT NULL CHECK(length(result_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER credential_use_evidence_no_update BEFORE UPDATE ON credential_use_evidence
+        BEGIN SELECT RAISE(ABORT, 'credential use evidence is immutable'); END;
+        CREATE TRIGGER credential_use_evidence_no_delete BEFORE DELETE ON credential_use_evidence
+        BEGIN SELECT RAISE(ABORT, 'credential use evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
