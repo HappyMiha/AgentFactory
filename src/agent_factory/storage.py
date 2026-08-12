@@ -1565,6 +1565,94 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER release_candidate_authorizations_no_delete BEFORE DELETE ON release_candidate_authorizations
         BEGIN SELECT RAISE(ABORT, 'release candidate authorization is immutable'); END;
     """),
+    (34, """
+        CREATE TABLE mission_intakes(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            project_id INTEGER NOT NULL REFERENCES projects(id),
+            mission_owner TEXT NOT NULL,
+            intent TEXT NOT NULL,
+            normalized_json TEXT NOT NULL,
+            intake_digest TEXT NOT NULL UNIQUE CHECK(length(intake_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER mission_intakes_no_update BEFORE UPDATE ON mission_intakes
+        BEGIN SELECT RAISE(ABORT, 'mission intake is immutable'); END;
+        CREATE TRIGGER mission_intakes_no_delete BEFORE DELETE ON mission_intakes
+        BEGIN SELECT RAISE(ABORT, 'mission intake is immutable'); END;
+
+        CREATE TABLE mission_sources(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            intake_id INTEGER NOT NULL REFERENCES mission_intakes(id),
+            source_key TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            authority TEXT NOT NULL CHECK(authority IN ('authoritative','advisory','reference')),
+            version TEXT NOT NULL,
+            provenance TEXT NOT NULL,
+            content_digest TEXT NOT NULL CHECK(length(content_digest)=64),
+            conflict_status TEXT NOT NULL CHECK(conflict_status IN ('clear','conflicted','superseded')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(intake_id,source_key)
+        );
+        CREATE TRIGGER mission_sources_no_update BEFORE UPDATE ON mission_sources
+        BEGIN SELECT RAISE(ABORT, 'mission source is immutable'); END;
+        CREATE TRIGGER mission_sources_no_delete BEFORE DELETE ON mission_sources
+        BEGIN SELECT RAISE(ABORT, 'mission source is immutable'); END;
+
+        CREATE TABLE mission_owner_resolutions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            intake_id INTEGER NOT NULL REFERENCES mission_intakes(id),
+            gap_code TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            rationale TEXT NOT NULL,
+            resolved_by TEXT NOT NULL,
+            accepted_reduced_scope INTEGER NOT NULL DEFAULT 0 CHECK(accepted_reduced_scope IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(intake_id,gap_code)
+        );
+        CREATE TRIGGER mission_owner_resolutions_no_update BEFORE UPDATE ON mission_owner_resolutions
+        BEGIN SELECT RAISE(ABORT, 'mission owner resolution is immutable'); END;
+        CREATE TRIGGER mission_owner_resolutions_no_delete BEFORE DELETE ON mission_owner_resolutions
+        BEGIN SELECT RAISE(ABORT, 'mission owner resolution is immutable'); END;
+
+        CREATE TABLE mission_readiness_assessments(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            intake_id INTEGER NOT NULL REFERENCES mission_intakes(id),
+            sequence INTEGER NOT NULL CHECK(sequence>0),
+            verdict TEXT NOT NULL CHECK(verdict IN (
+                'READY_FOR_BLUEPRINT','NEEDS_CLARIFICATION',
+                'NEEDS_HUMAN_REVIEW','INFEASIBLE'
+            )),
+            rationale_json TEXT NOT NULL,
+            blocking_gaps_json TEXT NOT NULL,
+            assessment_digest TEXT NOT NULL UNIQUE CHECK(length(assessment_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(intake_id,sequence)
+        );
+        CREATE TRIGGER mission_readiness_assessments_no_update BEFORE UPDATE ON mission_readiness_assessments
+        BEGIN SELECT RAISE(ABORT, 'mission readiness assessment is immutable'); END;
+        CREATE TRIGGER mission_readiness_assessments_no_delete BEFORE DELETE ON mission_readiness_assessments
+        BEGIN SELECT RAISE(ABORT, 'mission readiness assessment is immutable'); END;
+
+        CREATE TABLE mission_review_requests(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            intake_id INTEGER NOT NULL REFERENCES mission_intakes(id),
+            assessment_id INTEGER NOT NULL REFERENCES mission_readiness_assessments(id),
+            gap_code TEXT NOT NULL,
+            request_type TEXT NOT NULL CHECK(request_type IN ('clarification','risk_review','scope_review')),
+            prompt TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(assessment_id,gap_code)
+        );
+        CREATE TRIGGER mission_review_requests_no_update BEFORE UPDATE ON mission_review_requests
+        BEGIN SELECT RAISE(ABORT, 'mission review request is immutable'); END;
+        CREATE TRIGGER mission_review_requests_no_delete BEFORE DELETE ON mission_review_requests
+        BEGIN SELECT RAISE(ABORT, 'mission review request is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
