@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -43,6 +44,10 @@ class ContextSource:
     authority: str
     priority: int = 0
     supersedes: tuple[str, ...] = ()
+    provenance: str = "unspecified"
+    observed_at: str | None = None
+    max_age_seconds: int | None = None
+    required: bool = False
 
 
 @dataclass(frozen=True)
@@ -72,6 +77,10 @@ class _PreparedSource:
     priority: int
     supersedes: tuple[str, ...]
     digest: str
+    provenance: str
+    observed_at: str | None
+    max_age_seconds: int | None
+    required: bool
 
     def included_record(self) -> dict[str, Any]:
         return {
@@ -80,6 +89,10 @@ class _PreparedSource:
             "digest": self.digest,
             "kind": self.kind,
             "priority": self.priority,
+            "provenance": self.provenance,
+            "observed_at": self.observed_at,
+            "max_age_seconds": self.max_age_seconds,
+            "required": self.required,
             "source_id": self.source_id,
         }
 
@@ -88,6 +101,7 @@ class _PreparedSource:
             "digest": self.digest,
             "kind": self.kind,
             "reason": reason,
+            "provenance": self.provenance,
             "source_id": self.source_id,
         }
 
@@ -130,6 +144,20 @@ class ContextPackageBuilder:
         authority = source.authority.strip()
         if not source_id or not kind or not authority:
             raise ValueError("Context source identity, kind, and authority are required")
+        provenance = source.provenance.strip()
+        if not provenance:
+            raise ValueError("Context source provenance is required")
+        if source.max_age_seconds is not None and source.max_age_seconds <= 0:
+            raise ValueError("Context source freshness limit must be positive")
+        if source.max_age_seconds is not None and not source.observed_at:
+            raise ValueError("Freshness-limited context sources require observed_at")
+        if source.observed_at:
+            try:
+                observed = datetime.fromisoformat(source.observed_at.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError("Context source observed_at must be ISO-8601") from exc
+            if observed.tzinfo is None:
+                raise ValueError("Context source observed_at must include a timezone")
         supersedes = tuple(sorted({value.strip() for value in source.supersedes if value.strip()}))
         if source_id in supersedes:
             raise ValueError("A context source cannot supersede itself")
@@ -143,6 +171,14 @@ class ContextPackageBuilder:
             priority=int(source.priority),
             supersedes=supersedes,
             digest=digest,
+            provenance=provenance,
+            observed_at=source.observed_at,
+            max_age_seconds=source.max_age_seconds,
+            required=bool(
+                source.required
+                or authority.casefold() == "authoritative"
+                or kind in {"safety_constraint", "safety-constraint"}
+            ),
         )
 
     @staticmethod
@@ -177,6 +213,7 @@ class ContextPackageBuilder:
         sources: dict[str, _PreparedSource],
         included_ids: set[str],
         budget_excluded_ids: set[str],
+        stale_excluded_ids: set[str],
         superseded_by: dict[str, str],
     ) -> dict[str, Any]:
         included = [
@@ -184,8 +221,9 @@ class ContextPackageBuilder:
             for source_id in sorted(included_ids)
         ]
         excluded = [
-            sources[source_id].excluded_record("budget")
-            for source_id in sorted(budget_excluded_ids)
+            sources[source_id].excluded_record(reason)
+            for reason, ids in (("budget", budget_excluded_ids), ("stale", stale_excluded_ids))
+            for source_id in sorted(ids)
         ]
         superseded = [
             {
@@ -241,6 +279,9 @@ class ContextPackageBuilder:
         base_sha: str,
         sources: Iterable[ContextSource] = (),
         policies: dict[str, Any] | None = None,
+        role_id: str | None = None,
+        purpose: str | None = None,
+        now: datetime | None = None,
     ) -> ExecutionContextPackage:
         approved_base = base_sha.strip().casefold()
         if not SHA_PATTERN.fullmatch(approved_base):
@@ -298,6 +339,19 @@ class ContextPackageBuilder:
         active = [
             source for source in prepared.values() if source.source_id not in superseded_by
         ]
+        instant = now or datetime.now(timezone.utc)
+        stale_ids: set[str] = set()
+        for source in active:
+            if source.max_age_seconds is None:
+                continue
+            observed = datetime.fromisoformat(str(source.observed_at).replace("Z", "+00:00"))
+            if (instant - observed).total_seconds() > source.max_age_seconds:
+                if source.required:
+                    raise ContextPackageError(
+                        f"Mandatory context source is stale: {source.source_id}"
+                    )
+                stale_ids.add(source.source_id)
+        active = [source for source in active if source.source_id not in stale_ids]
         active.sort(key=lambda source: (-source.priority, source.source_id))
 
         core = {
@@ -312,6 +366,10 @@ class ContextPackageBuilder:
                 self.default_policy if policies is None else policies
             ),
             "schema_version": "agent-factory.execution-context.v1",
+            "broker_scope": {
+                "role_id": (role_id or "unspecified").strip(),
+                "purpose": (purpose or "dispatch").strip(),
+            },
             "scope": {
                 "assignment_id": assignment_id,
                 "fencing_token": fencing_token,
@@ -357,20 +415,27 @@ class ContextPackageBuilder:
             for source_id, kind, content in required_source_values
         )
         included_ids: set[str] = set()
-        budget_excluded_ids = {source.source_id for source in active}
+        required_ids = {source.source_id for source in active if source.required}
+        included_ids.update(required_ids)
+        budget_excluded_ids = {
+            source.source_id for source in active if source.source_id not in required_ids
+        }
         package = self._package(
             core=core,
             required_sources=required_sources,
             sources=prepared,
             included_ids=included_ids,
             budget_excluded_ids=budget_excluded_ids,
+            stale_excluded_ids=stale_ids,
             superseded_by=superseded_by,
         )
         if not self._fits(package):
             raise ContextPackageError(
-                "Mandatory context and source manifest exceed package limits"
+                "Mandatory context, authoritative requirements, and safety constraints exceed package limits"
             )
         for source in active:
+            if source.required:
+                continue
             candidate_included = {*included_ids, source.source_id}
             candidate_excluded = budget_excluded_ids - {source.source_id}
             candidate = self._package(
@@ -379,6 +444,7 @@ class ContextPackageBuilder:
                 sources=prepared,
                 included_ids=candidate_included,
                 budget_excluded_ids=candidate_excluded,
+                stale_excluded_ids=stale_ids,
                 superseded_by=superseded_by,
             )
             if self._fits(candidate):
@@ -423,3 +489,141 @@ class ContextPackageBuilder:
             token_count=int(row["token_count"]),
             compacted=bool(row["compacted"]),
         )
+
+
+@dataclass(frozen=True)
+class CompactedContextState:
+    decisions: tuple[str, ...]
+    unresolved_risks: tuple[str, ...]
+    evidence_refs: tuple[str, ...]
+    next_steps: tuple[str, ...]
+
+    def __post_init__(self):
+        for name in ("decisions", "unresolved_risks", "evidence_refs", "next_steps"):
+            values = getattr(self, name)
+            if not values or any(not value.strip() for value in values):
+                raise ValueError(f"Compacted context requires non-empty {name}")
+
+
+class ContextBroker:
+    """Role/purpose broker and governed semantic transcript compactor."""
+
+    def __init__(self, builder: ContextPackageBuilder):
+        self.builder = builder
+        self.storage = builder.storage
+
+    def compact_transcript(
+        self,
+        *,
+        task_id: int,
+        role_id: str,
+        purpose: str,
+        raw_transcript: str,
+        retained: CompactedContextState,
+    ) -> ContextSource:
+        if not role_id.strip() or not purpose.strip() or not raw_transcript.strip():
+            raise ValueError("Compaction task, role, purpose, and transcript are required")
+        transcript_digest = hashlib.sha256(raw_transcript.encode("utf-8")).hexdigest()
+        state = {
+            "schema_version": 1,
+            "decisions": sorted(set(retained.decisions)),
+            "unresolved_risks": sorted(set(retained.unresolved_risks)),
+            "evidence_refs": sorted(set(retained.evidence_refs)),
+            "next_steps": sorted(set(retained.next_steps)),
+        }
+        state_json = canonical_json(state)
+        state_digest = hashlib.sha256(state_json.encode("utf-8")).hexdigest()
+        existing = self.storage.db.execute(
+            "SELECT * FROM context_compactions WHERE retained_state_digest=?",
+            (state_digest,),
+        ).fetchone()
+        if existing:
+            if (
+                int(existing["task_id"]) != task_id
+                or existing["role_id"] != role_id
+                or existing["purpose"] != purpose
+                or existing["source_transcript_digest"] != transcript_digest
+            ):
+                raise ValueError("Compacted context digest is already bound to another source")
+            compaction_id = int(existing["id"])
+        else:
+            with self.storage.db:
+                cursor = self.storage.db.execute(
+                    """INSERT INTO context_compactions(
+                           identity,task_id,role_id,purpose,source_transcript_digest,
+                           retained_state_json,retained_state_digest,removed_byte_count
+                       ) VALUES(?,?,?,?,?,?,?,?)""",
+                    (
+                        self.storage._identity("context-compaction"), task_id,
+                        role_id.strip(), purpose.strip(), transcript_digest,
+                        state_json, state_digest, len(raw_transcript.encode("utf-8")),
+                    ),
+                )
+                compaction_id = int(cursor.lastrowid)
+                self.storage._event("context.transcript.compacted", "context_compaction", compaction_id, {
+                    "task_id": task_id, "role_id": role_id, "purpose": purpose,
+                    "source_transcript_digest": transcript_digest,
+                    "retained_state_digest": state_digest,
+                })
+        return ContextSource(
+            source_id=f"compaction:{compaction_id}", kind="compacted_state",
+            content=state, authority="control-plane", priority=1000,
+            provenance=f"context-compaction:{compaction_id}", required=True,
+        )
+
+    def build_for_dispatch(
+        self,
+        *,
+        task_id: int,
+        run_id: int,
+        assignment_id: int,
+        fencing_token: int,
+        base_sha: str,
+        role_id: str,
+        purpose: str,
+        sources: Iterable[ContextSource] = (),
+        policies: dict[str, Any] | None = None,
+        now: datetime | None = None,
+    ) -> ExecutionContextPackage:
+        if not role_id.strip() or not purpose.strip():
+            raise ValueError("Context broker role and purpose are required")
+        package = self.builder.build(
+            task_id=task_id, run_id=run_id, assignment_id=assignment_id,
+            fencing_token=fencing_token, base_sha=base_sha, sources=sources,
+            policies=policies, role_id=role_id, purpose=purpose, now=now,
+        )
+        payload = package.payload
+        broker = {
+            "schema_version": 1, "role_id": role_id.strip(), "purpose": purpose.strip(),
+            "context_digest": package.digest,
+            "included": payload["source_manifest"]["included"],
+            "excluded": payload["source_manifest"]["excluded"],
+            "superseded": payload["source_manifest"]["superseded"],
+        }
+        broker_json = canonical_json(broker)
+        broker_digest = hashlib.sha256(broker_json.encode()).hexdigest()
+        existing = self.storage.db.execute(
+            "SELECT * FROM context_broker_dispatches WHERE context_package_id=?", (package.id,)
+        ).fetchone()
+        if existing:
+            if existing["broker_digest"] != broker_digest:
+                raise ValueError("Context package is already bound to another broker scope")
+            return package
+        with self.storage.db:
+            cursor = self.storage.db.execute(
+                """INSERT INTO context_broker_dispatches(
+                       identity,task_id,run_id,assignment_id,role_id,purpose,
+                       context_package_id,context_digest,broker_json,broker_digest
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("context-broker-dispatch"), task_id, run_id,
+                    assignment_id, role_id.strip(), purpose.strip(), package.id,
+                    package.digest, broker_json, broker_digest,
+                ),
+            )
+            dispatch_id = int(cursor.lastrowid)
+            self.storage._event("context.broker.dispatched", "context_broker_dispatch", dispatch_id, {
+                "task_id": task_id, "run_id": run_id, "assignment_id": assignment_id,
+                "role_id": role_id, "purpose": purpose, "context_digest": package.digest,
+            })
+        return package

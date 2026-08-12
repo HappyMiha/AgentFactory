@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-014 mission-bootstrap, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-015 Context-Broker, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **38 of 57** backlog tasks: AF-001–AF-014, AF-017, AF-020, and AF-036–AF-057.
+- Completed **39 of 57** backlog tasks: AF-001–AF-015, AF-017, AF-020, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **216 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified restart-safe two-worker single-node coding vertical slice and the mission path through recoverable bootstrap are implemented but not released; AF-015 context broker is next.
+- Verified **219 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified coding slice and mission path through governed Context Brokerage are implemented but not released; AF-016 typed memory is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -55,6 +55,7 @@ These notes describe the implemented, tested repository state through the AF-014
 | AF-012 | Qualified role pools, strengthened arbitration, and global capacity/budget composition | 2026-08-12 03:45 CEST | This AF-012 task commit |
 | AF-013 | Eight-section traced Blueprint, exact owner signature, and immutable amendments | 2026-08-12 03:55 CEST | This AF-013 task commit |
 | AF-014 | Idempotent mission graph, exact manifests, checkpoint, and verified rollback | 2026-08-12 04:03 CEST | This AF-014 task commit |
+| AF-015 | Provenance/freshness-aware Context Broker and governed compaction | 2026-08-12 04:10 CEST | This AF-015 task commit |
 | AF-054 | Eight-role software-engineering pack and approved-candidate release authority | 2026-08-12 01:09 CEST | This AF-054 task commit |
 
 ### Local Control Center MVP
@@ -87,6 +88,10 @@ Factory Blueprint generation now requires the latest ready mission assessment an
 ## AF-014 implementation detail
 
 Mission bootstrap now independently reconstructs the latest exact AF-013 execution authorization and uses the Blueprint digest as its idempotency authority. One transaction creates the mission project, root work item, queued version-pinned AF-006 graph, seven immutable agent/role/tool/policy/context/budget/environment manifests, and an initial recovery checkpoint. Each attempt records its own pre-bootstrap resource snapshot. Any failure rolls partial mission resources back, then stores a separate immutable outcome comparing expected and restored state; a verified failure can retry from a fresh rollback point without duplicating the mission or workflow.
+
+## AF-015 implementation detail
+
+The AF-055 package builder now supports an immutable role/purpose Context Broker. Sources retain authority, provenance, observation time, maximum age, priority, content digest, and supersession. Optional stale or oversized material is explicitly excluded; active authoritative requirements and safety constraints are mandatory and fail closed if stale or unable to fit. Governed compaction removes raw transcript content while storing its digest and byte count, and requires non-empty retained decisions, unresolved risks, evidence references, and next steps. Broker dispatch evidence binds the exact included/excluded/superseded outcome and context digest to task, run, assignment, role, and purpose.
 
 ## AF-046 implementation detail
 
@@ -159,4 +164,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-014, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-015 context broker is next.
+M1, AF-008 through AF-015, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-016 typed memory is next.

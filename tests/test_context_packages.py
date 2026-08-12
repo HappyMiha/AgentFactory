@@ -2,10 +2,13 @@ import hashlib
 import sqlite3
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from agent_factory.context_packages import (
     ContextPackageBuilder,
+    CompactedContextState,
+    ContextBroker,
     ContextPackageError,
     ContextSource,
 )
@@ -179,6 +182,105 @@ class ExecutionContextPackageTests(unittest.TestCase):
                 task_id=other_task,
                 assignment_id=other_claim.assignment_id,
                 fencing_token=other_claim.fencing_token,
+            )
+
+    def test_broker_records_role_purpose_provenance_freshness_and_source_outcomes(self):
+        now = datetime(2026, 8, 12, tzinfo=timezone.utc)
+        sources = (
+            ContextSource(
+                "requirement:owner", "requirement", "Never skip approval",
+                "authoritative", 1, provenance="Founder brief",
+                observed_at=(now - timedelta(minutes=5)).isoformat(), max_age_seconds=3600,
+            ),
+            ContextSource(
+                "reference:stale", "reference", "Old metric", "reference", 100,
+                provenance="Metrics API",
+                observed_at=(now - timedelta(days=2)).isoformat(), max_age_seconds=60,
+            ),
+        )
+        package = ContextBroker(self.builder()).build_for_dispatch(
+            task_id=self.task_id, run_id=self.run_id,
+            assignment_id=self.claim.assignment_id, fencing_token=self.claim.fencing_token,
+            base_sha="a" * 40, role_id="implementation_worker",
+            purpose="implement accepted task", sources=sources, now=now,
+        )
+        payload = package.payload
+        self.assertEqual(payload["broker_scope"]["role_id"], "implementation_worker")
+        included = {source["source_id"]: source for source in payload["sources"]}
+        self.assertEqual(included["requirement:owner"]["provenance"], "Founder brief")
+        excluded = {item["source_id"]: item for item in payload["source_manifest"]["excluded"]}
+        self.assertEqual(excluded["reference:stale"]["reason"], "stale")
+        broker = self.storage.db.execute(
+            "SELECT * FROM context_broker_dispatches WHERE context_digest=?", (package.digest,)
+        ).fetchone()
+        self.assertEqual((broker["role_id"], broker["purpose"]), (
+            "implementation_worker", "implement accepted task",
+        ))
+
+    def test_authoritative_and_safety_sources_cannot_be_dropped_or_stale(self):
+        now = datetime(2026, 8, 12, tzinfo=timezone.utc)
+        required = (
+            ContextSource(
+                "requirement:mandatory", "requirement", "x" * 1500,
+                "authoritative", 0, provenance="Signed specification",
+            ),
+            ContextSource(
+                "safety:mandatory", "safety_constraint", "No external mutation",
+                "policy", 0, provenance="Control Plane policy",
+            ),
+        )
+        with self.assertRaisesRegex(ContextPackageError, "authoritative requirements"):
+            ContextBroker(self.builder(max_bytes=2_000, max_tokens=500)).build_for_dispatch(
+                task_id=self.task_id, run_id=self.run_id,
+                assignment_id=self.claim.assignment_id,
+                fencing_token=self.claim.fencing_token, base_sha="a" * 40,
+                role_id="worker", purpose="bounded work", sources=required, now=now,
+            )
+        stale = ContextSource(
+            "safety:stale", "safety_constraint", "No network", "policy", 100,
+            provenance="Policy service",
+            observed_at=(now - timedelta(hours=2)).isoformat(), max_age_seconds=60,
+        )
+        with self.assertRaisesRegex(ContextPackageError, "Mandatory context source is stale"):
+            ContextBroker(self.builder()).build_for_dispatch(
+                task_id=self.task_id, run_id=self.run_id,
+                assignment_id=self.claim.assignment_id,
+                fencing_token=self.claim.fencing_token, base_sha="a" * 40,
+                role_id="worker", purpose="bounded work", sources=(stale,), now=now,
+            )
+
+    def test_governed_compaction_removes_transcript_and_retains_operating_state(self):
+        broker = ContextBroker(self.builder())
+        transcript = "raw private turn\n" * 500
+        source = broker.compact_transcript(
+            task_id=self.task_id, role_id="implementation_worker", purpose="resume repair",
+            raw_transcript=transcript,
+            retained=CompactedContextState(
+                decisions=("Use deterministic validator",),
+                unresolved_risks=("Dependency may drift",),
+                evidence_refs=("artifact:sha256:abc",),
+                next_steps=("Run focused tests",),
+            ),
+        )
+        package = broker.build_for_dispatch(
+            task_id=self.task_id, run_id=self.run_id,
+            assignment_id=self.claim.assignment_id, fencing_token=self.claim.fencing_token,
+            base_sha="a" * 40, role_id="implementation_worker",
+            purpose="resume repair", sources=(source,),
+        )
+        canonical = package.canonical
+        self.assertNotIn("raw private turn", canonical)
+        for retained in (
+            "Use deterministic validator", "Dependency may drift",
+            "artifact:sha256:abc", "Run focused tests",
+        ):
+            self.assertIn(retained, canonical)
+        record = self.storage.db.execute("SELECT * FROM context_compactions").fetchone()
+        self.assertEqual(record["removed_byte_count"], len(transcript.encode("utf-8")))
+        with self.assertRaisesRegex(sqlite3.DatabaseError, "immutable"):
+            self.storage.db.execute(
+                "UPDATE context_compactions SET removed_byte_count=0 WHERE id=?",
+                (record["id"],),
             )
 
 

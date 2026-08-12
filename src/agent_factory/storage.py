@@ -1884,6 +1884,43 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER mission_bootstrap_outcomes_no_delete BEFORE DELETE ON mission_bootstrap_outcomes
         BEGIN SELECT RAISE(ABORT, 'mission bootstrap outcome is immutable'); END;
     """),
+    (38, """
+        CREATE TABLE context_compactions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            role_id TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            source_transcript_digest TEXT NOT NULL CHECK(length(source_transcript_digest)=64),
+            retained_state_json TEXT NOT NULL,
+            retained_state_digest TEXT NOT NULL UNIQUE CHECK(length(retained_state_digest)=64),
+            removed_byte_count INTEGER NOT NULL CHECK(removed_byte_count>=0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER context_compactions_no_update BEFORE UPDATE ON context_compactions
+        BEGIN SELECT RAISE(ABORT, 'context compaction is immutable'); END;
+        CREATE TRIGGER context_compactions_no_delete BEFORE DELETE ON context_compactions
+        BEGIN SELECT RAISE(ABORT, 'context compaction is immutable'); END;
+
+        CREATE TABLE context_broker_dispatches(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            task_id INTEGER NOT NULL REFERENCES work_items(id),
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            assignment_id INTEGER NOT NULL REFERENCES assignments(id),
+            role_id TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            context_package_id INTEGER NOT NULL UNIQUE REFERENCES execution_context_packages(id),
+            context_digest TEXT NOT NULL UNIQUE CHECK(length(context_digest)=64),
+            broker_json TEXT NOT NULL,
+            broker_digest TEXT NOT NULL UNIQUE CHECK(length(broker_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER context_broker_dispatches_no_update BEFORE UPDATE ON context_broker_dispatches
+        BEGIN SELECT RAISE(ABORT, 'context broker dispatch is immutable'); END;
+        CREATE TRIGGER context_broker_dispatches_no_delete BEFORE DELETE ON context_broker_dispatches
+        BEGIN SELECT RAISE(ABORT, 'context broker dispatch is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

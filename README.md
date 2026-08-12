@@ -24,6 +24,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Lifecycle-aware runtimes.** Direct CLI and Hermes ACP execution share durable start/resume/heartbeat/cancel/event/finalize semantics without transferring Control Plane authority.
 - **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path with durable ownership, reconciliation, and retention controls.
 - **Immutable dispatch context.** Every Worker Runtime launch is bound to a content-addressed, size-bounded package with explicit included, excluded, and superseded sources.
+- **Governed context brokerage.** Role/purpose packages enforce provenance, freshness, and token limits while preserving authoritative requirements, safety constraints, decisions, unresolved risks, evidence, and next steps.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
@@ -50,6 +51,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Workforce Composer | Ready | AF-012 emits immutable role pools and globally valid assignments; strengthened pools and reviewed diversity exceptions remain explicit. |
 | Factory Blueprint | Ready | AF-013 validates the complete operating design, exact version/digest approval, and impact-analyzed immutable amendments. |
 | Mission bootstrap | Ready | AF-014 instantiates one idempotent durable graph with seven manifests, rollback evidence, and an initial recovery checkpoint. |
+| Context Broker | Ready | AF-015 records provenance/freshness and source outcomes, preserves mandatory authority, and compacts transcripts into immutable resumable state. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |
