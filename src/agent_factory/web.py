@@ -416,8 +416,12 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
 
     @app.post("/api/backlog/analyze-upload", response_model=UploadedBacklogResponse)
     async def analyze_upload(
-        upload: UploadFile = File(...),
+        upload: UploadFile | None = File(None),
+        specification: UploadFile | None = File(None),
     ) -> UploadedBacklogResponse:
+        upload = upload or specification
+        if upload is None:
+            raise ValueError("Upload a specification file")
         raw = await upload.read()
         if not raw or len(raw) > 10 * 1024 * 1024:
             raise ValueError("Uploaded specification must be between 1 byte and 10 MB")
