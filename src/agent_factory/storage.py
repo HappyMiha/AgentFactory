@@ -2205,6 +2205,169 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER credential_use_evidence_no_delete BEFORE DELETE ON credential_use_evidence
         BEGIN SELECT RAISE(ABORT, 'credential use evidence is immutable'); END;
     """),
+    (42, """
+        CREATE TABLE red_team_cases(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            stable_id TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK(version>0),
+            category TEXT NOT NULL CHECK(category IN (
+                'indirect_injection','authority_escalation','secret_extraction',
+                'tool_abuse','artifact_poisoning','cross_tenant_access'
+            )),
+            payload TEXT NOT NULL,
+            affected_criterion TEXT NOT NULL,
+            case_digest TEXT NOT NULL UNIQUE CHECK(length(case_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(stable_id,version)
+        );
+        CREATE TRIGGER red_team_cases_no_update BEFORE UPDATE ON red_team_cases
+        BEGIN SELECT RAISE(ABORT, 'red-team cases are immutable'); END;
+        CREATE TRIGGER red_team_cases_no_delete BEFORE DELETE ON red_team_cases
+        BEGIN SELECT RAISE(ABORT, 'red-team cases are immutable'); END;
+
+        CREATE TABLE security_attempts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            actor TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            mission_id TEXT NOT NULL,
+            source TEXT NOT NULL,
+            categories_json TEXT NOT NULL,
+            content_digest TEXT NOT NULL CHECK(length(content_digest)=64),
+            affected_criterion TEXT,
+            criterion_evidence_id INTEGER REFERENCES criterion_evidence(id),
+            outcome TEXT NOT NULL CHECK(outcome IN ('allowed','denied','quarantined')),
+            detail_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER security_attempts_no_update BEFORE UPDATE ON security_attempts
+        BEGIN SELECT RAISE(ABORT, 'security attempts are immutable'); END;
+        CREATE TRIGGER security_attempts_no_delete BEFORE DELETE ON security_attempts
+        BEGIN SELECT RAISE(ABORT, 'security attempts are immutable'); END;
+
+        CREATE TABLE security_tripwires(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            attempt_id INTEGER NOT NULL REFERENCES security_attempts(id),
+            rule_id TEXT NOT NULL,
+            category TEXT NOT NULL,
+            severity TEXT NOT NULL CHECK(severity IN ('medium','high','critical')),
+            evidence_json TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL UNIQUE CHECK(length(evidence_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(attempt_id,rule_id)
+        );
+        CREATE TRIGGER security_tripwires_no_update BEFORE UPDATE ON security_tripwires
+        BEGIN SELECT RAISE(ABORT, 'security tripwires are immutable'); END;
+        CREATE TRIGGER security_tripwires_no_delete BEFORE DELETE ON security_tripwires
+        BEGIN SELECT RAISE(ABORT, 'security tripwires are immutable'); END;
+
+        CREATE TABLE quarantined_outputs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            attempt_id INTEGER NOT NULL UNIQUE REFERENCES security_attempts(id),
+            content TEXT NOT NULL,
+            content_digest TEXT NOT NULL CHECK(length(content_digest)=64),
+            risk_level TEXT NOT NULL CHECK(risk_level IN ('high','critical')),
+            status TEXT NOT NULL DEFAULT 'quarantined'
+                CHECK(status IN ('quarantined','released')),
+            released_by TEXT,
+            release_reason TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            released_at TEXT
+        );
+        CREATE TRIGGER quarantined_output_scope_immutable
+        BEFORE UPDATE OF identity,attempt_id,content,content_digest,risk_level
+        ON quarantined_outputs
+        BEGIN SELECT RAISE(ABORT, 'quarantined output scope is immutable'); END;
+        CREATE TRIGGER quarantined_output_valid_transition
+        BEFORE UPDATE OF status ON quarantined_outputs
+        WHEN NOT (OLD.status='quarantined' AND NEW.status='released')
+        BEGIN SELECT RAISE(ABORT, 'invalid quarantine transition'); END;
+        CREATE TRIGGER quarantined_outputs_no_delete BEFORE DELETE ON quarantined_outputs
+        BEGIN SELECT RAISE(ABORT, 'quarantine history is immutable'); END;
+
+        CREATE TABLE security_incidents(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            attempt_id INTEGER NOT NULL REFERENCES security_attempts(id),
+            incident_type TEXT NOT NULL CHECK(incident_type IN (
+                'prompt_injection','evidence_tampering'
+            )),
+            severity TEXT NOT NULL CHECK(severity IN ('high','critical')),
+            actor TEXT NOT NULL,
+            affected_criterion TEXT,
+            criterion_evidence_id INTEGER REFERENCES criterion_evidence(id),
+            detail_json TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','closed')),
+            closed_by TEXT,
+            closure_reason TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            closed_at TEXT
+        );
+        CREATE TRIGGER security_incident_scope_immutable
+        BEFORE UPDATE OF identity,attempt_id,incident_type,severity,actor,
+                         affected_criterion,criterion_evidence_id,detail_json
+        ON security_incidents
+        BEGIN SELECT RAISE(ABORT, 'security incident scope is immutable'); END;
+        CREATE TRIGGER security_incident_valid_transition
+        BEFORE UPDATE OF status ON security_incidents
+        WHEN NOT (OLD.status='open' AND NEW.status='closed')
+        BEGIN SELECT RAISE(ABORT, 'invalid security incident transition'); END;
+        CREATE TRIGGER security_incidents_no_delete BEFORE DELETE ON security_incidents
+        BEGIN SELECT RAISE(ABORT, 'security incident history is immutable'); END;
+
+        CREATE TABLE quarantined_output_admissions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            quarantine_id INTEGER NOT NULL REFERENCES quarantined_outputs(id),
+            sink TEXT NOT NULL CHECK(sink IN (
+                'accepted_context','memory','artifact','downstream_execution'
+            )),
+            admitted_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER quarantined_output_admissions_no_update
+        BEFORE UPDATE ON quarantined_output_admissions
+        BEGIN SELECT RAISE(ABORT, 'quarantine admissions are immutable'); END;
+        CREATE TRIGGER quarantined_output_admissions_no_delete
+        BEFORE DELETE ON quarantined_output_admissions
+        BEGIN SELECT RAISE(ABORT, 'quarantine admissions are immutable'); END;
+
+        CREATE TABLE red_team_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            corpus_digest TEXT NOT NULL CHECK(length(corpus_digest)=64),
+            executed_by TEXT NOT NULL,
+            total_cases INTEGER NOT NULL CHECK(total_cases>0),
+            contained_cases INTEGER NOT NULL CHECK(contained_cases>=0),
+            verdict TEXT NOT NULL CHECK(verdict IN ('passed','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER red_team_runs_no_update BEFORE UPDATE ON red_team_runs
+        BEGIN SELECT RAISE(ABORT, 'red-team runs are immutable'); END;
+        CREATE TRIGGER red_team_runs_no_delete BEFORE DELETE ON red_team_runs
+        BEGIN SELECT RAISE(ABORT, 'red-team runs are immutable'); END;
+
+        CREATE TABLE red_team_results(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES red_team_runs(id),
+            case_id INTEGER NOT NULL REFERENCES red_team_cases(id),
+            attempt_id INTEGER NOT NULL REFERENCES security_attempts(id),
+            tripwire_id INTEGER REFERENCES security_tripwires(id),
+            quarantine_id INTEGER REFERENCES quarantined_outputs(id),
+            incident_id INTEGER REFERENCES security_incidents(id),
+            contained INTEGER NOT NULL CHECK(contained IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(run_id,case_id)
+        );
+        CREATE TRIGGER red_team_results_no_update BEFORE UPDATE ON red_team_results
+        BEGIN SELECT RAISE(ABORT, 'red-team results are immutable'); END;
+        CREATE TRIGGER red_team_results_no_delete BEFORE DELETE ON red_team_results
+        BEGIN SELECT RAISE(ABORT, 'red-team results are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

@@ -28,6 +28,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Typed memory and governed skills.** Eight separately queryable stores enforce scoped write/retrieval policy; invalidation preserves provenance and consumers, while reusable skills require curated test, security, and evaluation evidence.
 - **Governed tool gateway.** Versioned tool schemas, side effects, risk, capabilities, limits, and evidence are enforced through mission/role/policy allowlist intersection; connector discovery never self-authorizes.
 - **Zero-exposure credential brokerage.** Short-lived values stay in process memory, are bound to an exact scope, injected only at execution, recursively redacted, and revoked without entering prompts, logs, evidence, or audit.
+- **Prompt-injection containment.** A maintained six-class hostile corpus drives deterministic tripwires, immutable incidents, quarantine, human-only release, and fail-closed admission to context, memory, artifacts, or execution.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
@@ -58,6 +59,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Typed memory | Ready | AF-016 provides eight bounded stores, historical invalidation, consumer traces, and evidence-gated skill approval/deprecation/revocation. |
 | Tool Gateway and MCP lifecycle | Ready | AF-018 normalizes tool descriptors and invocation evidence, constrains dynamic discovery, and audits connector health and lifecycle. |
 | Credential broker | Ready | AF-019 issues scoped expiring in-memory leases with human-gated expansion, injection firewall, zero-secret evidence, and audited revocation. |
+| Prompt-injection defense | Ready | AF-021 continuously exercises six attack classes and links every containment to immutable tripwire, quarantine, incident, and red-team evidence. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |
