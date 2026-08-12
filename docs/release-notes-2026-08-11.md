@@ -4,11 +4,11 @@ These notes describe the implemented, tested repository state through the AF-027
 
 ## Release summary
 
-- Completed **50 of 57** backlog tasks: AF-001–AF-025, AF-027, AF-029, AF-031, and AF-036–AF-057.
+- Completed **51 of 57** backlog tasks: AF-001–AF-025, AF-027, AF-029, AF-031, AF-032, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **258 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- AF-031 now provides topology manifests and continuity-gated deployment changes; AF-032 qualification is next.
+- Verified **260 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- AF-032 now provides the immutable NFR/capacity qualification gate; AF-028/AF-033 are next.
 
 ## Implemented backlog items and implementation commits
 

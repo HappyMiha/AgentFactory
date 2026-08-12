@@ -55,7 +55,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-029 | Implemented | Tenant-scoped object adapter, PostgreSQL migration contract, digest-preserving metadata, governance enforcement, verified export/deletion evidence, and `test_tenant_storage.py` | — |
 | AF-030 | Partial | Loopback dashboard, approvals, audit, routing controls | No authenticated multi-tenant Human Control Plane, incident/cost/lease controls, or production service boundary |
 | AF-031 | Implemented | Versioned profile manifests, smoke verification for four topologies, explicit hybrid/air-gapped paths, and continuity-checked upgrade/rollback evidence; `test_deployment.py` | — |
-| AF-032 | Partial | Cross-platform CI, accessibility tests and checklist | No complete NFR, performance, isolation and recovery qualification suite |
+| AF-032 | Implemented | Immutable NFR/capacity/accessibility/isolation/backup-restore gate with environment metadata and raw evidence; `test_qualification.py` | — |
 | AF-033 | Not started | — | 72-hour fault-injection soak absent |
 | AF-034 | Not started | — | Full heterogeneous-agent acceptance mission absent |
 | AF-035 | Not started | Baseline README/security/contribution docs | No GA runbooks, clean-install/restore exercise, evidence bundle or handover |

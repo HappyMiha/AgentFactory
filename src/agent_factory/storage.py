@@ -2926,6 +2926,23 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS deployment_operations_no_delete BEFORE DELETE ON deployment_operations
         BEGIN SELECT RAISE(ABORT, 'deployment evidence is immutable'); END;
     """),
+    (51, """
+        CREATE TABLE IF NOT EXISTS qualification_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            suite_version TEXT NOT NULL,
+            environment_json TEXT NOT NULL,
+            profile_json TEXT NOT NULL,
+            criteria_json TEXT NOT NULL,
+            raw_evidence_json TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK(verdict IN ('passed','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS qualification_runs_no_update BEFORE UPDATE ON qualification_runs
+        BEGIN SELECT RAISE(ABORT, 'qualification evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS qualification_runs_no_delete BEFORE DELETE ON qualification_runs
+        BEGIN SELECT RAISE(ABORT, 'qualification evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
