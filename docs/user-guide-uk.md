@@ -63,6 +63,8 @@ agent-factory --workspace . web --open
 
 ## 5. Проєкти, задачі та workflow
 
+У **Work item controls** можна завантажити технічне завдання у UTF‑8 Markdown/TXT або Agent Factory JSON. Натисніть **Upload technical specification**: локальний Backlog Steward проаналізує структуру заголовків, покаже попередню декомпозицію на epic/story/task (глибші рівні позначаються як subtasks), а окреме підтвердження імпорту створить work items. Файл не виконує команди й не запускає зовнішні провайдери.
+
 ```bash
 agent-factory project init --name "Example Product" --description "Перший проєкт"
 agent-factory work-item create --project-id 1 --title "First capability" --description "Deliver one capability" --acceptance "Criterion one"

@@ -63,6 +63,7 @@
           <div><p class="eyebrow">Backlog</p><h2 id="work-title">Work item controls</h2></div>
           <p class="panel-copy">Explicit confirmation is required for every local action.</p>
         </div>
+        <details class="backlog-import"><summary>Upload technical specification</summary><form id="spec-upload-form"><label>Project name<input name="project_name" required placeholder="Windows Mini Game"></label><label>Specification file<input name="specification" type="file" required accept=".txt,.md,.json,text/plain,text/markdown,application/json"></label><button type="submit">Analyze and decompose</button></form><div id="spec-analysis" class="preview-result"><div class="empty">Upload a specification to let the Backlog Steward propose epics, stories, tasks, and subtasks.</div></div></details>
         <details class="backlog-import"><summary>Import a workspace backlog</summary><form id="backlog-import-form"><label>Project name<input name="project_name" required placeholder="Local project"></label><label>Workspace-relative manifest<input name="backlog_path" required value="examples/development-backlog.json"></label><button type="submit">Import backlog</button></form></details>
         <form id="work-filters" class="filter-grid" aria-label="Filter work items">
           <label>Project<select id="filter-project" name="project_id"><option value="">All projects</option></select></label>

@@ -287,6 +287,16 @@ async function handleBacklogImport(event) {
   await refresh();
 }
 
+async function handleSpecificationUpload(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const response = await fetchJson("/api/backlog/analyze-upload", { method: "POST", body: form });
+  const counts = Object.entries(response.counts).map(([kind, count]) => `${kind}: ${count}`).join(" · ");
+  $("spec-analysis").innerHTML = `<div class="dry-run-banner"><strong>Analysis complete · ${escapeHtml(response.recommended_agent)}</strong><span>${escapeHtml(counts)}</span><span>Source: <code>${escapeHtml(response.source_path)}</code></span><button type="button" data-import-analyzed>Import analyzed backlog</button></div><div class="preview-counts">${response.items.map((item) => `<span>${escapeHtml(item.kind)}: ${escapeHtml(item.title)}</span>`).join("")}</div>`;
+  $("spec-analysis").dataset.projectName = String(form.get("project_name") || "").trim();
+  $("spec-analysis").dataset.backlogPath = response.source_path;
+}
+
 async function handleFounderDecision(decision) {
   if (!state.selectedGate) return;
   const packet = state.founderPackets.find((item) => item.approval.id === state.selectedGate);
@@ -329,6 +339,8 @@ async function refresh() {
 $("refresh").addEventListener("click", refresh);
 $("work-filters").addEventListener("submit", (event) => { event.preventDefault(); loadWork().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("backlog-import-form").addEventListener("submit", (event) => { handleBacklogImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("spec-upload-form").addEventListener("submit", (event) => { handleSpecificationUpload(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("spec-analysis").addEventListener("click", (event) => { if (!event.target.closest("[data-import-analyzed]")) return; const panel = $("spec-analysis"); const command = { project_name: panel.dataset.projectName, project_description: "Imported from analyzed technical specification", backlog_path: panel.dataset.backlogPath }; guardedCommand("/api/backlog/import", command, `Import analyzed specification as ${command.project_name}`).then((result) => { if (result) refresh(); }).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("clear-filters").addEventListener("click", () => { $("work-filters").reset(); loadWork(); });
 $("work-list").addEventListener("click", (event) => { const row = event.target.closest("[data-task-id]"); if (row) selectWorkItem(row.dataset.taskId).catch((error) => { $("work-detail").innerHTML = empty(error.message); }); });
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });

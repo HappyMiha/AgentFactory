@@ -2,13 +2,14 @@
 
 import sqlite3
 import os
+import json
 from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Any, Generic, Literal, TypeVar
 
-from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi import Depends, FastAPI, File, Header, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -35,6 +36,7 @@ from .application import (
 )
 from .storage import MIGRATIONS, SQLiteStorage
 from .control_plane import HumanControlPlaneService
+from .backlog_analyzer import analyze_specification
 
 T = TypeVar("T")
 
@@ -141,6 +143,14 @@ class BacklogImportCommand(ConfirmedCommand):
     project_name: str
     project_description: str = ""
     backlog_path: str
+
+
+class UploadedBacklogResponse(BaseModel):
+    source_path: str
+    source_name: str
+    recommended_agent: str
+    counts: dict[str, int]
+    items: list[dict[str, Any]]
 
 
 class RunDetail(BaseModel):
@@ -402,6 +412,29 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             command.project_name,
             command.backlog_path,
             command.project_description,
+        )
+
+    @app.post("/api/backlog/analyze-upload", response_model=UploadedBacklogResponse)
+    async def analyze_upload(
+        upload: UploadFile = File(...),
+    ) -> UploadedBacklogResponse:
+        raw = await upload.read()
+        if not raw or len(raw) > 10 * 1024 * 1024:
+            raise ValueError("Uploaded specification must be between 1 byte and 10 MB")
+        source_name = Path(upload.filename or "uploaded-specification.txt").name
+        proposal = analyze_specification(raw, source_name)
+        upload_dir = (workspace / ".agent-factory" / "uploads").resolve()
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        manifest_name = f"{proposal.source_sha256}.json"
+        manifest = upload_dir / manifest_name
+        manifest.write_text(json.dumps(proposal.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        counts = {kind: sum(item.kind == kind for item in proposal.items) for kind in ("epic", "story", "task")}
+        return UploadedBacklogResponse(
+            source_path=manifest.relative_to(workspace).as_posix(),
+            source_name=source_name,
+            recommended_agent="backlog-steward",
+            counts=counts,
+            items=[asdict(item) for item in proposal.items],
         )
 
     @app.get("/api/runs", response_model=Page[RunView])
