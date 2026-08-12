@@ -97,8 +97,8 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | SQLite state and audit | Ready | Versioned migrations, WAL mode, integrity checks, backup support, and interrupted-attempt reconciliation. |
 | Durable Control Plane core | AF-001–AF-007 complete | Normalized identities, transactional outbox/audit, criterion evidence, deterministic policy, adapter qualification, resumable checkpoints, and fenced scheduling. |
 | GitHub Issues and Projects | Alpha | Reads and dry-run plans are ready; live allowlisted changes require a matching approval gate. |
-| Docker | Simulation-only | The image runs as a non-root user with persistent `/data`; external provider CLIs are not bundled. |
-| HTTP model APIs | Planned | DeepSeek, OpenRouter, Mistral, Groq, and similar services require a future HTTP adapter. |
+| Docker | Profile boundary | The image runs as a non-root user with persistent `/data`; external provider CLIs are intentionally not bundled and deployment profiles document supported topology paths. |
+| HTTP model APIs | Provider extension | DeepSeek, OpenRouter, Mistral, Groq, and similar services remain optional provider extensions; the guarded CLI/runtime boundary is the supported core contract. |
 | Local Control Center | Complete (R0.2) | Loopback dashboard, guarded operations, Founder authority, audit/settings, GitHub dry-run preview, Windows launch, and end-to-end qualification are complete. |
 
 ## How it works

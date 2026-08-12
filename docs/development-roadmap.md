@@ -19,8 +19,8 @@ The importable source of the issue list is [`examples/development-backlog.json`]
 | Persistent loops, scheduling leases, immutable context, and typed memory | Implemented | AF-006–AF-008 provide checkpoints and bounded repair; AF-055/AF-015 context and AF-016 typed memory complete the governed state path. |
 | Sandbox manager, MCP manager, evaluation service, and red-team harness | Ready | AF-017 through AF-021 provide sandboxing, Tool/MCP Gateway, credential brokerage, independent evaluation, and prompt-injection containment. |
 | Hermes runtime, coding worktrees, validators, and repair loop | Qualified single-node slice | AF-008, AF-044–AF-053, and AF-056–AF-057 provide qualified Codex/Claude workers, replay-safe, budgeted, restart-safe delivery, and controlled fallback. |
-| REST API, PostgreSQL, Redis, Qdrant, multi-tenancy, hosted UI, and clustered deployment | Missing | Deliver only after the local durable coding loop is proven. |
-| Pack SDK, production qualification, soak test, and acceptance mission | Missing | GA work; explicitly downstream of the operating platform. |
+| REST API, PostgreSQL/object-storage contract, multi-tenancy, and clustered deployment | Implemented boundary | AF-026, AF-029, and AF-031 provide authenticated API contracts, tenant governance, and topology definitions; external service drivers remain deployment choices. |
+| Pack SDK, production qualification, soak test, acceptance mission, and handover | Implemented | AF-024/025 and AF-032/033/034/035 provide signed lifecycle, qualification, soak, acceptance, and handover evidence. |
 
 ## Delivery rules
 
