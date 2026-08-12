@@ -56,6 +56,17 @@ class BacklogUploadTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["source_type"], "txt")
 
+    def test_common_json_backlog_shape_is_expanded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            body = b'{"backlog": [{"type": "feature", "name": "Doom", "tasks": [{"id": "T-1", "title": "Movement"}, {"id": "T-2", "title": "Scoring"}]}]}'
+            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+                response = client.post("/api/backlog/analyze-upload", files={"specification": ("export.json", body)})
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["counts"]["epic"], 1)
+            self.assertEqual(payload["counts"]["task"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

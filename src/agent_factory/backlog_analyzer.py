@@ -38,6 +38,46 @@ def _slug(value: str, fallback: str) -> str:
     return value[:48] or fallback
 
 
+def _json_items(document: Any, source_name: str) -> list[dict[str, Any]]:
+    """Normalize common export shapes into the validated backlog schema."""
+    result: list[dict[str, Any]] = []
+    counters = {"epic": 0, "story": 0, "task": 0}
+
+    def visit(value: Any, parent: str | None = None, inherited_kind: str = "task") -> None:
+        if isinstance(value, list):
+            for child in value:
+                visit(child, parent, inherited_kind)
+            return
+        if not isinstance(value, dict):
+            return
+        raw_kind = str(value.get("kind") or value.get("type") or value.get("level") or inherited_kind).lower()
+        kind = "epic" if raw_kind in {"epic", "initiative", "feature", "project"} else ("story" if raw_kind in {"story", "user_story", "requirement"} else "task")
+        title = str(value.get("title") or value.get("name") or value.get("summary") or value.get("text") or "").strip()
+        children = value.get("children") or value.get("subtasks") or value.get("tasks") or value.get("stories")
+        if title:
+            counters[kind] += 1
+            stable_id = str(value.get("stable_id") or value.get("id") or f"{kind}-{counters[kind]}")
+            stable_id = f"uploaded:{_slug(source_name, 'spec')}:{_slug(stable_id, kind)}"
+            result.append({
+                "stable_id": stable_id,
+                "kind": kind,
+                "title": title,
+                "description": str(value.get("description") or value.get("details") or title),
+                "parent_id": parent,
+                "dependencies": [],
+                "acceptance_criteria": [str(item) for item in (value.get("acceptance_criteria") or value.get("criteria") or [f"Implement and validate '{title}'."])],
+                "source_references": [source_name],
+                "labels": ["uploaded", "needs-review"],
+            })
+            parent = stable_id
+        for key in ("epics", "features", "stories", "requirements", "tasks", "subtasks", "children", "items", "backlog"):
+            if key in value:
+                visit(value[key], parent, "task" if key in {"tasks", "subtasks"} else inherited_kind)
+
+    visit(document)
+    return result
+
+
 def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
     """Turn a UTF-8 Markdown/text brief into a validated backlog proposal.
 
@@ -65,6 +105,18 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
         finally:
             temporary.unlink(missing_ok=True)
         return BacklogProposal("uploaded://" + source_name, digest, source_name, proposal.items)
+    if isinstance(document, (dict, list)):
+        normalized_items = _json_items(document, source_name)
+        if normalized_items:
+            normalized = {"schema_version": 1, "source": {"name": source_name}, "items": normalized_items}
+            with tempfile.NamedTemporaryFile(suffix=".json", mode="w", encoding="utf-8", delete=False) as handle:
+                temporary = Path(handle.name)
+                json.dump(normalized, handle, ensure_ascii=False)
+            try:
+                proposal = load_backlog(temporary)
+            finally:
+                temporary.unlink(missing_ok=True)
+            return BacklogProposal("uploaded://" + source_name, digest, source_name, proposal.items)
     if isinstance(document, dict) and document.get("schema_version") == 1:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as handle:
             temporary = Path(handle.name)
