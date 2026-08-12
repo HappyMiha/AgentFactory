@@ -2,6 +2,8 @@
 
 This runbook covers health checks, state, backup, recovery, updates, and common failures.
 
+For GitHub Actions failures, use the [CI troubleshooting runbook](ci-troubleshooting.md) to distinguish a repository failure from a runner/account billing block.
+
 ## Environment and provider health
 
 ```bash
