@@ -234,6 +234,13 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             content={"error": {"code": "invalid_request", "message": str(exc)}},
         )
 
+    @app.exception_handler(RuntimeError)
+    async def operation_blocked(_request: Request, exc: RuntimeError) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"error": {"code": "operation_blocked", "message": str(exc)}},
+        )
+
     @app.exception_handler(sqlite3.Error)
     async def storage_unavailable(_request: Request, exc: sqlite3.Error) -> JSONResponse:
         return JSONResponse(

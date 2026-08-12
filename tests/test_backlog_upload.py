@@ -36,6 +36,15 @@ class BacklogUploadTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["counts"]["epic"], 1)
 
+    def test_manifest_without_schema_marker_is_still_decomposed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            body = b'{"items": [{"stable_id": "E1", "kind": "epic", "title": "Game", "description": "Game", "acceptance_criteria": ["Works"]}, {"stable_id": "T1", "kind": "task", "title": "Move", "description": "Move", "parent_id": "E1", "acceptance_criteria": ["Moves"]}]}'
+            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+                response = client.post("/api/backlog/analyze-upload", files={"specification": ("export.json", body)})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["counts"]["task"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

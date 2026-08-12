@@ -33,6 +33,20 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
         document = json.loads(text)
     except json.JSONDecodeError:
         document = None
+    if isinstance(document, dict) and isinstance(document.get("items"), list):
+        # Accept manifests exported without the schema marker; validation still
+        # applies before anything can be imported.
+        normalized = dict(document)
+        normalized["schema_version"] = 1
+        normalized.setdefault("source", {"name": source_name})
+        with tempfile.NamedTemporaryFile(suffix=".json", mode="w", encoding="utf-8", delete=False) as handle:
+            temporary = Path(handle.name)
+            json.dump(normalized, handle, ensure_ascii=False)
+        try:
+            proposal = load_backlog(temporary)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return BacklogProposal("uploaded://" + source_name, digest, source_name, proposal.items)
     if isinstance(document, dict) and document.get("schema_version") == 1:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as handle:
             temporary = Path(handle.name)

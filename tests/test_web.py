@@ -278,6 +278,21 @@ class WebHostTests(unittest.TestCase):
                     },
                 )
 
+    def test_running_epic_returns_conflict_instead_of_server_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            storage = SQLiteStorage(workspace / "state.db")
+            service = AgentFactoryService(storage, workspace=workspace)
+            project = service.create_project("Planning")
+            item = service.create_work_item(project_id=project.project_id, title="Epic", description="Planning", kind="epic", acceptance_criteria=["Ready"])
+            storage.db.execute("UPDATE work_items SET kind='epic' WHERE id=?", (item.id,))
+            storage.db.commit()
+            storage.close()
+            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+                response = client.post(f"/api/work-items/{item.id}/runs", json={"workflow_id": "delivery", "mode": "simulation", "confirmed": True}, headers={"X-Agent-Factory-Confirm": "true"})
+            self.assertEqual(response.status_code, 409)
+            self.assertIn("kind:epic", response.json()["error"]["message"])
+
     def test_founder_decision_packet_and_idempotent_authority(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
