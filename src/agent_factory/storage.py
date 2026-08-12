@@ -2976,6 +2976,22 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS soak_runs_no_delete BEFORE DELETE ON soak_runs
         BEGIN SELECT RAISE(ABORT, 'soak evidence is immutable'); END;
     """),
+    (54, """
+        CREATE TABLE IF NOT EXISTS acceptance_missions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_version TEXT NOT NULL,
+            providers_json TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            release_digest TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK(verdict IN ('accepted','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS acceptance_missions_no_update BEFORE UPDATE ON acceptance_missions
+        BEGIN SELECT RAISE(ABORT, 'acceptance mission evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS acceptance_missions_no_delete BEFORE DELETE ON acceptance_missions
+        BEGIN SELECT RAISE(ABORT, 'acceptance mission evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

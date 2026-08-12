@@ -6,6 +6,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-034 heterogeneous reference acceptance mission envelope requiring three providers, independent verification, replacement, recovery, approval, reproducible release digest, and signed or human-excepted evidence for all 45 criteria.
 - AF-033 versioned 72-hour mixed-mission soak evidence with seven fault classes, continuity/no-duplicate checks, and documented memory, storage, queue, orphan, and temporary-environment bounds.
 - AF-028 deterministic clustered chaos-recovery boundaries, identity-continuity checks, and an online-backup restore exercise verifying artifacts and audit continuity.
 - AF-032 repeatable NFR/capacity qualification gate with environment metadata, raw evidence, 10/25/100 capacity thresholds, and mandatory accessibility, tenant-isolation, and backup/restore checks.
