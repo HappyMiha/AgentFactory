@@ -56,7 +56,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-030 | Partial | Loopback dashboard, approvals, audit, routing controls | No authenticated multi-tenant Human Control Plane, incident/cost/lease controls, or production service boundary |
 | AF-031 | Implemented | Versioned profile manifests, smoke verification for four topologies, explicit hybrid/air-gapped paths, and continuity-checked upgrade/rollback evidence; `test_deployment.py` | — |
 | AF-032 | Implemented | Immutable NFR/capacity/accessibility/isolation/backup-restore gate with environment metadata and raw evidence; `test_qualification.py` | — |
-| AF-033 | Not started | — | 72-hour fault-injection soak absent |
+| AF-033 | Implemented | Versioned 72-hour workload/fault schedule, continuity/no-duplicate evidence, bounded resource gate; `test_soak.py` | — |
 | AF-034 | Not started | — | Full heterogeneous-agent acceptance mission absent |
 | AF-035 | Not started | Baseline README/security/contribution docs | No GA runbooks, clean-install/restore exercise, evidence bundle or handover |
 | AF-036 | Implemented | Shared typed application services and CLI/service parity tests | — |

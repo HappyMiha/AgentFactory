@@ -2959,6 +2959,23 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS chaos_recovery_runs_no_delete BEFORE DELETE ON chaos_recovery_runs
         BEGIN SELECT RAISE(ABORT, 'chaos recovery evidence is immutable'); END;
     """),
+    (53, """
+        CREATE TABLE IF NOT EXISTS soak_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            workload_version TEXT NOT NULL,
+            fault_schedule_json TEXT NOT NULL,
+            duration_hours REAL NOT NULL,
+            resource_evidence_json TEXT NOT NULL,
+            continuity_json TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK(verdict IN ('passed','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS soak_runs_no_update BEFORE UPDATE ON soak_runs
+        BEGIN SELECT RAISE(ABORT, 'soak evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS soak_runs_no_delete BEFORE DELETE ON soak_runs
+        BEGIN SELECT RAISE(ABORT, 'soak evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

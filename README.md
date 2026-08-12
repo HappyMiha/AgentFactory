@@ -38,6 +38,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Versioned deployment profiles.** Single-node, clustered, hybrid, and air-gapped manifests declare security/egress defaults and require continuity evidence for upgrade and rollback.
 - **Production qualification gate.** NFR thresholds, 10/25/100 capacity, accessibility, tenant isolation, and backup/restore evidence are retained immutably and fail closed when incomplete.
 - **Chaos recovery evidence.** Clustered mutation-boundary faults and fresh-database restore exercises preserve identity continuity, accepted artifacts, and audit integrity.
+- **Long-run soak gate.** A versioned 72-hour workload/fault schedule records bounded resource growth and rejects lost or duplicated authority, evidence, audit, or external-operation identities.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
