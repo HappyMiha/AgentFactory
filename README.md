@@ -31,6 +31,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Prompt-injection containment.** A maintained six-class hostile corpus drives deterministic tripwires, immutable incidents, quarantine, human-only release, and fail-closed admission to context, memory, artifacts, or execution.
 - **Audited coordination patterns.** Parallel, generator-critic, quorum, debate, tournament, and red/blue work runs through bounded immutable contributions, model-independent reviewer rotation, deterministic arbitration, and dissent retention.
 - **Transactional ADR governance.** Complete architecture decisions require an exact impact snapshot and human architecture-owner approval before one transaction versions the Blueprint, workflow contracts, and propagation evidence.
+- **Signed extension packs.** Domain, capability, connector, policy, evaluation, and UI packs use canonical signed manifests, compatibility and qualification gates, approved trust roots, and reversible lifecycle state.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
@@ -64,6 +65,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Prompt-injection defense | Ready | AF-021 continuously exercises six attack classes and links every containment to immutable tripwire, quarantine, incident, and red-team evidence. |
 | Coordination patterns | Ready | AF-023 provides six bounded patterns with typed stored contributions, least-used independent reviewer rotation, deterministic outcomes, and replay-safe dissent evidence. |
 | ADR governance | Ready | AF-022 records complete decisions and exact impact analysis, then atomically versions the Blueprint and affected workflow contracts or preserves prior authority. |
+| Pack SDK and lifecycle | Ready | AF-024 verifies signed complete manifests, compatibility, permissions, dependencies, evaluations, and human-gated privilege before reversible install/upgrade/disable/rollback. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |

@@ -58,6 +58,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-021 maintained six-class prompt-injection corpus, deterministic tripwires, immutable red-team evidence, fail-closed quarantine admission, human-only release/incident closure, and evidence-tampering containment.
 - AF-023 immutable bounded parallel, generator-critic, quorum, debate, tournament, and red/blue patterns with model-aware reviewer rotation, typed contributions, deterministic arbitration, and preserved dissent.
 - AF-022 complete ADR records, pre-approval six-surface impact analysis, human architecture-owner decisions, and atomic Blueprint/workflow-contract propagation with rollback preservation.
+- AF-024 signed six-type extension-pack manifests, approved trust roots, compatibility/permission/dependency/qualification gates, privileged human approval, and history-preserving disable/rollback.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

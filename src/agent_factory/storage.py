@@ -2605,6 +2605,85 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON adr_workflow_contract_versions
         BEGIN SELECT RAISE(ABORT, 'ADR workflow contract versions are immutable'); END;
     """),
+    (45, """
+        CREATE TABLE pack_trust_roots(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            key_id TEXT NOT NULL UNIQUE,
+            algorithm TEXT NOT NULL CHECK(algorithm='hmac-sha256'),
+            key_fingerprint TEXT NOT NULL UNIQUE CHECK(length(key_fingerprint)=64),
+            approved_by TEXT NOT NULL,
+            approved_role TEXT NOT NULL CHECK(approved_role='human_administrator'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER pack_trust_roots_no_update BEFORE UPDATE ON pack_trust_roots
+        BEGIN SELECT RAISE(ABORT, 'pack trust roots are immutable'); END;
+        CREATE TRIGGER pack_trust_roots_no_delete BEFORE DELETE ON pack_trust_roots
+        BEGIN SELECT RAISE(ABORT, 'pack trust roots are immutable'); END;
+
+        CREATE TABLE pack_versions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pack_key TEXT NOT NULL,
+            version TEXT NOT NULL,
+            pack_type TEXT NOT NULL CHECK(pack_type IN (
+                'domain','capability','connector','policy','evaluation','ui'
+            )),
+            manifest_json TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            content_digest TEXT NOT NULL UNIQUE CHECK(length(content_digest)=64),
+            signature TEXT NOT NULL CHECK(length(signature)=64),
+            trust_root_id INTEGER NOT NULL REFERENCES pack_trust_roots(id),
+            previous_version_id INTEGER REFERENCES pack_versions(id),
+            installed_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(pack_key,version)
+        );
+        CREATE TRIGGER pack_versions_no_update BEFORE UPDATE ON pack_versions
+        BEGIN SELECT RAISE(ABORT, 'pack versions are immutable'); END;
+        CREATE TRIGGER pack_versions_no_delete BEFORE DELETE ON pack_versions
+        BEGIN SELECT RAISE(ABORT, 'pack versions are immutable'); END;
+
+        CREATE TABLE pack_qualifications(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pack_version_id INTEGER NOT NULL UNIQUE REFERENCES pack_versions(id),
+            results_json TEXT NOT NULL,
+            qualification_digest TEXT NOT NULL UNIQUE CHECK(length(qualification_digest)=64),
+            verdict TEXT NOT NULL CHECK(verdict='passed'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER pack_qualifications_no_update BEFORE UPDATE ON pack_qualifications
+        BEGIN SELECT RAISE(ABORT, 'pack qualifications are immutable'); END;
+        CREATE TRIGGER pack_qualifications_no_delete BEFORE DELETE ON pack_qualifications
+        BEGIN SELECT RAISE(ABORT, 'pack qualifications are immutable'); END;
+
+        CREATE TABLE pack_installations(
+            pack_key TEXT PRIMARY KEY,
+            active_version_id INTEGER REFERENCES pack_versions(id),
+            state TEXT NOT NULL CHECK(state IN ('active','disabled')),
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version>0),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE pack_lifecycle_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pack_key TEXT NOT NULL,
+            event_type TEXT NOT NULL CHECK(event_type IN (
+                'installed','upgraded','disabled','enabled','rolled_back'
+            )),
+            from_version_id INTEGER REFERENCES pack_versions(id),
+            to_version_id INTEGER REFERENCES pack_versions(id),
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER pack_lifecycle_events_no_update BEFORE UPDATE ON pack_lifecycle_events
+        BEGIN SELECT RAISE(ABORT, 'pack lifecycle events are immutable'); END;
+        CREATE TRIGGER pack_lifecycle_events_no_delete BEFORE DELETE ON pack_lifecycle_events
+        BEGIN SELECT RAISE(ABORT, 'pack lifecycle events are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
