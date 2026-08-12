@@ -53,6 +53,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-014 idempotent authorized-Blueprint mission bootstrap with one durable workflow graph, seven exact manifests, an initial recovery checkpoint, and verified per-attempt transactional compensation.
 - AF-015 role/purpose Context Broker with source provenance and freshness, mandatory authoritative/safety preservation, bounded immutable dispatch packages, and governed transcript compaction that retains operating state.
 - AF-016 typed governed memory with eight separately policy-enforced stores, scoped bounded retrieval, provenance-preserving invalidation, consumer history, and evidence-gated reusable skill lifecycle.
+- AF-018 immutable Tool Registry, intersected-authority Tool Gateway, evidence-only MCP discovery, schema/capability/timeout/evidence enforcement, and audited connector install/health/disable/upgrade/removal lifecycle.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

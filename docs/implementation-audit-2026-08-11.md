@@ -1,6 +1,6 @@
 # Implementation audit — 2026-08-11
 
-This audit compares the repository through the AF-016 typed-memory, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
+This audit compares the repository through the AF-018 Tool-Gateway, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
 
 ## Audit method
 
@@ -8,14 +8,14 @@ This audit compares the repository through the AF-016 typed-memory, AF-050 Claud
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **223 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **227 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-017, AF-020, AF-036–AF-057 | 40 |
-| Partial precursors | AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032 | 7 |
+| Implemented | AF-001–AF-018, AF-020, AF-036–AF-057 | 41 |
+| Partial precursors | AF-019, AF-023, AF-026, AF-028, AF-030, AF-032 | 6 |
 | Not started | AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035 | 10 |
 
 The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice plus fail-closed mission intake, justified workforce composition, exact owner-signed Factory Blueprints, and recoverable idempotent mission bootstrap across durable data, source authority, role contracts, qualification-aware routing, bounded role pools, immutable operating-design versions, exact manifests, managed worktrees, controlled fallback, deterministic validation, independent evaluation, and gated PR planning. Full context brokerage and platform expansion remain downstream work.
@@ -41,7 +41,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-015 | Implemented | Immutable role/purpose broker dispatches, provenance/freshness enforcement, mandatory authoritative/safety retention, explicit source outcomes, and governed transcript compaction retaining decisions, risks, evidence, and next steps; `test_context_packages.py` | — |
 | AF-016 | Implemented | Eight separately policy-enforced stores, complete typed write contracts, tenant/mission/purpose/authority/freshness/count-bounded retrieval, immutable consumers and provenance-preserving invalidation, plus curator/human evidence-gated skill lifecycle; `test_memory.py` | — |
 | AF-017 | Implemented | Fail-closed path policy, fenced launches, Bubblewrap/macOS backends, unsupported-host denial, audited out-of-scope writes, bounded process/time/output/network execution and preserved candidate evidence; `test_sandbox.py` | — |
-| AF-018 | Partial | Guarded GitHub and Firecrawl integrations | No Tool Registry/Gateway, MCP lifecycle, normalized tool contracts, or centralized authorization boundary |
+| AF-018 | Implemented | Immutable complete tool descriptors, mission/role/policy allowlist intersection, evidence-only MCP discovery, schema/capability/timeout/evidence enforcement, and audited production-gated connector lifecycle; `test_tools.py`, `test_github.py`, `test_provider_execution.py` | — |
 | AF-019 | Partial | Sensitive environment removal from provider subprocesses | No short-lived credential broker, scope issuance, revocation, injection firewall, or zero-exposure proof |
 | AF-020 | Implemented | Deterministic-first independent model review, exact primary evidence closure, versioned rubric, immutable criterion verdicts, confidence, concerns, dissent, and replay safety; `test_codex_worker.py` | — |
 | AF-021 | Not started | — | Red-team corpus, tripwires, quarantine and incidents absent |
@@ -100,9 +100,10 @@ Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-01
 
 Done: AF-009, AF-010, AF-011, AF-012, AF-013, AF-014, AF-015, AF-016
 
-Now:  AF-018
-Then: AF-019
-Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031
+Done: AF-018
+Now:  AF-019
+Then: AF-021
+Later: AF-027/AF-028, then AF-026/AF-029–AF-031
 ```
 
 The M1 release gate is complete at **AF-007**. The next gate is the M2 first coding worker slice; a chat response from Hermes remains environment evidence only and does not prove scoped mutation, acceptance evidence, or recovery.

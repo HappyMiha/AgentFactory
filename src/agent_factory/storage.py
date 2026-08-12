@@ -2040,6 +2040,111 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER governed_skill_transitions_no_delete BEFORE DELETE ON governed_skill_transitions
         BEGIN SELECT RAISE(ABORT, 'governed skill transition is immutable'); END;
     """),
+    (40, """
+        CREATE TABLE tool_descriptors(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tool_key TEXT NOT NULL,
+            version TEXT NOT NULL,
+            connector_key TEXT NOT NULL,
+            descriptor_json TEXT NOT NULL,
+            descriptor_digest TEXT NOT NULL UNIQUE CHECK(length(descriptor_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(tool_key,version)
+        );
+        CREATE TRIGGER tool_descriptors_no_update BEFORE UPDATE ON tool_descriptors
+        BEGIN SELECT RAISE(ABORT, 'tool descriptor is immutable'); END;
+        CREATE TRIGGER tool_descriptors_no_delete BEFORE DELETE ON tool_descriptors
+        BEGIN SELECT RAISE(ABORT, 'tool descriptor is immutable'); END;
+
+        CREATE TABLE connector_versions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            connector_key TEXT NOT NULL,
+            version TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN ('native','mcp','cli','http')),
+            environment TEXT NOT NULL CHECK(environment IN ('development','production')),
+            mutation_capable INTEGER NOT NULL CHECK(mutation_capable IN (0,1)),
+            manifest_json TEXT NOT NULL,
+            manifest_digest TEXT NOT NULL UNIQUE CHECK(length(manifest_digest)=64),
+            approved_by TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(connector_key,version)
+        );
+        CREATE TRIGGER connector_versions_no_update BEFORE UPDATE ON connector_versions
+        BEGIN SELECT RAISE(ABORT, 'connector version is immutable'); END;
+        CREATE TRIGGER connector_versions_no_delete BEFORE DELETE ON connector_versions
+        BEGIN SELECT RAISE(ABORT, 'connector version is immutable'); END;
+
+        CREATE TABLE connector_instances(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            connector_key TEXT NOT NULL UNIQUE,
+            connector_version_id INTEGER NOT NULL REFERENCES connector_versions(id),
+            status TEXT NOT NULL CHECK(status IN ('installed','healthy','unhealthy','disabled','removed')),
+            health_reason TEXT NOT NULL,
+            version_counter INTEGER NOT NULL DEFAULT 1 CHECK(version_counter>0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER connector_instance_scope_immutable
+        BEFORE UPDATE OF identity,connector_key ON connector_instances
+        BEGIN SELECT RAISE(ABORT, 'connector identity is immutable'); END;
+        CREATE TRIGGER connector_instances_no_delete BEFORE DELETE ON connector_instances
+        BEGIN SELECT RAISE(ABORT, 'connector lifecycle is immutable'); END;
+
+        CREATE TABLE connector_lifecycle_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            connector_id INTEGER NOT NULL REFERENCES connector_instances(id),
+            connector_version_id INTEGER NOT NULL REFERENCES connector_versions(id),
+            event_type TEXT NOT NULL CHECK(event_type IN (
+                'installed','healthy','health_failed','disabled','upgraded','removed'
+            )),
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER connector_lifecycle_events_no_update BEFORE UPDATE ON connector_lifecycle_events
+        BEGIN SELECT RAISE(ABORT, 'connector lifecycle event is immutable'); END;
+        CREATE TRIGGER connector_lifecycle_events_no_delete BEFORE DELETE ON connector_lifecycle_events
+        BEGIN SELECT RAISE(ABORT, 'connector lifecycle event is immutable'); END;
+
+        CREATE TABLE tool_discoveries(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            connector_id INTEGER NOT NULL REFERENCES connector_instances(id),
+            mission_id TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            discovered_json TEXT NOT NULL,
+            authorized_json TEXT NOT NULL,
+            discovery_digest TEXT NOT NULL UNIQUE CHECK(length(discovery_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER tool_discoveries_no_update BEFORE UPDATE ON tool_discoveries
+        BEGIN SELECT RAISE(ABORT, 'tool discovery is immutable'); END;
+        CREATE TRIGGER tool_discoveries_no_delete BEFORE DELETE ON tool_discoveries
+        BEGIN SELECT RAISE(ABORT, 'tool discovery is immutable'); END;
+
+        CREATE TABLE tool_invocations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tool_descriptor_id INTEGER NOT NULL REFERENCES tool_descriptors(id),
+            connector_id INTEGER NOT NULL REFERENCES connector_instances(id),
+            mission_id TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            request_json TEXT NOT NULL,
+            request_digest TEXT NOT NULL CHECK(length(request_digest)=64),
+            outcome TEXT NOT NULL CHECK(outcome IN ('succeeded','failed','denied')),
+            evidence_json TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL UNIQUE CHECK(length(evidence_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER tool_invocations_no_update BEFORE UPDATE ON tool_invocations
+        BEGIN SELECT RAISE(ABORT, 'tool invocation is immutable'); END;
+        CREATE TRIGGER tool_invocations_no_delete BEFORE DELETE ON tool_invocations
+        BEGIN SELECT RAISE(ABORT, 'tool invocation is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

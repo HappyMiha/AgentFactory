@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-016 typed-memory, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-018 Tool-Gateway, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **40 of 57** backlog tasks: AF-001–AF-017, AF-020, and AF-036–AF-057.
+- Completed **41 of 57** backlog tasks: AF-001–AF-018, AF-020, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **223 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified coding slice and R2 mission path through typed governed memory are implemented but not released; AF-018 Tool Gateway is next.
+- Verified **227 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified coding/mission slices and centralized Tool/MCP Gateway are implemented but not released; AF-019 credential broker is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -38,6 +38,7 @@ These notes describe the implemented, tested repository state through the AF-016
 | Backlog item | Implemented outcome | Committed | Implementation commit |
 |---|---|---|---|
 | AF-017 | Fail-closed writable-worker sandbox and preserved teardown evidence | 2026-08-11 22:17 CEST | This AF-017 task commit |
+| AF-018 | Complete tool contracts, intersected authority, and audited connector lifecycle | 2026-08-12 04:24 CEST | This AF-018 task commit |
 | AF-020 | Deterministic-first independent criterion verdicts with primary-evidence closure | 2026-08-11 23:46 CEST | This AF-020 task commit |
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
 | AF-050 | Separately qualified file-only Claude Code worker and compatible routing | 2026-08-12 00:52 CEST | This AF-050 task commit |
@@ -97,6 +98,10 @@ The AF-055 package builder now supports an immutable role/purpose Context Broker
 ## AF-016 implementation detail
 
 Memory writes now declare store/type, tenant/mission/task scope, purpose, authority, source digest, confidence, validity interval, invalidation conditions, and immutable content digest. Eight stores enforce their own accepted record types and remain separately queryable. Retrieval requires exact scope, purpose, store set, minimum authority, current validity, and a hard 1–50 result ceiling, optionally recording historical consumers. Staleness or contradiction appends an invalidation with optional replacement while preserving the original provenance and consumers. Generated skills remain draft until curator/human evidence proves versioned tests, security review, representative cases, and evaluation threshold; approved versions can be deprecated or revoked without deleting history.
+
+## AF-018 implementation detail
+
+Tools now use immutable semantic-version descriptors that require object input/output schemas, explicit side effects, risk tier, capabilities, timeout, and evidence fields. Dynamic MCP discovery records every announced name but grants only the intersection of mission, role, and policy allowlists. Invocation additionally verifies a healthy matching connector, capabilities, schemas, bounded timeout, and complete evidence before persisting request/evidence digests. Native, MCP, CLI, and HTTP connector versions retain manifests and human approval when production mutation is possible; instance install, health success/failure, disable, upgrade, and removal each create attributed immutable lifecycle and audit evidence.
 
 ## AF-046 implementation detail
 
@@ -169,4 +174,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-017, AF-020, and AF-044 through AF-057 are complete. AF-018 Tool Gateway is next.
+M1, AF-008 through AF-018, AF-020, and AF-044 through AF-057 are complete. AF-019 credential broker is next.
