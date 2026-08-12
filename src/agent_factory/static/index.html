@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="dark">
   <title>Agent Factory · Local Control Center</title>
   <link rel="stylesheet" href="/assets/styles.css">
-  <script src="/assets/app.js?v=archive-all-1" defer></script>
+  <script src="/assets/app.js?v=execution-control-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to dashboard</a>
@@ -21,6 +21,7 @@
         <a href="#monitor">System monitor</a>
         <a href="#work">Work items</a>
         <a href="#runs">Workflow runs</a>
+        <a href="#executions">Execution control</a>
         <a href="#agents">Agents &amp; providers</a>
         <a href="#reviews">Reviews &amp; approvals</a>
         <a href="#audit">Audit &amp; settings</a>
@@ -39,6 +40,7 @@
           <div class="metric loading"></div><div class="metric loading"></div><div class="metric loading"></div>
         </div>
       </section>
+      <section id="executions" class="panel execution-panel" aria-labelledby="executions-title"><div class="panel-head"><div><p class="eyebrow">Control plane</p><h2 id="executions-title">Execution control</h2></div><span id="execution-summary">Loading active executions…</span></div><div id="execution-list" class="execution-list loading-block">Loading sessions, runs, and leases…</div></section>
       <section id="monitor" class="panel monitor-panel" aria-labelledby="monitor-title">
         <div class="panel-head"><div><p class="eyebrow">Readiness</p><h2 id="monitor-title">System monitor</h2></div><span id="monitor-checked">Not checked</span></div>
         <div id="monitor-summary" class="monitor-summary loading-block">Checking system readiness…</div>

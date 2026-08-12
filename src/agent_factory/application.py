@@ -1060,6 +1060,25 @@ class AgentFactoryService:
             ) for row in traces),
         )
 
+    def active_executions(self) -> dict[str, list[dict[str, Any]]]:
+        return {
+            "runs": [dict(row) for row in self.storage.db.execute("SELECT id,task_id,workflow_id,status,created_at FROM workflow_runs WHERE status IN ('running','awaiting_approval') ORDER BY id")],
+            "sessions": [dict(row) for row in self.storage.db.execute("SELECT id,assignment_id,runtime,status,created_at,updated_at,heartbeat_at FROM worker_sessions WHERE status IN ('starting','running','suspended') ORDER BY id")],
+            "leases": [dict(row) for row in self.storage.db.execute("SELECT l.id AS lease_id,l.assignment_id,l.fencing_token,l.expires_at,a.task_id,a.agent_id,a.status AS assignment_status FROM leases l JOIN assignments a ON a.id=l.assignment_id WHERE l.status='active' ORDER BY l.id")],
+        }
+
+    def cancel_execution_run(self, run_id: int, reason: str = "") -> dict[str, Any]:
+        self.storage.finish_run(run_id, "failed", event_payload={"cancelled": True, "reason": reason})
+        return {"run_id": run_id, "status": "failed", "cancelled": True}
+
+    def stop_execution_session(self, session_id: int, reason: str = "") -> dict[str, Any]:
+        changed = self.storage.cancel_runtime_session(session_id, reason=reason or "Stopped from Local Control Center")
+        return {"session_id": session_id, "cancelled": changed}
+
+    def release_execution_lease(self, assignment_id: int, fencing_token: int) -> dict[str, Any]:
+        self.storage.release_task_lease(assignment_id, fencing_token, outcome="cancelled")
+        return {"assignment_id": assignment_id, "released": True}
+
     # Commands reuse storage, workflow, policy, approval, and audit paths.
     def create_project(self, name: str, description: str = "") -> ProjectChange:
         existing = self.storage.find_project(name)

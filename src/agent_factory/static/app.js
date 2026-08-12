@@ -25,6 +25,17 @@ function renderDashboard(data) {
   $("failure-list").innerHTML = data.recent_failures.length ? data.recent_failures.map((item) => `<div class="list-row"><span><strong>${escapeHtml(item.event_type)}</strong><small>${escapeHtml(item.entity_type)} #${escapeHtml(item.entity_id)}</small></span><time>${escapeHtml(item.created_at)}</time></div>`).join("") : empty("No recent failures");
 }
 
+function renderExecutions(data) {
+  const rows = [
+    ...data.runs.map((item) => `<article class="execution-row"><span><strong>Run #${item.id}</strong><small>Task #${item.task_id} · ${escapeHtml(item.workflow_id)} · ${escapeHtml(item.status)}</small></span><button class="danger" data-execution-action="cancel-run" data-id="${item.id}">Cancel run</button></article>`),
+    ...data.sessions.map((item) => `<article class="execution-row"><span><strong>Session #${item.id}</strong><small>Assignment #${item.assignment_id} · ${escapeHtml(item.runtime)} · ${escapeHtml(item.status)}</small></span><button class="danger" data-execution-action="stop-session" data-id="${item.id}">Stop session</button></article>`),
+    ...data.leases.map((item) => `<article class="execution-row"><span><strong>Lease #${item.lease_id}</strong><small>Task #${item.task_id} · ${escapeHtml(item.agent_id)} · expires ${escapeHtml(item.expires_at)}</small></span><button class="danger" data-execution-action="release-lease" data-assignment="${item.assignment_id}" data-fence="${item.fencing_token}">Release lease</button>`),
+  ];
+  $("execution-summary").textContent = `${rows.length} active control-plane item(s)`;
+  $("execution-list").classList.remove("loading-block");
+  $("execution-list").innerHTML = rows.length ? rows.join("") : empty("No active executions, sessions, or leases");
+}
+
 function renderMonitor(data) {
   const ready = data.status === "ready";
   const summary = $("monitor-summary");
@@ -320,9 +331,10 @@ async function handleFounderDecision(decision) {
 async function refresh() {
   $("refresh").disabled = true;
   try {
-    const [dashboard, monitor, agents, providers, reviews, founderPackets] = await Promise.all([
+    const [dashboard, monitor, executions, agents, providers, reviews, founderPackets] = await Promise.all([
       fetchJson("/api/dashboard"),
       fetchJson("/api/monitor"),
+      fetchJson("/api/executions"),
       fetchJson("/api/agents?limit=200"),
       fetchJson("/api/providers?limit=200"),
       fetchJson("/api/reviews?limit=200"),
@@ -332,7 +344,7 @@ async function refresh() {
       loadAudit(),
       loadSettings()
     ]);
-    renderDashboard(dashboard); renderMonitor(monitor); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
+    renderDashboard(dashboard); renderMonitor(monitor); renderExecutions(executions); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
     $("updated").textContent = `Updated ${state.lastSuccess.toLocaleTimeString()}`; if (!$("notice").textContent.startsWith("Completed:")) $("notice").hidden = true;
   } catch (error) {
@@ -341,6 +353,8 @@ async function refresh() {
     if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list","audit-list","settings-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
   } finally { $("refresh").disabled = false; }
 }
+
+$("execution-list").addEventListener("click", (event) => { const action = event.target.closest("[data-execution-action]"); if (!action) return; const type = action.dataset.executionAction; const request = type === "release-lease" ? ["/api/executions/leases/release", { assignment_id: Number(action.dataset.assignment), fencing_token: Number(action.dataset.fence) }, "Release execution lease"] : type === "stop-session" ? [`/api/executions/sessions/${action.dataset.id}/stop`, {}, `Stop runtime session #${action.dataset.id}`] : [`/api/executions/runs/${action.dataset.id}/cancel`, {}, `Cancel workflow run #${action.dataset.id}`]; guardedCommand(request[0], request[1], request[2]).then(() => refresh()).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 
 $("refresh").addEventListener("click", refresh);
 $("work-filters").addEventListener("submit", (event) => { event.preventDefault(); loadWork().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });

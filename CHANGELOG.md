@@ -9,6 +9,7 @@
 - Expanded specification intake to generic text/JSON/Markdown/PDF uploads with explicit suitable-agent role and reviewable analysis status.
 - Added normalization for common nested JSON backlog exports so epics and child tasks retain hierarchy.
 - Added guarded bulk archiving for all active work items with all-or-nothing run/lease safety checks.
+- Added Execution control panel with active run/session/lease visibility and guarded cancel, stop-session, and release-lease actions.
 
 All notable changes to Agent Factory are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/).
 

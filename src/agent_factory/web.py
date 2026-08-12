@@ -149,6 +149,15 @@ class ArchiveWorkItemCommand(ConfirmedCommand):
     reason: str = ""
 
 
+class ExecutionLeaseCommand(ConfirmedCommand):
+    assignment_id: int
+    fencing_token: int
+
+
+class ExecutionTargetCommand(ConfirmedCommand):
+    reason: str = "Stopped from Local Control Center"
+
+
 class UploadedBacklogResponse(BaseModel):
     source_path: str
     source_name: str
@@ -300,6 +309,7 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             )
             for item in items
         )
+
         ready = sum(
             item.status == "pending"
             and all(
@@ -331,6 +341,10 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             recent_failures=failures,
             operations=service.operational_state(),
         )
+
+    @app.get("/api/executions", response_model=dict[str, list[dict[str, Any]]])
+    async def executions(service: Service) -> dict[str, list[dict[str, Any]]]:
+        return service.active_executions()
 
     @app.get("/api/monitor", response_model=MonitorResponse)
     async def monitor(service: Service) -> MonitorResponse:
@@ -506,6 +520,21 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         _require_confirmation(command, confirmation)
         result = service.claim_work_item(task_id, command.agent_id)
         return asdict(result)
+
+    @app.post("/api/executions/runs/{run_id}/cancel", response_model=dict[str, Any])
+    async def cancel_execution_run(run_id: int, command: ExecutionTargetCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        return service.cancel_execution_run(run_id, command.reason)
+
+    @app.post("/api/executions/sessions/{session_id}/stop", response_model=dict[str, Any])
+    async def stop_execution_session(session_id: int, command: ExecutionTargetCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        return service.stop_execution_session(session_id, command.reason)
+
+    @app.post("/api/executions/leases/release", response_model=dict[str, Any])
+    async def release_execution_lease(command: ExecutionLeaseCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        return service.release_execution_lease(command.assignment_id, command.fencing_token)
 
     @app.post("/api/work-items/{task_id}/archive", response_model=WorkItemView)
     async def archive_work_item(
