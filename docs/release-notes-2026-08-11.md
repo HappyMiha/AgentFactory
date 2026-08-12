@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-015 Context-Broker, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-016 typed-memory, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **39 of 57** backlog tasks: AF-001–AF-015, AF-017, AF-020, and AF-036–AF-057.
+- Completed **40 of 57** backlog tasks: AF-001–AF-017, AF-020, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **219 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified coding slice and mission path through governed Context Brokerage are implemented but not released; AF-016 typed memory is next.
+- Verified **223 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified coding slice and R2 mission path through typed governed memory are implemented but not released; AF-018 Tool Gateway is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -56,6 +56,7 @@ These notes describe the implemented, tested repository state through the AF-015
 | AF-013 | Eight-section traced Blueprint, exact owner signature, and immutable amendments | 2026-08-12 03:55 CEST | This AF-013 task commit |
 | AF-014 | Idempotent mission graph, exact manifests, checkpoint, and verified rollback | 2026-08-12 04:03 CEST | This AF-014 task commit |
 | AF-015 | Provenance/freshness-aware Context Broker and governed compaction | 2026-08-12 04:10 CEST | This AF-015 task commit |
+| AF-016 | Eight typed memory stores, bounded retrieval, invalidation, and governed skills | 2026-08-12 04:17 CEST | This AF-016 task commit |
 | AF-054 | Eight-role software-engineering pack and approved-candidate release authority | 2026-08-12 01:09 CEST | This AF-054 task commit |
 
 ### Local Control Center MVP
@@ -92,6 +93,10 @@ Mission bootstrap now independently reconstructs the latest exact AF-013 executi
 ## AF-015 implementation detail
 
 The AF-055 package builder now supports an immutable role/purpose Context Broker. Sources retain authority, provenance, observation time, maximum age, priority, content digest, and supersession. Optional stale or oversized material is explicitly excluded; active authoritative requirements and safety constraints are mandatory and fail closed if stale or unable to fit. Governed compaction removes raw transcript content while storing its digest and byte count, and requires non-empty retained decisions, unresolved risks, evidence references, and next steps. Broker dispatch evidence binds the exact included/excluded/superseded outcome and context digest to task, run, assignment, role, and purpose.
+
+## AF-016 implementation detail
+
+Memory writes now declare store/type, tenant/mission/task scope, purpose, authority, source digest, confidence, validity interval, invalidation conditions, and immutable content digest. Eight stores enforce their own accepted record types and remain separately queryable. Retrieval requires exact scope, purpose, store set, minimum authority, current validity, and a hard 1–50 result ceiling, optionally recording historical consumers. Staleness or contradiction appends an invalidation with optional replacement while preserving the original provenance and consumers. Generated skills remain draft until curator/human evidence proves versioned tests, security review, representative cases, and evaluation threshold; approved versions can be deprecated or revoked without deleting history.
 
 ## AF-046 implementation detail
 
@@ -164,4 +169,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-015, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-016 typed memory is next.
+M1, AF-008 through AF-017, AF-020, and AF-044 through AF-057 are complete. AF-018 Tool Gateway is next.

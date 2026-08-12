@@ -1921,6 +1921,125 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER context_broker_dispatches_no_delete BEFORE DELETE ON context_broker_dispatches
         BEGIN SELECT RAISE(ABORT, 'context broker dispatch is immutable'); END;
     """),
+    (39, """
+        CREATE TABLE memory_entries(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            store_type TEXT NOT NULL CHECK(store_type IN (
+                'working','semantic','episodic','procedural','entity','contextual','preference','raw_history'
+            )),
+            memory_type TEXT NOT NULL CHECK(memory_type IN (
+                'fact','decision','procedure','outcome','entity','context','preference','raw_event'
+            )),
+            tenant_id TEXT NOT NULL,
+            mission_id TEXT NOT NULL,
+            task_id TEXT,
+            purpose TEXT NOT NULL,
+            authority TEXT NOT NULL CHECK(authority IN ('authoritative','verified','advisory','raw')),
+            source TEXT NOT NULL,
+            source_digest TEXT NOT NULL CHECK(length(source_digest)=64),
+            confidence REAL NOT NULL CHECK(confidence>=0 AND confidence<=1),
+            valid_from TEXT NOT NULL,
+            valid_until TEXT,
+            invalidation_conditions_json TEXT NOT NULL,
+            content_json TEXT NOT NULL,
+            content_digest TEXT NOT NULL UNIQUE CHECK(length(content_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_memory_retrieval
+            ON memory_entries(tenant_id,mission_id,purpose,store_type,authority,valid_from,id);
+        CREATE TRIGGER memory_entries_no_update BEFORE UPDATE ON memory_entries
+        BEGIN SELECT RAISE(ABORT, 'memory entry is immutable'); END;
+        CREATE TRIGGER memory_entries_no_delete BEFORE DELETE ON memory_entries
+        BEGIN SELECT RAISE(ABORT, 'memory entry is immutable'); END;
+
+        CREATE TABLE memory_consumers(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            memory_id INTEGER NOT NULL REFERENCES memory_entries(id),
+            consumer_type TEXT NOT NULL,
+            consumer_id TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            consumed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(memory_id,consumer_type,consumer_id,purpose)
+        );
+        CREATE TRIGGER memory_consumers_no_update BEFORE UPDATE ON memory_consumers
+        BEGIN SELECT RAISE(ABORT, 'memory consumer is immutable'); END;
+        CREATE TRIGGER memory_consumers_no_delete BEFORE DELETE ON memory_consumers
+        BEGIN SELECT RAISE(ABORT, 'memory consumer is immutable'); END;
+
+        CREATE TABLE memory_invalidations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            memory_id INTEGER NOT NULL UNIQUE REFERENCES memory_entries(id),
+            reason TEXT NOT NULL,
+            condition_key TEXT NOT NULL,
+            invalidated_by TEXT NOT NULL,
+            replacement_memory_id INTEGER REFERENCES memory_entries(id),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER memory_invalidations_no_update BEFORE UPDATE ON memory_invalidations
+        BEGIN SELECT RAISE(ABORT, 'memory invalidation is immutable'); END;
+        CREATE TRIGGER memory_invalidations_no_delete BEFORE DELETE ON memory_invalidations
+        BEGIN SELECT RAISE(ABORT, 'memory invalidation is immutable'); END;
+
+        CREATE TABLE governed_skills(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            skill_key TEXT NOT NULL,
+            version TEXT NOT NULL,
+            source_memory_id INTEGER REFERENCES memory_entries(id),
+            specification_json TEXT NOT NULL,
+            specification_digest TEXT NOT NULL UNIQUE CHECK(length(specification_digest)=64),
+            status TEXT NOT NULL CHECK(status IN ('draft','approved','deprecated','revoked')),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(skill_key,version)
+        );
+        CREATE TRIGGER governed_skills_no_delete BEFORE DELETE ON governed_skills
+        BEGIN SELECT RAISE(ABORT, 'governed skill history is immutable'); END;
+        CREATE TRIGGER governed_skills_scope_immutable
+        BEFORE UPDATE OF skill_key,version,source_memory_id,specification_json,
+                         specification_digest,created_by ON governed_skills
+        BEGIN SELECT RAISE(ABORT, 'governed skill definition is immutable'); END;
+
+        CREATE TABLE governed_skill_reviews(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            skill_id INTEGER NOT NULL REFERENCES governed_skills(id),
+            tests_version TEXT NOT NULL,
+            tests_passed INTEGER NOT NULL CHECK(tests_passed IN (0,1)),
+            security_review TEXT NOT NULL CHECK(security_review IN ('passed','failed')),
+            evaluation_score REAL NOT NULL CHECK(evaluation_score>=0 AND evaluation_score<=1),
+            evaluation_threshold REAL NOT NULL CHECK(evaluation_threshold>=0 AND evaluation_threshold<=1),
+            representative_cases INTEGER NOT NULL CHECK(representative_cases>0),
+            reviewer TEXT NOT NULL,
+            reviewer_role TEXT NOT NULL CHECK(reviewer_role IN ('curator','human_approver')),
+            evidence_json TEXT NOT NULL,
+            review_digest TEXT NOT NULL UNIQUE CHECK(length(review_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER governed_skill_reviews_no_update BEFORE UPDATE ON governed_skill_reviews
+        BEGIN SELECT RAISE(ABORT, 'governed skill review is immutable'); END;
+        CREATE TRIGGER governed_skill_reviews_no_delete BEFORE DELETE ON governed_skill_reviews
+        BEGIN SELECT RAISE(ABORT, 'governed skill review is immutable'); END;
+
+        CREATE TABLE governed_skill_transitions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            skill_id INTEGER NOT NULL REFERENCES governed_skills(id),
+            from_status TEXT NOT NULL,
+            to_status TEXT NOT NULL,
+            review_id INTEGER REFERENCES governed_skill_reviews(id),
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER governed_skill_transitions_no_update BEFORE UPDATE ON governed_skill_transitions
+        BEGIN SELECT RAISE(ABORT, 'governed skill transition is immutable'); END;
+        CREATE TRIGGER governed_skill_transitions_no_delete BEFORE DELETE ON governed_skill_transitions
+        BEGIN SELECT RAISE(ABORT, 'governed skill transition is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
