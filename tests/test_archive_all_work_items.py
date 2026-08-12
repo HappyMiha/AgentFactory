@@ -24,6 +24,19 @@ class ArchiveAllWorkItemsTests(unittest.TestCase):
                 self.assertEqual(response.json()["count"], 3)
                 self.assertEqual(client.get("/api/work-items?limit=200").json()["total"], 0)
 
+    def test_bulk_archive_expires_stale_lease_before_blocking(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp); database = workspace / "state.db"
+            storage = SQLiteStorage(database); service = AgentFactoryService(storage, workspace=workspace)
+            project = service.create_project("Bulk")
+            item = service.create_work_item(project_id=project.project_id, title="Item", description="item", acceptance_criteria=["recorded"])
+            claim = service.claim_work_item(item.id, "coding-worker-codex")
+            storage.db.execute("UPDATE leases SET expires_at='2000-01-01T00:00:00+00:00' WHERE assignment_id=?", (claim.assignment_id,)); storage.db.commit(); storage.close()
+            with TestClient(create_app(workspace, database)) as client:
+                response = client.post("/api/work-items/archive-all", json={"confirmed": True}, headers={"X-Agent-Factory-Confirm": "true"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["count"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

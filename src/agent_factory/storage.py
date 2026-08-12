@@ -5210,6 +5210,7 @@ class SQLiteStorage:
     def archive_all_tasks(self, *, reason: str = "") -> list[int]:
         """Archive every non-archived work item after validating the whole graph."""
         with self.db:
+            self._expire_scheduler_leases(_timestamp(_utc(datetime.now(timezone.utc))))
             rows = self.db.execute("SELECT * FROM work_items ORDER BY id").fetchall()
             candidates = [row for row in rows if not json.loads(row["inputs_json"]).get("archived")]
             ids = {int(row["id"]) for row in candidates}
