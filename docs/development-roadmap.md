@@ -42,7 +42,7 @@ The implementation order is:
 ```text
 DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008 -> AF-009; AF-010 -> AF-011 -> AF-012 -> AF-013 -> AF-014 -> AF-015 -> AF-016; AF-017 -> AF-018 -> AF-019 -> AF-021; AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-054 + AF-055 + AF-056 + AF-057
 
-NOW   AF-023
+NOW   AF-022
 ```
 
 Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. AgentFactory is the sole worktree authority: managed Hermes sessions receive an AF-048 worktree and do not invoke Hermes worktree creation. Mutable Hermes execution uses ACP stdio and its permission bridge; Hermes one-shot mode is restricted to qualification or read-only work because it bypasses interactive approvals. `AF-049` Codex is the first required writable implementation worker. `AF-050` Claude Code is P1 and supplies a compatible alternative after the first vertical slice is proven. The local independent-verdict subset of AF-020 is P0 because AF-053 cannot satisfy its review requirement without it.
@@ -77,9 +77,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 12 August 2026, 43 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-021`, `AF-036` through `AF-057`. Five tasks have partial precursors and 9 are not started. Partial work never satisfies a dependency.
+As of 12 August 2026, 44 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-021`, `AF-023`, and `AF-036` through `AF-057`. Four tasks have partial precursors and 9 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). AF-023 collaboration patterns are next.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). AF-022 ADR governance is next.
 
 ## R0.2 — Local Control Center MVP
 
@@ -125,7 +125,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
 
-**Progress:** AF-001 through AF-021 and AF-044 through AF-057 are implemented and tested. AF-023 is next.
+**Progress:** AF-001 through AF-021, AF-023, and AF-044 through AF-057 are implemented and tested. AF-022 is next.
 
 ## R2 — Mission Factory
 

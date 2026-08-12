@@ -2368,6 +2368,117 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER red_team_results_no_delete BEFORE DELETE ON red_team_results
         BEGIN SELECT RAISE(ABORT, 'red-team results are immutable'); END;
     """),
+    (43, """
+        CREATE TABLE coordination_patterns(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pattern_key TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK(version>0),
+            pattern_type TEXT NOT NULL CHECK(pattern_type IN (
+                'parallel','generator_critic','quorum','debate','tournament','red_blue'
+            )),
+            manifest_json TEXT NOT NULL,
+            manifest_digest TEXT NOT NULL UNIQUE CHECK(length(manifest_digest)=64),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(pattern_key,version)
+        );
+        CREATE TRIGGER coordination_patterns_no_update BEFORE UPDATE ON coordination_patterns
+        BEGIN SELECT RAISE(ABORT, 'coordination patterns are immutable'); END;
+        CREATE TRIGGER coordination_patterns_no_delete BEFORE DELETE ON coordination_patterns
+        BEGIN SELECT RAISE(ABORT, 'coordination patterns are immutable'); END;
+
+        CREATE TABLE coordination_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pattern_id INTEGER NOT NULL REFERENCES coordination_patterns(id),
+            objective TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'running'
+                CHECK(status IN ('running','completed','terminated')),
+            turn_count INTEGER NOT NULL DEFAULT 0 CHECK(turn_count>=0),
+            tokens_used INTEGER NOT NULL DEFAULT 0 CHECK(tokens_used>=0),
+            cost_used REAL NOT NULL DEFAULT 0 CHECK(cost_used>=0),
+            termination_reason TEXT,
+            outcome_json TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT
+        );
+        CREATE TRIGGER coordination_run_scope_immutable
+        BEFORE UPDATE OF identity,pattern_id,objective ON coordination_runs
+        BEGIN SELECT RAISE(ABORT, 'coordination run scope is immutable'); END;
+        CREATE TRIGGER coordination_run_valid_transition
+        BEFORE UPDATE OF status ON coordination_runs
+        WHEN NOT (OLD.status='running' AND NEW.status IN ('completed','terminated'))
+        BEGIN SELECT RAISE(ABORT, 'invalid coordination run transition'); END;
+        CREATE TRIGGER coordination_runs_no_delete BEFORE DELETE ON coordination_runs
+        BEGIN SELECT RAISE(ABORT, 'coordination run history is immutable'); END;
+
+        CREATE TABLE coordination_reviewer_selections(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES coordination_runs(id),
+            producer_id TEXT NOT NULL,
+            producer_model TEXT NOT NULL,
+            reviewer_id TEXT NOT NULL,
+            reviewer_model TEXT NOT NULL,
+            eligible_json TEXT NOT NULL,
+            excluded_json TEXT NOT NULL,
+            strategy TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER coordination_reviewer_selections_no_update
+        BEFORE UPDATE ON coordination_reviewer_selections
+        BEGIN SELECT RAISE(ABORT, 'coordination reviewer selections are immutable'); END;
+        CREATE TRIGGER coordination_reviewer_selections_no_delete
+        BEFORE DELETE ON coordination_reviewer_selections
+        BEGIN SELECT RAISE(ABORT, 'coordination reviewer selections are immutable'); END;
+
+        CREATE TABLE coordination_contributions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES coordination_runs(id),
+            sequence INTEGER NOT NULL CHECK(sequence>0),
+            participant_id TEXT NOT NULL,
+            participant_model TEXT NOT NULL,
+            participant_role TEXT NOT NULL,
+            contribution_type TEXT NOT NULL CHECK(contribution_type IN (
+                'proposal','critique','vote','argument','verdict','attack','defense','score'
+            )),
+            payload_json TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            dissent_json TEXT NOT NULL,
+            reviewer_selection_id INTEGER REFERENCES coordination_reviewer_selections(id),
+            tokens_used INTEGER NOT NULL CHECK(tokens_used>=0),
+            cost_used REAL NOT NULL CHECK(cost_used>=0),
+            contribution_digest TEXT NOT NULL UNIQUE CHECK(length(contribution_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(run_id,sequence)
+        );
+        CREATE TRIGGER coordination_contributions_no_update
+        BEFORE UPDATE ON coordination_contributions
+        BEGIN SELECT RAISE(ABORT, 'coordination contributions are immutable'); END;
+        CREATE TRIGGER coordination_contributions_no_delete
+        BEFORE DELETE ON coordination_contributions
+        BEGIN SELECT RAISE(ABORT, 'coordination contributions are immutable'); END;
+
+        CREATE TABLE coordination_arbitrations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL UNIQUE REFERENCES coordination_runs(id),
+            strategy TEXT NOT NULL,
+            contribution_ids_json TEXT NOT NULL,
+            outcome_json TEXT NOT NULL,
+            dissent_json TEXT NOT NULL,
+            arbitration_digest TEXT NOT NULL UNIQUE CHECK(length(arbitration_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER coordination_arbitrations_no_update
+        BEFORE UPDATE ON coordination_arbitrations
+        BEGIN SELECT RAISE(ABORT, 'coordination arbitrations are immutable'); END;
+        CREATE TRIGGER coordination_arbitrations_no_delete
+        BEFORE DELETE ON coordination_arbitrations
+        BEGIN SELECT RAISE(ABORT, 'coordination arbitrations are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

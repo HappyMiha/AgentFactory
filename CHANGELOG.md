@@ -56,6 +56,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-018 immutable Tool Registry, intersected-authority Tool Gateway, evidence-only MCP discovery, schema/capability/timeout/evidence enforcement, and audited connector install/health/disable/upgrade/removal lifecycle.
 - AF-019 in-memory short-lived credential broker with exact tenant/mission/tool/operation/expiry scope, injection firewall, recursive output/exception redaction, zero-secret persistence, and auditable revocation.
 - AF-021 maintained six-class prompt-injection corpus, deterministic tripwires, immutable red-team evidence, fail-closed quarantine admission, human-only release/incident closure, and evidence-tampering containment.
+- AF-023 immutable bounded parallel, generator-critic, quorum, debate, tournament, and red/blue patterns with model-aware reviewer rotation, typed contributions, deterministic arbitration, and preserved dissent.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
