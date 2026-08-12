@@ -2479,6 +2479,132 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON coordination_arbitrations
         BEGIN SELECT RAISE(ABORT, 'coordination arbitrations are immutable'); END;
     """),
+    (44, """
+        CREATE TABLE architecture_decisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            adr_key TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK(version>0),
+            blueprint_id INTEGER NOT NULL REFERENCES factory_blueprints(id),
+            context TEXT NOT NULL,
+            alternatives_json TEXT NOT NULL,
+            decision TEXT NOT NULL,
+            consequences_json TEXT NOT NULL,
+            affected_contracts_json TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            material_domains_json TEXT NOT NULL,
+            architecture_owner TEXT NOT NULL,
+            decision_digest TEXT NOT NULL UNIQUE CHECK(length(decision_digest)=64),
+            status TEXT NOT NULL DEFAULT 'proposed'
+                CHECK(status IN ('proposed','approved','rejected','applied')),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(adr_key,version)
+        );
+        CREATE TRIGGER architecture_decision_scope_immutable
+        BEFORE UPDATE OF identity,adr_key,version,blueprint_id,context,alternatives_json,
+                         decision,consequences_json,affected_contracts_json,evidence_json,
+                         material_domains_json,architecture_owner,decision_digest,created_by
+        ON architecture_decisions
+        BEGIN SELECT RAISE(ABORT, 'architecture decision scope is immutable'); END;
+        CREATE TRIGGER architecture_decision_valid_transition
+        BEFORE UPDATE OF status ON architecture_decisions
+        WHEN NOT (
+            (OLD.status='proposed' AND NEW.status IN ('approved','rejected')) OR
+            (OLD.status='approved' AND NEW.status='applied')
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid architecture decision transition'); END;
+        CREATE TRIGGER architecture_decisions_no_delete BEFORE DELETE ON architecture_decisions
+        BEGIN SELECT RAISE(ABORT, 'architecture decisions are immutable'); END;
+
+        CREATE TABLE adr_impact_analyses(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            adr_id INTEGER NOT NULL UNIQUE REFERENCES architecture_decisions(id),
+            impact_json TEXT NOT NULL,
+            impact_digest TEXT NOT NULL UNIQUE CHECK(length(impact_digest)=64),
+            analyzed_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER adr_impact_analyses_no_update BEFORE UPDATE ON adr_impact_analyses
+        BEGIN SELECT RAISE(ABORT, 'ADR impact analysis is immutable'); END;
+        CREATE TRIGGER adr_impact_analyses_no_delete BEFORE DELETE ON adr_impact_analyses
+        BEGIN SELECT RAISE(ABORT, 'ADR impact analysis is immutable'); END;
+
+        CREATE TABLE adr_approvals(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            adr_id INTEGER NOT NULL UNIQUE REFERENCES architecture_decisions(id),
+            decision_digest TEXT NOT NULL CHECK(length(decision_digest)=64),
+            impact_digest TEXT NOT NULL CHECK(length(impact_digest)=64),
+            decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+            reviewer TEXT NOT NULL,
+            reviewer_role TEXT NOT NULL CHECK(reviewer_role='human_architecture_owner'),
+            note TEXT NOT NULL,
+            approval_digest TEXT NOT NULL UNIQUE CHECK(length(approval_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER adr_approvals_no_update BEFORE UPDATE ON adr_approvals
+        BEGIN SELECT RAISE(ABORT, 'ADR approvals are immutable'); END;
+        CREATE TRIGGER adr_approvals_no_delete BEFORE DELETE ON adr_approvals
+        BEGIN SELECT RAISE(ABORT, 'ADR approvals are immutable'); END;
+
+        CREATE TABLE adr_applications(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            adr_id INTEGER NOT NULL UNIQUE REFERENCES architecture_decisions(id),
+            impact_analysis_id INTEGER NOT NULL UNIQUE REFERENCES adr_impact_analyses(id),
+            approval_id INTEGER NOT NULL UNIQUE REFERENCES adr_approvals(id),
+            prior_blueprint_id INTEGER NOT NULL REFERENCES factory_blueprints(id),
+            new_blueprint_id INTEGER NOT NULL UNIQUE REFERENCES factory_blueprints(id),
+            application_digest TEXT NOT NULL UNIQUE CHECK(length(application_digest)=64),
+            applied_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER adr_applications_no_update BEFORE UPDATE ON adr_applications
+        BEGIN SELECT RAISE(ABORT, 'ADR applications are immutable'); END;
+        CREATE TRIGGER adr_applications_no_delete BEFORE DELETE ON adr_applications
+        BEGIN SELECT RAISE(ABORT, 'ADR applications are immutable'); END;
+
+        CREATE TABLE adr_contract_propagations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            application_id INTEGER NOT NULL REFERENCES adr_applications(id),
+            target_type TEXT NOT NULL CHECK(target_type IN (
+                'task','context_package','policy','evaluation','artifact',
+                'deployment_assumption','workflow_contract'
+            )),
+            target_ref TEXT NOT NULL,
+            action TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(application_id,target_type,target_ref)
+        );
+        CREATE TRIGGER adr_contract_propagations_no_update
+        BEFORE UPDATE ON adr_contract_propagations
+        BEGIN SELECT RAISE(ABORT, 'ADR propagation records are immutable'); END;
+        CREATE TRIGGER adr_contract_propagations_no_delete
+        BEFORE DELETE ON adr_contract_propagations
+        BEGIN SELECT RAISE(ABORT, 'ADR propagation records are immutable'); END;
+
+        CREATE TABLE adr_workflow_contract_versions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            contract_key TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK(version>0),
+            application_id INTEGER NOT NULL REFERENCES adr_applications(id),
+            contract_json TEXT NOT NULL,
+            contract_digest TEXT NOT NULL UNIQUE CHECK(length(contract_digest)=64),
+            previous_version_id INTEGER REFERENCES adr_workflow_contract_versions(id),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(contract_key,version)
+        );
+        CREATE TRIGGER adr_workflow_contract_versions_no_update
+        BEFORE UPDATE ON adr_workflow_contract_versions
+        BEGIN SELECT RAISE(ABORT, 'ADR workflow contract versions are immutable'); END;
+        CREATE TRIGGER adr_workflow_contract_versions_no_delete
+        BEFORE DELETE ON adr_workflow_contract_versions
+        BEGIN SELECT RAISE(ABORT, 'ADR workflow contract versions are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

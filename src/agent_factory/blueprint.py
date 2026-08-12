@@ -245,17 +245,18 @@ class BlueprintService:
     ) -> FactoryBlueprint:
         if not IDENTIFIER.fullmatch(blueprint_key) or not created_by.strip():
             raise ValueError("Blueprint key and creator are required")
-        if self.storage.db.execute(
-            "SELECT 1 FROM factory_blueprints WHERE blueprint_key=?", (blueprint_key,)
-        ).fetchone():
-            raise ValueError("Initial Blueprint already exists; create an amendment")
-        return self._create_version(
-            blueprint_key=blueprint_key, version=1, intake_id=intake_id,
-            composition_id=composition_id, parent_blueprint_id=None, sections=sections,
-            decisions=decisions, assumptions=assumptions,
-            rejected_alternatives=rejected_alternatives, amendment_impact=None,
-            created_by=created_by,
-        )
+        with self.storage.db:
+            if self.storage.db.execute(
+                "SELECT 1 FROM factory_blueprints WHERE blueprint_key=?", (blueprint_key,)
+            ).fetchone():
+                raise ValueError("Initial Blueprint already exists; create an amendment")
+            return self._create_version(
+                blueprint_key=blueprint_key, version=1, intake_id=intake_id,
+                composition_id=composition_id, parent_blueprint_id=None, sections=sections,
+                decisions=decisions, assumptions=assumptions,
+                rejected_alternatives=rejected_alternatives, amendment_impact=None,
+                created_by=created_by,
+            )
 
     def amend(
         self,
@@ -270,6 +271,29 @@ class BlueprintService:
         actor: str,
         actor_role: str,
     ) -> FactoryBlueprint:
+        with self.storage.db:
+            return self.amend_in_transaction(
+                parent_blueprint_id, composition_id=composition_id, sections=sections,
+                decisions=decisions, assumptions=assumptions,
+                rejected_alternatives=rejected_alternatives, impact=impact,
+                actor=actor, actor_role=actor_role,
+            )
+
+    def amend_in_transaction(
+        self,
+        parent_blueprint_id: int,
+        *,
+        composition_id: int,
+        sections: BlueprintSections,
+        decisions: tuple[BlueprintDecision, ...],
+        assumptions: tuple[BlueprintAssumption, ...],
+        rejected_alternatives: tuple[RejectedAlternative, ...],
+        impact: AmendmentImpact,
+        actor: str,
+        actor_role: str,
+    ) -> FactoryBlueprint:
+        """Create an amendment inside a transaction owned by the caller."""
+
         parent = self.storage.db.execute(
             "SELECT * FROM factory_blueprints WHERE id=?", (parent_blueprint_id,)
         ).fetchone()
@@ -344,26 +368,25 @@ class BlueprintService:
             "amendment_impact": impact_document, "created_by": created_by,
         }
         digest = hashlib.sha256(self._json(document).encode()).hexdigest()
-        with self.storage.db:
-            cursor = self.storage.db.execute(
-                """INSERT INTO factory_blueprints(
-                       identity,blueprint_key,version,intake_id,readiness_assessment_id,
-                       composition_id,parent_blueprint_id,sections_json,trace_json,
-                       amendment_impact_json,blueprint_digest,created_by
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (
-                    self.storage._identity("factory-blueprint"), blueprint_key, version,
-                    intake_id, readiness["id"], composition_id, parent_blueprint_id,
-                    self._json(section_document), self._json(trace),
-                    self._json(impact_document) if impact_document else None,
-                    digest, created_by,
-                ),
-            )
-            blueprint_id = int(cursor.lastrowid)
-            self.storage._event("blueprint.version.created", "factory_blueprint", blueprint_id, {
-                "blueprint_key": blueprint_key, "version": version,
-                "parent_blueprint_id": parent_blueprint_id, "blueprint_digest": digest,
-            })
+        cursor = self.storage.db.execute(
+            """INSERT INTO factory_blueprints(
+                   identity,blueprint_key,version,intake_id,readiness_assessment_id,
+                   composition_id,parent_blueprint_id,sections_json,trace_json,
+                   amendment_impact_json,blueprint_digest,created_by
+               ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                self.storage._identity("factory-blueprint"), blueprint_key, version,
+                intake_id, readiness["id"], composition_id, parent_blueprint_id,
+                self._json(section_document), self._json(trace),
+                self._json(impact_document) if impact_document else None,
+                digest, created_by,
+            ),
+        )
+        blueprint_id = int(cursor.lastrowid)
+        self.storage._event("blueprint.version.created", "factory_blueprint", blueprint_id, {
+            "blueprint_key": blueprint_key, "version": version,
+            "parent_blueprint_id": parent_blueprint_id, "blueprint_digest": digest,
+        })
         return self.get(blueprint_id)
 
     def sign(

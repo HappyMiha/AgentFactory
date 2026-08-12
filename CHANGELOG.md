@@ -57,6 +57,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-019 in-memory short-lived credential broker with exact tenant/mission/tool/operation/expiry scope, injection firewall, recursive output/exception redaction, zero-secret persistence, and auditable revocation.
 - AF-021 maintained six-class prompt-injection corpus, deterministic tripwires, immutable red-team evidence, fail-closed quarantine admission, human-only release/incident closure, and evidence-tampering containment.
 - AF-023 immutable bounded parallel, generator-critic, quorum, debate, tournament, and red/blue patterns with model-aware reviewer rotation, typed contributions, deterministic arbitration, and preserved dissent.
+- AF-022 complete ADR records, pre-approval six-surface impact analysis, human architecture-owner decisions, and atomic Blueprint/workflow-contract propagation with rollback preservation.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
