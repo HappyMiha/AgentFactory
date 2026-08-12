@@ -1730,6 +1730,64 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER workforce_role_pools_no_delete BEFORE DELETE ON workforce_role_pools
         BEGIN SELECT RAISE(ABORT, 'workforce role pool is immutable'); END;
     """),
+    (36, """
+        CREATE TABLE factory_blueprints(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            blueprint_key TEXT NOT NULL,
+            version INTEGER NOT NULL CHECK(version>0),
+            intake_id INTEGER NOT NULL REFERENCES mission_intakes(id),
+            readiness_assessment_id INTEGER NOT NULL REFERENCES mission_readiness_assessments(id),
+            composition_id INTEGER NOT NULL REFERENCES workforce_compositions(id),
+            parent_blueprint_id INTEGER REFERENCES factory_blueprints(id),
+            sections_json TEXT NOT NULL,
+            trace_json TEXT NOT NULL,
+            amendment_impact_json TEXT,
+            blueprint_digest TEXT NOT NULL UNIQUE CHECK(length(blueprint_digest)=64),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(blueprint_key,version)
+        );
+        CREATE TRIGGER factory_blueprints_no_update BEFORE UPDATE ON factory_blueprints
+        BEGIN SELECT RAISE(ABORT, 'factory blueprint is immutable'); END;
+        CREATE TRIGGER factory_blueprints_no_delete BEFORE DELETE ON factory_blueprints
+        BEGIN SELECT RAISE(ABORT, 'factory blueprint is immutable'); END;
+
+        CREATE TABLE blueprint_approvals(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            blueprint_id INTEGER NOT NULL UNIQUE REFERENCES factory_blueprints(id),
+            blueprint_version INTEGER NOT NULL CHECK(blueprint_version>0),
+            blueprint_digest TEXT NOT NULL CHECK(length(blueprint_digest)=64),
+            decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+            signer TEXT NOT NULL,
+            signer_role TEXT NOT NULL CHECK(signer_role='mission_owner'),
+            note TEXT NOT NULL,
+            approval_digest TEXT NOT NULL UNIQUE CHECK(length(approval_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER blueprint_approvals_no_update BEFORE UPDATE ON blueprint_approvals
+        BEGIN SELECT RAISE(ABORT, 'blueprint approval is immutable'); END;
+        CREATE TRIGGER blueprint_approvals_no_delete BEFORE DELETE ON blueprint_approvals
+        BEGIN SELECT RAISE(ABORT, 'blueprint approval is immutable'); END;
+
+        CREATE TABLE blueprint_execution_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            blueprint_id INTEGER NOT NULL UNIQUE REFERENCES factory_blueprints(id),
+            approval_id INTEGER NOT NULL UNIQUE REFERENCES blueprint_approvals(id),
+            blueprint_version INTEGER NOT NULL CHECK(blueprint_version>0),
+            blueprint_digest TEXT NOT NULL CHECK(length(blueprint_digest)=64),
+            authorization_digest TEXT NOT NULL UNIQUE CHECK(length(authorization_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER blueprint_execution_authorizations_no_update
+        BEFORE UPDATE ON blueprint_execution_authorizations
+        BEGIN SELECT RAISE(ABORT, 'blueprint execution authorization is immutable'); END;
+        CREATE TRIGGER blueprint_execution_authorizations_no_delete
+        BEFORE DELETE ON blueprint_execution_authorizations
+        BEGIN SELECT RAISE(ABORT, 'blueprint execution authorization is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

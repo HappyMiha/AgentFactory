@@ -15,6 +15,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Fail-closed mission intake.** Normalized intent and source authority produce one machine-readable readiness verdict; ambiguity, conflicts, infeasibility, high risk, and reduced scope block Blueprint work until the human mission owner resolves them.
 - **Evaluation-aware routing.** Pinned, best-qualified, cost, latency, diversity, canary, tournament, and fallback strategies use current qualification and record every eligible/excluded metric plus rationale.
 - **Justified workforce composition.** Qualified role pools declare replica bounds, routing and arbitration; the composer globally enforces capability, independence, provider diversity, capacity, and budget with explicit gaps and fallbacks.
+- **Signed Factory Blueprints.** Modules, workforce, tools, context, verification, budgets, policies, and recovery are traced to mission evidence; only the exact owner-signed latest version can authorize execution.
 - **Evidence before progress.** Each stage returns a typed verdict and evidence for every acceptance criterion.
 - **Two separate approval layers.** Permission to call a provider never means permission to accept the delivered work.
 - **Safe-by-default execution.** Fixed executables and arguments, no shell, role allowlists, timeouts, output caps, and process-tree cleanup.
@@ -46,6 +47,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Agent registry | Ready | List, enable, disable, and replace provider/model assignments. |
 | Mission intake | Ready | AF-009 classifies immutable sources, records typed blocking gaps and permits Blueprint work only after an evidence-backed readiness verdict. |
 | Workforce Composer | Ready | AF-012 emits immutable role pools and globally valid assignments; strengthened pools and reviewed diversity exceptions remain explicit. |
+| Factory Blueprint | Ready | AF-013 validates the complete operating design, exact version/digest approval, and impact-analyzed immutable amendments. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |
