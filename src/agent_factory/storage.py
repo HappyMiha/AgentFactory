@@ -5207,6 +5207,37 @@ class SQLiteStorage:
                 raise ValueError(f"Work item {task_id} changed concurrently")
             self._event("task.archived", "task", task_id, {"previous_state": row["status"], "reason": reason.strip()})
 
+    def archive_all_tasks(self, *, reason: str = "") -> list[int]:
+        """Archive every non-archived work item after validating the whole graph."""
+        with self.db:
+            rows = self.db.execute("SELECT * FROM work_items ORDER BY id").fetchall()
+            candidates = [row for row in rows if not json.loads(row["inputs_json"]).get("archived")]
+            ids = {int(row["id"]) for row in candidates}
+            if not ids:
+                return []
+            active_run = self.db.execute(
+                "SELECT id,task_id FROM workflow_runs WHERE task_id IN (%s) AND status IN ('running','awaiting_approval') LIMIT 1" % ",".join("?" * len(ids)), tuple(ids)
+            ).fetchone()
+            if active_run:
+                raise ValueError(f"Cannot archive all: active workflow run {active_run['id']} belongs to work item {active_run['task_id']}")
+            active_lease = self.db.execute(
+                "SELECT l.id,a.task_id FROM leases l JOIN assignments a ON a.id=l.assignment_id WHERE a.task_id IN (%s) AND l.status='active' LIMIT 1" % ",".join("?" * len(ids)), tuple(ids)
+            ).fetchone()
+            if active_lease:
+                raise ValueError(f"Cannot archive all: active lease {active_lease['id']} belongs to work item {active_lease['task_id']}")
+            for row in candidates:
+                inputs = json.loads(row["inputs_json"])
+                inputs["archived"] = True
+                inputs["archive_reason"] = reason.strip()
+                payload = json.loads(row["payload"])
+                payload["inputs"] = inputs
+                self.db.execute(
+                    "UPDATE work_items SET inputs_json=?,payload=?,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND version=?",
+                    (json.dumps(inputs, sort_keys=True), json.dumps(payload, sort_keys=True), row["id"], row["version"]),
+                )
+                self._event("task.archived", "task", int(row["id"]), {"previous_state": row["status"], "reason": reason.strip(), "bulk": True})
+            return sorted(ids)
+
     def task_readiness(self, task_id: int, *, now: datetime | None = None) -> tuple[str, ...]:
         """Return deterministic blockers; an empty tuple means the task is runnable."""
 

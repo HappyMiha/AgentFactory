@@ -428,6 +428,10 @@ class AgentFactoryService:
         self.storage.archive_task(task_id, reason=reason)
         return self.work_item(task_id)
 
+    def archive_all_work_items(self, reason: str = "") -> dict[str, Any]:
+        ids = self.storage.archive_all_tasks(reason=reason)
+        return {"archived": ids, "count": len(ids)}
+
     def work_item(self, task_id: int) -> WorkItemView:
         row = self.storage.db.execute(
             "SELECT created_at FROM work_items WHERE id=?", (task_id,)

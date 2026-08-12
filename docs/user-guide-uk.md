@@ -67,6 +67,8 @@ agent-factory --workspace . web --open
 
 Для непотрібного item використовуйте **Archive item**. Операція потребує підтвердження і відмовить, якщо є активний run, lease або залежні work items. Архівація приховує item із активного backlog, але зберігає його деталі та audit trail.
 
+Для очищення всього поточного backlog використовуйте **Archive all work items**. Це одна підтверджена bulk-операція; активний run або lease блокує її цілком, без часткового архівування.
+
 ```bash
 agent-factory project init --name "Example Product" --description "Перший проєкт"
 agent-factory work-item create --project-id 1 --title "First capability" --description "Deliver one capability" --acceptance "Criterion one"

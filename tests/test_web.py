@@ -267,6 +267,7 @@ class WebHostTests(unittest.TestCase):
                         "/api/work-items/{task_id}/claim",
                         "/api/work-items/{task_id}/runs",
                         "/api/work-items/{task_id}/archive",
+                        "/api/work-items/archive-all",
                         "/api/artifacts/{artifact_id}/review",
                         "/api/agents/{agent_id}/enabled",
                         "/api/agents/{agent_id}/provider",

@@ -517,6 +517,15 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         _require_confirmation(command, confirmation)
         return service.archive_work_item(task_id, command.reason)
 
+    @app.post("/api/work-items/archive-all", response_model=dict[str, Any])
+    async def archive_all_work_items(
+        command: ArchiveWorkItemCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        return service.archive_all_work_items(command.reason)
+
     @app.post("/api/work-items/{task_id}/runs", response_model=RunView)
     async def start_workflow(
         task_id: int, command: RunCommand, service: Service, confirmation: Confirmation = None
