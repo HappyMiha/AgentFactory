@@ -54,7 +54,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-028 | Partial | SQLite backup, integrity checks and interrupted-attempt inspection/reconciliation | No clustered chaos suite or verified restore across storage/queue/network/host failures |
 | AF-029 | Implemented | Tenant-scoped object adapter, PostgreSQL migration contract, digest-preserving metadata, governance enforcement, verified export/deletion evidence, and `test_tenant_storage.py` | — |
 | AF-030 | Partial | Loopback dashboard, approvals, audit, routing controls | No authenticated multi-tenant Human Control Plane, incident/cost/lease controls, or production service boundary |
-| AF-031 | Not started | Docker packaging exists | No qualified single-node/clustered/hybrid/air-gapped deployment definitions |
+| AF-031 | Implemented | Versioned profile manifests, smoke verification for four topologies, explicit hybrid/air-gapped paths, and continuity-checked upgrade/rollback evidence; `test_deployment.py` | — |
 | AF-032 | Partial | Cross-platform CI, accessibility tests and checklist | No complete NFR, performance, isolation and recovery qualification suite |
 | AF-033 | Not started | — | 72-hour fault-injection soak absent |
 | AF-034 | Not started | — | Full heterogeneous-agent acceptance mission absent |

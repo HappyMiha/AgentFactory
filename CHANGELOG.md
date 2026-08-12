@@ -6,6 +6,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-031 versioned single-node, clustered, hybrid, and air-gapped deployment profiles with smoke validation, explicit egress/model/connector/update/artifact paths, and continuity-checked upgrade/rollback evidence.
 - AF-029 tenant-scoped object storage boundary with PostgreSQL migration contract, content digests, quotas, governance policies, verified exports, and deletion evidence.
 - Shared typed application-service boundary for CLI and Local Control Center queries and guarded commands.
 - Contract tests proving equivalent CLI and service state transitions and audit events.
