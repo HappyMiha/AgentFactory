@@ -1061,6 +1061,9 @@ class AgentFactoryService:
         )
 
     def active_executions(self) -> dict[str, list[dict[str, Any]]]:
+        from datetime import datetime, timezone
+        from .storage import _timestamp
+        self.storage._expire_scheduler_leases(_timestamp(datetime.now(timezone.utc)))
         return {
             "runs": [dict(row) for row in self.storage.db.execute("SELECT id,task_id,workflow_id,status,created_at FROM workflow_runs WHERE status IN ('running','awaiting_approval') ORDER BY id")],
             "sessions": [dict(row) for row in self.storage.db.execute("SELECT id,assignment_id,runtime,status,created_at,updated_at,heartbeat_at FROM worker_sessions WHERE status IN ('starting','running','suspended') ORDER BY id")],
