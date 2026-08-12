@@ -6,6 +6,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- Final implementation audit documenting 57/57 backlog coverage, durable-schema and authority checks, explicit non-goals, and the external GitHub billing blocker.
 - CI troubleshooting runbook documenting local parity checks, supported action pins, and GitHub jobs-not-started billing diagnostics.
 - Production hardening: exposed the authenticated `/api/control/actions` HTTP surface over the shared AF-030 service, with tenant-filtered reads, audit-backed mutations, and OpenAPI coverage.
 - AF-030 authenticated tenant-scoped Human Control Plane actions with role allowlists, immutable audit history, emergency/intervention controls, and explicit irreversible retirement confirmation.

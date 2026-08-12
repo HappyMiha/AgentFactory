@@ -237,7 +237,7 @@ Antigravity CLI 1.1.9 requires its non-interactive prompt as a process argument.
 
 The Firecrawl adapter has no project-reading or code-writing permission. It runs `firecrawl agent` with a five-credit ceiling, requires a one-use provider gate, and returns web evidence as an untrusted artifact for human or independent-agent review.
 
-Provider authentication belongs to each CLI's own profile or operating-system keyring. Never put credentials in work-item or provider prompts. Agent Factory filters sensitive environment-variable names, but comprehensive value-aware output redaction is not implemented; inspect artifacts before sharing them. See [Provider setup](docs/providers.md).
+Provider authentication belongs to each CLI's own profile or operating-system keyring. Never put credentials in work-item or provider prompts. Agent Factory applies scoped credential injection and recursive redaction at governed execution boundaries; generic provider output still requires review before external publication. See [Provider setup](docs/providers.md).
 
 ## CLI map
 
@@ -297,7 +297,7 @@ See:
 - Add an agent by assigning an ID, role, provider, instructions, and permissions.
 - Add a workflow by composing typed, dependency-aware stages.
 - Add a new provider transport by implementing the provider interface and its health and execution contracts.
-- Add a storage backend behind the repository boundary; PostgreSQL is not implemented yet.
+- Select and qualify a concrete PostgreSQL/object-store deployment driver behind the AF-029 repository boundary; the local contract and migration evidence are implemented, but no driver is bundled.
 - Extend GitHub mutations only by adding a narrowly defined action plus negative and idempotency tests.
 
 ## Development
@@ -315,8 +315,8 @@ The repository CI runs Python 3.11 and 3.12 tests on Windows, Ubuntu, and macOS,
 ## Alpha limitations
 
 - Multi-stage live workflows still require explicit approval handling for every real provider call.
-- Provider output limits are enforced on the retained artifact; streaming byte limits are planned.
-- Sensitive environment names are filtered, but comprehensive value-aware redaction is planned.
+- Provider output limits are enforced on the retained artifact; streaming byte limits remain a provider-runtime hardening follow-up.
+- Sensitive environment names and governed credential values are redacted at the execution/evidence boundary; generic third-party output still needs review before publication.
 - Windows cleanup uses a contained process group and targeted tree termination, not a Job Object.
 - SQLite is the only state backend.
 - External provider CLIs and their subscriptions are installed, authenticated, billed, and updated independently.

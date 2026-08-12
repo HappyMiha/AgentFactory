@@ -124,7 +124,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 | AF-056 | P0 | Minimal execution telemetry and enforced budgets | AF-002, AF-005, AF-006, AF-045, AF-048, AF-052, AF-053 | Correlation and budget enforcement |
 | AF-057 | P0 | Local recovery and orphan reconciliation | AF-006, AF-007, AF-045, AF-048, AF-053, AF-056 | Single-node recovery |
 
-**Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; and restart reconciliation without duplicate mutation. Production tenant isolation remains downstream in AF-029.
+**Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; restart reconciliation without duplicate mutation; and the AF-029 tenant storage/isolation contract.
 
 **Progress:** AF-001 through AF-025, AF-027, and AF-044 through AF-057 are implemented and tested. AF-029 is next.
 
