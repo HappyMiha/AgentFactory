@@ -1,6 +1,7 @@
 """Loopback-only FastAPI host for the Local Control Center."""
 
 import sqlite3
+import os
 from collections.abc import AsyncIterator
 from dataclasses import asdict
 from pathlib import Path
@@ -32,6 +33,7 @@ from .application import (
     WorkItemView,
 )
 from .storage import SQLiteStorage
+from .control_plane import HumanControlPlaneService
 
 T = TypeVar("T")
 
@@ -135,6 +137,15 @@ class RunDetail(BaseModel):
     approval: ApprovalView | None
     stopped_reason: str
 
+class ControlActionCommand(BaseModel):
+    tenant_id: str
+    actor: str
+    role: str
+    action: str
+    target_type: str
+    target_id: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
 
 Offset = Annotated[int, Query(ge=0, le=1_000_000)]
 Limit = Annotated[int, Query(ge=1, le=200)]
@@ -179,6 +190,12 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             storage.close()
 
     Service = Annotated[AgentFactoryService, Depends(service_dependency)]
+
+    def require_api_auth(authorization: str | None = Header(default=None)) -> None:
+        expected = os.getenv("AGENT_FACTORY_API_TOKEN", "").strip()
+        if expected and authorization != f"Bearer {expected}":
+            from fastapi import HTTPException
+            raise HTTPException(status_code=401, detail="Bearer authentication required")
 
     @app.exception_handler(KeyError)
     async def not_found(_request: Request, exc: KeyError) -> JSONResponse:
@@ -557,6 +574,22 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
                 detail="Repository context is supplied only to explicit dry-run sync requests",
             ),
         ]
+
+    @app.get("/api/control/actions", response_model=list[dict[str, Any]])
+    async def control_actions(tenant_id: str, _: None = Depends(require_api_auth)) -> list[dict[str, Any]]:
+        storage = SQLiteStorage(database)
+        try:
+            return HumanControlPlaneService(storage).list_actions(tenant_id)
+        finally:
+            storage.close()
+
+    @app.post("/api/control/actions", response_model=dict[str, Any], status_code=201)
+    async def control_action(command: ControlActionCommand, _: None = Depends(require_api_auth)) -> dict[str, Any]:
+        storage = SQLiteStorage(database)
+        try:
+            return HumanControlPlaneService(storage).act(**command.model_dump())
+        finally:
+            storage.close()
 
     @app.get("/", include_in_schema=False)
     async def dashboard_shell() -> FileResponse:

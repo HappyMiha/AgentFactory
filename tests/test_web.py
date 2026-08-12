@@ -273,6 +273,7 @@ class WebHostTests(unittest.TestCase):
                         "/api/github/preview",
                         "/api/founder-decisions/{gate_id}",
                         "/api/backlog/import",
+                        "/api/control/actions",
                     },
                 )
 
