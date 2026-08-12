@@ -61,6 +61,8 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 ## What is implemented
 
+Для швидкого старту користувача дивіться [україномовну інструкцію](docs/user-guide-uk.md) або готовий [PDF user guide](output/pdf/agent-factory-user-guide-uk.pdf).
+
 | Capability | Status | Notes |
 |---|---|---|
 | Application services | Ready | Typed operator queries and guarded commands are shared by the CLI and Local Control Center. |
