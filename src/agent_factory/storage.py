@@ -2992,6 +2992,21 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS acceptance_missions_no_delete BEFORE DELETE ON acceptance_missions
         BEGIN SELECT RAISE(ABORT, 'acceptance mission evidence is immutable'); END;
     """),
+    (55, """
+        CREATE TABLE IF NOT EXISTS handover_bundles(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            bundle_version TEXT NOT NULL,
+            checklist_json TEXT NOT NULL,
+            evidence_index_json TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK(verdict IN ('ready','blocked')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS handover_bundles_no_update BEFORE UPDATE ON handover_bundles
+        BEGIN SELECT RAISE(ABORT, 'handover evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS handover_bundles_no_delete BEFORE DELETE ON handover_bundles
+        BEGIN SELECT RAISE(ABORT, 'handover evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

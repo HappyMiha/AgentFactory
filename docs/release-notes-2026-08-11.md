@@ -4,11 +4,11 @@ These notes describe the implemented, tested repository state through the AF-027
 
 ## Release summary
 
-- Completed **54 of 57** backlog tasks: AF-001–AF-025, AF-027–AF-034, and AF-036–AF-057.
+- Completed **55 of 57** backlog tasks: AF-001–AF-025, AF-027–AF-035, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **266 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- AF-034 now provides the heterogeneous reference acceptance envelope; AF-035 is next.
+- Verified **268 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- AF-035 now provides the immutable GA handover evidence bundle; all backlog tasks are dependency-complete.
 
 ## Implemented backlog items and implementation commits
 

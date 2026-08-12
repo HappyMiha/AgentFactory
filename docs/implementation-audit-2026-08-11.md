@@ -58,7 +58,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-032 | Implemented | Immutable NFR/capacity/accessibility/isolation/backup-restore gate with environment metadata and raw evidence; `test_qualification.py` | — |
 | AF-033 | Implemented | Versioned 72-hour workload/fault schedule, continuity/no-duplicate evidence, bounded resource gate; `test_soak.py` | — |
 | AF-034 | Implemented | Immutable heterogeneous mission envelope, three-provider requirement, flow evidence, 45 signed/human-excepted criteria, and reproducible release digest; `test_acceptance_mission.py` | — |
-| AF-035 | Not started | Baseline README/security/contribution docs | No GA runbooks, clean-install/restore exercise, evidence bundle or handover |
+| AF-035 | Implemented | Immutable runbook checklist, evidence index, restore/upgrade/second-mission handover gate; `test_handover.py` | — |
 | AF-036 | Implemented | Shared typed application services and CLI/service parity tests | — |
 | AF-037 | Implemented | Loopback FastAPI host and typed bounded operations API tests | — |
 | AF-038 | Implemented | Live dashboard shell and UI state tests | — |
