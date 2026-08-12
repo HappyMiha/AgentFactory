@@ -15,7 +15,7 @@ This audit compares the repository through the AF-027 OpenTelemetry/cost-ledger,
 | Status | Tasks | Count |
 |---|---|---:|
 | Implemented | AF-001–AF-025, AF-027, AF-036–AF-057 | 48 |
-| Partial precursors | AF-026, AF-028, AF-030, AF-032 | 4 |
+| Partial precursors | AF-030 | 1 |
 | Not started | AF-029, AF-031, AF-033–AF-035 | 5 |
 
 The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice plus fail-closed mission intake, justified workforce composition, exact owner-signed Factory Blueprints, and recoverable idempotent mission bootstrap across durable data, source authority, role contracts, qualification-aware routing, bounded role pools, immutable operating-design versions, exact manifests, managed worktrees, controlled fallback, deterministic validation, independent evaluation, and gated PR planning. Full context brokerage and platform expansion remain downstream work.
@@ -49,7 +49,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-023 | Implemented | Immutable six-pattern manifests; participant/model snapshots; least-used producer-model-excluding reviewer selection; typed/evidenced/dissent-preserving contribution ledger; deterministic ranked-choice, critic, majority, judge, bracket, and blue-resolution arbitration; hard turn/token/cost termination; `test_coordination.py` | — |
 | AF-024 | Implemented | Canonical signed manifests for six pack types; in-memory HMAC trust material and immutable human-approved fingerprints; core/permission/dependency/evaluation gates; human-only privileged connector approval; immutable versions/qualifications/events; reversible active pointer for disable and rollback; `test_packs.py` | — |
 | AF-025 | Implemented | Product-neutral signed reference pack composes AF-048/049/050/051/052/020/053 contract references; immutable requirement/task/Blueprint/ADR/test/accepted-review trace; reproducible dependency/security/rollback evidence; human release-authority lifecycle; `test_reference_pack.py`, `test_packs.py`, `test_software_roles.py` | — |
-| AF-026 | Partial | Loopback FastAPI Local Control Center | No production REST boundary, authentication, ETags/idempotency, webhooks, SDK contract, or complete resource surface |
+| AF-026 | Implemented | Authenticated versioned REST boundary, tenant-scoped idempotency/ETag contract, signed retry-safe webhooks, SDK transport contract, and `test_api_contract.py` | — |
 | AF-027 | Implemented | Correlation-preserving OTLP-compatible export; queue/wait/duration/failure/iteration/orphan metrics; idempotent provider-reported/estimated cost ledger; notify/reroute/pause/approval threshold actions; human-authorized hard-budget expansion; `test_observability.py`, `test_execution_telemetry.py` | — |
 | AF-028 | Implemented | Clustered fault-boundary identity continuity, immutable chaos evidence, and fresh-database online-backup restore exercise; `test_chaos_recovery.py` | — |
 | AF-029 | Implemented | Tenant-scoped object adapter, PostgreSQL migration contract, digest-preserving metadata, governance enforcement, verified export/deletion evidence, and `test_tenant_storage.py` | — |

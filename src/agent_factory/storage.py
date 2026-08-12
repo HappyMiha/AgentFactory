@@ -3007,6 +3007,40 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS handover_bundles_no_delete BEFORE DELETE ON handover_bundles
         BEGIN SELECT RAISE(ABORT, 'handover evidence is immutable'); END;
     """),
+    (56, """
+        CREATE TABLE IF NOT EXISTS api_idempotency(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            idempotency_key TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            response_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(tenant_id,idempotency_key)
+        );
+        CREATE TABLE IF NOT EXISTS api_webhook_deliveries(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            delivery_key TEXT NOT NULL,
+            event_json TEXT NOT NULL,
+            signature TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL CHECK(status IN ('pending','delivered','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(tenant_id,delivery_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_api_idempotency_scope ON api_idempotency(tenant_id,idempotency_key);
+        CREATE TRIGGER IF NOT EXISTS api_idempotency_no_update BEFORE UPDATE ON api_idempotency
+        BEGIN SELECT RAISE(ABORT, 'API idempotency records are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS api_idempotency_no_delete BEFORE DELETE ON api_idempotency
+        BEGIN SELECT RAISE(ABORT, 'API idempotency records are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS api_webhooks_no_update BEFORE UPDATE ON api_webhook_deliveries
+        WHEN OLD.status='delivered'
+        BEGIN SELECT RAISE(ABORT, 'delivered webhooks are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS api_webhooks_no_delete BEFORE DELETE ON api_webhook_deliveries
+        BEGIN SELECT RAISE(ABORT, 'webhook delivery evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
