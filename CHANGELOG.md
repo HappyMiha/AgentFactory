@@ -6,6 +6,7 @@
 - Documented the readiness workflow in the Ukrainian user guide and PDF.
 - Added technical-specification upload and Backlog Steward decomposition preview in Work item controls.
 - Added guarded work-item archiving with active-run, lease, and dependent-item checks while preserving audit history.
+- Expanded specification intake to generic text/JSON/Markdown/PDF uploads with explicit suitable-agent role and reviewable analysis status.
 
 All notable changes to Agent Factory are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/).
 

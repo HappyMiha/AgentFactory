@@ -12,6 +12,27 @@ from typing import Any
 from .backlog import BacklogProposal, ProposedItem, load_backlog
 
 
+def extract_text(raw: bytes, source_name: str) -> str:
+    """Extract text from common document uploads without executing the file."""
+    suffix = Path(source_name).suffix.lower()
+    if suffix == ".pdf" or raw.startswith(b"%PDF"):
+        try:
+            from pypdf import PdfReader
+            import io
+            text = "\n".join(page.extract_text() or "" for page in PdfReader(io.BytesIO(raw)).pages)
+        except ImportError as exc:
+            raise ValueError("PDF support requires the web extra: install pypdf") from exc
+        except Exception as exc:  # noqa: BLE001 - report malformed document as input data.
+            raise ValueError(f"Could not read PDF specification: {type(exc).__name__}") from exc
+        if not text.strip():
+            raise ValueError("PDF does not contain extractable text; OCR is not enabled")
+        return text
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError("This file format has no safe text extractor yet; upload text, JSON, Markdown, or PDF") from exc
+
+
 def _slug(value: str, fallback: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return value[:48] or fallback
@@ -25,10 +46,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
     before importing it into the project backlog.
     """
     digest = hashlib.sha256(raw).hexdigest()
-    try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        raise ValueError("Uploaded specification must be a UTF-8 text, Markdown, or JSON file") from exc
+    text = extract_text(raw, source_name)
     try:
         document = json.loads(text)
     except json.JSONDecodeError:

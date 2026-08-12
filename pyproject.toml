@@ -27,7 +27,7 @@ agent-factory = "agent_factory.cli:main"
 
 [project.optional-dependencies]
 dev = ["build>=1.2", "httpx2>=2.10,<3"]
-web = ["fastapi>=0.116,<1", "uvicorn>=0.35,<1"]
+web = ["fastapi>=0.116,<1", "uvicorn>=0.35,<1", "pypdf>=5,<7"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

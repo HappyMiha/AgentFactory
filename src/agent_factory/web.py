@@ -153,6 +153,9 @@ class UploadedBacklogResponse(BaseModel):
     source_path: str
     source_name: str
     recommended_agent: str
+    agent_role: str
+    analysis_status: Literal["completed", "needs_review"]
+    source_type: str
     counts: dict[str, int]
     items: list[dict[str, Any]]
 
@@ -448,6 +451,9 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             source_path=manifest.relative_to(workspace).as_posix(),
             source_name=source_name,
             recommended_agent="backlog-steward",
+            agent_role="Delivery Planner",
+            analysis_status="needs_review",
+            source_type=Path(source_name).suffix.lower().lstrip(".") or "binary",
             counts=counts,
             items=[asdict(item) for item in proposal.items],
         )

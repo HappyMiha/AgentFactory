@@ -63,7 +63,7 @@ agent-factory --workspace . web --open
 
 ## 5. Проєкти, задачі та workflow
 
-У **Work item controls** можна завантажити технічне завдання у UTF‑8 Markdown/TXT або Agent Factory JSON. Натисніть **Upload technical specification**: локальний Backlog Steward проаналізує структуру заголовків, покаже попередню декомпозицію на epic/story/task (глибші рівні позначаються як subtasks), а окреме підтвердження імпорту створить work items. Файл не виконує команди й не запускає зовнішні провайдери.
+У **Work item controls** можна завантажити довільний документ, який має безпечний text extractor: Markdown/TXT, JSON або PDF. Натисніть **Upload technical specification**: роль Backlog Steward (Delivery Planner) витягне вимоги, покаже попередню декомпозицію на epic/story/task (глибші рівні позначаються як subtasks), а окреме підтвердження імпорту створить work items. Файл не виконує команди й не запускає зовнішні провайдери; PDF support входить до web extra (`pypdf`).
 
 Для непотрібного item використовуйте **Archive item**. Операція потребує підтвердження і відмовить, якщо є активний run, lease або залежні work items. Архівація приховує item із активного backlog, але зберігає його деталі та audit trail.
 

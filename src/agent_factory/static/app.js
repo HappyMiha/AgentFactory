@@ -298,7 +298,7 @@ async function handleSpecificationUpload(event) {
   const form = new FormData(event.currentTarget);
   const response = await fetchJson("/api/backlog/analyze-upload", { method: "POST", body: form });
   const counts = Object.entries(response.counts).map(([kind, count]) => `${kind}: ${count}`).join(" · ");
-  $("spec-analysis").innerHTML = `<div class="dry-run-banner"><strong>Analysis complete · ${escapeHtml(response.recommended_agent)}</strong><span>${escapeHtml(counts)}</span><span>Source: <code>${escapeHtml(response.source_path)}</code></span><button type="button" data-import-analyzed>Import analyzed backlog</button></div><div class="preview-counts">${response.items.map((item) => `<span>${escapeHtml(item.kind)}: ${escapeHtml(item.title)}</span>`).join("")}</div>`;
+  $("spec-analysis").innerHTML = `<div class="dry-run-banner"><strong>${escapeHtml(response.analysis_status)} · ${escapeHtml(response.recommended_agent)} (${escapeHtml(response.agent_role)})</strong><span>Source type: ${escapeHtml(response.source_type)} · ${escapeHtml(counts)}</span><span>Source: <code>${escapeHtml(response.source_path)}</code></span><button type="button" data-import-analyzed>Import analyzed backlog</button></div><div class="preview-counts">${response.items.map((item) => `<span>${escapeHtml(item.kind)}: ${escapeHtml(item.title)}</span>`).join("")}</div>`;
   $("spec-analysis").dataset.projectName = String(form.get("project_name") || "").trim();
   $("spec-analysis").dataset.backlogPath = response.source_path;
 }

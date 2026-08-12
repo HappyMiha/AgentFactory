@@ -19,6 +19,9 @@ class BacklogUploadTests(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             payload = response.json()
             self.assertEqual(payload["recommended_agent"], "backlog-steward")
+            self.assertEqual(payload["agent_role"], "Delivery Planner")
+            self.assertEqual(payload["source_type"], "md")
+            self.assertEqual(payload["analysis_status"], "needs_review")
             self.assertEqual(payload["counts"]["epic"], 1)
             self.assertEqual(payload["counts"]["story"], 2)
             self.assertEqual(payload["counts"]["task"], 2)
@@ -44,6 +47,14 @@ class BacklogUploadTests(unittest.TestCase):
                 response = client.post("/api/backlog/analyze-upload", files={"specification": ("export.json", body)})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["counts"]["task"], 1)
+
+    def test_plain_text_upload_is_accepted_as_generic_document(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+                response = client.post("/api/backlog/analyze-upload", files={"specification": ("brief.txt", b"# Game\n## Controls\n")})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["source_type"], "txt")
 
 
 if __name__ == "__main__":
