@@ -2684,6 +2684,59 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER pack_lifecycle_events_no_delete BEFORE DELETE ON pack_lifecycle_events
         BEGIN SELECT RAISE(ABORT, 'pack lifecycle events are immutable'); END;
     """),
+    (46, """
+        CREATE TABLE reference_pack_releases(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            pack_version_id INTEGER NOT NULL UNIQUE REFERENCES pack_versions(id),
+            role_pack_id INTEGER NOT NULL REFERENCES software_role_packs(id),
+            release_manifest_json TEXT NOT NULL,
+            release_manifest_digest TEXT NOT NULL UNIQUE CHECK(length(release_manifest_digest)=64),
+            dependency_evidence_json TEXT NOT NULL,
+            security_evidence_json TEXT NOT NULL,
+            rollback_evidence_json TEXT NOT NULL,
+            traceability_json TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'candidate'
+                CHECK(status IN ('candidate','approved','published','rolled_back')),
+            release_authority TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            approved_at TEXT,
+            published_at TEXT,
+            rolled_back_at TEXT
+        );
+        CREATE TRIGGER reference_pack_releases_scope_immutable
+        BEFORE UPDATE OF identity,pack_version_id,role_pack_id,release_manifest_json,
+                         release_manifest_digest,dependency_evidence_json,
+                         security_evidence_json,rollback_evidence_json,traceability_json,
+                         release_authority ON reference_pack_releases
+        BEGIN SELECT RAISE(ABORT, 'reference pack release scope is immutable'); END;
+        CREATE TRIGGER reference_pack_releases_valid_transition
+        BEFORE UPDATE OF status ON reference_pack_releases
+        WHEN NOT (
+            (OLD.status='candidate' AND NEW.status='approved') OR
+            (OLD.status='approved' AND NEW.status='published') OR
+            (OLD.status IN ('approved','published') AND NEW.status='rolled_back')
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid reference pack release transition'); END;
+        CREATE TRIGGER reference_pack_releases_no_delete BEFORE DELETE ON reference_pack_releases
+        BEGIN SELECT RAISE(ABORT, 'reference pack release history is immutable'); END;
+
+        CREATE TABLE reference_pack_release_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            release_id INTEGER NOT NULL REFERENCES reference_pack_releases(id),
+            event_type TEXT NOT NULL CHECK(event_type IN ('approved','published','rolled_back')),
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER reference_pack_release_events_no_update
+        BEFORE UPDATE ON reference_pack_release_events
+        BEGIN SELECT RAISE(ABORT, 'reference pack release events are immutable'); END;
+        CREATE TRIGGER reference_pack_release_events_no_delete
+        BEFORE DELETE ON reference_pack_release_events
+        BEGIN SELECT RAISE(ABORT, 'reference pack release events are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
