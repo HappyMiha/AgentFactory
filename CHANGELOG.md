@@ -6,6 +6,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-030 authenticated tenant-scoped Human Control Plane actions with role allowlists, immutable audit history, emergency/intervention controls, and explicit irreversible retirement confirmation.
 - AF-026 authenticated versioned REST boundary contract with bearer enforcement, tenant-scoped idempotency, ETags/conflicts, signed retry-safe webhooks, and SDK transport contract tests.
 - AF-035 immutable GA handover bundle with clean-install/provider/mission/emergency-stop/backup/restore/upgrade checklist, evidence index, and second-mission proof.
 - AF-034 heterogeneous reference acceptance mission envelope requiring three providers, independent verification, replacement, recovery, approval, reproducible release digest, and signed or human-excepted evidence for all 45 criteria.

@@ -4,11 +4,11 @@ These notes describe the implemented, tested repository state through the AF-027
 
 ## Release summary
 
-- Completed **56 of 57** backlog tasks: AF-001–AF-035, and AF-036–AF-057.
+- Completed **57 of 57** backlog tasks: AF-001–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **270 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- AF-026 now provides the authenticated REST/idempotency/ETag/webhook/SDK contract; AF-030 Human Control Plane is the remaining partial task.
+- Verified **272 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- AF-030 now provides the authenticated Human Control Plane and immutable intervention/lifecycle evidence; all backlog tasks are covered.
 
 ## Implemented backlog items and implementation commits
 

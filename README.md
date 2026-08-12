@@ -42,6 +42,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Reference acceptance mission.** A release envelope requires heterogeneous providers, independent verification, replacement/recovery/approval flow, and signed or human-excepted evidence for all 45 final criteria.
 - **GA handover evidence.** Immutable runbook checklist, evidence index, restore/upgrade proof, and second-mission isolation gate define operational handover readiness.
 - **Authenticated REST contract.** Versioned API resources expose bearer auth, tenant-scoped idempotency, ETags, signed webhooks, and SDK-compatible transport headers.
+- **Human Control Plane.** Tenant-scoped human roles govern approvals, interventions, emergency stop, agent lifecycle, and irreversible retirement with immutable audit evidence.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.

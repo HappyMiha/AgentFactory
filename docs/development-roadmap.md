@@ -42,7 +42,7 @@ The implementation order is:
 ```text
 DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008 -> AF-009; AF-010 -> AF-011 -> AF-012 -> AF-013 -> AF-014 -> AF-015 -> AF-016; AF-017 -> AF-018 -> AF-019 -> AF-021; AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-054 + AF-055 + AF-056 + AF-057
 
-DONE  AF-028 -> AF-035
+DONE  AF-026 -> AF-035
 NOW   complete
 ```
 
@@ -78,9 +78,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 12 August 2026, 56 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-035`, and `AF-036` through `AF-057`. One task remains partial (AF-030) and no tasks are not started. Partial work never satisfies a dependency.
+As of 12 August 2026, all 57 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-057`. No tasks remain partial or not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). AF-030 Human Control Plane is the remaining partial production-boundary follow-up.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The implementation backlog is fully covered; remaining work is release governance and operational follow-through.
 
 ## R0.2 — Local Control Center MVP
 

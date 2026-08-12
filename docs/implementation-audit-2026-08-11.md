@@ -15,7 +15,7 @@ This audit compares the repository through the AF-027 OpenTelemetry/cost-ledger,
 | Status | Tasks | Count |
 |---|---|---:|
 | Implemented | AF-001–AF-025, AF-027, AF-036–AF-057 | 48 |
-| Partial precursors | AF-030 | 1 |
+| Partial precursors | — | 0 |
 | Not started | AF-029, AF-031, AF-033–AF-035 | 5 |
 
 The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice plus fail-closed mission intake, justified workforce composition, exact owner-signed Factory Blueprints, and recoverable idempotent mission bootstrap across durable data, source authority, role contracts, qualification-aware routing, bounded role pools, immutable operating-design versions, exact manifests, managed worktrees, controlled fallback, deterministic validation, independent evaluation, and gated PR planning. Full context brokerage and platform expansion remain downstream work.
@@ -53,7 +53,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-027 | Implemented | Correlation-preserving OTLP-compatible export; queue/wait/duration/failure/iteration/orphan metrics; idempotent provider-reported/estimated cost ledger; notify/reroute/pause/approval threshold actions; human-authorized hard-budget expansion; `test_observability.py`, `test_execution_telemetry.py` | — |
 | AF-028 | Implemented | Clustered fault-boundary identity continuity, immutable chaos evidence, and fresh-database online-backup restore exercise; `test_chaos_recovery.py` | — |
 | AF-029 | Implemented | Tenant-scoped object adapter, PostgreSQL migration contract, digest-preserving metadata, governance enforcement, verified export/deletion evidence, and `test_tenant_storage.py` | — |
-| AF-030 | Partial | Loopback dashboard, approvals, audit, routing controls | No authenticated multi-tenant Human Control Plane, incident/cost/lease controls, or production service boundary |
+| AF-030 | Implemented | Authenticated tenant-scoped human action allowlists, immutable intervention/audit records, emergency and lifecycle controls, explicit irreversible retirement confirmation, and `test_control_plane.py` | — |
 | AF-031 | Implemented | Versioned profile manifests, smoke verification for four topologies, explicit hybrid/air-gapped paths, and continuity-checked upgrade/rollback evidence; `test_deployment.py` | — |
 | AF-032 | Implemented | Immutable NFR/capacity/accessibility/isolation/backup-restore gate with environment metadata and raw evidence; `test_qualification.py` | — |
 | AF-033 | Implemented | Versioned 72-hour workload/fault schedule, continuity/no-duplicate evidence, bounded resource gate; `test_soak.py` | — |

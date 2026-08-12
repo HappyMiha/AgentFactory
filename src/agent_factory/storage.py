@@ -3041,6 +3041,26 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS api_webhooks_no_delete BEFORE DELETE ON api_webhook_deliveries
         BEGIN SELECT RAISE(ABORT, 'webhook delivery evidence is immutable'); END;
     """),
+    (57, """
+        CREATE TABLE IF NOT EXISTS control_plane_actions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            role TEXT NOT NULL,
+            action TEXT NOT NULL,
+            target_type TEXT NOT NULL,
+            target_id TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            outcome TEXT NOT NULL CHECK(outcome IN ('accepted','rejected')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_control_actions_scope ON control_plane_actions(tenant_id,created_at);
+        CREATE TRIGGER IF NOT EXISTS control_plane_actions_no_update BEFORE UPDATE ON control_plane_actions
+        BEGIN SELECT RAISE(ABORT, 'control-plane actions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS control_plane_actions_no_delete BEFORE DELETE ON control_plane_actions
+        BEGIN SELECT RAISE(ABORT, 'control-plane actions are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
