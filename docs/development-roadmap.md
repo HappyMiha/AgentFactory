@@ -42,8 +42,8 @@ The implementation order is:
 ```text
 DONE  AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008 -> AF-009; AF-010 -> AF-011 -> AF-012 -> AF-013 -> AF-014 -> AF-015 -> AF-016; AF-017 -> AF-018 -> AF-019 -> AF-021; AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-054 + AF-055 + AF-056 + AF-057
 
-DONE  AF-029 -> AF-032
-NOW   AF-028/AF-033
+DONE  AF-028 -> AF-032
+NOW   AF-033
 ```
 
 Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. AgentFactory is the sole worktree authority: managed Hermes sessions receive an AF-048 worktree and do not invoke Hermes worktree creation. Mutable Hermes execution uses ACP stdio and its permission bridge; Hermes one-shot mode is restricted to qualification or read-only work because it bypasses interactive approvals. `AF-049` Codex is the first required writable implementation worker. `AF-050` Claude Code is P1 and supplies a compatible alternative after the first vertical slice is proven. The local independent-verdict subset of AF-020 is P0 because AF-053 cannot satisfy its review requirement without it.
@@ -78,9 +78,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 12 August 2026, 51 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-025`, `AF-027`, `AF-029`, `AF-031`, `AF-032`, and `AF-036` through `AF-057`. Four tasks have partial precursors and 2 are not started. Partial work never satisfies a dependency.
+As of 12 August 2026, 52 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-025`, `AF-027` through `AF-032`, and `AF-036` through `AF-057`. Two tasks have partial precursors and 3 are not started. Partial work never satisfies a dependency.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). AF-028/AF-033 are next dependency-ready tasks.
+The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). AF-033 is next.
 
 ## R0.2 — Local Control Center MVP
 

@@ -2943,6 +2943,22 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS qualification_runs_no_delete BEFORE DELETE ON qualification_runs
         BEGIN SELECT RAISE(ABORT, 'qualification evidence is immutable'); END;
     """),
+    (52, """
+        CREATE TABLE IF NOT EXISTS chaos_recovery_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            profile TEXT NOT NULL,
+            fault_boundary TEXT NOT NULL,
+            identities_json TEXT NOT NULL,
+            restore_json TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK(verdict IN ('passed','failed')),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS chaos_recovery_runs_no_update BEFORE UPDATE ON chaos_recovery_runs
+        BEGIN SELECT RAISE(ABORT, 'chaos recovery evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS chaos_recovery_runs_no_delete BEFORE DELETE ON chaos_recovery_runs
+        BEGIN SELECT RAISE(ABORT, 'chaos recovery evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

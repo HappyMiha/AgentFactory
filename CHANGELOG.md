@@ -6,6 +6,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-028 deterministic clustered chaos-recovery boundaries, identity-continuity checks, and an online-backup restore exercise verifying artifacts and audit continuity.
 - AF-032 repeatable NFR/capacity qualification gate with environment metadata, raw evidence, 10/25/100 capacity thresholds, and mandatory accessibility, tenant-isolation, and backup/restore checks.
 - AF-031 versioned single-node, clustered, hybrid, and air-gapped deployment profiles with smoke validation, explicit egress/model/connector/update/artifact paths, and continuity-checked upgrade/rollback evidence.
 - AF-029 tenant-scoped object storage boundary with PostgreSQL migration contract, content digests, quotas, governance policies, verified exports, and deletion evidence.
