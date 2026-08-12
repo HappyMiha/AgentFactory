@@ -145,6 +145,10 @@ class BacklogImportCommand(ConfirmedCommand):
     backlog_path: str
 
 
+class ArchiveWorkItemCommand(ConfirmedCommand):
+    reason: str = ""
+
+
 class UploadedBacklogResponse(BaseModel):
     source_path: str
     source_name: str
@@ -496,6 +500,16 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         _require_confirmation(command, confirmation)
         result = service.claim_work_item(task_id, command.agent_id)
         return asdict(result)
+
+    @app.post("/api/work-items/{task_id}/archive", response_model=WorkItemView)
+    async def archive_work_item(
+        task_id: int,
+        command: ArchiveWorkItemCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> WorkItemView:
+        _require_confirmation(command, confirmation)
+        return service.archive_work_item(task_id, command.reason)
 
     @app.post("/api/work-items/{task_id}/runs", response_model=RunView)
     async def start_workflow(

@@ -173,7 +173,7 @@ async function selectWorkItem(taskId) {
     ${listBlock("Expected outputs", item.expected_outputs, "No expected outputs")}
     <div class="detail-block"><h3>Linked artifacts</h3>${artifacts.items.length ? artifacts.items.map((artifact) => `<article class="artifact-row"><span><strong>${escapeHtml(artifact.stage)}</strong><small>#${artifact.id} &middot; ${escapeHtml(artifact.agent_id)} via ${escapeHtml(artifact.provider)}</small></span><span>${badge(artifact.status)}<span class="artifact-actions"><button type="button" data-review="approved" data-artifact-id="${artifact.id}">Approve</button><button type="button" class="danger" data-review="rejected" data-artifact-id="${artifact.id}">Reject</button></span></span></article>`).join("") : `<p>No artifacts yet</p>`}</div>
     <div class="detail-block"><h3>Workflow runs</h3>${runs.items.length ? runs.items.map((run) => `<button type="button" class="text-button" data-run-id="${run.id}">Inspect run #${run.id} (${escapeHtml(run.status)})</button>`).join("") : `<p>No runs yet</p>`}</div>
-    <div class="command-bar"><label>Claim as<input id="claim-agent" value="${escapeHtml(item.assignee || "coding-worker-codex")}" aria-label="Agent ID for claim"></label><button type="button" data-command="claim">Claim</button>${item.kind === "task" ? `<button type="button" data-command="run">Run simulation</button>` : `<span class="panel-copy">Only leaf tasks can run; this ${escapeHtml(item.kind)} is a planning item.</span>`}</div>`;
+    <div class="command-bar"><label>Claim as<input id="claim-agent" value="${escapeHtml(item.assignee || "coding-worker-codex")}" aria-label="Agent ID for claim"></label><button type="button" data-command="claim">Claim</button>${item.kind === "task" ? `<button type="button" data-command="run">Run simulation</button>` : `<span class="panel-copy">Only leaf tasks can run; this ${escapeHtml(item.kind)} is a planning item.</span>`}<button type="button" class="danger" data-command="archive">Archive item</button></div>`;
   await loadWork();
 }
 
@@ -228,6 +228,12 @@ async function handleWorkAction(target) {
   } else if (target.dataset.command === "run") {
     const run = await guardedCommand(`/api/work-items/${state.selectedTask}/runs`, { workflow_id: "delivery", mode: "simulation" }, `Run delivery workflow for work item #${state.selectedTask} in simulation mode`);
     if (run) await showRun(run.id);
+  } else if (target.dataset.command === "archive") {
+    await guardedCommand(`/api/work-items/${state.selectedTask}/archive`, { reason: "Archived from Local Control Center" }, `Archive work item #${state.selectedTask}; active runs, leases, and dependent items will be checked`);
+    state.selectedTask = null;
+    $("work-detail").innerHTML = empty("Select a work item to inspect its delivery contract");
+    await refresh();
+    return;
   } else if (target.dataset.review) {
     await guardedCommand(`/api/artifacts/${target.dataset.artifactId}/review`, { task_id: state.selectedTask, decision: target.dataset.review, note: "Reviewed in Local Control Center" }, `${target.dataset.review === "approved" ? "Approve" : "Reject"} artifact #${target.dataset.artifactId}`);
   }

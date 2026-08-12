@@ -5,6 +5,7 @@
 - Added a Local Control Center System monitor with `/api/monitor` readiness checks for database integrity, migrations, providers, agents, runtime, and emergency-stop safety.
 - Documented the readiness workflow in the Ukrainian user guide and PDF.
 - Added technical-specification upload and Backlog Steward decomposition preview in Work item controls.
+- Added guarded work-item archiving with active-run, lease, and dependent-item checks while preserving audit history.
 
 All notable changes to Agent Factory are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/).
 

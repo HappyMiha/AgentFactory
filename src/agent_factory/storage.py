@@ -5168,6 +5168,45 @@ class SQLiteStorage:
                 {"previous_state": source, "resulting_state": target},
             )
 
+    def archive_task(self, task_id: int, *, reason: str = "") -> None:
+        """Hide a work item from active backlog while retaining all evidence."""
+        with self.db:
+            row = self.db.execute(
+                "SELECT status,version,inputs_json FROM work_items WHERE id=?", (task_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown task: {task_id}")
+            inputs = json.loads(row["inputs_json"])
+            if inputs.get("archived"):
+                raise ValueError(f"Work item {task_id} is already archived")
+            active_run = self.db.execute(
+                "SELECT id FROM workflow_runs WHERE task_id=? AND status IN ('running','awaiting_approval') LIMIT 1",
+                (task_id,),
+            ).fetchone()
+            if active_run:
+                raise ValueError(f"Work item {task_id} has active workflow run {active_run['id']}")
+            active_lease = self.db.execute(
+                "SELECT l.id FROM leases l JOIN assignments a ON a.id=l.assignment_id WHERE a.task_id=? AND l.status='active' LIMIT 1",
+                (task_id,),
+            ).fetchone()
+            if active_lease:
+                raise ValueError(f"Work item {task_id} has active lease {active_lease['id']}")
+            dependents = []
+            for candidate in self.db.execute("SELECT id,dependencies_json FROM work_items WHERE id<>?", (task_id,)):
+                if task_id in json.loads(candidate["dependencies_json"]):
+                    dependents.append(int(candidate["id"]))
+            if dependents:
+                raise ValueError(f"Work item {task_id} is required by dependent items: {dependents}")
+            inputs["archived"] = True
+            inputs["archive_reason"] = reason.strip()
+            updated = self.db.execute(
+                "UPDATE work_items SET inputs_json=?,payload=?,version=version+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND version=?",
+                (json.dumps(inputs, sort_keys=True), json.dumps({**json.loads(self.db.execute("SELECT payload FROM work_items WHERE id=?", (task_id,)).fetchone()[0]), "inputs": inputs}, sort_keys=True), task_id, row["version"]),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(f"Work item {task_id} changed concurrently")
+            self._event("task.archived", "task", task_id, {"previous_state": row["status"], "reason": reason.strip()})
+
     def task_readiness(self, task_id: int, *, now: datetime | None = None) -> tuple[str, ...]:
         """Return deterministic blockers; an empty tuple means the task is runnable."""
 

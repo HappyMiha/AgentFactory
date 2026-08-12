@@ -415,11 +415,18 @@ class AgentFactoryService:
             query += " WHERE project_id=?"
             parameters = (project_id,)
         query += " ORDER BY id"
-        rows = self.storage.db.execute(query, parameters).fetchall()
+        rows = [
+            row for row in self.storage.db.execute(query, parameters).fetchall()
+            if not self.storage.get_task(int(row["id"])).inputs.get("archived")
+        ]
         return [
             self._work_item_view(int(row["id"]), str(row["created_at"]))
             for row in rows
         ]
+
+    def archive_work_item(self, task_id: int, reason: str = "") -> WorkItemView:
+        self.storage.archive_task(task_id, reason=reason)
+        return self.work_item(task_id)
 
     def work_item(self, task_id: int) -> WorkItemView:
         row = self.storage.db.execute(
