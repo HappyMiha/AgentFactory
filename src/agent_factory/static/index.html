@@ -18,6 +18,7 @@
       </a>
       <nav>
         <a class="active" href="#overview">Overview</a>
+        <a href="#monitor">System monitor</a>
         <a href="#work">Work items</a>
         <a href="#runs">Workflow runs</a>
         <a href="#agents">Agents &amp; providers</a>
@@ -37,6 +38,12 @@
         <div id="metrics" class="metrics" aria-live="polite">
           <div class="metric loading"></div><div class="metric loading"></div><div class="metric loading"></div>
         </div>
+      </section>
+      <section id="monitor" class="panel monitor-panel" aria-labelledby="monitor-title">
+        <div class="panel-head"><div><p class="eyebrow">Readiness</p><h2 id="monitor-title">System monitor</h2></div><span id="monitor-checked">Not checked</span></div>
+        <div id="monitor-summary" class="monitor-summary loading-block">Checking system readiness…</div>
+        <div id="monitor-checks" class="monitor-grid"></div>
+        <div id="monitor-blockers" class="monitor-blockers"></div>
       </section>
       <div class="dashboard-grid">
         <section id="runs" class="panel" aria-labelledby="runs-title"><div class="panel-head"><div><p class="eyebrow">Execution</p><h2 id="runs-title">Recent runs</h2></div><a href="#work">View work</a></div><div id="run-list" class="list loading-block">Loading workflow runs…</div></section>

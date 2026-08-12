@@ -2,6 +2,7 @@
 
 import sqlite3
 import os
+from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import asdict
 from pathlib import Path
@@ -32,7 +33,7 @@ from .application import (
     SettingsView,
     WorkItemView,
 )
-from .storage import SQLiteStorage
+from .storage import MIGRATIONS, SQLiteStorage
 from .control_plane import HumanControlPlaneService
 
 T = TypeVar("T")
@@ -73,6 +74,18 @@ class DashboardResponse(BaseModel):
     pending_approvals: list[ApprovalView]
     recent_failures: list[EventView]
     operations: OperationalStateView
+
+
+class MonitorResponse(BaseModel):
+    status: Literal["ready", "degraded"]
+    checked_at: str
+    database: dict[str, Any]
+    migrations: dict[str, int]
+    providers: dict[str, int]
+    agents: dict[str, int]
+    runtime: dict[str, int]
+    safety: dict[str, Any]
+    blockers: list[str]
 
 
 class ConfirmedCommand(BaseModel):
@@ -293,6 +306,56 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             pending_approvals=[item for item in approvals if item.status == "pending"],
             recent_failures=failures,
             operations=service.operational_state(),
+        )
+
+    @app.get("/api/monitor", response_model=MonitorResponse)
+    async def monitor(service: Service) -> MonitorResponse:
+        integrity = service.storage.integrity_check()
+        migration_row = service.storage.db.execute(
+            "SELECT COALESCE(MAX(version), 0) AS current_version FROM schema_migrations"
+        ).fetchone()
+        current_version = int(migration_row["current_version"])
+        latest_version = max(version for version, _ in MIGRATIONS)
+        providers = service.providers()
+        agents = service.agents()
+        operational = service.operational_state()
+        safety = service.storage.policy_state()
+        blockers: list[str] = []
+        if not integrity["ok"]:
+            blockers.append("database_integrity_failed")
+        if current_version < latest_version:
+            blockers.append("database_migrations_pending")
+        if any(item.status not in {"ready", "disabled"} for item in providers):
+            blockers.append("provider_health_degraded")
+        if not any(item.enabled for item in agents):
+            blockers.append("no_enabled_agents")
+        if safety["emergency_stop"]:
+            blockers.append("emergency_stop_active")
+        return MonitorResponse(
+            status="ready" if not blockers else "degraded",
+            checked_at=datetime.now(timezone.utc).isoformat(),
+            database={"ok": bool(integrity["ok"]), "path": str(service.storage.path.resolve())},
+            migrations={"current": current_version, "latest": latest_version},
+            providers={
+                "total": len(providers),
+                "ready": sum(item.status == "ready" for item in providers),
+                "enabled": sum(item.enabled for item in providers),
+                "execution_enabled": sum(item.execution_enabled for item in providers),
+            },
+            agents={"total": len(agents), "enabled": sum(item.enabled for item in agents)},
+            runtime={
+                "active_sessions": operational.active_sessions,
+                "queued_tasks": operational.queued_tasks,
+                "active_leases": operational.active_leases,
+                "active_worktrees": operational.active_worktrees,
+                "failures": operational.failures,
+            },
+            safety={
+                "emergency_stop": bool(safety["emergency_stop"]),
+                "reason": safety["reason"],
+                "version": safety["version"],
+            },
+            blockers=blockers,
         )
 
     @app.get("/api/projects", response_model=Page[ProjectView])

@@ -25,6 +25,24 @@ function renderDashboard(data) {
   $("failure-list").innerHTML = data.recent_failures.length ? data.recent_failures.map((item) => `<div class="list-row"><span><strong>${escapeHtml(item.event_type)}</strong><small>${escapeHtml(item.entity_type)} #${escapeHtml(item.entity_id)}</small></span><time>${escapeHtml(item.created_at)}</time></div>`).join("") : empty("No recent failures");
 }
 
+function renderMonitor(data) {
+  const ready = data.status === "ready";
+  const summary = $("monitor-summary");
+  summary.classList.remove("loading-block");
+  summary.innerHTML = `<span class="monitor-state ${ready ? "ready" : "degraded"}">${ready ? "READY" : "DEGRADED"}</span><strong>${ready ? "System is ready for work" : "Resolve readiness blockers before starting"}</strong>`;
+  $("monitor-checked").textContent = `Checked ${new Date(data.checked_at).toLocaleTimeString()}`;
+  const checks = [
+    ["Database", data.database.ok ? "OK" : "Failed", data.database.ok ? "ready" : "degraded"],
+    ["Migrations", `${data.migrations.current}/${data.migrations.latest}`, data.migrations.current === data.migrations.latest ? "ready" : "degraded"],
+    ["Providers", `${data.providers.ready}/${data.providers.total} ready`, data.providers.ready === data.providers.total ? "ready" : "degraded"],
+    ["Agents", `${data.agents.enabled}/${data.agents.total} enabled`, data.agents.enabled > 0 ? "ready" : "degraded"],
+    ["Emergency stop", data.safety.emergency_stop ? "ACTIVE" : "Clear", data.safety.emergency_stop ? "degraded" : "ready"],
+    ["Runtime", `${data.runtime.active_sessions} sessions · ${data.runtime.queued_tasks} queued`, "info"],
+  ];
+  $("monitor-checks").innerHTML = checks.map(([label, value, status]) => `<article class="monitor-card ${status}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
+  $("monitor-blockers").innerHTML = data.blockers.length ? `<strong>Blockers</strong><ul>${data.blockers.map((item) => `<li>${escapeHtml(item.replaceAll("_", " "))}</li>`).join("")}</ul>` : `<span>No blockers detected. The local control plane can accept work.</span>`;
+}
+
 function renderRuntime(agents, providers, reviews) {
   $("agent-list").classList.remove("loading-block");
   $("routing-list").classList.remove("loading-block");
@@ -286,8 +304,9 @@ async function handleFounderDecision(decision) {
 async function refresh() {
   $("refresh").disabled = true;
   try {
-    const [dashboard, agents, providers, reviews, founderPackets] = await Promise.all([
+    const [dashboard, monitor, agents, providers, reviews, founderPackets] = await Promise.all([
       fetchJson("/api/dashboard"),
+      fetchJson("/api/monitor"),
       fetchJson("/api/agents?limit=200"),
       fetchJson("/api/providers?limit=200"),
       fetchJson("/api/reviews?limit=200"),
@@ -297,7 +316,7 @@ async function refresh() {
       loadAudit(),
       loadSettings()
     ]);
-    renderDashboard(dashboard); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
+    renderDashboard(dashboard); renderMonitor(monitor); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
     $("updated").textContent = `Updated ${state.lastSuccess.toLocaleTimeString()}`; if (!$("notice").textContent.startsWith("Completed:")) $("notice").hidden = true;
   } catch (error) {

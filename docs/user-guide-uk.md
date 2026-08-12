@@ -55,7 +55,9 @@ agent-factory --workspace . web --open
 
 Відкрийте `http://127.0.0.1:8765/`. API docs: `http://127.0.0.1:8765/api/docs`; OpenAPI: `/api/openapi.json`. Інший порт: `agent-factory --workspace . web --port 8877`.
 
-Інтерфейс показує ready/active/blocked/failed work, runs, provider health, approvals, reviewers, audit events, settings і GitHub dry-run preview. Усі мутації проходять ті самі application services, що й CLI, і вимагають явного підтвердження. Зупинка — `Ctrl+C`.
+Перед початком роботи відкрийте пункт **System monitor**. Він автоматично перевіряє цілісність SQLite, актуальність міграцій, доступність провайдерів, наявність увімкненого агента, активність emergency stop і поточний runtime. Статус `READY` означає, що блокерів немає; `DEGRADED` показує список причин, які треба усунути. Той самий readiness-контракт доступний через `GET /api/monitor`.
+
+Інтерфейс також показує ready/active/blocked/failed work, runs, provider health, approvals, reviewers, audit events, settings і GitHub dry-run preview. Усі мутації проходять ті самі application services, що й CLI, і вимагають явного підтвердження. Зупинка — `Ctrl+C`.
 
 Для production API задайте `AGENT_FACTORY_API_TOKEN`; endpoint `/api/control/actions` вимагатиме `Authorization: Bearer <token>` і tenant scope.
 
