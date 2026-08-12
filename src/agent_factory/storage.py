@@ -2737,6 +2737,109 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON reference_pack_release_events
         BEGIN SELECT RAISE(ABORT, 'reference pack release events are immutable'); END;
     """),
+    (47, """
+        CREATE TABLE otel_exports(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            correlation_root TEXT NOT NULL,
+            exporter TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            payload_digest TEXT NOT NULL UNIQUE CHECK(length(payload_digest)=64),
+            idempotency_key TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER otel_exports_no_update BEFORE UPDATE ON otel_exports
+        BEGIN SELECT RAISE(ABORT, 'OpenTelemetry exports are immutable'); END;
+        CREATE TRIGGER otel_exports_no_delete BEFORE DELETE ON otel_exports
+        BEGIN SELECT RAISE(ABORT, 'OpenTelemetry exports are immutable'); END;
+
+        CREATE TABLE cost_ledger_entries(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            idempotency_key TEXT NOT NULL UNIQUE,
+            provider TEXT NOT NULL,
+            source TEXT NOT NULL CHECK(source IN ('provider_reported','estimated')),
+            tokens INTEGER NOT NULL CHECK(tokens>=0),
+            duration_ms INTEGER NOT NULL CHECK(duration_ms>=0),
+            cost_usd REAL NOT NULL CHECK(cost_usd>=0),
+            currency TEXT NOT NULL DEFAULT 'USD' CHECK(currency='USD'),
+            metadata_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_cost_ledger_trace ON cost_ledger_entries(trace_id,created_at,id);
+        CREATE TRIGGER cost_ledger_entries_no_update BEFORE UPDATE ON cost_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'cost ledger entries are immutable'); END;
+        CREATE TRIGGER cost_ledger_entries_no_delete BEFORE DELETE ON cost_ledger_entries
+        BEGIN SELECT RAISE(ABORT, 'cost ledger entries are immutable'); END;
+
+        CREATE TABLE budget_threshold_policies(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            policy_key TEXT NOT NULL UNIQUE,
+            metric TEXT NOT NULL CHECK(metric IN ('cost_usd','tokens','duration_ms')),
+            threshold REAL NOT NULL CHECK(threshold>=0),
+            action TEXT NOT NULL CHECK(action IN ('notify','reroute','pause','require_approval')),
+            hard_budget INTEGER NOT NULL DEFAULT 0 CHECK(hard_budget IN (0,1)),
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER budget_threshold_policies_no_update BEFORE UPDATE ON budget_threshold_policies
+        BEGIN SELECT RAISE(ABORT, 'budget threshold policies are immutable'); END;
+        CREATE TRIGGER budget_threshold_policies_no_delete BEFORE DELETE ON budget_threshold_policies
+        BEGIN SELECT RAISE(ABORT, 'budget threshold policies are immutable'); END;
+
+        CREATE TABLE budget_threshold_actions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            policy_id INTEGER NOT NULL REFERENCES budget_threshold_policies(id),
+            observed_value REAL NOT NULL CHECK(observed_value>=0),
+            action TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('recorded','applied','awaiting_approval')),
+            detail_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(trace_id,policy_id)
+        );
+        CREATE TRIGGER budget_threshold_actions_no_update BEFORE UPDATE ON budget_threshold_actions
+        BEGIN SELECT RAISE(ABORT, 'budget threshold actions are immutable'); END;
+        CREATE TRIGGER budget_threshold_actions_no_delete BEFORE DELETE ON budget_threshold_actions
+        BEGIN SELECT RAISE(ABORT, 'budget threshold actions are immutable'); END;
+
+        CREATE TABLE budget_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            trace_id INTEGER NOT NULL REFERENCES execution_traces(id),
+            previous_max_cost_usd REAL NOT NULL CHECK(previous_max_cost_usd>=0),
+            new_max_cost_usd REAL NOT NULL CHECK(new_max_cost_usd>=previous_max_cost_usd),
+            authority TEXT NOT NULL,
+            authority_role TEXT NOT NULL CHECK(authority_role='human_budget_authority'),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER budget_authorizations_no_update BEFORE UPDATE ON budget_authorizations
+        BEGIN SELECT RAISE(ABORT, 'budget authorizations are immutable'); END;
+        CREATE TRIGGER budget_authorizations_no_delete BEFORE DELETE ON budget_authorizations
+        BEGIN SELECT RAISE(ABORT, 'budget authorizations are immutable'); END;
+    """),
+    (48, """
+        DROP TRIGGER execution_trace_scope_immutable;
+        CREATE TRIGGER execution_trace_scope_immutable
+        BEFORE UPDATE OF correlation_root,task_id,run_id,max_tokens,
+                         max_stages,max_retries,max_tool_calls
+        ON execution_traces
+        BEGIN SELECT RAISE(ABORT, 'execution trace scope is immutable'); END;
+        CREATE TRIGGER execution_trace_budget_authorized
+        BEFORE UPDATE OF max_cost_usd ON execution_traces
+        WHEN NOT EXISTS(
+            SELECT 1 FROM budget_authorizations
+             WHERE trace_id=OLD.id
+               AND previous_max_cost_usd=OLD.max_cost_usd
+               AND new_max_cost_usd=NEW.max_cost_usd
+        )
+        BEGIN SELECT RAISE(ABORT, 'hard budget increase requires human authorization'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

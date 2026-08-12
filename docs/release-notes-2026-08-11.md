@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-025 Software Engineering reference-pack, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-027 OpenTelemetry/cost-ledger, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **47 of 57** backlog tasks: AF-001–AF-025 and AF-036–AF-057.
+- Completed **48 of 57** backlog tasks: AF-001–AF-025, AF-027, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **250 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified coding/mission slices and safe-extensibility boundary through the Software Engineering reference pack are implemented but not released; AF-027 telemetry/cost ledger is next.
+- Verified **253 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified coding/mission slices and observability/cost boundary are implemented but not released; AF-029 production storage and tenant isolation is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -46,6 +46,7 @@ These notes describe the implemented, tested repository state through the AF-025
 | AF-023 | Six bounded coordination patterns, independent reviewer rotation, deterministic arbitration, and dissent preservation | 2026-08-12 04:48 CEST | This AF-023 task commit |
 | AF-024 | Signed six-type manifests, supply-chain qualification gates, and reversible pack lifecycle | 2026-08-12 05:05 CEST | This AF-024 task commit |
 | AF-025 | Software Engineering reference pack, complete traceability, and release evidence | 2026-08-12 08:01 CEST | This AF-025 task commit |
+| AF-027 | OpenTelemetry-compatible export, operational metrics, cost ledger, and budget actions | 2026-08-12 08:07 CEST | This AF-027 task commit |
 | AF-049 | Qualified fixed-profile Codex worker, immutable candidate handoff and process-tree termination | 2026-08-11 23:32 CEST | This AF-049 task commit |
 | AF-050 | Separately qualified file-only Claude Code worker and compatible routing | 2026-08-12 00:52 CEST | This AF-050 task commit |
 | AF-051 | Validated immutable candidate commit and separately gated PR plan | 2026-08-11 23:43 CEST | This AF-051 task commit |
@@ -133,6 +134,10 @@ Extension manifests now declare pack identity/type/version, compatible core inte
 
 The Software Engineering reference pack is an installable AF-024 capability whose payload references, rather than reimplements, the managed worktree, Worker Runtime, candidate artifact, deterministic validator, independent evaluation, and coding-delivery services. Its immutable release envelope requires trace entries for requirements, task IDs, Blueprint decisions, ADR references, test evidence, and accepted independent-review references. Dependency evidence binds the signed pack and existing eight-role pack; security evidence records exact permissions, signature verification, and review references; rollback evidence contains a tested disable/restore/digest-verification procedure. A configured human release authority alone may move a candidate through approved and published states.
 
+## AF-027 implementation detail
+
+The AF-056 correlation root now exports unchanged through an OpenTelemetry-compatible payload containing usage spans, linked entities, and derived queue/wait/duration/failure/iteration/orphan metrics. An immutable idempotent cost ledger accepts both provider-reported and estimated USD records. Versioned threshold policies deterministically record notify, reroute, pause, or require-approval actions, with pause mutating only the trace status. Hard cost-budget increases require an immutable authorization by the exact `human_budget_authority` role; direct unauthorized updates are blocked by the schema trigger.
+
 ## AF-046 implementation detail
 
 Mutable Direct CLI and Hermes ACP launches now reconstruct the complete project/task/run/stage/worker/runtime/worktree/permission scope before any worker session or child process exists. The approved gate is consumed once and immutably tied to one assignment attempt; rejected, expired, replayed, or redirected envelopes fail closed. Stage completion also checkpoints success and starts the first dependency-ready pending stage, preserving the durable workflow instead of requiring operator-driven continuation.
@@ -204,4 +209,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-025, and AF-044 through AF-057 are complete. AF-027 OpenTelemetry and cost ledger is next.
+M1, AF-008 through AF-025, AF-027, and AF-044 through AF-057 are complete. AF-029 production storage and tenant isolation is next.

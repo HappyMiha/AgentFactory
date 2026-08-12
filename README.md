@@ -33,6 +33,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Transactional ADR governance.** Complete architecture decisions require an exact impact snapshot and human architecture-owner approval before one transaction versions the Blueprint, workflow contracts, and propagation evidence.
 - **Signed extension packs.** Domain, capability, connector, policy, evaluation, and UI packs use canonical signed manifests, compatibility and qualification gates, approved trust roots, and reversible lifecycle state.
 - **Software Engineering reference pack.** The proven worktree, worker, validator, independent review, candidate, and release contracts ship as one product-neutral pack with complete traceability and rollback evidence.
+- **OpenTelemetry and cost accounting.** Correlation roots export unchanged with operational metrics, idempotent provider/estimated cost entries, deterministic threshold actions, and human-gated hard-budget expansion.
 - **Concrete Hermes ACP lifecycle.** A version-qualified stdio child is durably bound to the task/run/stage/attempt/worktree/context scope, with structured events, stable restart identity, permission bridging, and process-tree cancellation.
 - **Qualified Hermes fallback boundary.** A durable ten-check matrix covers lifecycle, cancellation, confinement, tools, permissions, usage, and artifacts; failed Hermes workers can be quarantined, while direct fallback is read-only and pre-mutation only.
 - **Exact live-stage approvals.** Mutable runtimes cannot start until the Control Plane consumes a stage/run/worker/runtime/worktree/permission-bound gate for one logical attempt; rejected, expired, or mismatched gates fail before process creation.
@@ -68,6 +69,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | ADR governance | Ready | AF-022 records complete decisions and exact impact analysis, then atomically versions the Blueprint and affected workflow contracts or preserves prior authority. |
 | Pack SDK and lifecycle | Ready | AF-024 verifies signed complete manifests, compatibility, permissions, dependencies, evaluations, and human-gated privilege before reversible install/upgrade/disable/rollback. |
 | Software Engineering reference pack | Ready | AF-025 composes the existing delivery contracts, traces requirements through accepted review, and records reproducible dependency, security, and rollback evidence. |
+| OpenTelemetry and cost ledger | Ready | AF-027 exports correlation-preserving traces, derives queue/run/failure/orphan metrics, records provider or estimated cost, and applies threshold actions. |
 | Independent review routing | Ready | Rotating proxy-reviewer pools exclude producer models and persist every assignment. |
 | Candidate evaluation | Ready | AF-020 enforces deterministic-first, model-independent, criterion-complete immutable verdicts. |
 | Engineering loop | Ready | AF-008 persists complete iterations and enforces bounded progress and terminal-state rules. |

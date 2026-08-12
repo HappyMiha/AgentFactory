@@ -1,6 +1,6 @@
 # Implementation audit — 2026-08-11
 
-This audit compares the repository through the AF-025 Software Engineering reference-pack, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
+This audit compares the repository through the AF-027 OpenTelemetry/cost-ledger, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
 
 ## Audit method
 
@@ -8,15 +8,15 @@ This audit compares the repository through the AF-025 Software Engineering refer
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **250 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **253 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-025, AF-036–AF-057 | 47 |
+| Implemented | AF-001–AF-025, AF-027, AF-036–AF-057 | 48 |
 | Partial precursors | AF-026, AF-028, AF-030, AF-032 | 4 |
-| Not started | AF-027, AF-029, AF-031, AF-033–AF-035 | 6 |
+| Not started | AF-029, AF-031, AF-033–AF-035 | 5 |
 
 The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice plus fail-closed mission intake, justified workforce composition, exact owner-signed Factory Blueprints, and recoverable idempotent mission bootstrap across durable data, source authority, role contracts, qualification-aware routing, bounded role pools, immutable operating-design versions, exact manifests, managed worktrees, controlled fallback, deterministic validation, independent evaluation, and gated PR planning. Full context brokerage and platform expansion remain downstream work.
 
@@ -50,7 +50,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-024 | Implemented | Canonical signed manifests for six pack types; in-memory HMAC trust material and immutable human-approved fingerprints; core/permission/dependency/evaluation gates; human-only privileged connector approval; immutable versions/qualifications/events; reversible active pointer for disable and rollback; `test_packs.py` | — |
 | AF-025 | Implemented | Product-neutral signed reference pack composes AF-048/049/050/051/052/020/053 contract references; immutable requirement/task/Blueprint/ADR/test/accepted-review trace; reproducible dependency/security/rollback evidence; human release-authority lifecycle; `test_reference_pack.py`, `test_packs.py`, `test_software_roles.py` | — |
 | AF-026 | Partial | Loopback FastAPI Local Control Center | No production REST boundary, authentication, ETags/idempotency, webhooks, SDK contract, or complete resource surface |
-| AF-027 | Not started | Budget fields exist | No OpenTelemetry export, metrics set, cost ledger, or threshold actions |
+| AF-027 | Implemented | Correlation-preserving OTLP-compatible export; queue/wait/duration/failure/iteration/orphan metrics; idempotent provider-reported/estimated cost ledger; notify/reroute/pause/approval threshold actions; human-authorized hard-budget expansion; `test_observability.py`, `test_execution_telemetry.py` | — |
 | AF-028 | Partial | SQLite backup, integrity checks and interrupted-attempt inspection/reconciliation | No clustered chaos suite or verified restore across storage/queue/network/host failures |
 | AF-029 | Not started | — | PostgreSQL/object storage and tenant isolation deliberately deferred |
 | AF-030 | Partial | Loopback dashboard, approvals, audit, routing controls | No authenticated multi-tenant Human Control Plane, incident/cost/lease controls, or production service boundary |
@@ -101,7 +101,7 @@ Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-01
 Done: AF-009, AF-010, AF-011, AF-012, AF-013, AF-014, AF-015, AF-016
 
 Done: AF-018 through AF-024
-Now:  AF-027
+Now:  AF-029
 Later: AF-027/AF-028, then AF-026/AF-029–AF-031
 ```
 

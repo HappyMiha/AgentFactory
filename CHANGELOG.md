@@ -60,6 +60,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-022 complete ADR records, pre-approval six-surface impact analysis, human architecture-owner decisions, and atomic Blueprint/workflow-contract propagation with rollback preservation.
 - AF-024 signed six-type extension-pack manifests, approved trust roots, compatibility/permission/dependency/qualification gates, privileged human approval, and history-preserving disable/rollback.
 - AF-025 installable product-neutral Software Engineering reference pack that composes core contracts, binds complete traceability, and records reproducible dependency/security/rollback release evidence.
+- AF-027 OpenTelemetry-compatible correlation export, queue/wait/duration/failure/iteration/orphan metrics, provider-reported and estimated cost ledger, deterministic budget thresholds, and human-gated hard-budget increases.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed
