@@ -1788,6 +1788,102 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON blueprint_execution_authorizations
         BEGIN SELECT RAISE(ABORT, 'blueprint execution authorization is immutable'); END;
     """),
+    (37, """
+        CREATE TABLE mission_bootstrap_rollback_points(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            blueprint_id INTEGER NOT NULL REFERENCES factory_blueprints(id),
+            blueprint_digest TEXT NOT NULL CHECK(length(blueprint_digest)=64),
+            state_json TEXT NOT NULL,
+            state_digest TEXT NOT NULL CHECK(length(state_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER mission_bootstrap_rollback_points_no_update
+        BEFORE UPDATE ON mission_bootstrap_rollback_points
+        BEGIN SELECT RAISE(ABORT, 'mission bootstrap rollback point is immutable'); END;
+        CREATE TRIGGER mission_bootstrap_rollback_points_no_delete
+        BEFORE DELETE ON mission_bootstrap_rollback_points
+        BEGIN SELECT RAISE(ABORT, 'mission bootstrap rollback point is immutable'); END;
+
+        CREATE TABLE mission_bootstrap_attempts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            blueprint_id INTEGER NOT NULL REFERENCES factory_blueprints(id),
+            blueprint_digest TEXT NOT NULL CHECK(length(blueprint_digest)=64),
+            rollback_point_id INTEGER NOT NULL REFERENCES mission_bootstrap_rollback_points(id),
+            request_json TEXT NOT NULL,
+            request_digest TEXT NOT NULL CHECK(length(request_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER mission_bootstrap_attempts_no_update BEFORE UPDATE ON mission_bootstrap_attempts
+        BEGIN SELECT RAISE(ABORT, 'mission bootstrap attempt is immutable'); END;
+        CREATE TRIGGER mission_bootstrap_attempts_no_delete BEFORE DELETE ON mission_bootstrap_attempts
+        BEGIN SELECT RAISE(ABORT, 'mission bootstrap attempt is immutable'); END;
+
+        CREATE TABLE bootstrapped_missions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            blueprint_id INTEGER NOT NULL UNIQUE REFERENCES factory_blueprints(id),
+            blueprint_digest TEXT NOT NULL UNIQUE CHECK(length(blueprint_digest)=64),
+            bootstrap_attempt_id INTEGER NOT NULL UNIQUE REFERENCES mission_bootstrap_attempts(id),
+            project_id INTEGER NOT NULL UNIQUE REFERENCES projects(id),
+            task_id INTEGER NOT NULL UNIQUE REFERENCES work_items(id),
+            workflow_run_id INTEGER NOT NULL UNIQUE REFERENCES workflow_runs(id),
+            request_digest TEXT NOT NULL CHECK(length(request_digest)=64),
+            status TEXT NOT NULL CHECK(status='ready'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER bootstrapped_missions_no_update BEFORE UPDATE ON bootstrapped_missions
+        BEGIN SELECT RAISE(ABORT, 'bootstrapped mission is immutable'); END;
+        CREATE TRIGGER bootstrapped_missions_no_delete BEFORE DELETE ON bootstrapped_missions
+        BEGIN SELECT RAISE(ABORT, 'bootstrapped mission is immutable'); END;
+
+        CREATE TABLE mission_manifests(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES bootstrapped_missions(id),
+            manifest_kind TEXT NOT NULL CHECK(manifest_kind IN (
+                'agent','role','tool','policy','context','budget','environment'
+            )),
+            manifest_json TEXT NOT NULL,
+            manifest_digest TEXT NOT NULL UNIQUE CHECK(length(manifest_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id,manifest_kind)
+        );
+        CREATE TRIGGER mission_manifests_no_update BEFORE UPDATE ON mission_manifests
+        BEGIN SELECT RAISE(ABORT, 'mission manifest is immutable'); END;
+        CREATE TRIGGER mission_manifests_no_delete BEFORE DELETE ON mission_manifests
+        BEGIN SELECT RAISE(ABORT, 'mission manifest is immutable'); END;
+
+        CREATE TABLE mission_initial_checkpoints(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL UNIQUE REFERENCES bootstrapped_missions(id),
+            workflow_run_id INTEGER NOT NULL UNIQUE REFERENCES workflow_runs(id),
+            state_json TEXT NOT NULL,
+            state_digest TEXT NOT NULL UNIQUE CHECK(length(state_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER mission_initial_checkpoints_no_update BEFORE UPDATE ON mission_initial_checkpoints
+        BEGIN SELECT RAISE(ABORT, 'mission initial checkpoint is immutable'); END;
+        CREATE TRIGGER mission_initial_checkpoints_no_delete BEFORE DELETE ON mission_initial_checkpoints
+        BEGIN SELECT RAISE(ABORT, 'mission initial checkpoint is immutable'); END;
+
+        CREATE TABLE mission_bootstrap_outcomes(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            attempt_id INTEGER NOT NULL UNIQUE REFERENCES mission_bootstrap_attempts(id),
+            status TEXT NOT NULL CHECK(status IN ('succeeded','failed')),
+            mission_id INTEGER REFERENCES bootstrapped_missions(id),
+            compensation_json TEXT NOT NULL,
+            error TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER mission_bootstrap_outcomes_no_update BEFORE UPDATE ON mission_bootstrap_outcomes
+        BEGIN SELECT RAISE(ABORT, 'mission bootstrap outcome is immutable'); END;
+        CREATE TRIGGER mission_bootstrap_outcomes_no_delete BEFORE DELETE ON mission_bootstrap_outcomes
+        BEGIN SELECT RAISE(ABORT, 'mission bootstrap outcome is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

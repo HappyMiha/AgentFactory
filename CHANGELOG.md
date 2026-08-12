@@ -50,6 +50,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-009 immutable normalized mission intake with source authority/version/provenance/conflict classification, fail-closed readiness verdicts, typed clarification/review requests, and mission-owner-only ambiguity or reduced-scope resolution.
 - AF-012 deterministic Workforce Composer with qualified role pools, bounded replica strategies, heterogeneous strengthened arbitration, global capacity/budget allocation, explicit fallback assignments, and human-reviewed independence/diversity exceptions.
 - AF-013 immutable versioned Factory Blueprints with eight required operating sections, complete mission decision traces, exact mission-owner signatures, execution authorization, and impact-analyzed amendments.
+- AF-014 idempotent authorized-Blueprint mission bootstrap with one durable workflow graph, seven exact manifests, an initial recovery checkpoint, and verified per-attempt transactional compensation.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

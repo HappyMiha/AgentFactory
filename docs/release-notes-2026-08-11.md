@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-013 Factory-Blueprint, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-014 mission-bootstrap, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **37 of 57** backlog tasks: AF-001–AF-013, AF-017, AF-020, and AF-036–AF-057.
+- Completed **38 of 57** backlog tasks: AF-001–AF-014, AF-017, AF-020, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **213 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified restart-safe two-worker single-node coding vertical slice, typed role pack, fail-closed mission intake, justified workforce, and signed Factory Blueprint are implemented but not released; AF-014 mission bootstrap is next.
+- Verified **216 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified restart-safe two-worker single-node coding vertical slice and the mission path through recoverable bootstrap are implemented but not released; AF-015 context broker is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -54,6 +54,7 @@ These notes describe the implemented, tested repository state through the AF-013
 | AF-011 | Evaluation-aware deterministic routing and immutable fallback rationale | 2026-08-12 01:03 CEST | This AF-011 task commit |
 | AF-012 | Qualified role pools, strengthened arbitration, and global capacity/budget composition | 2026-08-12 03:45 CEST | This AF-012 task commit |
 | AF-013 | Eight-section traced Blueprint, exact owner signature, and immutable amendments | 2026-08-12 03:55 CEST | This AF-013 task commit |
+| AF-014 | Idempotent mission graph, exact manifests, checkpoint, and verified rollback | 2026-08-12 04:03 CEST | This AF-014 task commit |
 | AF-054 | Eight-role software-engineering pack and approved-candidate release authority | 2026-08-12 01:09 CEST | This AF-054 task commit |
 
 ### Local Control Center MVP
@@ -82,6 +83,10 @@ Role needs now become immutable pools that retain exact AF-010 contract versions
 ## AF-013 implementation detail
 
 Factory Blueprint generation now requires the latest ready mission assessment and a ready workforce bound to that intake. Every immutable version contains all eight operating sections and a canonical decision trace covering active authoritative sources, every mission risk, every declared assumption, and every rejected alternative. Creation grants no runtime authority: only the exact named mission owner can sign the latest version and SHA-256 digest, and only that approved envelope can create an idempotent execution authorization. Owner-only amendments must exactly enumerate changed sections plus execution, migration, and risk impact; they preserve the parent approval and authorization records while creating a newly blocked version with a new digest.
+
+## AF-014 implementation detail
+
+Mission bootstrap now independently reconstructs the latest exact AF-013 execution authorization and uses the Blueprint digest as its idempotency authority. One transaction creates the mission project, root work item, queued version-pinned AF-006 graph, seven immutable agent/role/tool/policy/context/budget/environment manifests, and an initial recovery checkpoint. Each attempt records its own pre-bootstrap resource snapshot. Any failure rolls partial mission resources back, then stores a separate immutable outcome comparing expected and restored state; a verified failure can retry from a fresh rollback point without duplicating the mission or workflow.
 
 ## AF-046 implementation detail
 
@@ -154,4 +159,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-013, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-014 mission bootstrap is next.
+M1, AF-008 through AF-014, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-015 context broker is next.
