@@ -1653,6 +1653,83 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER mission_review_requests_no_delete BEFORE DELETE ON mission_review_requests
         BEGIN SELECT RAISE(ABORT, 'mission review request is immutable'); END;
     """),
+    (35, """
+        CREATE TABLE workforce_exception_reviews(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            review_key TEXT NOT NULL UNIQUE,
+            mission_key TEXT NOT NULL,
+            pool_key TEXT NOT NULL,
+            constraint_key TEXT NOT NULL CHECK(constraint_key IN (
+                'model_independence','provider_diversity'
+            )),
+            decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+            reviewer TEXT NOT NULL,
+            reviewer_role TEXT NOT NULL CHECK(reviewer_role IN ('mission_owner','human_reviewer')),
+            rationale TEXT NOT NULL,
+            review_digest TEXT NOT NULL UNIQUE CHECK(length(review_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER workforce_exception_reviews_no_update BEFORE UPDATE ON workforce_exception_reviews
+        BEGIN SELECT RAISE(ABORT, 'workforce exception review is immutable'); END;
+        CREATE TRIGGER workforce_exception_reviews_no_delete BEFORE DELETE ON workforce_exception_reviews
+        BEGIN SELECT RAISE(ABORT, 'workforce exception review is immutable'); END;
+
+        CREATE TABLE workforce_compositions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            composition_key TEXT NOT NULL UNIQUE,
+            mission_key TEXT NOT NULL,
+            budget REAL NOT NULL CHECK(budget>=0),
+            request_json TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('ready','blocked')),
+            rationale_json TEXT NOT NULL,
+            gaps_json TEXT NOT NULL,
+            composition_digest TEXT NOT NULL UNIQUE CHECK(length(composition_digest)=64),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER workforce_compositions_no_update BEFORE UPDATE ON workforce_compositions
+        BEGIN SELECT RAISE(ABORT, 'workforce composition is immutable'); END;
+        CREATE TRIGGER workforce_compositions_no_delete BEFORE DELETE ON workforce_compositions
+        BEGIN SELECT RAISE(ABORT, 'workforce composition is immutable'); END;
+
+        CREATE TABLE workforce_role_pools(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            composition_id INTEGER NOT NULL REFERENCES workforce_compositions(id),
+            pool_key TEXT NOT NULL,
+            role_id TEXT NOT NULL,
+            role_version TEXT NOT NULL,
+            qualification_role TEXT NOT NULL,
+            pool_strategy TEXT NOT NULL CHECK(pool_strategy IN (
+                'singleton','fixed','elastic','strengthened'
+            )),
+            routing_strategy TEXT NOT NULL CHECK(routing_strategy IN (
+                'pinned','best-qualified','cost-aware','latency-aware',
+                'diversity','canary','tournament','fallback'
+            )),
+            minimum_replicas INTEGER NOT NULL CHECK(minimum_replicas>0),
+            maximum_replicas INTEGER NOT NULL CHECK(maximum_replicas>=minimum_replicas),
+            qualifications_json TEXT NOT NULL,
+            arbitration_rule TEXT NOT NULL CHECK(arbitration_rule IN (
+                'single','majority','unanimous','ranked_choice','human_decision'
+            )),
+            constraints_json TEXT NOT NULL,
+            primary_assignments_json TEXT NOT NULL,
+            fallback_assignments_json TEXT NOT NULL,
+            routing_decision_id INTEGER REFERENCES agent_routing_decisions(id),
+            estimated_cost REAL NOT NULL CHECK(estimated_cost>=0),
+            valid INTEGER NOT NULL CHECK(valid IN (0,1)),
+            applied_exceptions_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(composition_id,pool_key),
+            FOREIGN KEY(role_id,role_version) REFERENCES role_definitions(role_id,version)
+        );
+        CREATE TRIGGER workforce_role_pools_no_update BEFORE UPDATE ON workforce_role_pools
+        BEGIN SELECT RAISE(ABORT, 'workforce role pool is immutable'); END;
+        CREATE TRIGGER workforce_role_pools_no_delete BEFORE DELETE ON workforce_role_pools
+        BEGIN SELECT RAISE(ABORT, 'workforce role pool is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

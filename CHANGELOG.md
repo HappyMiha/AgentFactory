@@ -48,6 +48,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 - AF-011 immutable evaluation-aware routing decisions with qualification filtering, complete cost/latency/load/independence rationale, deterministic eight-strategy selection, and fallback chains.
 - AF-054 installable typed software-engineering role pack with eight provider-neutral roles, enforced validator/reviewer/implementer separation, and Founder-approved candidate-only release authorization.
 - AF-009 immutable normalized mission intake with source authority/version/provenance/conflict classification, fail-closed readiness verdicts, typed clarification/review requests, and mission-owner-only ambiguity or reduced-scope resolution.
+- AF-012 deterministic Workforce Composer with qualified role pools, bounded replica strategies, heterogeneous strengthened arbitration, global capacity/budget allocation, explicit fallback assignments, and human-reviewed independence/diversity exceptions.
 - Evidence-based implementation audit and release notes covering all AF-001–AF-057 statuses, completed-task dates, implementation commits, and current test evidence.
 
 ### Changed

@@ -1,6 +1,6 @@
 # Implementation audit — 2026-08-11
 
-This audit compares the repository through the AF-009 mission-intake, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
+This audit compares the repository through the AF-012 Workforce-Composer, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.
 
 ## Audit method
 
@@ -8,17 +8,17 @@ This audit compares the repository through the AF-009 mission-intake, AF-050 Cla
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **206 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **210 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
 | Status | Tasks | Count |
 |---|---|---:|
-| Implemented | AF-001–AF-011, AF-017, AF-020, AF-036–AF-057 | 35 |
+| Implemented | AF-001–AF-012, AF-017, AF-020, AF-036–AF-057 | 36 |
 | Partial precursors | AF-018, AF-019, AF-023, AF-026, AF-028, AF-030, AF-032 | 7 |
-| Not started | AF-012–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035 | 15 |
+| Not started | AF-013–AF-016, AF-021, AF-022, AF-024, AF-025, AF-027, AF-029, AF-031, AF-033–AF-035 | 14 |
 
-The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice plus fail-closed mission intake across durable data, source authority, fenced scheduling, bounded repair, managed worktrees, immutable context, fully qualified Hermes ACP, controlled fallback, independently qualified writable Codex and Claude execution, deterministic validation, independent evaluation, separate Founder authority, and gated PR planning. Workforce composition, Blueprint generation, and platform expansion remain downstream work.
+The product now has a tested, correlated, budget-enforced, restart-qualified single-node coding vertical slice plus fail-closed mission intake and justified workforce composition across durable data, source authority, role contracts, qualification-aware routing, bounded role pools, managed worktrees, immutable context, controlled fallback, deterministic validation, independent evaluation, separate Founder authority, and gated PR planning. Blueprint generation and platform expansion remain downstream work.
 
 ## Task-by-task findings
 
@@ -35,7 +35,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-009 | Implemented | Immutable normalized intake, source authority/version/provenance/conflict records, typed clarification/review requests, owner-only resolutions, and fail-closed readiness assessments; `test_mission_intake.py` | — |
 | AF-010 | Implemented | Immutable provider-neutral semantic role versions, typed input/output/evidence validation, tool/permission/limit contracts, workflow role requirements, independent resolution, and per-decision incompatible-duty rejection; `test_roles.py` | — |
 | AF-011 | Implemented | Latest-qualification/lifecycle/capability/provider and independence filtering; complete quality/risk/cost/latency/load/health candidate envelopes; immutable rationale and fallback chains; deterministic pinned/best/cost/latency/diversity/canary/tournament/fallback strategies; preserved reviewer rotation; `test_agent_router.py`, `test_reviewer_routing.py` | — |
-| AF-012 | Not started | — | Role pools, arbitration strategies and Workforce Composer absent |
+| AF-012 | Implemented | Immutable qualified role pools, replica bounds, deterministic routing/fallbacks, strengthened heterogeneous arbitration, global capacity/budget allocation, typed gaps, and human-reviewed diversity exceptions; `test_workforce.py` | — |
 | AF-013 | Not started | — | Factory Blueprint lifecycle absent |
 | AF-014 | Not started | — | Blueprint-based idempotent mission bootstrap absent |
 | AF-015 | Not started | — | Role/purpose context broker and governed compaction absent |
@@ -98,10 +98,10 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 ```text
 Done: AF-001 -> AF-002/AF-003/AF-004 -> AF-005/AF-006 -> AF-007 -> AF-008; AF-010 + AF-011 + AF-017 + AF-020 + AF-044 + AF-045 + AF-046 + AF-047 + AF-048 + AF-049 + AF-050 + AF-051 + AF-052 + AF-053 + AF-054 + AF-055 + AF-056 + AF-057
 
-Done: AF-009, AF-010, AF-011
+Done: AF-009, AF-010, AF-011, AF-012
 
-Now:  AF-012
-Then: AF-013
+Now:  AF-013
+Then: AF-014
 Later: AF-015/AF-016/AF-027/AF-028, then AF-018/AF-019/AF-026/AF-029–AF-031
 ```
 

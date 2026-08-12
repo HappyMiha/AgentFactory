@@ -1,14 +1,14 @@
 # Implementation release notes — 2026-08-11
 
-These notes describe the implemented, tested repository state through the AF-009 mission-intake, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
+These notes describe the implemented, tested repository state through the AF-012 Workforce-Composer, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).
 
 ## Release summary
 
-- Completed **35 of 57** backlog tasks: AF-001–AF-011, AF-017, AF-020, and AF-036–AF-057.
+- Completed **36 of 57** backlog tasks: AF-001–AF-012, AF-017, AF-020, and AF-036–AF-057.
 - Established the durable SQLite authority, transactional audit/outbox, criterion evidence, deterministic Control Plane policy, provider qualification, resumable stage checkpoints, and fenced dependency scheduling.
 - Completed the loopback Local Control Center with guarded workflow/routing/founder/audit/GitHub-preview operations.
-- Verified **206 automated tests** and the offline backlog manifest validation on Python 3.11.15.
-- The qualified restart-safe two-worker single-node coding vertical slice, initial typed role pack, and fail-closed mission intake are implemented but not released; AF-012 Workforce Composer is next.
+- Verified **210 automated tests** and the offline backlog manifest validation on Python 3.11.15.
+- The qualified restart-safe two-worker single-node coding vertical slice, typed role pack, fail-closed mission intake, and justified Workforce Composer are implemented but not released; AF-013 Factory Blueprint is next.
 
 ## Implemented backlog items and implementation commits
 
@@ -52,6 +52,7 @@ These notes describe the implemented, tested repository state through the AF-009
 | AF-009 | Immutable source-classified mission intake and owner-gated readiness verdict | 2026-08-12 03:32 CEST | This AF-009 task commit |
 | AF-010 | Provider-neutral typed role definitions and incompatible-duty contracts | 2026-08-12 00:57 CEST | This AF-010 task commit |
 | AF-011 | Evaluation-aware deterministic routing and immutable fallback rationale | 2026-08-12 01:03 CEST | This AF-011 task commit |
+| AF-012 | Qualified role pools, strengthened arbitration, and global capacity/budget composition | 2026-08-12 03:45 CEST | This AF-012 task commit |
 | AF-054 | Eight-role software-engineering pack and approved-candidate release authority | 2026-08-12 01:09 CEST | This AF-054 task commit |
 
 ### Local Control Center MVP
@@ -72,6 +73,10 @@ Commit times above are author timestamps from Git in the repository timezone (`+
 ## AF-009 implementation detail
 
 Mission intake now normalizes intent, objectives, success measures, constraints, uncertainty, feasibility, risk, and proposed scope into one content-addressed record. Every source is immutable and classified by authority, version, provenance, digest, and conflict status. Deterministic assessments emit exactly one allowed verdict plus machine-readable rationale and ordered blocking gaps; ambiguity and source conflicts create clarification requests, risk creates human review, and infeasibility or reduced scope creates scope review. No blocked mission can silently proceed, and only the exact named human mission owner can resolve intent or explicitly accept materially reduced scope.
+
+## AF-012 implementation detail
+
+Role needs now become immutable pools that retain exact AF-010 contract versions, AF-011 routing decisions, qualification snapshots, pool/routing strategies, replica bounds, arbitration, primary assignments, and fallbacks. Strengthened roles require at least two agents and explicit arbitration. A bounded deterministic search composes all pools together, enforcing current capability, lifecycle, shared capacity, incompatible duties, provider/model diversity, and total budget. Missing constraints produce typed blocking gaps and no dispatchable workforce. Independence or diversity can be weakened only by an immutable approved review from a human mission owner or reviewer bound to the same mission, pool, and constraint.
 
 ## AF-046 implementation detail
 
@@ -144,4 +149,4 @@ Local restart recovery now reconstructs the authoritative stage, fenced lease, H
 
 ## Next release target
 
-M1, AF-008 through AF-011, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-012 Workforce Composer is next.
+M1, AF-008 through AF-012, AF-017, AF-020, and AF-044 through AF-057 are complete. AF-013 Factory Blueprint is next.
