@@ -1,0 +1,5 @@
+# Tenant storage and governance
+
+AF-029 adds `TenantStorageService`, a repository-boundary adapter whose every read, write, export, and deletion requires an exact tenant scope. Object payloads are content-addressed under a tenant directory; SQLite metadata preserves identity, digest, size, classification, residency, retention deadline, and deletion state. `PostgresStorageContract` records production migration requirements without forcing a PostgreSQL driver into the deterministic local path.
+
+Each tenant has an explicit classification, residency, retention, quota, and legal-hold policy. Quotas are checked before writing. Exports contain a deterministic manifest digest and are marked verified only after persistence. Deletion creates immutable evidence and is blocked until retention elapses or while legal hold is active; successful deletion removes the payload while preserving metadata and audit evidence. Foreign-tenant reads return the same not-found result as missing objects, preventing enumeration.

@@ -2840,6 +2840,75 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'hard budget increase requires human authorization'); END;
     """),
+    (49, """
+        CREATE TABLE IF NOT EXISTS tenant_policies(
+            tenant_id TEXT PRIMARY KEY,
+            classification TEXT NOT NULL CHECK(classification IN ('public','internal','confidential','restricted')),
+            residency TEXT NOT NULL,
+            retention_seconds INTEGER NOT NULL CHECK(retention_seconds >= 0),
+            quota_bytes INTEGER NOT NULL CHECK(quota_bytes > 0),
+            legal_hold INTEGER NOT NULL DEFAULT 0 CHECK(legal_hold IN (0,1)),
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS tenant_objects(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            object_key TEXT NOT NULL,
+            digest TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL CHECK(size_bytes >= 0),
+            classification TEXT NOT NULL,
+            residency TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            retention_until TEXT NOT NULL,
+            deleted_at TEXT,
+            UNIQUE(tenant_id, object_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_tenant_objects_scope ON tenant_objects(tenant_id, deleted_at, id);
+        CREATE TABLE IF NOT EXISTS tenant_governance_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS tenant_exports(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            manifest_json TEXT NOT NULL,
+            manifest_digest TEXT NOT NULL,
+            verified INTEGER NOT NULL CHECK(verified IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS tenant_deletions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            tenant_id TEXT NOT NULL,
+            object_identity TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('deleted','blocked')),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER IF NOT EXISTS tenant_objects_no_update BEFORE UPDATE ON tenant_objects
+        WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NULL
+        BEGIN SELECT RAISE(ABORT, 'tenant objects are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_objects_no_delete BEFORE DELETE ON tenant_objects
+        BEGIN SELECT RAISE(ABORT, 'tenant objects are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_governance_events_no_update BEFORE UPDATE ON tenant_governance_events
+        BEGIN SELECT RAISE(ABORT, 'tenant governance events are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_governance_events_no_delete BEFORE DELETE ON tenant_governance_events
+        BEGIN SELECT RAISE(ABORT, 'tenant governance events are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_exports_no_update BEFORE UPDATE ON tenant_exports
+        BEGIN SELECT RAISE(ABORT, 'tenant exports are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_exports_no_delete BEFORE DELETE ON tenant_exports
+        BEGIN SELECT RAISE(ABORT, 'tenant exports are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_deletions_no_update BEFORE UPDATE ON tenant_deletions
+        BEGIN SELECT RAISE(ABORT, 'tenant deletion evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS tenant_deletions_no_delete BEFORE DELETE ON tenant_deletions
+        BEGIN SELECT RAISE(ABORT, 'tenant deletion evidence is immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

@@ -8,7 +8,7 @@ This audit compares the repository through the AF-027 OpenTelemetry/cost-ledger,
 - `Partial`: useful precursor behavior exists, but at least one material acceptance criterion is absent. Partial work does not satisfy dependencies.
 - `Not started`: no task-specific implementation exists. Schema placeholders, plans, or generic infrastructure alone do not count.
 - Evidence was checked against source, migrations, tests, Git history, and the installed Hermes 0.20.0 interface.
-- The full suite passed: **253 tests**, plus offline validation of `examples/development-backlog.json`.
+- The full suite passed: **256 tests**, plus offline validation of `examples/development-backlog.json`.
 
 ## Result
 
@@ -52,7 +52,7 @@ The product now has a tested, correlated, budget-enforced, restart-qualified sin
 | AF-026 | Partial | Loopback FastAPI Local Control Center | No production REST boundary, authentication, ETags/idempotency, webhooks, SDK contract, or complete resource surface |
 | AF-027 | Implemented | Correlation-preserving OTLP-compatible export; queue/wait/duration/failure/iteration/orphan metrics; idempotent provider-reported/estimated cost ledger; notify/reroute/pause/approval threshold actions; human-authorized hard-budget expansion; `test_observability.py`, `test_execution_telemetry.py` | — |
 | AF-028 | Partial | SQLite backup, integrity checks and interrupted-attempt inspection/reconciliation | No clustered chaos suite or verified restore across storage/queue/network/host failures |
-| AF-029 | Not started | — | PostgreSQL/object storage and tenant isolation deliberately deferred |
+| AF-029 | Implemented | Tenant-scoped object adapter, PostgreSQL migration contract, digest-preserving metadata, governance enforcement, verified export/deletion evidence, and `test_tenant_storage.py` | — |
 | AF-030 | Partial | Loopback dashboard, approvals, audit, routing controls | No authenticated multi-tenant Human Control Plane, incident/cost/lease controls, or production service boundary |
 | AF-031 | Not started | Docker packaging exists | No qualified single-node/clustered/hybrid/air-gapped deployment definitions |
 | AF-032 | Partial | Cross-platform CI, accessibility tests and checklist | No complete NFR, performance, isolation and recovery qualification suite |
