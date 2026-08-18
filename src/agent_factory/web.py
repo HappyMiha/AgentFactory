@@ -3,6 +3,7 @@
 import sqlite3
 import os
 import json
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import asdict
@@ -37,6 +38,13 @@ from .application import (
 from .storage import MIGRATIONS, SQLiteStorage
 from .control_plane import HumanControlPlaneService
 from .backlog_analyzer import analyze_specification
+from .orchestration.temporal.client import (
+    connect_temporal,
+    signal_workflow,
+    start_job_workflow,
+    workflow_snapshot,
+)
+from .orchestration.temporal.settings import TemporalSettings
 
 T = TypeVar("T")
 
@@ -211,16 +219,26 @@ def _require_confirmation(command: ConfirmedCommand, header: str | None) -> None
 def create_app(workspace: Path, database: Path) -> FastAPI:
     workspace = workspace.expanduser().resolve()
     database = database.expanduser().resolve()
+    temporal_settings = TemporalSettings.from_env()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        if temporal_settings.enabled:
+            app.state.temporal_client = await connect_temporal(
+                temporal_settings, initialize_namespace=True
+            )
+        yield
+
     app = FastAPI(
         title="Agent Factory Local Control Center",
         version="0.1.0",
         docs_url="/api/docs",
         redoc_url=None,
         openapi_url="/api/openapi.json",
+        lifespan=lifespan,
     )
     static_directory = Path(__file__).resolve().parent / "static"
     app.mount("/assets", StaticFiles(directory=static_directory), name="assets")
-
     async def service_dependency() -> AsyncIterator[AgentFactoryService]:
         storage = SQLiteStorage(database)
         try:
@@ -531,7 +549,42 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     @app.post("/api/executions/runs/{run_id}/cancel", response_model=dict[str, Any])
     async def cancel_execution_run(run_id: int, command: ExecutionTargetCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
         _require_confirmation(command, confirmation)
+        workflow_id = service.temporal_workflow_id(run_id)
+        if temporal_settings.enabled and workflow_id:
+            await signal_workflow(app.state.temporal_client, workflow_id, "cancel")
+            return {
+                "run_id": run_id,
+                "workflow_id": workflow_id,
+                "status": "cancelling",
+            }
         return service.cancel_execution_run(run_id, command.reason)
+
+    @app.post("/api/executions/runs/{run_id}/pause", response_model=dict[str, Any])
+    async def pause_execution_run(run_id: int, command: ExecutionTargetCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        workflow_id = service.temporal_workflow_id(run_id)
+        if not temporal_settings.enabled or not workflow_id:
+            raise RuntimeError("The run is not orchestrated by Temporal")
+        await signal_workflow(app.state.temporal_client, workflow_id, "pause")
+        return {"run_id": run_id, "workflow_id": workflow_id, "status": "paused"}
+
+    @app.post("/api/executions/runs/{run_id}/resume", response_model=dict[str, Any])
+    async def resume_execution_run(run_id: int, command: ExecutionTargetCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        workflow_id = service.temporal_workflow_id(run_id)
+        if not temporal_settings.enabled or not workflow_id:
+            raise RuntimeError("The run is not orchestrated by Temporal")
+        await signal_workflow(app.state.temporal_client, workflow_id, "resume")
+        return {"run_id": run_id, "workflow_id": workflow_id, "status": "running"}
+
+    @app.get("/api/runs/{run_id}/temporal", response_model=dict[str, Any])
+    async def temporal_run_status(run_id: int, service: Service) -> dict[str, Any]:
+        workflow_id = service.temporal_workflow_id(run_id)
+        if not temporal_settings.enabled or not workflow_id:
+            raise KeyError(f"Run {run_id} has no Temporal workflow")
+        snapshot = await workflow_snapshot(app.state.temporal_client, workflow_id)
+        snapshot["ui_url"] = temporal_settings.workflow_url(workflow_id)
+        return snapshot
 
     @app.post("/api/executions/sessions/{session_id}/stop", response_model=dict[str, Any])
     async def stop_execution_session(session_id: int, command: ExecutionTargetCommand, service: Service, confirmation: Confirmation = None) -> dict[str, Any]:
@@ -567,6 +620,38 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         task_id: int, command: RunCommand, service: Service, confirmation: Confirmation = None
     ) -> RunView:
         _require_confirmation(command, confirmation)
+        if temporal_settings.enabled:
+            run, job = service.prepare_temporal_workflow(
+                task_id, command.workflow_id, command.mode
+            )
+            try:
+                started = await start_job_workflow(
+                    app.state.temporal_client, job, temporal_settings
+                )
+            except Exception as exc:
+                service.storage.finish_run(
+                    run.id,
+                    "failed",
+                    event_payload={
+                        "error": "Temporal workflow start failed",
+                        "error_type": type(exc).__name__,
+                    },
+                )
+                raise
+            service.storage.event(
+                "workflow.temporal.started",
+                "run",
+                run.id,
+                {
+                    "job_id": job.job_id,
+                    "workflow_id": started.workflow_id,
+                    "workflow_run_id": started.run_id,
+                    "namespace": temporal_settings.namespace,
+                    "task_queue": temporal_settings.task_queue,
+                    "duplicate": started.duplicate,
+                },
+            )
+            return service.run(run.id)
         return service.run_workflow(task_id, command.workflow_id, command.mode)
 
     @app.post("/api/artifacts/{artifact_id}/review", response_model=ArtifactView)

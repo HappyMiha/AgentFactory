@@ -66,6 +66,8 @@ class RunView:
     artifact_count: int
     approval_id: int | None
     approval_status: str | None
+    temporal_workflow_id: str | None = None
+    temporal_ui_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -479,7 +481,12 @@ class AgentFactoryService:
     def runs(self, task_id: int | None = None) -> list[RunView]:
         query = """
             SELECT r.*, COUNT(DISTINCT a.id) AS artifact_count,
-                   g.id AS approval_id, g.status AS approval_status
+                   g.id AS approval_id, g.status AS approval_status,
+                   (SELECT json_extract(e.payload,'$.workflow_id')
+                      FROM events e
+                     WHERE e.entity_type='run' AND e.entity_id=CAST(r.id AS TEXT)
+                       AND e.event_type='workflow.temporal.started'
+                     ORDER BY e.id DESC LIMIT 1) AS temporal_workflow_id
               FROM workflow_runs r
               LEFT JOIN artifacts a ON a.run_id=r.id
               LEFT JOIN approval_gates g ON g.run_id=r.id
@@ -495,7 +502,12 @@ class AgentFactoryService:
         row = self.storage.db.execute(
             """
             SELECT r.*, COUNT(DISTINCT a.id) AS artifact_count,
-                   g.id AS approval_id, g.status AS approval_status
+                   g.id AS approval_id, g.status AS approval_status,
+                   (SELECT json_extract(e.payload,'$.workflow_id')
+                      FROM events e
+                     WHERE e.entity_type='run' AND e.entity_id=CAST(r.id AS TEXT)
+                       AND e.event_type='workflow.temporal.started'
+                     ORDER BY e.id DESC LIMIT 1) AS temporal_workflow_id
               FROM workflow_runs r
               LEFT JOIN artifacts a ON a.run_id=r.id
               LEFT JOIN approval_gates g ON g.run_id=r.id
@@ -507,8 +519,19 @@ class AgentFactoryService:
             raise KeyError(f"Unknown run: {run_id}")
         return self._run_view(row)
 
-    @staticmethod
-    def _run_view(row: Any) -> RunView:
+    def _run_view(self, row: Any) -> RunView:
+        temporal_workflow_id = (
+            str(row["temporal_workflow_id"])
+            if "temporal_workflow_id" in row.keys() and row["temporal_workflow_id"]
+            else None
+        )
+        temporal_ui_url = None
+        if temporal_workflow_id:
+            from .orchestration.temporal.settings import TemporalSettings
+
+            temporal_ui_url = TemporalSettings.from_env().workflow_url(
+                temporal_workflow_id
+            )
         return RunView(
             id=int(row["id"]),
             project_id=int(row["project_id"]),
@@ -522,6 +545,8 @@ class AgentFactoryService:
             approval_status=(
                 str(row["approval_status"]) if row["approval_status"] else None
             ),
+            temporal_workflow_id=temporal_workflow_id,
+            temporal_ui_url=temporal_ui_url,
         )
 
     def artifacts(self, run_id: int | None = None, *, task_id: int | None = None) -> list[ArtifactView]:
@@ -1166,6 +1191,51 @@ class AgentFactoryService:
         workflow_id: str = "delivery",
         mode: ExecutionMode | str = ExecutionMode.SIMULATION,
     ) -> RunView:
+        from .orchestration.temporal.settings import TemporalSettings
+
+        temporal_settings = TemporalSettings.from_env()
+        if temporal_settings.enabled:
+            import asyncio
+
+            from .orchestration.temporal.client import (
+                connect_temporal,
+                start_job_workflow,
+            )
+
+            run, job = self.prepare_temporal_workflow(task_id, workflow_id, mode)
+
+            async def start():
+                client = await connect_temporal(
+                    temporal_settings, initialize_namespace=True
+                )
+                return await start_job_workflow(client, job, temporal_settings)
+
+            try:
+                started = asyncio.run(start())
+            except Exception as exc:
+                self.storage.finish_run(
+                    run.id,
+                    "failed",
+                    event_payload={
+                        "error": "Temporal workflow start failed",
+                        "error_type": type(exc).__name__,
+                    },
+                )
+                raise
+            self.storage.event(
+                "workflow.temporal.started",
+                "run",
+                run.id,
+                {
+                    "job_id": job.job_id,
+                    "workflow_id": started.workflow_id,
+                    "workflow_run_id": started.run_id,
+                    "namespace": temporal_settings.namespace,
+                    "task_queue": temporal_settings.task_queue,
+                    "duplicate": started.duplicate,
+                },
+            )
+            return self.run(run.id)
         blockers = tuple(
             blocker
             for blocker in self.storage.task_readiness(task_id)
@@ -1179,6 +1249,66 @@ class AgentFactoryService:
             self.storage, registry=self.registry, runtime=self.runtime
         ).run(workflow_id, self.storage.get_task(task_id), mode)
         return self.run(run_id)
+
+    def prepare_temporal_workflow(
+        self,
+        task_id: int,
+        workflow_id: str = "delivery",
+        mode: ExecutionMode | str = ExecutionMode.SIMULATION,
+    ):
+        """Create the existing domain run before starting durable orchestration."""
+
+        from .orchestration.temporal.models import AgentFactoryJobInput
+        from .orchestration.temporal.settings import TemporalSettings
+
+        selected_mode = ExecutionMode(mode)
+        blockers = tuple(
+            blocker
+            for blocker in self.storage.task_readiness(task_id)
+            if not blocker.startswith("assignment:")
+        )
+        if blockers:
+            raise RuntimeError(
+                f"Task {task_id} cannot run: {', '.join(blockers)}"
+            )
+        task = self.storage.get_task(task_id)
+        run_id = self.storage.start_run(task.project_id, task_id, workflow_id)
+        settings = TemporalSettings.from_env()
+        job = AgentFactoryJobInput(
+            job_id=f"run-{run_id}",
+            run_id=run_id,
+            project_id=task.project_id,
+            task_id=task_id,
+            workspace=str(self.workspace),
+            database=str(self.storage.path),
+            workflow_definition_id=workflow_id,
+            mode=selected_mode.value,
+            fast_activity_timeout_seconds=settings.fast_activity_timeout_seconds,
+            llm_activity_timeout_seconds=settings.llm_activity_timeout_seconds,
+            heartbeat_timeout_seconds=settings.heartbeat_timeout_seconds,
+            max_repair_iterations=settings.max_repair_iterations,
+        )
+        self.storage.event(
+            "workflow.temporal.prepared",
+            "run",
+            run_id,
+            {"job_id": job.job_id, "task_id": task_id},
+        )
+        return self.run(run_id), job
+
+    def temporal_workflow_id(self, run_id: int) -> str | None:
+        row = self.storage.db.execute(
+            """SELECT payload FROM events
+                 WHERE entity_type='run' AND entity_id=?
+                   AND event_type='workflow.temporal.started'
+                 ORDER BY id DESC LIMIT 1""",
+            (str(run_id),),
+        ).fetchone()
+        if not row:
+            return None
+        value = _json_object(str(row["payload"]))
+        workflow_id = value.get("workflow_id")
+        return str(workflow_id) if workflow_id else None
 
     def review_artifact(
         self, task_id: int, artifact_id: int, decision: str, note: str = ""

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
+import threading
 from typing import Any
 
 from .config import WORKSPACE, config_path_for_workspace, load_yaml
@@ -81,6 +82,7 @@ class AgentRuntime:
         *,
         allow_fallback: bool = True,
         mode: ExecutionMode | str | None = None,
+        cancel_event: threading.Event | None = None,
     ) -> ProviderResult:
         if mode is not None:
             selected = ExecutionMode(mode)
@@ -95,7 +97,16 @@ class AgentRuntime:
                 errors.append(f"{name}: not configured")
                 continue
             scoped_approval = approval if name == agent.provider else None
-            result = provider.execute(agent, item, context, scoped_approval)
+            if cancel_event is not None and isinstance(provider, CLIProvider):
+                result = provider.execute(
+                    agent,
+                    item,
+                    context,
+                    scoped_approval,
+                    cancel_event=cancel_event,
+                )
+            else:
+                result = provider.execute(agent, item, context, scoped_approval)
             if result.ok:
                 result.metadata["fallback_errors"] = errors
                 return result

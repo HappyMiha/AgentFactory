@@ -93,6 +93,8 @@ class ProcessSupervisor:
         pid = int(proc.pid)
         if pid <= 0:
             return {"tree_terminated": False, "cleanup_error": "invalid process id"}
+        if proc.poll() is not None:
+            return {"tree_terminated": True, "already_exited": True}
         try:
             if self.windows:
                 cleanup = subprocess.run(
@@ -114,6 +116,27 @@ class ProcessSupervisor:
                 with suppress(OSError):
                     proc.kill()
             return {"tree_terminated": False, "cleanup_error": type(exc).__name__}
+
+    def cancel_tree(
+        self, proc: subprocess.Popen[str], *, graceful_seconds: float = 5.0
+    ) -> dict[str, Any]:
+        """Request graceful group termination, then enforce bounded tree cleanup."""
+
+        if proc.poll() is not None:
+            return {"tree_terminated": True, "graceful": True}
+        graceful = False
+        try:
+            if self.windows:
+                proc.send_signal(signal.CTRL_BREAK_EVENT)
+            else:
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            proc.wait(timeout=max(0.1, graceful_seconds))
+            graceful = True
+        except (OSError, subprocess.SubprocessError):
+            graceful = False
+        if graceful:
+            return {**self.terminate_tree(proc), "tree_terminated": True, "graceful": True}
+        return {**self.terminate_tree(proc), "graceful": False}
 
 
 class Provider(ABC):
@@ -313,6 +336,8 @@ class CLIProvider(Provider):
         item: WorkItem,
         context: dict[str, Any],
         approval: ExecutionApproval | None = None,
+        *,
+        cancel_event: threading.Event | None = None,
     ) -> ProviderResult:
         if error := self._approval_error(agent, item, approval):
             return ProviderResult(False, provider=self.name, error=error, metadata={"blocked": True})
@@ -399,7 +424,12 @@ class CLIProvider(Provider):
             cleanup: dict[str, Any] = {}
             timed_out = False
             output_limit_exceeded = False
+            cancelled = False
             while True:
+                if cancel_event is not None and cancel_event.is_set():
+                    cancelled = True
+                    cleanup = self.supervisor.cancel_tree(proc)
+                    break
                 if capture.overflow.is_set():
                     output_limit_exceeded = True
                     cleanup = self.supervisor.terminate_tree(proc)
@@ -415,7 +445,7 @@ class CLIProvider(Provider):
                 except subprocess.TimeoutExpired:
                     continue
 
-            if timed_out or output_limit_exceeded:
+            if timed_out or output_limit_exceeded or cancelled:
                 with suppress(subprocess.TimeoutExpired, OSError):
                     proc.wait(timeout=5)
             capture_complete = capture.join(5)
@@ -449,6 +479,13 @@ class CLIProvider(Provider):
                 "process_group_contained": True,
                 "launcher_failures": launcher_failures,
             }
+            if cancelled:
+                return ProviderResult(
+                    False,
+                    provider=self.name,
+                    error="provider execution cancelled",
+                    metadata={**metadata, "cancelled": True, **cleanup},
+                )
             if output_limit_exceeded:
                 return ProviderResult(
                     False,

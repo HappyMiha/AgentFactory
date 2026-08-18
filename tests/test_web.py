@@ -269,6 +269,8 @@ class WebHostTests(unittest.TestCase):
                         "/api/work-items/{task_id}/archive",
                         "/api/work-items/archive-all",
                         "/api/executions/runs/{run_id}/cancel",
+                        "/api/executions/runs/{run_id}/pause",
+                        "/api/executions/runs/{run_id}/resume",
                         "/api/executions/sessions/{session_id}/stop",
                         "/api/executions/leases/release",
                         "/api/artifacts/{artifact_id}/review",

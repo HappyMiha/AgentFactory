@@ -14,7 +14,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 
-RUN python -m pip install --no-deps . \
+RUN python -m pip install . \
     && mkdir -p /data /workspace \
     && chown -R agentfactory:agentfactory /data /workspace
 

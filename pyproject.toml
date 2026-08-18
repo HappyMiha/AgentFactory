@@ -20,14 +20,15 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Software Development :: Quality Assurance",
 ]
-dependencies = []
+dependencies = ["temporalio==1.31.0"]
 
 [project.scripts]
 agent-factory = "agent_factory.cli:main"
+agent-factory-temporal-worker = "agent_factory.orchestration.temporal.worker:main"
 
 [project.optional-dependencies]
 dev = ["build>=1.2", "httpx2>=2.10,<3"]
-web = ["fastapi>=0.116,<1", "uvicorn>=0.35,<1", "pypdf>=5,<7"]
+web = ["fastapi>=0.116,<1", "uvicorn>=0.35,<1", "pypdf>=5,<7", "python-multipart>=0.0.20,<1"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}

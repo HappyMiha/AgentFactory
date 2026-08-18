@@ -130,6 +130,12 @@ The demo is deterministic. It does not invoke an external model or mutate GitHub
 
 The Local Control Center can be installed and opened on Windows with `python -m pip install -e ".[web]"; if ($LASTEXITCODE -eq 0) { python -m agent_factory --workspace . web --open }`. It binds to `127.0.0.1:8765`; press `Ctrl+C` to stop it and see [Local Control Center](docs/local-control-center.md).
 
+## Durable workflows with Temporal
+
+Temporal can durably orchestrate AgentFactory delivery runs while the Worker remains on the Windows host with access to the existing local CLI and project environment. Start the loopback-only PostgreSQL-backed development stack with `.\infra\temporal\start.ps1`, enable it with `$env:TEMPORAL_ENABLED = "true"`, then run the Local Control Center and `agent-factory-temporal-worker` in separate PowerShell windows. Normal stops preserve Workflow history; only `reset.ps1` deletes the named database volume.
+
+See [Temporal development](docs/development/temporal.md) for the complete setup, restart tests, configuration, status controls, and troubleshooting guide. The current architecture and migration boundaries are recorded in [the integration analysis](docs/architecture/temporal-integration-analysis.md).
+
 ### Windows PowerShell
 
 ```powershell

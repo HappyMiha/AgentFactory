@@ -257,7 +257,7 @@ class CodexCLIProcessDriver(RuntimeDriver):
         timed_out = output_limited = False
         while proc.poll() is None:
             if state["cancel"].is_set():
-                self.supervisor.terminate_tree(proc)
+                self.supervisor.cancel_tree(proc)
                 break
             if capture.overflow.is_set():
                 output_limited = True
@@ -351,7 +351,7 @@ class CodexCLIProcessDriver(RuntimeDriver):
         state = self._session(external_session_id)
         state["cancel"].set()
         if state["proc"].poll() is None:
-            self.supervisor.terminate_tree(state["proc"])
+            self.supervisor.cancel_tree(state["proc"])
         if not state["done"].wait(10):
             raise RuntimeError("Codex process tree did not terminate within the cancellation bound")
         self._persist(state)

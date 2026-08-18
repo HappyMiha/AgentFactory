@@ -6,6 +6,7 @@
 *.toml text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+*.sh text eol=lf
 Dockerfile text eol=lf
 .gitattributes text eol=lf
 .dockerignore text eol=lf
