@@ -80,4 +80,4 @@ Never rewrite a released migration. Add a new migration and prove upgrade compat
 - [ ] Approval, audit, and dry-run guarantees remain intact.
 - [ ] The wheel and Docker image build successfully when relevant.
 
-No contribution license has been selected yet. Discuss contribution terms with the repository owner before submitting material intended for incorporation.
+Unless explicitly stated otherwise, any contribution intentionally submitted for inclusion in Agent Factory is provided under the [Apache License 2.0](LICENSE), without additional terms or conditions. By submitting a contribution, you confirm that you have the right to provide it under that license.

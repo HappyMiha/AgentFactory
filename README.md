@@ -334,4 +334,4 @@ The repository CI runs Python 3.11 and 3.12 tests on Windows, Ubuntu, and macOS,
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Security reports belong in private GitHub Security Advisories as described in [SECURITY.md](SECURITY.md).
 
-No license has been granted yet. Until the repository owner adds an explicit license, copyright law reserves all rights and external use, copying, modification, and redistribution require permission.
+Copyright 2026 HappyMiha. Agent Factory is licensed under the [Apache License 2.0](LICENSE).
