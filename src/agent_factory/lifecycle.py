@@ -4,6 +4,58 @@ from collections.abc import Mapping
 
 
 TRANSITIONS: Mapping[str, Mapping[str, frozenset[str]]] = {
+    "autonomous_mission_phase": {
+        "DRAFT": frozenset({"SPECIFICATION_ANALYSIS"}),
+        "SPECIFICATION_ANALYSIS": frozenset({"BACKLOG_GENERATION"}),
+        "BACKLOG_GENERATION": frozenset(
+            {"SPECIFICATION_ANALYSIS", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "WAITING_FOR_BACKLOG_APPROVAL": frozenset(
+            {"BACKLOG_GENERATION", "APPROVED"}
+        ),
+        "APPROVED": frozenset({"ENVIRONMENT_DISCOVERY"}),
+        "ENVIRONMENT_DISCOVERY": frozenset({"ENVIRONMENT_BOOTSTRAP"}),
+        "ENVIRONMENT_BOOTSTRAP": frozenset({"DEVELOPMENT"}),
+        "DEVELOPMENT": frozenset({"VALIDATION", "FINAL_VALIDATION"}),
+        "VALIDATION": frozenset({"DEVELOPMENT", "INTEGRATION"}),
+        "INTEGRATION": frozenset({"DEVELOPMENT", "FINAL_VALIDATION"}),
+        "FINAL_VALIDATION": frozenset({"DEVELOPMENT", "COMPLETED"}),
+        "COMPLETED": frozenset(),
+    },
+    "autonomous_mission_disposition": {
+        "RUNNING": frozenset(
+            {
+                "PAUSED",
+                "STOPPED",
+                "NEEDS_ATTENTION",
+                "NEEDS_HUMAN_ACTION",
+                "REPLANNING",
+                "RECOVERING",
+                "FAILED",
+            }
+        ),
+        "PAUSED": frozenset({"RUNNING", "STOPPED", "FAILED"}),
+        "STOPPED": frozenset({"RUNNING", "RECOVERING", "FAILED"}),
+        "NEEDS_ATTENTION": frozenset(
+            {"RUNNING", "STOPPED", "REPLANNING", "FAILED"}
+        ),
+        "NEEDS_HUMAN_ACTION": frozenset(
+            {"RUNNING", "STOPPED", "RECOVERING", "FAILED"}
+        ),
+        "REPLANNING": frozenset(
+            {"RUNNING", "PAUSED", "STOPPED", "NEEDS_ATTENTION", "FAILED"}
+        ),
+        "RECOVERING": frozenset(
+            {
+                "RUNNING",
+                "STOPPED",
+                "NEEDS_ATTENTION",
+                "NEEDS_HUMAN_ACTION",
+                "FAILED",
+            }
+        ),
+        "FAILED": frozenset({"RECOVERING", "STOPPED"}),
+    },
     "work_item": {
         "pending": frozenset({"running", "failed"}),
         "running": frozenset({"completed", "failed"}),

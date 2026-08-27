@@ -3061,6 +3061,180 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER IF NOT EXISTS control_plane_actions_no_delete BEFORE DELETE ON control_plane_actions
         BEGIN SELECT RAISE(ABORT, 'control-plane actions are immutable'); END;
     """),
+    (58, """
+        CREATE TABLE IF NOT EXISTS autonomous_missions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_key TEXT NOT NULL UNIQUE,
+            project_id INTEGER NOT NULL UNIQUE REFERENCES projects(id),
+            intake_id INTEGER REFERENCES mission_intakes(id),
+            blueprint_id INTEGER REFERENCES factory_blueprints(id),
+            name TEXT NOT NULL,
+            mission_owner TEXT NOT NULL,
+            phase TEXT NOT NULL CHECK(phase IN (
+                'DRAFT','SPECIFICATION_ANALYSIS','BACKLOG_GENERATION',
+                'WAITING_FOR_BACKLOG_APPROVAL','APPROVED',
+                'ENVIRONMENT_DISCOVERY','ENVIRONMENT_BOOTSTRAP','DEVELOPMENT',
+                'VALIDATION','INTEGRATION','FINAL_VALIDATION','COMPLETED'
+            )),
+            disposition TEXT NOT NULL CHECK(disposition IN (
+                'RUNNING','PAUSED','STOPPED','NEEDS_ATTENTION',
+                'NEEDS_HUMAN_ACTION','REPLANNING','RECOVERING','FAILED'
+            )),
+            configuration_json TEXT NOT NULL,
+            configuration_digest TEXT NOT NULL,
+            initial_specification_text TEXT NOT NULL DEFAULT '',
+            initial_specification_digest TEXT,
+            specification_metadata_json TEXT NOT NULL DEFAULT '{}',
+            active_backlog_revision_id INTEGER,
+            active_execution_epoch_id INTEGER,
+            current_checkpoint_id INTEGER,
+            version INTEGER NOT NULL DEFAULT 1 CHECK(version > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_missions_state
+            ON autonomous_missions(disposition,phase,updated_at);
+
+        CREATE TABLE IF NOT EXISTS autonomous_mission_state_versions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            version INTEGER NOT NULL CHECK(version > 0),
+            phase TEXT NOT NULL,
+            disposition TEXT NOT NULL,
+            configuration_json TEXT NOT NULL,
+            configuration_digest TEXT NOT NULL,
+            active_backlog_revision_id INTEGER,
+            active_execution_epoch_id INTEGER,
+            current_checkpoint_id INTEGER,
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id,version)
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_mission_commands(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            command_id TEXT NOT NULL UNIQUE,
+            command_type TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            expected_version INTEGER,
+            request_digest TEXT NOT NULL,
+            result_version INTEGER NOT NULL,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_mission_commands
+            ON autonomous_mission_commands(mission_id,id);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_no_delete
+        BEFORE DELETE ON autonomous_missions
+        BEGIN SELECT RAISE(ABORT, 'autonomous missions are durable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_identity_immutable
+        BEFORE UPDATE ON autonomous_missions
+        WHEN NEW.identity<>OLD.identity OR NEW.mission_key<>OLD.mission_key
+          OR NEW.project_id<>OLD.project_id OR NEW.mission_owner<>OLD.mission_owner
+          OR NEW.initial_specification_text<>OLD.initial_specification_text
+          OR COALESCE(NEW.initial_specification_digest,'')<>
+             COALESCE(OLD.initial_specification_digest,'')
+          OR NEW.specification_metadata_json<>OLD.specification_metadata_json
+        BEGIN SELECT RAISE(ABORT, 'autonomous mission identity is immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_single_axis_update
+        BEFORE UPDATE ON autonomous_missions
+        WHEN NEW.phase<>OLD.phase AND NEW.disposition<>OLD.disposition
+        BEGIN SELECT RAISE(ABORT, 'mission phase and disposition must change separately'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_phase_transition
+        BEFORE UPDATE OF phase ON autonomous_missions
+        WHEN NEW.phase<>OLD.phase AND NOT (
+            (OLD.phase='DRAFT' AND NEW.phase='SPECIFICATION_ANALYSIS') OR
+            (OLD.phase='SPECIFICATION_ANALYSIS' AND NEW.phase='BACKLOG_GENERATION') OR
+            (OLD.phase='BACKLOG_GENERATION' AND NEW.phase IN
+                ('SPECIFICATION_ANALYSIS','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='WAITING_FOR_BACKLOG_APPROVAL' AND NEW.phase IN
+                ('BACKLOG_GENERATION','APPROVED')) OR
+            (OLD.phase='APPROVED' AND NEW.phase='ENVIRONMENT_DISCOVERY') OR
+            (OLD.phase='ENVIRONMENT_DISCOVERY' AND NEW.phase='ENVIRONMENT_BOOTSTRAP') OR
+            (OLD.phase='ENVIRONMENT_BOOTSTRAP' AND NEW.phase='DEVELOPMENT') OR
+            (OLD.phase='DEVELOPMENT' AND NEW.phase IN ('VALIDATION','FINAL_VALIDATION')) OR
+            (OLD.phase='VALIDATION' AND NEW.phase IN ('DEVELOPMENT','INTEGRATION')) OR
+            (OLD.phase='INTEGRATION' AND NEW.phase IN ('DEVELOPMENT','FINAL_VALIDATION')) OR
+            (OLD.phase='FINAL_VALIDATION' AND NEW.phase IN ('DEVELOPMENT','COMPLETED'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid autonomous mission phase transition'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_phase_requires_running
+        BEFORE UPDATE OF phase ON autonomous_missions
+        WHEN NEW.phase<>OLD.phase AND OLD.disposition<>'RUNNING'
+        BEGIN SELECT RAISE(ABORT, 'mission phase cannot advance while execution is fenced'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_disposition_transition
+        BEFORE UPDATE OF disposition ON autonomous_missions
+        WHEN NEW.disposition<>OLD.disposition AND NOT (
+            (OLD.disposition='RUNNING' AND NEW.disposition IN
+                ('PAUSED','STOPPED','NEEDS_ATTENTION','NEEDS_HUMAN_ACTION',
+                 'REPLANNING','RECOVERING','FAILED')) OR
+            (OLD.disposition='PAUSED' AND NEW.disposition IN
+                ('RUNNING','STOPPED','FAILED')) OR
+            (OLD.disposition='STOPPED' AND NEW.disposition IN
+                ('RUNNING','RECOVERING','FAILED')) OR
+            (OLD.disposition='NEEDS_ATTENTION' AND NEW.disposition IN
+                ('RUNNING','STOPPED','REPLANNING','FAILED')) OR
+            (OLD.disposition='NEEDS_HUMAN_ACTION' AND NEW.disposition IN
+                ('RUNNING','STOPPED','RECOVERING','FAILED')) OR
+            (OLD.disposition='REPLANNING' AND NEW.disposition IN
+                ('RUNNING','PAUSED','STOPPED','NEEDS_ATTENTION','FAILED')) OR
+            (OLD.disposition='RECOVERING' AND NEW.disposition IN
+                ('RUNNING','STOPPED','NEEDS_ATTENTION','NEEDS_HUMAN_ACTION','FAILED')) OR
+            (OLD.disposition='FAILED' AND NEW.disposition IN ('RECOVERING','STOPPED'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid autonomous mission disposition transition'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_completed_immutable
+        BEFORE UPDATE ON autonomous_missions
+        WHEN OLD.phase='COMPLETED'
+        BEGIN SELECT RAISE(ABORT, 'completed autonomous missions are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_version_step
+        BEFORE UPDATE ON autonomous_missions
+        WHEN NEW.version<>OLD.version+1
+        BEGIN SELECT RAISE(ABORT, 'autonomous mission version must advance once'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_missions_state_evidence_required
+        BEFORE UPDATE ON autonomous_missions
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_state_versions s
+             WHERE s.mission_id=OLD.id AND s.version=NEW.version
+               AND s.phase=NEW.phase AND s.disposition=NEW.disposition
+               AND s.configuration_digest=NEW.configuration_digest
+               AND COALESCE(s.active_backlog_revision_id,-1)=
+                   COALESCE(NEW.active_backlog_revision_id,-1)
+               AND COALESCE(s.active_execution_epoch_id,-1)=
+                   COALESCE(NEW.active_execution_epoch_id,-1)
+               AND COALESCE(s.current_checkpoint_id,-1)=
+                   COALESCE(NEW.current_checkpoint_id,-1)
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous mission state evidence is required'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_mission_versions_no_update
+        BEFORE UPDATE ON autonomous_mission_state_versions
+        BEGIN SELECT RAISE(ABORT, 'mission state versions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_mission_versions_no_delete
+        BEFORE DELETE ON autonomous_mission_state_versions
+        BEGIN SELECT RAISE(ABORT, 'mission state versions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_mission_commands_no_update
+        BEFORE UPDATE ON autonomous_mission_commands
+        BEGIN SELECT RAISE(ABORT, 'mission commands are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_mission_commands_no_delete
+        BEFORE DELETE ON autonomous_mission_commands
+        BEGIN SELECT RAISE(ABORT, 'mission commands are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
