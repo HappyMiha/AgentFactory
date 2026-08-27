@@ -14,7 +14,7 @@
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,
-      "allowed_roles": ["Policy Reviewer", "Implementation Worker", "Proxy Reviewer", "Validation Reviewer"],
+      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Proxy Reviewer", "Validation Reviewer"],
       "max_timeout": 180,
       "max_output_chars": 100000
     },
@@ -22,6 +22,7 @@
       "id": "claude",
       "type": "cli",
       "enabled": true,
+      "standby": true,
       "executable": "claude",
       "executable_candidates": [
         "%USERPROFILE%\\.local\\bin\\claude.exe",
@@ -40,13 +41,14 @@
       "id": "gemini",
       "type": "cli",
       "enabled": true,
+      "standby": false,
       "executable": "gemini",
       "executable_candidates": ["%APPDATA%\\npm\\gemini.cmd", "gemini.cmd"],
-      "args": ["--prompt", "", "--output-format", "text", "--approval-mode", "plan"],
+      "args": ["--model", "gemini-3.1-pro-preview", "--prompt", "", "--output-format", "text", "--approval-mode", "plan"],
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,
-      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Proxy Reviewer", "Validation Reviewer"],
+      "allowed_roles": ["Implementation Worker"],
       "max_timeout": 180,
       "max_output_chars": 100000
     },

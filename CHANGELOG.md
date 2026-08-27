@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Renamed the public product and control-room experience to N0DRA while keeping the `agent_factory` package and CLI names stable.
+- Replaced the generated-looking README and default backlog with a short operator-first introduction, documentation map, and human-sized roadmap.
+- Rebuilt the web control room in a late-1990s phosphor-terminal style with original local artwork and clearer coding-relay copy.
 - Added a Local Control Center System monitor with `/api/monitor` readiness checks for database integrity, migrations, providers, agents, runtime, and emergency-stop safety.
 - Documented the readiness workflow in the Ukrainian user guide and PDF.
 - Added technical-specification upload and Backlog Steward decomposition preview in Work item controls.

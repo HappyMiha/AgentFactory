@@ -5,8 +5,8 @@
       "name": "Policy Guardian",
       "role": "Policy Reviewer",
       "enabled": true,
-      "provider": "claude",
-      "model": "anthropic:sonnet-5",
+      "provider": "codex",
+      "model": "openai:gpt-5.6-sol",
       "instructions": "Check the proposed work and delivered evidence against the configured policies and acceptance criteria. Never implement, merge, or close the work.",
       "permissions": ["read_project", "create_artifact", "issue_verdict"]
     },
@@ -15,9 +15,9 @@
       "name": "Backlog Steward",
       "role": "Delivery Planner",
       "enabled": true,
-      "provider": "claude",
-      "model": "anthropic:sonnet-5",
-      "instructions": "Create dependency-aware, non-duplicative work proposals with explicit acceptance criteria.",
+      "provider": "codex",
+      "model": "openai:gpt-5.6-sol",
+      "instructions": "Orchestrate only operator-approved work. Do not create additional tasks or delegate work to another worker. Keep the coding route Gemini first, then Claude only after Gemini token exhaustion, then Codex only after Claude token exhaustion.",
       "permissions": ["read_project", "create_artifact", "propose_backlog"]
     },
     {
@@ -37,7 +37,7 @@
       "enabled": true,
       "provider": "codex",
       "model": "openai:gpt-5.6-sol",
-      "instructions": "Produce the smallest reviewable implementation artifact that satisfies the approved task.",
+      "instructions": "Remain the delivery orchestrator while Claude or Gemini has coding-token capacity. Act as the implementation worker only after both providers report token quota exhaustion. Do not create or delegate additional tasks.",
       "permissions": ["read_project", "create_artifact", "propose_code", "worktree_write", "tool_use"]
     },
     {
@@ -47,8 +47,8 @@
       "enabled": true,
       "provider": "claude",
       "model": "anthropic:sonnet-5",
-      "instructions": "Produce a bounded implementation proposal in planning mode for independent review.",
-      "permissions": ["read_project", "create_artifact", "propose_code"]
+      "instructions": "Standby coding worker. Run only after Gemini reports token quota exhaustion. Implement only the existing approved task and return the smallest reviewable result. Do not create, split, or delegate additional tasks.",
+      "permissions": ["read_project", "create_artifact", "propose_code", "worktree_write", "tool_use"]
     },
     {
       "id": "coding-worker-gemini",
@@ -56,15 +56,15 @@
       "role": "Implementation Worker",
       "enabled": true,
       "provider": "gemini",
-      "model": "google:gemini",
-      "instructions": "Produce a bounded implementation proposal in planning mode for independent review.",
+      "model": "google:gemini-3.1-pro-preview",
+      "instructions": "Primary high-capability coding worker. Start every approved implementation task with the Pro high-reasoning profile: inspect the relevant implementation and tests, reason through edge cases, and produce complete production-quality code with targeted verification evidence. Do not use Flash/Lite, placeholders, TODO-only stubs, or knowingly incomplete shortcuts. Implement only the existing approved task; do not create, split, or delegate additional tasks.",
       "permissions": ["read_project", "create_artifact", "propose_code"]
     },
     {
       "id": "coding-worker-antigravity",
       "name": "Implementation Worker (Antigravity)",
       "role": "Implementation Worker",
-      "enabled": true,
+      "enabled": false,
       "provider": "antigravity",
       "model": "google:gemini",
       "instructions": "Produce a bounded implementation proposal in plan mode and return reviewable evidence without changing the workspace.",
@@ -114,7 +114,7 @@
       "id": "proxy-reviewer-gemini",
       "name": "Proxy Reviewer (Gemini)",
       "role": "Proxy Reviewer",
-      "enabled": true,
+      "enabled": false,
       "provider": "gemini",
       "model": "google:gemini",
       "instructions": "Independently review work produced by another model and issue criterion-level evidence and concerns. Never merge, close, or grant final acceptance.",
@@ -124,7 +124,7 @@
       "id": "proxy-reviewer-antigravity",
       "name": "Proxy Reviewer (Antigravity)",
       "role": "Proxy Reviewer",
-      "enabled": true,
+      "enabled": false,
       "provider": "antigravity",
       "model": "google:gemini",
       "instructions": "Independently review non-secret work produced by another model and issue criterion-level evidence and concerns. Never merge, close, or grant final acceptance.",
@@ -154,7 +154,7 @@
       "id": "policy-guardian-gemini",
       "name": "Policy Guardian (Gemini)",
       "role": "Policy Reviewer",
-      "enabled": true,
+      "enabled": false,
       "provider": "gemini",
       "model": "google:gemini",
       "instructions": "Independently check delivered evidence against policy and scope. Never implement, merge, close, or grant final acceptance.",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from enum import StrEnum
 from pathlib import Path
 import threading
@@ -8,6 +9,7 @@ from typing import Any
 from .config import WORKSPACE, config_path_for_workspace, load_yaml
 from .models import Agent, ExecutionApproval, ProviderResult, WorkItem
 from .providers import CLIProvider, DeterministicProvider, Provider
+from .token_failover import result_exhausted_quota
 
 
 class ExecutionMode(StrEnum):
@@ -24,6 +26,7 @@ class AgentRuntime:
     ):
         self.workspace = (workspace or WORKSPACE).resolve()
         self.providers = providers or self._from_config()
+        self._token_exhausted_providers: set[str] = set()
 
     def _from_config(self) -> dict[str, Provider]:
         result: dict[str, Provider] = {"deterministic": DeterministicProvider()}
@@ -83,32 +86,108 @@ class AgentRuntime:
         allow_fallback: bool = True,
         mode: ExecutionMode | str | None = None,
         cancel_event: threading.Event | None = None,
+        token_exhaustion_fallback_agents: tuple[Agent, ...] = (),
     ) -> ProviderResult:
         if mode is not None:
             selected = ExecutionMode(mode)
             allow_fallback = selected is ExecutionMode.SIMULATION
-        order = [agent.provider]
-        if allow_fallback:
-            order.append("deterministic")
+        candidates = tuple(
+            dict.fromkeys(
+                (agent.id, *(item.id for item in token_exhaustion_fallback_agents))
+            )
+        )
+        by_id = {item.id: item for item in (agent, *token_exhaustion_fallback_agents)}
         errors: list[str] = []
-        for name in dict.fromkeys(order):
+        attempted_agents: list[str] = []
+        exhausted: list[dict[str, str]] = []
+        simulation_agent = agent
+        terminal_error = ""
+        terminal_token_exhausted = False
+        for agent_id in candidates:
+            candidate = by_id[agent_id]
+            name = candidate.provider
+            if name.casefold() in self._token_exhausted_providers:
+                terminal_error = f"{name}: token quota already exhausted"
+                terminal_token_exhausted = True
+                errors.append(terminal_error)
+                continue
+            simulation_agent = candidate
             provider = self.providers.get(name)
             if not provider:
-                errors.append(f"{name}: not configured")
-                continue
-            scoped_approval = approval if name == agent.provider else None
+                terminal_error = f"{name}: not configured"
+                terminal_token_exhausted = False
+                errors.append(terminal_error)
+                break
+            if not candidate.enabled:
+                terminal_error = f"{name}: agent {candidate.id} is disabled"
+                terminal_token_exhausted = False
+                errors.append(terminal_error)
+                break
+            scoped_approval = (
+                approval
+                if approval is not None
+                and approval.provider == name
+                and approval.agent_id == candidate.id
+                else None
+            )
+            candidate_item = replace(item, permissions=list(candidate.permissions))
+            attempted_agents.append(candidate.id)
             if cancel_event is not None and isinstance(provider, CLIProvider):
                 result = provider.execute(
-                    agent,
-                    item,
+                    candidate,
+                    candidate_item,
                     context,
                     scoped_approval,
                     cancel_event=cancel_event,
                 )
             else:
-                result = provider.execute(agent, item, context, scoped_approval)
+                result = provider.execute(candidate, candidate_item, context, scoped_approval)
             if result.ok:
-                result.metadata["fallback_errors"] = errors
+                result.metadata.update(
+                    {
+                        "fallback_errors": errors,
+                        "attempted_agents": attempted_agents,
+                        "selected_agent_id": candidate.id,
+                        "token_exhausted_providers": exhausted,
+                    }
+                )
                 return result
-            errors.append(f"{name}: {result.error}")
-        return ProviderResult(False, provider="none", error="; ".join(errors))
+            terminal_error = result.error or f"{name} provider failed"
+            terminal_token_exhausted = result_exhausted_quota(result)
+            errors.append(f"{name}: {terminal_error}")
+            if not terminal_token_exhausted:
+                break
+            self._token_exhausted_providers.add(name.casefold())
+            exhausted.append({"provider": name, "agent_id": candidate.id})
+
+        if allow_fallback:
+            provider = self.providers.get("deterministic")
+            if provider:
+                simulation_item = replace(
+                    item, permissions=list(simulation_agent.permissions)
+                )
+                result = provider.execute(
+                    simulation_agent, simulation_item, context, None
+                )
+                if result.ok:
+                    result.metadata.update(
+                        {
+                            "fallback_errors": errors,
+                            "attempted_agents": attempted_agents,
+                            "selected_agent_id": simulation_agent.id,
+                            "token_exhausted_providers": exhausted,
+                        }
+                    )
+                    return result
+                errors.append(f"deterministic: {result.error}")
+        return ProviderResult(
+            False,
+            provider="none",
+            error=terminal_error or "; ".join(errors),
+            metadata={
+                "fallback_errors": errors,
+                "attempted_agents": attempted_agents,
+                "token_exhausted_providers": exhausted,
+                "failure_class": "TOKEN_EXHAUSTED" if terminal_token_exhausted else "",
+            },
+        )

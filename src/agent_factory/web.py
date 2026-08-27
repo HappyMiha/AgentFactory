@@ -230,7 +230,7 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         yield
 
     app = FastAPI(
-        title="Agent Factory Local Control Center",
+        title="N0DRA Local Control Room",
         version="0.1.0",
         docs_url="/api/docs",
         redoc_url=None,

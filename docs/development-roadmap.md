@@ -1,5 +1,7 @@
 # Development roadmap
 
+> **Historical engineering ledger.** This document and `examples/development-backlog.json` preserve the AF-001–AF-057 implementation record. They are not the active working backlog. Start with the short [N0DRA roadmap](roadmap.md) and [`examples/backlog.json`](../examples/backlog.json).
+
 This roadmap converts the remaining requirements in *Agent Factory Technical Specification v1.0* (2 August 2026) into an ordered delivery backlog. It is deliberately based on the current repository rather than treating the specification as a greenfield design.
 
 The importable source of the issue list is [`examples/development-backlog.json`](../examples/development-backlog.json). Stable IDs in that file are permanent. Titles, descriptions, priorities, dependencies, and implementation choices may evolve without changing those IDs. Completion claims and evidence are tracked separately in the [2026-08-11 implementation audit](implementation-audit-2026-08-11.md); the manifest describes required outcomes and must not be treated as proof that they exist.

@@ -9,6 +9,7 @@ from agent_factory.orchestration.temporal.policies import (
     coding_policy,
     fast_transient_policy,
     llm_policy,
+    policy_for_provider,
 )
 from agent_factory.orchestration.temporal.settings import TemporalSettings
 
@@ -46,6 +47,8 @@ class TemporalConfigurationTests(unittest.TestCase):
         self.assertEqual(llm.maximum_attempts, 4)
         self.assertEqual(coding.maximum_attempts, 2)
         self.assertIn("CONFIGURATION", coding.non_retryable_error_types)
+        self.assertIn("TOKEN_EXHAUSTED", coding.non_retryable_error_types)
+        self.assertEqual(policy_for_provider("gemini").maximum_attempts, 2)
 
     def test_failure_classification_separates_configuration_and_transient(self):
         self.assertEqual(
@@ -54,6 +57,10 @@ class TemporalConfigurationTests(unittest.TestCase):
         )
         self.assertEqual(
             classify_error("HTTP 429 rate limit", {}), ("TRANSIENT", True)
+        )
+        self.assertEqual(
+            classify_error("usage limit reached", {}),
+            ("TOKEN_EXHAUSTED", False),
         )
         self.assertEqual(
             classify_error("provider timed out", {"timed_out": True}),

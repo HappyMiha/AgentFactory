@@ -1,76 +1,190 @@
 {
   "schema_version": 1,
   "source": {
-    "name": "Example service requirements"
+    "name": "N0DRA working backlog"
   },
   "items": [
     {
-      "stable_id": "example:epic:service-readiness",
+      "stable_id": "N0DRA-E01",
       "kind": "epic",
-      "title": "Service readiness",
-      "description": "Provide a small service that operators can start, inspect, and stop predictably.",
+      "title": "A coding relay a human can trust",
+      "description": "Make the local Gemini-to-Claude-to-Codex workflow obvious, testable, and useful on a real repository.",
       "parent_id": null,
       "dependencies": [],
       "acceptance_criteria": [
-        "A new operator can start the service from documented instructions.",
-        "The service exposes measurable health evidence.",
-        "A failed startup produces an actionable diagnostic."
+        "An operator can tell who is coding and why.",
+        "Only token or quota exhaustion advances the coding line.",
+        "A complete run remains reviewable after restart."
       ],
       "source_references": [
-        "docs/requirements.md#service-readiness"
+        "docs/roadmap.md"
       ],
       "review_notes": []
     },
     {
-      "stable_id": "example:story:health-endpoint",
+      "stable_id": "N0DRA-S01",
       "kind": "story",
-      "title": "Observable service health",
-      "description": "Allow an operator to determine whether the process is ready to serve requests.",
-      "parent_id": "example:epic:service-readiness",
+      "title": "See the coding handoff",
+      "description": "Put the active coder, standby order, and failover reason where an operator cannot miss them.",
+      "parent_id": "N0DRA-E01",
       "dependencies": [],
       "acceptance_criteria": [
-        "A health request returns a success response when dependencies are ready.",
-        "A health request returns a non-success response when a required dependency is unavailable.",
-        "The response contains no credentials or private configuration values."
+        "The control room shows Gemini 3.1 Pro, Claude Sonnet 5, and Codex in order.",
+        "The current worker and standby workers have different visual states.",
+        "The route remains understandable on a narrow screen."
       ],
       "source_references": [
-        "docs/requirements.md#health"
+        "docs/roadmap.md#now--make-the-handoff-obvious"
       ],
       "review_notes": []
     },
     {
-      "stable_id": "example:task:implement-health-endpoint",
+      "stable_id": "N0DRA-001",
       "kind": "task",
-      "title": "Implement the health endpoint",
-      "description": "Add the endpoint and automated evidence for healthy and unhealthy dependency states.",
-      "parent_id": "example:story:health-endpoint",
+      "title": "Show the live coding line",
+      "description": "Expose the selected coder and fallback order in the control room and run detail.",
+      "parent_id": "N0DRA-S01",
       "dependencies": [],
       "acceptance_criteria": [
-        "The healthy case is covered by an automated test.",
-        "The unavailable-dependency case is covered by an automated test.",
-        "Static checks and the existing test suite pass."
+        "Gemini 3.1 Pro is shown as the first coding worker.",
+        "Claude Sonnet 5 and Codex are shown in fallback order.",
+        "The display is derived from runtime configuration rather than a second routing rule."
       ],
       "source_references": [
-        "docs/requirements.md#health"
+        "docs/roadmap.md#now--make-the-handoff-obvious"
       ],
       "review_notes": []
     },
     {
-      "stable_id": "example:task:document-operations",
+      "stable_id": "N0DRA-002",
       "kind": "task",
-      "title": "Document service operations",
-      "description": "Document startup, health verification, shutdown, and the most likely failure modes.",
-      "parent_id": "example:epic:service-readiness",
+      "title": "Explain why a handoff happened",
+      "description": "Record a short operator-facing reason when the coding worker changes or stops.",
+      "parent_id": "N0DRA-S01",
       "dependencies": [
-        "example:task:implement-health-endpoint"
+        "N0DRA-001"
       ],
       "acceptance_criteria": [
-        "A new operator can follow the instructions without unstated local setup.",
-        "Every command has an expected result.",
-        "Destructive cleanup actions contain an explicit warning."
+        "Quota exhaustion is distinct from timeout, authentication, policy, and coding failures.",
+        "Ordinary failures stop and explain instead of selecting another coder.",
+        "The reason survives restart in durable evidence."
       ],
       "source_references": [
-        "docs/requirements.md#operations"
+        "docs/roadmap.md#now--make-the-handoff-obvious"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "N0DRA-S02",
+      "kind": "story",
+      "title": "Prove the relay without spending tokens",
+      "description": "Exercise every selection and recovery branch with deterministic providers before using paid accounts.",
+      "parent_id": "N0DRA-E01",
+      "dependencies": [
+        "N0DRA-002"
+      ],
+      "acceptance_criteria": [
+        "Every handoff branch has an automated test.",
+        "Non-quota failures have tests proving that failover does not occur.",
+        "Interrupted runs recover with the same route and authority."
+      ],
+      "source_references": [
+        "docs/roadmap.md#next--prove-the-relay"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "N0DRA-003",
+      "kind": "task",
+      "title": "Test both quota handoffs",
+      "description": "Simulate exhausted Gemini and Claude quotas and verify the exact next worker.",
+      "parent_id": "N0DRA-S02",
+      "dependencies": [
+        "N0DRA-002"
+      ],
+      "acceptance_criteria": [
+        "Gemini quota exhaustion selects Claude Sonnet 5.",
+        "Claude quota exhaustion selects Codex.",
+        "The test records the route decision and does not invoke a live provider."
+      ],
+      "source_references": [
+        "docs/roadmap.md#next--prove-the-relay"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "N0DRA-004",
+      "kind": "task",
+      "title": "Test the stop paths",
+      "description": "Prove that authentication, timeout, policy, and implementation failures do not silently consume the next provider.",
+      "parent_id": "N0DRA-S02",
+      "dependencies": [
+        "N0DRA-003"
+      ],
+      "acceptance_criteria": [
+        "Each ordinary failure stops on the current worker.",
+        "The operator receives a useful reason and next action.",
+        "No additional coding task or worker is created."
+      ],
+      "source_references": [
+        "docs/roadmap.md#next--prove-the-relay"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "N0DRA-S03",
+      "kind": "story",
+      "title": "Complete one field mission",
+      "description": "Use the proven local workflow on one small repository and keep the evidence readable.",
+      "parent_id": "N0DRA-E01",
+      "dependencies": [
+        "N0DRA-004"
+      ],
+      "acceptance_criteria": [
+        "A clean checkout can complete the mission using documented commands.",
+        "The final report ties the requested outcome to the diff and checks.",
+        "A human makes the final acceptance decision."
+      ],
+      "source_references": [
+        "docs/roadmap.md#then--run-one-real-repository"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "N0DRA-005",
+      "kind": "task",
+      "title": "Run a small repository end to end",
+      "description": "Choose one bounded task, let Gemini implement it, and inspect the complete local trail.",
+      "parent_id": "N0DRA-S03",
+      "dependencies": [
+        "N0DRA-004"
+      ],
+      "acceptance_criteria": [
+        "The task has measurable acceptance criteria before execution.",
+        "Implementation occurs only inside the leased worktree.",
+        "Diff, checks, reviews, budget, and human decision appear in one report."
+      ],
+      "source_references": [
+        "docs/roadmap.md#then--run-one-real-repository"
+      ],
+      "review_notes": []
+    },
+    {
+      "stable_id": "N0DRA-006",
+      "kind": "task",
+      "title": "Fix the guide from field notes",
+      "description": "Turn every confusing step found during the field mission into a short, tested instruction or a product fix.",
+      "parent_id": "N0DRA-S03",
+      "dependencies": [
+        "N0DRA-005"
+      ],
+      "acceptance_criteria": [
+        "A second operator can repeat the mission from a clean checkout.",
+        "Every command includes the expected result.",
+        "Destructive recovery steps carry an explicit warning."
+      ],
+      "source_references": [
+        "docs/roadmap.md#then--run-one-real-repository"
       ],
       "review_notes": []
     }

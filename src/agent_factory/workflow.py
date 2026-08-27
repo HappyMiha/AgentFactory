@@ -10,6 +10,11 @@ from .registry import AgentRegistry
 from .reviewers import ReviewerRouter, ReviewSubject
 from .runtime import AgentRuntime, ExecutionMode
 from .storage import SQLiteStorage
+from .token_failover import (
+    configured_coding_chain,
+    exhausted_providers_for_run,
+    record_exhausted_providers,
+)
 from .workflow_contracts import parse_stage_verdict, validate_workflow
 
 
@@ -82,6 +87,9 @@ class WorkflowEngine:
                         candidate_ids=list(reviewer_pool),
                         subjects=subjects,
                         required_role=placeholder.role,
+                        excluded_provider_ids=exhausted_providers_for_run(
+                            self.storage, run_id
+                        ),
                     )
                     context[f"{stage['id']}:review_assignment"] = json.dumps(
                         {
@@ -105,6 +113,25 @@ class WorkflowEngine:
                     )
                 else:
                     agent = self.registry.get(stage["agent"])
+                coding_chain = (
+                    configured_coding_chain(stage, self.registry.list())
+                    if stage.get("token_exhaustion_fallback_agents")
+                    else (agent,)
+                )
+                exhausted_providers = exhausted_providers_for_run(
+                    self.storage, run_id
+                )
+                available_chain = tuple(
+                    candidate
+                    for candidate in coding_chain
+                    if candidate.provider.casefold() not in exhausted_providers
+                )
+                if not available_chain:
+                    raise RuntimeError(
+                        f"No coding worker with token capacity remains for stage {stage['id']}"
+                    )
+                agent = available_chain[0]
+                fallback_agents = available_chain[1:]
                 if not agent.enabled:
                     raise RuntimeError(f"Required agent is disabled: {agent.id}")
                 child = WorkItem(
@@ -124,9 +151,25 @@ class WorkflowEngine:
                     budget=Budget(**stage.get("budget", {})),
                     status=Status.RUNNING,
                 )
-                result = self.runtime.run(agent, child, context, mode=mode)
+                result = self.runtime.run(
+                    agent,
+                    child,
+                    context,
+                    mode=mode,
+                    token_exhaustion_fallback_agents=fallback_agents,
+                )
+                record_exhausted_providers(
+                    self.storage,
+                    run_id=run_id,
+                    stage_id=stage["id"],
+                    exhausted=result.metadata.get("token_exhausted_providers", []),
+                )
                 if not result.ok:
                     raise RuntimeError(result.error or f"Provider failed at stage {stage['id']}")
+                selected_agent_id = str(
+                    result.metadata.get("selected_agent_id", agent.id)
+                )
+                agent = self.registry.get(selected_agent_id)
                 verdict = parse_stage_verdict(stage, result)
                 labeled_content = f"[execution_mode={mode.value}]\n{result.content}"
                 artifact_id = self.storage.add_artifact(
