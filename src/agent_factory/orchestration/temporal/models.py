@@ -40,6 +40,7 @@ AUTONOMOUS_DISPOSITIONS = frozenset(
 AUTONOMOUS_ENVIRONMENT_STATUSES = frozenset(
     {"NOT_STARTED", "DISCOVERING", "BOOTSTRAPPING", "READY", "UNKNOWN"}
 )
+AUTONOMOUS_PLANNING_ACTIONS = frozenset({"ANALYZE", "REGENERATE_BACKLOG"})
 
 
 def _bounded(value: str, label: str, limit: int) -> str:
@@ -176,8 +177,14 @@ class AutonomousMissionCarryOver:
     disposition: str
     chain_sequence: int = 1
     previous_run_id: str | None = None
+    first_run_id: str | None = None
     active_backlog_revision_id: int | None = None
     active_backlog_revision_digest: str | None = None
+    proposed_backlog_revision_id: int | None = None
+    proposed_backlog_revision_digest: str | None = None
+    proposal_verification_id: int | None = None
+    proposal_pipeline_run_id: int | None = None
+    proposal_revision_count: int = 0
     active_execution_epoch_id: int | None = None
     current_checkpoint_id: int | None = None
     current_work_item_stable_id: str | None = None
@@ -206,9 +213,16 @@ class AutonomousMissionCarryOver:
         previous_run_id = _optional_bounded(
             self.previous_run_id, "Previous Temporal run id"
         )
+        first_run_id = _optional_bounded(
+            self.first_run_id, "First Temporal run id"
+        )
         if (self.chain_sequence == 1) != (previous_run_id is None):
             raise ValueError(
                 "Only the first Temporal chain entry omits previous_run_id"
+            )
+        if self.chain_sequence > 2 and first_run_id is None:
+            raise ValueError(
+                "Later Temporal chain entries must retain first_run_id"
             )
         revision_id = _optional_id(
             self.active_backlog_revision_id, "Active backlog revision id"
@@ -219,6 +233,21 @@ class AutonomousMissionCarryOver:
         )
         if (revision_id is None) != (revision_digest is None):
             raise ValueError("Active revision id and digest must be supplied together")
+        proposed_revision_id = _optional_id(
+            self.proposed_backlog_revision_id, "Proposed backlog revision id"
+        )
+        proposed_revision_digest = _sha256(
+            self.proposed_backlog_revision_digest,
+            "Proposed backlog revision digest",
+        )
+        if (proposed_revision_id is None) != (proposed_revision_digest is None):
+            raise ValueError(
+                "Proposed revision id and digest must be supplied together"
+            )
+        _optional_id(self.proposal_verification_id, "Proposal verification id")
+        _optional_id(self.proposal_pipeline_run_id, "Proposal pipeline run id")
+        if self.proposal_revision_count < 0:
+            raise ValueError("Proposal revision count cannot be negative")
         _optional_id(self.active_execution_epoch_id, "Active execution epoch id")
         _optional_id(self.current_checkpoint_id, "Current checkpoint id")
         _optional_bounded(
@@ -264,6 +293,9 @@ class AutonomousMissionWorkflowInput:
     workspace: str
     database: str
     carry_over: AutonomousMissionCarryOver | None = None
+    fast_activity_timeout_seconds: int = 120
+    planning_activity_timeout_seconds: int = 3600
+    heartbeat_timeout_seconds: int = 60
     schema_version: int = AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -283,6 +315,17 @@ class AutonomousMissionWorkflowInput:
             )
         _bounded(self.workspace, "Mission workspace", AUTONOMOUS_PATH_LIMIT)
         _bounded(self.database, "Mission database", AUTONOMOUS_PATH_LIMIT)
+        for value, label in (
+            (self.fast_activity_timeout_seconds, "Fast activity timeout"),
+            (self.planning_activity_timeout_seconds, "Planning activity timeout"),
+            (self.heartbeat_timeout_seconds, "Heartbeat timeout"),
+        ):
+            if int(value) <= 0:
+                raise ValueError(f"{label} must be positive")
+        if self.heartbeat_timeout_seconds >= self.planning_activity_timeout_seconds:
+            raise ValueError(
+                "Heartbeat timeout must be shorter than planning activity timeout"
+            )
         if self.carry_over is not None:
             carry = self.carry_over
             if (
@@ -327,8 +370,14 @@ class AutonomousMissionWorkflowState:
     phase: str
     disposition: str
     previous_temporal_run_id: str | None = None
+    temporal_first_run_id: str | None = None
     active_backlog_revision_id: int | None = None
     active_backlog_revision_digest: str | None = None
+    proposed_backlog_revision_id: int | None = None
+    proposed_backlog_revision_digest: str | None = None
+    proposal_verification_id: int | None = None
+    proposal_pipeline_run_id: int | None = None
+    proposal_revision_count: int = 0
     active_execution_epoch_id: int | None = None
     current_checkpoint_id: int | None = None
     current_work_item_stable_id: str | None = None
@@ -370,8 +419,16 @@ class AutonomousMissionWorkflowState:
             phase=carry.phase,
             disposition=carry.disposition,
             previous_temporal_run_id=carry.previous_run_id,
+            temporal_first_run_id=(
+                carry.first_run_id or carry.previous_run_id or run_id
+            ),
             active_backlog_revision_id=carry.active_backlog_revision_id,
             active_backlog_revision_digest=carry.active_backlog_revision_digest,
+            proposed_backlog_revision_id=carry.proposed_backlog_revision_id,
+            proposed_backlog_revision_digest=carry.proposed_backlog_revision_digest,
+            proposal_verification_id=carry.proposal_verification_id,
+            proposal_pipeline_run_id=carry.proposal_pipeline_run_id,
+            proposal_revision_count=carry.proposal_revision_count,
             active_execution_epoch_id=carry.active_execution_epoch_id,
             current_checkpoint_id=carry.current_checkpoint_id,
             current_work_item_stable_id=carry.current_work_item_stable_id,
@@ -426,6 +483,11 @@ class AutonomousMissionWorkflowState:
             self.previous_temporal_run_id, "Previous Temporal run id"
         )
         _bounded(
+            self.temporal_first_run_id or "",
+            "First Temporal run id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        _bounded(
             self.workflow_status, "Workflow status", AUTONOMOUS_IDENTIFIER_LIMIT
         )
         if self.started_at:
@@ -441,8 +503,14 @@ class AutonomousMissionWorkflowState:
             disposition=self.disposition,
             chain_sequence=self.chain_sequence + 1,
             previous_run_id=self.temporal_run_id,
+            first_run_id=self.temporal_first_run_id,
             active_backlog_revision_id=self.active_backlog_revision_id,
             active_backlog_revision_digest=self.active_backlog_revision_digest,
+            proposed_backlog_revision_id=self.proposed_backlog_revision_id,
+            proposed_backlog_revision_digest=self.proposed_backlog_revision_digest,
+            proposal_verification_id=self.proposal_verification_id,
+            proposal_pipeline_run_id=self.proposal_pipeline_run_id,
+            proposal_revision_count=self.proposal_revision_count,
             active_execution_epoch_id=self.active_execution_epoch_id,
             current_checkpoint_id=self.current_checkpoint_id,
             current_work_item_stable_id=self.current_work_item_stable_id,
@@ -454,6 +522,211 @@ class AutonomousMissionWorkflowState:
             last_activity=self.last_activity,
             last_activity_at=self.last_activity_at,
         )
+
+
+@dataclass(frozen=True)
+class AutonomousMissionActivityScope:
+    """Stable identifiers supplied by the Workflow, never by a wake-up Signal."""
+
+    mission_id: int
+    mission_identity: str
+    mission_key: str
+    project_id: int
+    workspace: str
+    database: str
+    temporal_workflow_id: str
+    temporal_first_run_id: str
+
+    def __post_init__(self) -> None:
+        if int(self.mission_id) <= 0 or int(self.project_id) <= 0:
+            raise ValueError("Mission and project identifiers must be positive")
+        _bounded(self.mission_identity, "Mission identity", AUTONOMOUS_IDENTIFIER_LIMIT)
+        _bounded(self.mission_key, "Mission key", AUTONOMOUS_IDENTIFIER_LIMIT)
+        _bounded(self.workspace, "Mission workspace", AUTONOMOUS_PATH_LIMIT)
+        _bounded(self.database, "Mission database", AUTONOMOUS_PATH_LIMIT)
+        _bounded(
+            self.temporal_workflow_id,
+            "Temporal workflow id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        _bounded(
+            self.temporal_first_run_id,
+            "Temporal first run id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousPlanningCommand:
+    """Identifier-only reference to an explicit, persisted human planning grant."""
+
+    command_id: str
+    manifest_id: int
+    planning_authorization_id: int
+    expected_mission_version: int
+    actor: str
+    requested_action: str = "ANALYZE"
+    max_attempts_per_role: int = 2
+
+    def __post_init__(self) -> None:
+        _bounded(self.command_id, "Planning command id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        _optional_id(self.manifest_id, "Planning manifest id")
+        _optional_id(
+            self.planning_authorization_id, "Planning authorization id"
+        )
+        if int(self.expected_mission_version) <= 0:
+            raise ValueError("Expected mission version must be positive")
+        _bounded(self.actor, "Planning actor", AUTONOMOUS_IDENTIFIER_LIMIT)
+        if self.requested_action not in AUTONOMOUS_PLANNING_ACTIONS:
+            raise ValueError(
+                f"Unsupported autonomous planning action: {self.requested_action}"
+            )
+        if not 1 <= int(self.max_attempts_per_role) <= 5:
+            raise ValueError("Planning role attempts must be between one and five")
+
+
+@dataclass(frozen=True)
+class AutonomousPlanningActivityInput:
+    scope: AutonomousMissionActivityScope
+    command: AutonomousPlanningCommand
+
+
+@dataclass(frozen=True)
+class AutonomousPlanningActivityResult:
+    mission_id: int
+    mission_version: int
+    phase: str
+    disposition: str
+    command_id: str
+    requested_action: str
+    manifest_id: int
+    planning_authorization_id: int
+    pipeline_run_id: int
+    verification_id: int
+    verification_status: str
+    proposed_revision_id: int
+    proposed_revision_digest: str
+    parent_revision_id: int | None
+    proposal_revision_count: int
+    ready_for_approval: bool
+    summary: str
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.mission_version, "Mission version"),
+            (self.manifest_id, "Planning manifest id"),
+            (self.planning_authorization_id, "Planning authorization id"),
+            (self.pipeline_run_id, "Planning pipeline run id"),
+            (self.verification_id, "Proposal verification id"),
+            (self.proposed_revision_id, "Proposed revision id"),
+        ):
+            _optional_id(value, label)
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        _bounded(self.command_id, "Planning command id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        if self.requested_action not in AUTONOMOUS_PLANNING_ACTIONS:
+            raise ValueError(
+                f"Unsupported autonomous planning action: {self.requested_action}"
+            )
+        if self.verification_status not in {"READY", "BLOCKED"}:
+            raise ValueError(
+                f"Unsupported proposal verification status: {self.verification_status}"
+            )
+        if self.ready_for_approval != (self.verification_status == "READY"):
+            raise ValueError("Proposal readiness conflicts with verification status")
+        _sha256(self.proposed_revision_digest, "Proposed revision digest")
+        _optional_id(self.parent_revision_id, "Parent revision id")
+        if self.proposal_revision_count <= 0:
+            raise ValueError("Proposal revision count must be positive")
+        _bounded(self.summary, "Planning summary", AUTONOMOUS_SUMMARY_LIMIT)
+        _bounded(
+            self.occurred_at,
+            "Planning occurrence timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousBacklogApprovalNotice:
+    """Untrusted wake-up hint; all claimed values are non-authoritative."""
+
+    notice_id: str
+    claimed_approval_id: int | None = None
+    claimed_revision_id: int | None = None
+    claimed_revision_digest: str | None = None
+    claimed_execution_epoch_id: int | None = None
+
+    def __post_init__(self) -> None:
+        _bounded(self.notice_id, "Approval notice id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        _optional_id(self.claimed_approval_id, "Claimed approval id")
+        _optional_id(self.claimed_revision_id, "Claimed revision id")
+        _sha256(self.claimed_revision_digest, "Claimed revision digest")
+        _optional_id(
+            self.claimed_execution_epoch_id, "Claimed execution epoch id"
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousApprovalRevalidationInput:
+    scope: AutonomousMissionActivityScope
+    notice: AutonomousBacklogApprovalNotice
+
+
+@dataclass(frozen=True)
+class AutonomousApprovalRevalidationResult:
+    mission_id: int
+    mission_version: int
+    phase: str
+    disposition: str
+    approved: bool
+    notice_matches_authority: bool
+    reason: str
+    occurred_at: str
+    approval_id: int | None = None
+    revision_id: int | None = None
+    revision_digest: str | None = None
+    execution_epoch_id: int | None = None
+    authorization_id: int | None = None
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.mission_version, "Mission version")
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        _bounded(self.reason, "Approval revalidation reason", AUTONOMOUS_SUMMARY_LIMIT)
+        _optional_id(self.approval_id, "Approval id")
+        _optional_id(self.revision_id, "Approved revision id")
+        _sha256(self.revision_digest, "Approved revision digest")
+        _optional_id(self.execution_epoch_id, "Execution epoch id")
+        _optional_id(self.authorization_id, "Execution authorization id")
+        _bounded(
+            self.occurred_at,
+            "Approval occurrence timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.approved and any(
+            value is None
+            for value in (
+                self.approval_id,
+                self.revision_id,
+                self.revision_digest,
+                self.execution_epoch_id,
+                self.authorization_id,
+            )
+        ):
+            raise ValueError(
+                "Approved revalidation requires complete authority identifiers"
+            )
 
 
 @dataclass

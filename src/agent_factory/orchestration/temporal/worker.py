@@ -32,6 +32,8 @@ async def run_worker(settings: TemporalSettings | None = None) -> None:
         task_queue=selected.task_queue,
         workflows=list(REGISTERED_WORKFLOWS),
         activities=[
+            activities.run_autonomous_planning,
+            activities.revalidate_autonomous_approval,
             activities.validate_job,
             activities.load_project_context,
             activities.execute_stage,

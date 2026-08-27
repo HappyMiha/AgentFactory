@@ -630,6 +630,31 @@ class BacklogRevisionService:
             )
         )
 
+    def revision_lineage(self, revision_id: int) -> tuple[BacklogRevision, ...]:
+        """Return and integrity-check the immutable root-to-proposal lineage."""
+
+        current = self.get_revision(revision_id)
+        mission_id = current.mission_id
+        descending: list[BacklogRevision] = []
+        seen: set[int] = set()
+        while True:
+            if current.id in seen:
+                raise RuntimeError("Backlog revision lineage contains a cycle")
+            seen.add(current.id)
+            descending.append(current)
+            if current.parent_revision_id is None:
+                break
+            parent = self.get_revision(current.parent_revision_id)
+            if parent.mission_id != mission_id:
+                raise RuntimeError("Backlog revision lineage crosses mission scope")
+            if parent.revision_number >= current.revision_number:
+                raise RuntimeError("Backlog revision lineage is not monotonic")
+            current = parent
+        lineage = tuple(reversed(descending))
+        if lineage[-1].id != revision_id:
+            raise RuntimeError("Backlog revision lineage does not end at proposal")
+        return lineage
+
     def impacts(self, revision_id: int) -> tuple[BacklogImpact, ...]:
         return tuple(
             BacklogImpact(

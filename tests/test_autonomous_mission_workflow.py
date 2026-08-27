@@ -90,6 +90,7 @@ class AutonomousMissionWorkflowContractTests(unittest.TestCase):
         )
         self.assertEqual(state.phase, "DEVELOPMENT")
         self.assertEqual(state.disposition, "RUNNING")
+        self.assertEqual(state.temporal_first_run_id, "temporal-run-1")
         self.assertEqual(state.active_backlog_revision_id, 19)
         self.assertEqual(state.active_execution_epoch_id, 23)
         self.assertEqual(state.current_checkpoint_id, 29)
@@ -102,6 +103,7 @@ class AutonomousMissionWorkflowContractTests(unittest.TestCase):
         next_carry = state.to_carry_over()
         self.assertEqual(next_carry.chain_sequence, 3)
         self.assertEqual(next_carry.previous_run_id, "temporal-run-2")
+        self.assertEqual(next_carry.first_run_id, "temporal-run-1")
         self.assertEqual(next_carry.active_backlog_revision_digest, "a" * 64)
 
         workflow_instance = AutonomousMissionWorkflow()

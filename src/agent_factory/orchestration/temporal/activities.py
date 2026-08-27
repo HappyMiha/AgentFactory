@@ -8,20 +8,58 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from temporalio import activity
 from temporalio.exceptions import ApplicationError
 
+from ...autonomous_authorization import (
+    AutonomousAuthorizationService,
+    PlanningAction,
+)
+from ...autonomous_backlog_approval import AutonomousBacklogApprovalService
+from ...autonomous_mission import (
+    AutonomousMissionService,
+    MissionDisposition,
+    MissionPhase,
+)
+from ...autonomous_planning import AutonomousPlanningService
+from ...autonomous_planning_pipeline import (
+    AutonomousPlanningPipelineService,
+    PlanningPipelineFailedError,
+    PlanningPipelineRun,
+    PlanningProviderInvoker,
+    RuntimePlanningInvoker,
+)
+from ...autonomous_proposal_verifier import (
+    AutonomousProposalVerificationService,
+    ProposalReadinessReport,
+)
+from ...backlog_revisions import BacklogRevisionService
 from ...config import config_path_for_workspace, load_yaml
-from ...models import Budget, ProviderResult, Status, WorkItem
+from ...models import Budget, ProviderCapabilities, ProviderResult, Status, WorkItem
 from ...providers import ProcessSupervisor
 from ...registry import AgentRegistry
 from ...reviewers import ReviewerRouter, ReviewSubject
 from ...runtime import AgentRuntime, ExecutionMode
 from ...storage import SQLiteStorage
-from ...workflow_contracts import PASSING_VERDICTS, StageContractError, parse_stage_verdict, validate_workflow
-from .models import ActivityResult, AgentFactoryJobInput, DemoWorkflowInput, StageActivityInput
+from ...workflow_contracts import (
+    PASSING_VERDICTS,
+    StageContractError,
+    parse_stage_verdict,
+    validate_workflow,
+)
+from .models import (
+    ActivityResult,
+    AgentFactoryJobInput,
+    AutonomousApprovalRevalidationInput,
+    AutonomousApprovalRevalidationResult,
+    AutonomousMissionActivityScope,
+    AutonomousPlanningActivityInput,
+    AutonomousPlanningActivityResult,
+    DemoWorkflowInput,
+    StageActivityInput,
+)
 from .policies import classify_error
 from .settings import TemporalSettings
 
@@ -32,8 +70,20 @@ MARKER_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 class AgentFactoryActivities:
     """Temporal activity adapters over the existing AgentFactory services."""
 
-    def __init__(self, settings: TemporalSettings | None = None):
+    def __init__(
+        self,
+        settings: TemporalSettings | None = None,
+        *,
+        autonomous_planning_invoker: PlanningProviderInvoker | None = None,
+        autonomous_provider_capabilities: Mapping[
+            str, ProviderCapabilities
+        ] | None = None,
+    ):
         self.settings = settings or TemporalSettings.from_env()
+        self.autonomous_planning_invoker = autonomous_planning_invoker
+        self.autonomous_provider_capabilities = dict(
+            autonomous_provider_capabilities or {}
+        )
 
     @staticmethod
     def _storage(job: AgentFactoryJobInput) -> SQLiteStorage:
@@ -47,6 +97,400 @@ class AgentFactoryActivities:
             f"[workflow={info.workflow_id}] [task={job.task_id}] "
             f"[activity={activity_name}] [attempt={info.attempt}]"
         )
+
+    @staticmethod
+    def _autonomous_storage(scope: AutonomousMissionActivityScope) -> SQLiteStorage:
+        return SQLiteStorage(Path(scope.database).expanduser().resolve())
+
+    @staticmethod
+    def _assert_autonomous_scope(
+        scope: AutonomousMissionActivityScope,
+        missions: AutonomousMissionService,
+    ):
+        mission = missions.get(scope.mission_id)
+        actual = (
+            mission.identity,
+            mission.mission_key,
+            mission.project_id,
+        )
+        expected = (
+            scope.mission_identity,
+            scope.mission_key,
+            scope.project_id,
+        )
+        if actual != expected:
+            raise PermissionError(
+                "Temporal mission scope does not match persisted mission identity"
+            )
+        return mission
+
+    def _planning_runtime(
+        self, scope: AutonomousMissionActivityScope
+    ) -> tuple[PlanningProviderInvoker, dict[str, ProviderCapabilities]]:
+        if self.autonomous_planning_invoker is not None:
+            return (
+                self.autonomous_planning_invoker,
+                dict(self.autonomous_provider_capabilities),
+            )
+        runtime = AgentRuntime(workspace=Path(scope.workspace).expanduser().resolve())
+        capabilities = {
+            provider_id: provider.capabilities
+            for provider_id, provider in runtime.providers.items()
+        }
+        return RuntimePlanningInvoker(runtime), capabilities
+
+    @staticmethod
+    def _planning_phase_steps(
+        action: PlanningAction, phase: MissionPhase
+    ) -> tuple[MissionPhase, ...]:
+        if action is PlanningAction.ANALYZE:
+            if phase is MissionPhase.DRAFT:
+                return (
+                    MissionPhase.SPECIFICATION_ANALYSIS,
+                    MissionPhase.BACKLOG_GENERATION,
+                )
+            if phase is MissionPhase.SPECIFICATION_ANALYSIS:
+                return (MissionPhase.BACKLOG_GENERATION,)
+            if phase is MissionPhase.BACKLOG_GENERATION:
+                return ()
+            raise PermissionError(
+                "ANALYZE requires a draft or active analysis/generation phase"
+            )
+        if phase is not MissionPhase.WAITING_FOR_BACKLOG_APPROVAL:
+            raise PermissionError(
+                "REGENERATE_BACKLOG requires the durable backlog approval wait"
+            )
+        return (MissionPhase.BACKLOG_GENERATION,)
+
+    @staticmethod
+    def _planning_activity_result(
+        missions: AutonomousMissionService,
+        revisions: BacklogRevisionService,
+        run: PlanningPipelineRun,
+        report: ProposalReadinessReport,
+        request: AutonomousPlanningActivityInput,
+    ) -> AutonomousPlanningActivityResult:
+        result_version = (
+            report.mission_result_version
+            if report.mission_result_version is not None
+            else report.expected_mission_version
+        )
+        result_mission = missions.get(request.scope.mission_id, version=result_version)
+        revision = revisions.get_revision(report.revision_id)
+        lineage = revisions.revision_lineage(revision.id)
+        ready = bool(report.ready)
+        summary = (
+            f"Proposal revision {revision.revision_number} is durably waiting "
+            "for exact human approval"
+            if ready
+            else (
+                f"Proposal revision {revision.revision_number} is blocked by "
+                "verification"
+            )
+        )
+        return AutonomousPlanningActivityResult(
+            mission_id=result_mission.id,
+            mission_version=result_mission.version,
+            phase=result_mission.phase.value,
+            disposition=result_mission.disposition.value,
+            command_id=request.command.command_id,
+            requested_action=request.command.requested_action,
+            manifest_id=request.command.manifest_id,
+            planning_authorization_id=request.command.planning_authorization_id,
+            pipeline_run_id=run.id,
+            verification_id=report.id,
+            verification_status=report.status.value,
+            proposed_revision_id=revision.id,
+            proposed_revision_digest=revision.revision_digest,
+            parent_revision_id=revision.parent_revision_id,
+            proposal_revision_count=len(lineage),
+            ready_for_approval=ready,
+            summary=summary,
+            occurred_at=report.created_at,
+        )
+
+    def _run_autonomous_planning_sync(
+        self, request: AutonomousPlanningActivityInput
+    ) -> AutonomousPlanningActivityResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            invoker, capabilities = self._planning_runtime(request.scope)
+            missions = AutonomousMissionService(storage)
+            planning = AutonomousPlanningService(storage, capabilities)
+            authorizations = AutonomousAuthorizationService(storage, capabilities)
+            pipeline = AutonomousPlanningPipelineService(
+                storage, invoker, capabilities
+            )
+            verifier = AutonomousProposalVerificationService(storage)
+            revisions = BacklogRevisionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            command = request.command
+            action = PlanningAction(command.requested_action)
+            historical = missions.get(
+                request.scope.mission_id,
+                version=command.expected_mission_version,
+            )
+            if historical.disposition is not MissionDisposition.RUNNING:
+                raise PermissionError(
+                    "Planning cannot start while mission scheduling is fenced"
+                )
+            if historical.mission_owner != command.actor:
+                raise PermissionError(
+                    "Only the authenticated mission owner may request planning"
+                )
+            steps = self._planning_phase_steps(action, historical.phase)
+            verification_version = command.expected_mission_version + len(steps)
+            pipeline_command_id = f"{command.command_id}:pipeline"
+            verification_command_id = f"{command.command_id}:verification"
+
+            verification_row = storage.db.execute(
+                "SELECT id FROM autonomous_proposal_verifications WHERE command_id=?",
+                (verification_command_id,),
+            ).fetchone()
+            if verification_row:
+                report = verifier.get(int(verification_row["id"]))
+                run = pipeline.get_run(report.pipeline_run_id)
+                if (
+                    report.mission_id != request.scope.mission_id
+                    or report.manifest_id != command.manifest_id
+                    or report.expected_mission_version != verification_version
+                    or run.planning_authorization_id
+                    != command.planning_authorization_id
+                    or run.requested_action is not action
+                    or run.command_id != pipeline_command_id
+                    or run.created_by != command.actor
+                ):
+                    raise ValueError(
+                        "Planning Activity command is already bound to another proposal"
+                    )
+                return self._planning_activity_result(
+                    missions, revisions, run, report, request
+                )
+
+            manifest = planning.get_manifest(command.manifest_id)
+            if (
+                manifest.mission_id != request.scope.mission_id
+                or manifest.created_by != command.actor
+                or manifest.stale
+            ):
+                raise PermissionError(
+                    "Planning manifest is not a fresh owner-authored mission manifest"
+                )
+            role_models = {
+                assignment.role_id: assignment.model
+                for assignment in manifest.assignments
+            }
+            provider_ids = tuple(
+                sorted({assignment.provider_id for assignment in manifest.assignments})
+            )
+            existing_run = storage.db.execute(
+                "SELECT id FROM autonomous_planning_pipeline_runs WHERE command_id=?",
+                (pipeline_command_id,),
+            ).fetchone()
+            if not existing_run:
+                authorizations.assert_planning_authority(
+                    request.scope.mission_id,
+                    command.planning_authorization_id,
+                    planning_request_id=manifest.proposal_key,
+                    requested_action=action,
+                    role_models=role_models,
+                    provider_ids=provider_ids,
+                    actor=command.actor,
+                )
+
+            next_version = command.expected_mission_version
+            for ordinal, target in enumerate(steps, start=1):
+                missions.transition_phase(
+                    request.scope.mission_id,
+                    target,
+                    actor=command.actor,
+                    command_id=f"{command.command_id}:phase:{ordinal}",
+                    expected_version=next_version,
+                    reason=(
+                        "Execute explicit bounded local planning request "
+                        f"{command.command_id}"
+                    ),
+                )
+                next_version += 1
+
+            run = pipeline.execute(
+                request.scope.mission_id,
+                manifest_id=manifest.id,
+                planning_authorization_id=command.planning_authorization_id,
+                actor=command.actor,
+                command_id=pipeline_command_id,
+                max_attempts_per_role=command.max_attempts_per_role,
+            )
+            report = verifier.verify_and_present(
+                run.id,
+                actor=command.actor,
+                command_id=verification_command_id,
+                expected_mission_version=verification_version,
+            )
+            return self._planning_activity_result(
+                missions, revisions, run, report, request
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="run_autonomous_planning")
+    async def run_autonomous_planning(
+        self, request: AutonomousPlanningActivityInput
+    ) -> AutonomousPlanningActivityResult:
+        running = asyncio.create_task(
+            asyncio.to_thread(self._run_autonomous_planning_sync, request)
+        )
+        try:
+            while not running.done():
+                activity.heartbeat(
+                    {
+                        "mission_id": request.scope.mission_id,
+                        "command_id": request.command.command_id,
+                        "manifest_id": request.command.manifest_id,
+                        "progress": "bounded local planning roles running",
+                    }
+                )
+                await asyncio.wait(
+                    {running}, timeout=self.settings.heartbeat_interval_seconds
+                )
+            return await running
+        except (KeyError, PermissionError, ValueError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+        except PlanningPipelineFailedError as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="AGENT_ERROR", non_retryable=True
+            ) from exc
+
+    def _revalidate_autonomous_approval_sync(
+        self, request: AutonomousApprovalRevalidationInput
+    ) -> AutonomousApprovalRevalidationResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            mission = self._assert_autonomous_scope(request.scope, missions)
+
+            def denied(reason: str) -> AutonomousApprovalRevalidationResult:
+                return AutonomousApprovalRevalidationResult(
+                    mission_id=mission.id,
+                    mission_version=mission.version,
+                    phase=mission.phase.value,
+                    disposition=mission.disposition.value,
+                    approved=False,
+                    notice_matches_authority=False,
+                    reason=reason,
+                    occurred_at=mission.updated_at,
+                )
+
+            row = storage.db.execute(
+                "SELECT id FROM autonomous_backlog_approvals "
+                "WHERE mission_id=? ORDER BY id DESC LIMIT 1",
+                (mission.id,),
+            ).fetchone()
+            if not row:
+                return denied(
+                    "Approval Signal did not resolve to persisted approval authority"
+                )
+            approvals = AutonomousBacklogApprovalService(
+                storage, self.autonomous_provider_capabilities
+            )
+            approval = approvals.get(int(row["id"]))
+            epoch = approvals.checkpoints.get_epoch(approval.execution_epoch_id)
+            authorization = approvals.authorizations.get_authorization(
+                approval.authorization_id
+            )
+            revision = BacklogRevisionService(storage).get_revision(
+                approval.revision_id
+            )
+            checks = {
+                "phase": mission.phase is MissionPhase.APPROVED,
+                "disposition": mission.disposition is MissionDisposition.RUNNING,
+                "mission_version": mission.version
+                == approval.result_mission_version,
+                "revision": mission.active_backlog_revision_id
+                == approval.revision_id,
+                "revision_digest": revision.revision_digest
+                == approval.revision_digest,
+                "epoch": mission.active_execution_epoch_id
+                == approval.execution_epoch_id,
+                "epoch_active": epoch.is_active,
+                "epoch_revision": epoch.base_backlog_revision_id
+                == approval.revision_id
+                and epoch.base_backlog_revision_digest
+                == approval.revision_digest,
+                "workflow": epoch.temporal_workflow_id
+                == request.scope.temporal_workflow_id,
+                "first_run": epoch.temporal_first_run_id
+                == request.scope.temporal_first_run_id,
+                "authorization": authorization.mission_id == mission.id
+                and authorization.backlog_revision_id == approval.revision_id
+                and authorization.execution_epoch_id == epoch.id
+                and not authorization.revoked,
+            }
+            failed = tuple(name for name, passed in checks.items() if not passed)
+            if failed:
+                return denied(
+                    "Persisted approval authority failed revalidation: "
+                    + ", ".join(failed)
+                )
+
+            notice = request.notice
+            claimed = {
+                "approval": (
+                    notice.claimed_approval_id,
+                    approval.id,
+                ),
+                "revision": (
+                    notice.claimed_revision_id,
+                    approval.revision_id,
+                ),
+                "digest": (
+                    notice.claimed_revision_digest,
+                    approval.revision_digest,
+                ),
+                "epoch": (
+                    notice.claimed_execution_epoch_id,
+                    approval.execution_epoch_id,
+                ),
+            }
+            notice_matches = all(
+                value is None or value == authoritative
+                for value, authoritative in claimed.values()
+            )
+            return AutonomousApprovalRevalidationResult(
+                mission_id=mission.id,
+                mission_version=mission.version,
+                phase=mission.phase.value,
+                disposition=mission.disposition.value,
+                approved=True,
+                notice_matches_authority=notice_matches,
+                reason=(
+                    "Persisted approval, completion, epoch, and authorization "
+                    "were revalidated independently of Signal claims"
+                ),
+                occurred_at=approval.created_at,
+                approval_id=approval.id,
+                revision_id=approval.revision_id,
+                revision_digest=approval.revision_digest,
+                execution_epoch_id=approval.execution_epoch_id,
+                authorization_id=approval.authorization_id,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="revalidate_autonomous_approval")
+    async def revalidate_autonomous_approval(
+        self, request: AutonomousApprovalRevalidationInput
+    ) -> AutonomousApprovalRevalidationResult:
+        try:
+            return await asyncio.to_thread(
+                self._revalidate_autonomous_approval_sync, request
+            )
+        except (KeyError, PermissionError, ValueError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
 
     @activity.defn(name="validate_agentfactory_job")
     async def validate_job(self, job: AgentFactoryJobInput) -> ActivityResult:

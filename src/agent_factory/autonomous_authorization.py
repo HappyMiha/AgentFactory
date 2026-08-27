@@ -605,6 +605,80 @@ class AutonomousAuthorizationService:
             ),
         )
 
+    def assert_planning_authority(
+        self,
+        mission_id: int,
+        authorization_id: int,
+        *,
+        planning_request_id: str,
+        requested_action: PlanningAction | str,
+        role_models: Mapping[str, str],
+        provider_ids: tuple[str, ...],
+        actor: str,
+    ) -> PlanningAuthorization:
+        """Revalidate an explicit bounded planning grant without mutating state."""
+
+        actor = self._required(actor, "Planning actor")
+        planning_request_id = self._required(
+            planning_request_id, "Planning request id"
+        )
+        action = PlanningAction(requested_action)
+        authorization = self.get_planning_authorization(authorization_id)
+        mission = self.missions.get(mission_id)
+        normalized_roles = {
+            str(role).strip(): str(model).strip()
+            for role, model in role_models.items()
+        }
+        normalized_providers = self._ids(list(provider_ids))
+        try:
+            expires_at = datetime.fromisoformat(authorization.expires_at)
+        except ValueError as exc:
+            raise PermissionError(
+                "Planning authorization expiry is invalid"
+            ) from exc
+        current_policy = self._policy_snapshot(authorization.provider_ids)
+        checks = {
+            "mission": authorization.mission_id == mission_id,
+            "owner": actor == mission.mission_owner == authorization.authorized_by,
+            "open": not authorization.closed,
+            "unexpired": datetime.now(timezone.utc) < expires_at,
+            "preapproval": mission.phase in PREAPPROVAL_PHASES,
+            "running": mission.disposition is MissionDisposition.RUNNING,
+            "request": authorization.planning_request_id == planning_request_id,
+            "action": authorization.requested_action is action,
+            "roles": authorization.role_models == normalized_roles,
+            "providers": set(normalized_providers)
+            <= set(authorization.provider_ids),
+            "local": all(
+                self._capability(provider_id).autonomous_local_eligible
+                for provider_id in authorization.provider_ids
+            ),
+            "repository": self._same_path(
+                mission.configuration.repository_path,
+                authorization.repository_path,
+            ),
+            "permissions": set(authorization.allowed_permissions)
+            == set(self.PLANNING_PERMISSIONS),
+            "tool_profile": authorization.tool_profile
+            == "autonomous-local-planning-read-only-v1",
+            "integrity": self._digest(authorization.binding())
+            == authorization.authorization_digest,
+            "policy_version": authorization.policy_version
+            == int(current_policy["policy_state"]["version"]),
+            "policy_digest": authorization.policy_digest
+            == self._digest(current_policy),
+            "emergency_stop": not current_policy["policy_state"][
+                "emergency_stop"
+            ],
+        }
+        failed = tuple(name for name, passed in checks.items() if not passed)
+        if failed:
+            raise PermissionError(
+                "Bounded planning authority failed revalidation: "
+                + ", ".join(failed)
+            )
+        return authorization
+
     def grant_execution_authority(
         self,
         mission_id: int,

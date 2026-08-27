@@ -18,8 +18,10 @@ from temporalio.service import RPCError, RPCStatusCode
 from ...autonomous_mission import AutonomousMission
 from .models import (
     AgentFactoryJobInput,
+    AutonomousBacklogApprovalNotice,
     AutonomousMissionCarryOver,
     AutonomousMissionWorkflowInput,
+    AutonomousPlanningCommand,
     DemoWorkflowInput,
 )
 from .settings import TemporalSettings
@@ -109,9 +111,11 @@ def autonomous_mission_workflow_input(
     workspace: str,
     database: str,
     carry_over: AutonomousMissionCarryOver | None = None,
+    temporal_settings: TemporalSettings | None = None,
 ) -> AutonomousMissionWorkflowInput:
     """Build a compact Workflow input from the authoritative domain projection."""
 
+    selected = temporal_settings or TemporalSettings()
     return AutonomousMissionWorkflowInput(
         mission_id=mission.id,
         mission_identity=mission.identity,
@@ -123,6 +127,43 @@ def autonomous_mission_workflow_input(
         workspace=workspace,
         database=database,
         carry_over=carry_over,
+        fast_activity_timeout_seconds=selected.fast_activity_timeout_seconds,
+        planning_activity_timeout_seconds=selected.llm_activity_timeout_seconds,
+        heartbeat_timeout_seconds=selected.heartbeat_timeout_seconds,
+    )
+
+
+async def signal_autonomous_planning(
+    client: Client,
+    mission_id: int,
+    command: AutonomousPlanningCommand,
+    settings: TemporalSettings | None = None,
+) -> None:
+    """Wake the parent with identifiers for an already-persisted planning grant."""
+
+    selected = settings or TemporalSettings.from_env()
+    workflow_id = workflow_id_for_autonomous_mission(
+        mission_id, selected.autonomous_workflow_id_prefix
+    )
+    await client.get_workflow_handle(workflow_id).signal(
+        "request_autonomous_planning", command
+    )
+
+
+async def signal_autonomous_backlog_approved(
+    client: Client,
+    mission_id: int,
+    notice: AutonomousBacklogApprovalNotice,
+    settings: TemporalSettings | None = None,
+) -> None:
+    """Wake approval revalidation without treating Signal claims as authority."""
+
+    selected = settings or TemporalSettings.from_env()
+    workflow_id = workflow_id_for_autonomous_mission(
+        mission_id, selected.autonomous_workflow_id_prefix
+    )
+    await client.get_workflow_handle(workflow_id).signal(
+        "autonomous_backlog_approved", notice
     )
 
 

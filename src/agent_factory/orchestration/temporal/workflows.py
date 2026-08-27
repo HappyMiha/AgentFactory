@@ -5,11 +5,19 @@ from datetime import timedelta
 from typing import Any
 
 from temporalio import workflow
+from temporalio.exceptions import ActivityError
 
 with workflow.unsafe.imports_passed_through():
     from .models import (
         ActivityResult,
         AgentFactoryJobInput,
+        AutonomousApprovalRevalidationInput,
+        AutonomousApprovalRevalidationResult,
+        AutonomousBacklogApprovalNotice,
+        AutonomousMissionActivityScope,
+        AutonomousPlanningActivityInput,
+        AutonomousPlanningActivityResult,
+        AutonomousPlanningCommand,
         AutonomousMissionWorkflowInput,
         AutonomousMissionWorkflowState,
         DemoWorkflowInput,
@@ -17,7 +25,7 @@ with workflow.unsafe.imports_passed_through():
         WorkflowState,
         WorkflowStatus,
     )
-    from .policies import fast_transient_policy, policy_for_provider
+    from .policies import fast_transient_policy, llm_policy, policy_for_provider
 
 
 @workflow.defn(name="AgentFactoryJobWorkflow")
@@ -259,6 +267,11 @@ class AutonomousMissionWorkflow:
 
     def __init__(self) -> None:
         self.state: AutonomousMissionWorkflowState | None = None
+        self._request: AutonomousMissionWorkflowInput | None = None
+        self._planning_commands: list[AutonomousPlanningCommand] = []
+        self._approval_notices: list[AutonomousBacklogApprovalNotice] = []
+        self._seen_planning_commands: set[str] = set()
+        self._seen_approval_notices: set[str] = set()
 
     def _state(self) -> AutonomousMissionWorkflowState:
         if self.state is None:
@@ -281,6 +294,9 @@ class AutonomousMissionWorkflow:
             "mission_id": state.mission_id,
             "mission_version": state.mission_version,
             "active_backlog_revision_id": state.active_backlog_revision_id,
+            "proposed_backlog_revision_id": state.proposed_backlog_revision_id,
+            "proposal_verification_id": state.proposal_verification_id,
+            "proposal_revision_count": state.proposal_revision_count,
             "active_execution_epoch_id": state.active_execution_epoch_id,
             "current_checkpoint_id": state.current_checkpoint_id,
             "current_work_item_stable_id": state.current_work_item_stable_id,
@@ -290,6 +306,119 @@ class AutonomousMissionWorkflow:
             "last_activity": state.last_activity,
             "last_activity_at": state.last_activity_at,
         }
+
+    @workflow.signal(name="request_autonomous_planning")
+    async def request_autonomous_planning(
+        self, command: AutonomousPlanningCommand
+    ) -> None:
+        if command.command_id in self._seen_planning_commands:
+            return
+        self._seen_planning_commands.add(command.command_id)
+        self._planning_commands.append(command)
+
+    @workflow.signal(name="autonomous_backlog_approved")
+    async def autonomous_backlog_approved(
+        self, notice: AutonomousBacklogApprovalNotice
+    ) -> None:
+        if notice.notice_id in self._seen_approval_notices:
+            return
+        self._seen_approval_notices.add(notice.notice_id)
+        self._approval_notices.append(notice)
+
+    def _activity_scope(self) -> AutonomousMissionActivityScope:
+        request = self._request
+        state = self._state()
+        if request is None or state.temporal_first_run_id is None:
+            raise RuntimeError("Autonomous Mission Workflow scope is unavailable")
+        return AutonomousMissionActivityScope(
+            mission_id=request.mission_id,
+            mission_identity=request.mission_identity,
+            mission_key=request.mission_key,
+            project_id=request.project_id,
+            workspace=request.workspace,
+            database=request.database,
+            temporal_workflow_id=state.temporal_workflow_id,
+            temporal_first_run_id=state.temporal_first_run_id,
+        )
+
+    def _touch(self, summary: str) -> None:
+        state = self._state()
+        state.last_activity = summary[:512]
+        state.last_activity_at = workflow.now().isoformat()
+
+    async def _run_planning_activity(
+        self, command: AutonomousPlanningCommand
+    ) -> AutonomousPlanningActivityResult:
+        request = self._request
+        if request is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        return await workflow.execute_activity(
+            "run_autonomous_planning",
+            AutonomousPlanningActivityInput(
+                scope=self._activity_scope(), command=command
+            ),
+            result_type=AutonomousPlanningActivityResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.planning_activity_timeout_seconds
+            ),
+            heartbeat_timeout=timedelta(
+                seconds=request.heartbeat_timeout_seconds
+            ),
+            retry_policy=llm_policy(),
+        )
+
+    async def _revalidate_approval_activity(
+        self, notice: AutonomousBacklogApprovalNotice
+    ) -> AutonomousApprovalRevalidationResult:
+        request = self._request
+        if request is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        return await workflow.execute_activity(
+            "revalidate_autonomous_approval",
+            AutonomousApprovalRevalidationInput(
+                scope=self._activity_scope(), notice=notice
+            ),
+            result_type=AutonomousApprovalRevalidationResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    def _apply_planning_result(
+        self, result: AutonomousPlanningActivityResult
+    ) -> None:
+        state = self._state()
+        state.mission_version = result.mission_version
+        state.phase = result.phase
+        state.disposition = result.disposition
+        state.proposed_backlog_revision_id = result.proposed_revision_id
+        state.proposed_backlog_revision_digest = result.proposed_revision_digest
+        state.proposal_verification_id = result.verification_id
+        state.proposal_pipeline_run_id = result.pipeline_run_id
+        state.proposal_revision_count = result.proposal_revision_count
+        state.workflow_status = (
+            WorkflowStatus.WAITING.value
+            if result.ready_for_approval
+            else WorkflowStatus.NEEDS_ATTENTION.value
+        )
+        self._touch(result.summary)
+
+    def _apply_approval_result(
+        self, result: AutonomousApprovalRevalidationResult
+    ) -> None:
+        state = self._state()
+        state.mission_version = result.mission_version
+        state.phase = result.phase
+        state.disposition = result.disposition
+        if result.approved:
+            state.active_backlog_revision_id = result.revision_id
+            state.active_backlog_revision_digest = result.revision_digest
+            state.active_execution_epoch_id = result.execution_epoch_id
+            state.workflow_status = WorkflowStatus.WAITING.value
+        else:
+            state.workflow_status = WorkflowStatus.WAITING.value
+        self._touch(result.reason)
 
     @workflow.query(name="get_current_role")
     def get_current_role(self) -> dict[str, Any]:
@@ -320,16 +449,50 @@ class AutonomousMissionWorkflow:
         self, request: AutonomousMissionWorkflowInput
     ) -> dict[str, Any]:
         info = workflow.info()
+        self._request = request
         self.state = AutonomousMissionWorkflowState.from_input(
             request,
             workflow_id=info.workflow_id,
             run_id=info.run_id,
             started_at=workflow.now().isoformat(),
         )
-        # AF-AMM-013 adds domain hydration and AF-AMM-014 adds child scheduling.
-        # This parent deliberately waits without polling or loading domain payloads.
-        await workflow.wait_condition(lambda: False)
-        return self.state.to_dict()
+        self.state.workflow_status = WorkflowStatus.WAITING.value
+        self._touch("Waiting for explicit bounded planning or persisted approval")
+        while True:
+            if self.state.phase == "APPROVED":
+                # AF-AMM-014 begins environment discovery. AF-AMM-013 must stop
+                # here so approval can never fall through into execution.
+                await workflow.wait_condition(lambda: False)
+            await workflow.wait_condition(
+                lambda: bool(self._planning_commands or self._approval_notices)
+            )
+            if self._planning_commands:
+                command = self._planning_commands.pop(0)
+                self.state.workflow_status = WorkflowStatus.RUNNING.value
+                self._touch(
+                    f"Executing bounded planning command {command.command_id}"
+                )
+                try:
+                    result = await self._run_planning_activity(command)
+                except ActivityError as exc:
+                    self.state.workflow_status = WorkflowStatus.NEEDS_ATTENTION.value
+                    self._touch(
+                        "Planning command was rejected or failed: " + str(exc)
+                    )
+                else:
+                    self._apply_planning_result(result)
+                continue
+
+            notice = self._approval_notices.pop(0)
+            self.state.workflow_status = WorkflowStatus.RUNNING.value
+            self._touch("Revalidating persisted backlog approval authority")
+            try:
+                approval = await self._revalidate_approval_activity(notice)
+            except ActivityError as exc:
+                self.state.workflow_status = WorkflowStatus.NEEDS_ATTENTION.value
+                self._touch("Approval revalidation failed: " + str(exc))
+            else:
+                self._apply_approval_result(approval)
 
 
 @workflow.defn(name="TemporalDemoWorkflow")
