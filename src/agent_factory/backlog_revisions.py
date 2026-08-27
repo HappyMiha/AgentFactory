@@ -6,11 +6,19 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import StrEnum
 from typing import Any
 
-from .autonomous_mission import AutonomousMission, AutonomousMissionService
+from .autonomous_mission import (
+    AutonomousMission,
+    AutonomousMissionService,
+    MissionDisposition,
+    MissionPhase,
+    MissionVersionConflictError,
+)
 from .backlog import BacklogProposal, ProposedItem
+from .lifecycle import ensure_transition
 from .storage import SQLiteStorage
 
 
@@ -36,6 +44,11 @@ class BacklogItemStatus(StrEnum):
     FAILED = "FAILED"
     STALE = "STALE"
     PROPOSED = "PROPOSED"
+
+
+class BacklogRevisionAuthorityOutcome(StrEnum):
+    APPLIED = "APPLIED"
+    WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL"
 
 
 ITEM_STATE_TRANSITIONS = {
@@ -146,8 +159,44 @@ class BacklogItemStateEvidence:
     created_at: str
 
 
+@dataclass(frozen=True)
+class BacklogRevisionAuthority:
+    id: int
+    identity: str
+    mission_id: int
+    revision_id: int
+    revision_origin: BacklogRevisionOrigin
+    parent_revision_id: int
+    base_approval_id: int | None
+    base_authority_id: int | None
+    approved_item_stable_id: str | None
+    approved_item_digest: str | None
+    outcome: BacklogRevisionAuthorityOutcome
+    authenticated_actor: str
+    authentication_context: dict[str, Any]
+    authentication_context_digest: str
+    expected_mission_version: int
+    result_mission_version: int
+    command_id: str
+    request_digest: str
+    reason: str
+    authority_digest: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class BacklogRevisionApplyResult:
+    authority: BacklogRevisionAuthority
+    revision: BacklogRevision
+    mission: AutonomousMission
+
+
 class BacklogCommandConflictError(ValueError):
     """Raised when a backlog command key is rebound to other input."""
+
+
+class BacklogRevisionAuthorityCommandConflictError(ValueError):
+    """Raised when a revision-authority idempotency key is rebound."""
 
 
 class BacklogRevisionService:
@@ -171,6 +220,10 @@ class BacklogRevisionService:
         if not normalized:
             raise ValueError(f"{label} is required")
         return normalized
+
+    @staticmethod
+    def _timestamp() -> str:
+        return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
     def _replay(self, command_id: str, request_digest: str) -> dict[str, Any] | None:
         row = self.storage.db.execute(
@@ -594,6 +647,501 @@ class BacklogRevisionService:
             )
         )
 
+    def _revision_authority_replay(
+        self, command_id: str, request_digest: str
+    ) -> BacklogRevisionApplyResult | None:
+        row = self.storage.db.execute(
+            "SELECT id,request_digest FROM autonomous_backlog_revision_authorities "
+            "WHERE command_id=?",
+            (command_id,),
+        ).fetchone()
+        if not row:
+            return None
+        if row["request_digest"] != request_digest:
+            raise BacklogRevisionAuthorityCommandConflictError(
+                f"Revision authority command {command_id!r} is already bound"
+            )
+        authority = self.get_revision_authority(int(row["id"]))
+        return BacklogRevisionApplyResult(
+            authority=authority,
+            revision=self.get_revision(authority.revision_id),
+            mission=self.missions.get(authority.mission_id),
+        )
+
+    def _base_revision_authority(
+        self, mission_id: int, revision_id: int
+    ) -> tuple[int | None, int | None]:
+        approval = self.storage.db.execute(
+            """SELECT approval.id
+                 FROM autonomous_backlog_approvals approval
+                 JOIN autonomous_backlog_approval_completions completion
+                   ON completion.approval_id=approval.id
+                WHERE approval.mission_id=? AND approval.revision_id=?
+                ORDER BY approval.id DESC LIMIT 1""",
+            (mission_id, revision_id),
+        ).fetchone()
+        if approval:
+            return int(approval["id"]), None
+        authority = self.storage.db.execute(
+            """SELECT id FROM autonomous_backlog_revision_authorities
+                WHERE mission_id=? AND revision_id=? AND outcome='APPLIED'
+                ORDER BY id DESC LIMIT 1""",
+            (mission_id, revision_id),
+        ).fetchone()
+        if authority:
+            return None, int(authority["id"])
+        raise PermissionError(
+            "The active parent revision has no durable human authority"
+        )
+
+    @classmethod
+    def _revision_authority_binding(cls, row: Any) -> dict[str, Any]:
+        return {
+            "mission_id": int(row["mission_id"]),
+            "revision_id": int(row["revision_id"]),
+            "revision_origin": str(row["revision_origin"]),
+            "parent_revision_id": int(row["parent_revision_id"]),
+            "base_approval_id": cls._optional_id(row["base_approval_id"]),
+            "base_authority_id": cls._optional_id(row["base_authority_id"]),
+            "approved_item_stable_id": row["approved_item_stable_id"],
+            "approved_item_digest": row["approved_item_digest"],
+            "outcome": str(row["outcome"]),
+            "authenticated_actor": str(row["authenticated_actor"]),
+            "authentication_context": json.loads(
+                row["authentication_context_json"]
+            ),
+            "authentication_context_digest": str(
+                row["authentication_context_digest"]
+            ),
+            "expected_mission_version": int(row["expected_mission_version"]),
+            "result_mission_version": int(row["result_mission_version"]),
+            "command_id": str(row["command_id"]),
+            "request_digest": str(row["request_digest"]),
+            "reason": str(row["reason"]),
+            "created_at": str(row["created_at"]),
+        }
+
+    def get_revision_authority(
+        self, authority_id: int
+    ) -> BacklogRevisionAuthority:
+        row = self.storage.db.execute(
+            "SELECT * FROM autonomous_backlog_revision_authorities WHERE id=?",
+            (authority_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown backlog revision authority: {authority_id}")
+        binding = self._revision_authority_binding(row)
+        if self._digest(binding) != row["authority_digest"]:
+            raise RuntimeError("Backlog revision authority digest is corrupt")
+        if (
+            self._digest(binding["authentication_context"])
+            != binding["authentication_context_digest"]
+        ):
+            raise RuntimeError("Revision authentication context is corrupt")
+        return BacklogRevisionAuthority(
+            id=int(row["id"]),
+            identity=str(row["identity"]),
+            mission_id=int(row["mission_id"]),
+            revision_id=int(row["revision_id"]),
+            revision_origin=BacklogRevisionOrigin(row["revision_origin"]),
+            parent_revision_id=int(row["parent_revision_id"]),
+            base_approval_id=self._optional_id(row["base_approval_id"]),
+            base_authority_id=self._optional_id(row["base_authority_id"]),
+            approved_item_stable_id=row["approved_item_stable_id"],
+            approved_item_digest=row["approved_item_digest"],
+            outcome=BacklogRevisionAuthorityOutcome(row["outcome"]),
+            authenticated_actor=str(row["authenticated_actor"]),
+            authentication_context=binding["authentication_context"],
+            authentication_context_digest=str(
+                row["authentication_context_digest"]
+            ),
+            expected_mission_version=int(row["expected_mission_version"]),
+            result_mission_version=int(row["result_mission_version"]),
+            command_id=str(row["command_id"]),
+            request_digest=str(row["request_digest"]),
+            reason=str(row["reason"]),
+            authority_digest=str(row["authority_digest"]),
+            created_at=str(row["created_at"]),
+        )
+
+    def revision_authorities(
+        self, mission_id: int
+    ) -> tuple[BacklogRevisionAuthority, ...]:
+        return tuple(
+            self.get_revision_authority(int(row["id"]))
+            for row in self.storage.db.execute(
+                "SELECT id FROM autonomous_backlog_revision_authorities "
+                "WHERE mission_id=? ORDER BY id",
+                (mission_id,),
+            )
+        )
+
+    def apply_revision(
+        self,
+        revision_id: int,
+        *,
+        actor: str,
+        command_id: str,
+        expected_mission_version: int,
+        reason: str,
+        approved_item_stable_id: str | None = None,
+        authentication_context: dict[str, Any] | None = None,
+    ) -> BacklogRevisionApplyResult:
+        """Apply an authorized revision or route material agent scope to approval."""
+
+        actor = self._required(actor, "Revision authority actor")
+        command_id = self._required(command_id, "Command id")
+        reason = self._required(reason, "Revision authority reason")
+        approved_item = (
+            self._required(approved_item_stable_id, "Approved item stable id")
+            if approved_item_stable_id is not None
+            else None
+        )
+        auth_context = dict(
+            authentication_context
+            or {
+                "schema_version": 1,
+                "method": "mission-revision-session",
+                "subject": actor,
+            }
+        )
+        if (
+            auth_context.get("subject") != actor
+            or not str(auth_context.get("method", "")).strip()
+        ):
+            raise PermissionError(
+                "Authentication context must bind the exact revision actor"
+            )
+        request = {
+            "type": "apply_authorized_backlog_revision",
+            "revision_id": int(revision_id),
+            "actor": actor,
+            "expected_mission_version": int(expected_mission_version),
+            "reason": reason,
+            "approved_item_stable_id": approved_item,
+            "authentication_context": auth_context,
+        }
+        request_digest = self._digest(request)
+        replay = self._revision_authority_replay(command_id, request_digest)
+        if replay:
+            return replay
+
+        revision = self.get_revision(revision_id)
+        mission = self.missions.get(revision.mission_id)
+        if mission.version != expected_mission_version:
+            raise MissionVersionConflictError(
+                mission.id, expected_mission_version, mission.version
+            )
+        if (
+            mission.disposition is not MissionDisposition.RUNNING
+            or mission.phase
+            not in {
+                MissionPhase.APPROVED,
+                MissionPhase.ENVIRONMENT_DISCOVERY,
+                MissionPhase.ENVIRONMENT_BOOTSTRAP,
+                MissionPhase.DEVELOPMENT,
+                MissionPhase.VALIDATION,
+                MissionPhase.INTEGRATION,
+                MissionPhase.FINAL_VALIDATION,
+            }
+        ):
+            raise PermissionError(
+                "Revision authority requires a running approved execution phase"
+            )
+        parent_revision_id = mission.active_backlog_revision_id
+        if (
+            parent_revision_id is None
+            or revision.parent_revision_id != parent_revision_id
+        ):
+            raise PermissionError(
+                "A revision must extend the exact active authorized revision"
+            )
+        if self.storage.db.execute(
+            "SELECT 1 FROM autonomous_backlog_revision_invalidations "
+            "WHERE revision_id=?",
+            (revision.id,),
+        ).fetchone():
+            raise PermissionError("An invalidated revision cannot be applied")
+        latest = self.storage.db.execute(
+            "SELECT id FROM autonomous_backlog_revisions WHERE mission_id=? "
+            "ORDER BY revision_number DESC LIMIT 1",
+            (mission.id,),
+        ).fetchone()
+        if not latest or int(latest["id"]) != revision.id:
+            raise PermissionError("Only the latest immutable revision may be applied")
+
+        if revision.origin is BacklogRevisionOrigin.HUMAN:
+            if actor != mission.mission_owner:
+                raise PermissionError(
+                    "A human revision is authorized only when the mission owner applies it"
+                )
+            if approved_item is not None:
+                raise ValueError("Human revisions do not use a technical item authority")
+            outcome = BacklogRevisionAuthorityOutcome.APPLIED
+        elif revision.origin is BacklogRevisionOrigin.AGENT_MATERIAL:
+            if actor != revision.created_by:
+                raise PermissionError(
+                    "A material revision must be routed by its attributed agent"
+                )
+            if approved_item is not None:
+                raise ValueError("Material revisions require exact backlog approval")
+            outcome = BacklogRevisionAuthorityOutcome.WAITING_FOR_APPROVAL
+        else:
+            if actor != revision.created_by:
+                raise PermissionError(
+                    "A technical subtask authority must bind its attributed agent"
+                )
+            if approved_item is None:
+                raise PermissionError(
+                    "A technical subtask must trace to an approved executable item"
+                )
+            outcome = BacklogRevisionAuthorityOutcome.APPLIED
+
+        approved_item_digest = None
+        if approved_item is not None:
+            item = self.storage.db.execute(
+                """SELECT item_digest,executable FROM autonomous_backlog_items
+                    WHERE revision_id=? AND stable_id=?""",
+                (parent_revision_id, approved_item),
+            ).fetchone()
+            if not item or not bool(item["executable"]):
+                raise PermissionError(
+                    "Technical subtask parent must be an approved executable item"
+                )
+            approved_item_digest = str(item["item_digest"])
+        base_approval_id, base_authority_id = self._base_revision_authority(
+            mission.id, parent_revision_id
+        )
+        authentication_context_digest = self._digest(auth_context)
+        result_mission_version = expected_mission_version + 1
+        created_at = self._timestamp()
+        binding = {
+            "mission_id": mission.id,
+            "revision_id": revision.id,
+            "revision_origin": revision.origin.value,
+            "parent_revision_id": parent_revision_id,
+            "base_approval_id": base_approval_id,
+            "base_authority_id": base_authority_id,
+            "approved_item_stable_id": approved_item,
+            "approved_item_digest": approved_item_digest,
+            "outcome": outcome.value,
+            "authenticated_actor": actor,
+            "authentication_context": auth_context,
+            "authentication_context_digest": authentication_context_digest,
+            "expected_mission_version": expected_mission_version,
+            "result_mission_version": result_mission_version,
+            "command_id": command_id,
+            "request_digest": request_digest,
+            "reason": reason,
+            "created_at": created_at,
+        }
+        authority_digest = self._digest(binding)
+
+        with self.storage.db:
+            self.storage._begin_immediate()
+            replay = self._revision_authority_replay(command_id, request_digest)
+            if replay:
+                return replay
+            current = self.storage.db.execute(
+                "SELECT * FROM autonomous_missions WHERE id=?", (mission.id,)
+            ).fetchone()
+            if not current:
+                raise KeyError(f"Unknown Autonomous Mission: {mission.id}")
+            actual_version = int(current["version"])
+            if actual_version != expected_mission_version:
+                raise MissionVersionConflictError(
+                    mission.id, expected_mission_version, actual_version
+                )
+            if (
+                current["disposition"] != MissionDisposition.RUNNING.value
+                or current["phase"] != mission.phase.value
+                or self._optional_id(current["active_backlog_revision_id"])
+                != parent_revision_id
+                or current["mission_owner"] != mission.mission_owner
+            ):
+                raise PermissionError("Revision authority scope changed before commit")
+            latest = self.storage.db.execute(
+                "SELECT id FROM autonomous_backlog_revisions WHERE mission_id=? "
+                "ORDER BY revision_number DESC LIMIT 1",
+                (mission.id,),
+            ).fetchone()
+            if (
+                not latest
+                or int(latest["id"]) != revision.id
+                or self.storage.db.execute(
+                    "SELECT 1 FROM autonomous_backlog_revision_invalidations "
+                    "WHERE revision_id=?",
+                    (revision.id,),
+                ).fetchone()
+            ):
+                raise PermissionError("Revision changed before authority commit")
+            current_base = self._base_revision_authority(
+                mission.id, parent_revision_id
+            )
+            if current_base != (base_approval_id, base_authority_id):
+                raise PermissionError("Parent revision authority changed before commit")
+            if approved_item is not None:
+                current_item = self.storage.db.execute(
+                    """SELECT item_digest,executable
+                         FROM autonomous_backlog_items
+                        WHERE revision_id=? AND stable_id=?""",
+                    (parent_revision_id, approved_item),
+                ).fetchone()
+                if (
+                    not current_item
+                    or not bool(current_item["executable"])
+                    or current_item["item_digest"] != approved_item_digest
+                ):
+                    raise PermissionError(
+                        "Approved technical parent changed before commit"
+                    )
+
+            cursor = self.storage.db.execute(
+                """INSERT INTO autonomous_backlog_revision_authorities(
+                       identity,mission_id,revision_id,revision_origin,
+                       parent_revision_id,base_approval_id,base_authority_id,
+                       approved_item_stable_id,approved_item_digest,outcome,
+                       authenticated_actor,authentication_context_json,
+                       authentication_context_digest,expected_mission_version,
+                       result_mission_version,command_id,request_digest,reason,
+                       authority_digest,created_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("autonomous-revision-authority"),
+                    mission.id,
+                    revision.id,
+                    revision.origin.value,
+                    parent_revision_id,
+                    base_approval_id,
+                    base_authority_id,
+                    approved_item,
+                    approved_item_digest,
+                    outcome.value,
+                    actor,
+                    self._json(auth_context),
+                    authentication_context_digest,
+                    expected_mission_version,
+                    result_mission_version,
+                    command_id,
+                    request_digest,
+                    reason,
+                    authority_digest,
+                    created_at,
+                ),
+            )
+            authority_id = int(cursor.lastrowid)
+            target_phase = (
+                MissionPhase.WAITING_FOR_BACKLOG_APPROVAL
+                if outcome is BacklogRevisionAuthorityOutcome.WAITING_FOR_APPROVAL
+                else mission.phase
+            )
+            target_revision_id = (
+                parent_revision_id
+                if outcome is BacklogRevisionAuthorityOutcome.WAITING_FOR_APPROVAL
+                else revision.id
+            )
+            self.missions._insert_state_version(
+                mission_id=mission.id,
+                version=result_mission_version,
+                phase=target_phase,
+                disposition=MissionDisposition.RUNNING,
+                configuration_json=str(current["configuration_json"]),
+                configuration_digest=str(current["configuration_digest"]),
+                active_backlog_revision_id=target_revision_id,
+                active_execution_epoch_id=self._optional_id(
+                    current["active_execution_epoch_id"]
+                ),
+                current_checkpoint_id=self._optional_id(
+                    current["current_checkpoint_id"]
+                ),
+                actor=actor,
+                command_id=command_id,
+                reason=reason,
+            )
+            if target_phase is not mission.phase:
+                ensure_transition(
+                    "autonomous_mission_phase",
+                    mission.phase.value,
+                    target_phase.value,
+                )
+            updated = self.storage.db.execute(
+                """UPDATE autonomous_missions
+                      SET phase=?,active_backlog_revision_id=?,version=?,
+                          updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND version=?""",
+                (
+                    target_phase.value,
+                    target_revision_id,
+                    result_mission_version,
+                    mission.id,
+                    expected_mission_version,
+                ),
+            )
+            if updated.rowcount != 1:
+                raise MissionVersionConflictError(
+                    mission.id,
+                    expected_mission_version,
+                    expected_mission_version + 1,
+                )
+            command_type = (
+                "route_material_revision_for_approval"
+                if outcome
+                is BacklogRevisionAuthorityOutcome.WAITING_FOR_APPROVAL
+                else "apply_authorized_backlog_revision"
+            )
+            self.missions._insert_command(
+                mission_id=mission.id,
+                command_id=command_id,
+                command_type=command_type,
+                actor=actor,
+                expected_version=expected_mission_version,
+                request_digest=request_digest,
+                result_version=result_mission_version,
+            )
+            self.storage._event(
+                "autonomous_backlog.revision_authority_recorded",
+                "autonomous_backlog_revision",
+                revision.id,
+                {
+                    "authority_id": authority_id,
+                    "authority_digest": authority_digest,
+                    "mission_id": mission.id,
+                    "revision_id": revision.id,
+                    "revision_origin": revision.origin.value,
+                    "parent_revision_id": parent_revision_id,
+                    "base_approval_id": base_approval_id,
+                    "base_authority_id": base_authority_id,
+                    "approved_item_stable_id": approved_item,
+                    "outcome": outcome.value,
+                    "actor": actor,
+                    "result_mission_version": result_mission_version,
+                },
+            )
+            self.storage._event(
+                (
+                    "autonomous_backlog.material_revision_waiting"
+                    if outcome
+                    is BacklogRevisionAuthorityOutcome.WAITING_FOR_APPROVAL
+                    else "autonomous_backlog.revision_applied"
+                ),
+                "autonomous_mission",
+                mission.id,
+                {
+                    "authority_id": authority_id,
+                    "revision_id": revision.id,
+                    "active_backlog_revision_id": target_revision_id,
+                    "phase": target_phase.value,
+                    "actor": actor,
+                    "version": result_mission_version,
+                },
+            )
+        authority = self.get_revision_authority(authority_id)
+        return BacklogRevisionApplyResult(
+            authority=authority,
+            revision=revision,
+            mission=self.missions.get(mission.id),
+        )
+
     def activate_revision(
         self,
         revision_id: int,
@@ -602,9 +1150,26 @@ class BacklogRevisionService:
         command_id: str,
         expected_mission_version: int,
         reason: str,
+        approved_item_stable_id: str | None = None,
+        authentication_context: dict[str, Any] | None = None,
     ) -> AutonomousMission:
         revision = self.get_revision(revision_id)
         mission = self.missions.get(revision.mission_id)
+        controlled = self.storage.db.execute(
+            "SELECT 1 FROM autonomous_backlog_approvals WHERE mission_id=? LIMIT 1",
+            (revision.mission_id,),
+        ).fetchone()
+        if controlled:
+            return self.apply_revision(
+                revision_id,
+                actor=actor,
+                command_id=command_id,
+                expected_mission_version=expected_mission_version,
+                reason=reason,
+                approved_item_stable_id=approved_item_stable_id,
+                authentication_context=authentication_context,
+            ).mission
+
         actor = self._required(actor, "Activation actor")
         if revision.origin is BacklogRevisionOrigin.AGENT_MATERIAL:
             raise PermissionError(

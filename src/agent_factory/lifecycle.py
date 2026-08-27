@@ -13,13 +13,27 @@ TRANSITIONS: Mapping[str, Mapping[str, frozenset[str]]] = {
         "WAITING_FOR_BACKLOG_APPROVAL": frozenset(
             {"BACKLOG_GENERATION", "APPROVED"}
         ),
-        "APPROVED": frozenset({"ENVIRONMENT_DISCOVERY"}),
-        "ENVIRONMENT_DISCOVERY": frozenset({"ENVIRONMENT_BOOTSTRAP"}),
-        "ENVIRONMENT_BOOTSTRAP": frozenset({"DEVELOPMENT"}),
-        "DEVELOPMENT": frozenset({"VALIDATION", "FINAL_VALIDATION"}),
-        "VALIDATION": frozenset({"DEVELOPMENT", "INTEGRATION"}),
-        "INTEGRATION": frozenset({"DEVELOPMENT", "FINAL_VALIDATION"}),
-        "FINAL_VALIDATION": frozenset({"DEVELOPMENT", "COMPLETED"}),
+        "APPROVED": frozenset(
+            {"ENVIRONMENT_DISCOVERY", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "ENVIRONMENT_DISCOVERY": frozenset(
+            {"ENVIRONMENT_BOOTSTRAP", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "ENVIRONMENT_BOOTSTRAP": frozenset(
+            {"DEVELOPMENT", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "DEVELOPMENT": frozenset(
+            {"VALIDATION", "FINAL_VALIDATION", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "VALIDATION": frozenset(
+            {"DEVELOPMENT", "INTEGRATION", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "INTEGRATION": frozenset(
+            {"DEVELOPMENT", "FINAL_VALIDATION", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
+        "FINAL_VALIDATION": frozenset(
+            {"DEVELOPMENT", "COMPLETED", "WAITING_FOR_BACKLOG_APPROVAL"}
+        ),
         "COMPLETED": frozenset(),
     },
     "autonomous_mission_disposition": {

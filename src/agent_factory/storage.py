@@ -4726,6 +4726,425 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
          )
         BEGIN SELECT RAISE(ABORT, 'verified proposal is required before approval wait'); END;
     """),
+    (65, """
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_approvals(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            verification_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_proposal_verifications(id),
+            pipeline_run_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_pipeline_runs(id),
+            revision_id INTEGER NOT NULL REFERENCES autonomous_backlog_revisions(id),
+            revision_digest TEXT NOT NULL
+                CHECK(length(revision_digest)=64
+                      AND revision_digest NOT GLOB '*[^0-9a-f]*'),
+            canonical_digest TEXT NOT NULL
+                CHECK(length(canonical_digest)=64
+                      AND canonical_digest NOT GLOB '*[^0-9a-f]*'),
+            source_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_specification_sources(id),
+            source_digest TEXT NOT NULL
+                CHECK(length(source_digest)=64
+                      AND source_digest NOT GLOB '*[^0-9a-f]*'),
+            planning_manifest_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_manifests(id),
+            planning_manifest_digest TEXT NOT NULL
+                CHECK(length(planning_manifest_digest)=64
+                      AND planning_manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            planning_model_manifest_json TEXT NOT NULL,
+            execution_role_model_manifest_json TEXT NOT NULL,
+            execution_role_model_manifest_digest TEXT NOT NULL
+                CHECK(length(execution_role_model_manifest_digest)=64
+                      AND execution_role_model_manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            provider_ids_json TEXT NOT NULL,
+            tool_manifest_json TEXT NOT NULL,
+            tool_manifest_digest TEXT NOT NULL
+                CHECK(length(tool_manifest_digest)=64
+                      AND tool_manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            policy_version INTEGER NOT NULL CHECK(policy_version>0),
+            policy_snapshot_json TEXT NOT NULL,
+            policy_digest TEXT NOT NULL
+                CHECK(length(policy_digest)=64
+                      AND policy_digest NOT GLOB '*[^0-9a-f]*'),
+            execution_epoch_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_execution_epochs(id),
+            execution_authorization_digest TEXT NOT NULL UNIQUE
+                CHECK(length(execution_authorization_digest)=64
+                      AND execution_authorization_digest NOT GLOB '*[^0-9a-f]*'),
+            approved_by TEXT NOT NULL,
+            authentication_context_json TEXT NOT NULL,
+            authentication_context_digest TEXT NOT NULL
+                CHECK(length(authentication_context_digest)=64
+                      AND authentication_context_digest NOT GLOB '*[^0-9a-f]*'),
+            expected_mission_version INTEGER NOT NULL CHECK(expected_mission_version>0),
+            result_mission_version INTEGER NOT NULL
+                CHECK(result_mission_version=expected_mission_version+1),
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            reason TEXT NOT NULL,
+            approval_digest TEXT NOT NULL UNIQUE
+                CHECK(length(approval_digest)=64
+                      AND approval_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_backlog_approvals
+            ON autonomous_backlog_approvals(mission_id,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_approval_completions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            approval_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_backlog_approvals(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            authorization_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_local_authorizations(id),
+            result_mission_version INTEGER NOT NULL CHECK(result_mission_version>0),
+            completion_digest TEXT NOT NULL UNIQUE
+                CHECK(length(completion_digest)=64
+                      AND completion_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_approvals_no_update
+        BEFORE UPDATE ON autonomous_backlog_approvals
+        BEGIN SELECT RAISE(ABORT, 'backlog approvals are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_approvals_no_delete
+        BEFORE DELETE ON autonomous_backlog_approvals
+        BEGIN SELECT RAISE(ABORT, 'backlog approvals are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_approval_completions_no_update
+        BEFORE UPDATE ON autonomous_backlog_approval_completions
+        BEGIN SELECT RAISE(ABORT, 'backlog approval completions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_approval_completions_no_delete
+        BEFORE DELETE ON autonomous_backlog_approval_completions
+        BEGIN SELECT RAISE(ABORT, 'backlog approval completions are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_approval_scope_valid
+        BEFORE INSERT ON autonomous_backlog_approvals
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_proposal_verifications verification
+                ON verification.id=NEW.verification_id
+               AND verification.mission_id=mission.id
+               AND verification.status='READY'
+               AND verification.pipeline_run_id=NEW.pipeline_run_id
+               AND verification.revision_id=NEW.revision_id
+               AND verification.revision_digest=NEW.revision_digest
+               AND verification.canonical_digest=NEW.canonical_digest
+               AND verification.source_id=NEW.source_id
+               AND verification.source_digest=NEW.source_digest
+               AND verification.manifest_id=NEW.planning_manifest_id
+               AND verification.manifest_digest=NEW.planning_manifest_digest
+               AND verification.mission_result_version=NEW.expected_mission_version
+              JOIN autonomous_mission_specification_heads head
+                ON head.mission_id=mission.id AND head.source_id=NEW.source_id
+              JOIN autonomous_planning_manifests manifest
+                ON manifest.id=NEW.planning_manifest_id
+               AND manifest.mission_id=mission.id
+               AND manifest.specification_source_id=head.source_id
+              JOIN autonomous_backlog_revisions revision
+                ON revision.id=NEW.revision_id
+               AND revision.mission_id=mission.id
+               AND revision.revision_digest=NEW.revision_digest
+              JOIN autonomous_mission_execution_epochs epoch
+                ON epoch.id=NEW.execution_epoch_id
+               AND epoch.mission_id=mission.id
+               AND epoch.epoch_number=1
+               AND epoch.base_backlog_revision_id=revision.id
+               AND epoch.base_backlog_revision_digest=revision.revision_digest
+               AND epoch.activation_mission_version=NEW.result_mission_version
+              LEFT JOIN autonomous_backlog_revision_invalidations invalidation
+                ON invalidation.revision_id=revision.id
+             WHERE mission.id=NEW.mission_id
+               AND mission.mission_owner=NEW.approved_by
+               AND mission.phase='WAITING_FOR_BACKLOG_APPROVAL'
+               AND mission.disposition='RUNNING'
+               AND mission.version=NEW.expected_mission_version
+               AND mission.active_backlog_revision_id IS NULL
+               AND mission.active_execution_epoch_id IS NULL
+               AND invalidation.id IS NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM autonomous_backlog_revisions later
+                    WHERE later.mission_id=mission.id
+                      AND later.revision_number>revision.revision_number
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'backlog approval scope is invalid'); END;
+
+        DROP TRIGGER autonomous_local_authorization_scope_valid;
+        CREATE TRIGGER autonomous_local_authorization_scope_valid
+        BEFORE INSERT ON autonomous_local_authorizations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_backlog_revisions revision
+                ON revision.id=NEW.backlog_revision_id
+               AND revision.mission_id=mission.id
+              JOIN autonomous_mission_execution_epochs epoch
+                ON epoch.id=NEW.execution_epoch_id
+               AND epoch.mission_id=mission.id
+             WHERE mission.id=NEW.mission_id
+               AND mission.active_backlog_revision_id=NEW.backlog_revision_id
+               AND mission.active_execution_epoch_id=NEW.execution_epoch_id
+               AND revision.revision_digest=NEW.backlog_revision_digest
+               AND epoch.epoch_branch=NEW.epoch_branch
+        ) AND NOT EXISTS (
+            SELECT 1
+              FROM autonomous_backlog_approvals approval
+              JOIN autonomous_mission_execution_epochs epoch
+                ON epoch.id=approval.execution_epoch_id
+             WHERE approval.mission_id=NEW.mission_id
+               AND approval.revision_id=NEW.backlog_revision_id
+               AND approval.revision_digest=NEW.backlog_revision_digest
+               AND approval.execution_epoch_id=NEW.execution_epoch_id
+               AND approval.execution_authorization_digest=NEW.authorization_digest
+               AND epoch.epoch_branch=NEW.epoch_branch
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous authorization scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_approval_completion_scope_valid
+        BEFORE INSERT ON autonomous_backlog_approval_completions
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_backlog_approvals approval
+              JOIN autonomous_local_authorizations authorization
+                ON authorization.id=NEW.authorization_id
+               AND authorization.mission_id=approval.mission_id
+               AND authorization.backlog_revision_id=approval.revision_id
+               AND authorization.backlog_revision_digest=approval.revision_digest
+               AND authorization.execution_epoch_id=approval.execution_epoch_id
+               AND authorization.authorization_digest=
+                   approval.execution_authorization_digest
+             WHERE approval.id=NEW.approval_id
+               AND approval.mission_id=NEW.mission_id
+               AND approval.result_mission_version=NEW.result_mission_version
+        )
+        BEGIN SELECT RAISE(ABORT, 'backlog approval completion scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_approved_requires_exact_approval
+        BEFORE UPDATE OF phase ON autonomous_missions
+        WHEN OLD.phase='WAITING_FOR_BACKLOG_APPROVAL'
+         AND NEW.phase='APPROVED'
+         AND EXISTS (
+            SELECT 1 FROM autonomous_proposal_verifications verification
+             WHERE verification.mission_id=OLD.id
+         )
+         AND NOT EXISTS (
+            SELECT 1
+              FROM autonomous_backlog_approval_completions completion
+              JOIN autonomous_backlog_approvals approval
+                ON approval.id=completion.approval_id
+              JOIN autonomous_local_authorizations authorization
+                ON authorization.id=completion.authorization_id
+             WHERE completion.mission_id=OLD.id
+               AND completion.result_mission_version=NEW.version
+               AND approval.revision_id=NEW.active_backlog_revision_id
+               AND approval.execution_epoch_id=NEW.active_execution_epoch_id
+               AND authorization.backlog_revision_id=NEW.active_backlog_revision_id
+               AND authorization.execution_epoch_id=NEW.active_execution_epoch_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'exact backlog approval is required'); END;
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_revision_authorities(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            revision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_backlog_revisions(id),
+            revision_origin TEXT NOT NULL CHECK(revision_origin IN
+                ('HUMAN','AGENT_MATERIAL','TECHNICAL_SUBTASK')),
+            parent_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            base_approval_id INTEGER
+                REFERENCES autonomous_backlog_approvals(id),
+            base_authority_id INTEGER
+                REFERENCES autonomous_backlog_revision_authorities(id),
+            approved_item_stable_id TEXT,
+            approved_item_digest TEXT
+                CHECK(approved_item_digest IS NULL OR
+                      (length(approved_item_digest)=64
+                       AND approved_item_digest NOT GLOB '*[^0-9a-f]*')),
+            outcome TEXT NOT NULL CHECK(outcome IN
+                ('APPLIED','WAITING_FOR_APPROVAL')),
+            authenticated_actor TEXT NOT NULL,
+            authentication_context_json TEXT NOT NULL,
+            authentication_context_digest TEXT NOT NULL
+                CHECK(length(authentication_context_digest)=64
+                      AND authentication_context_digest NOT GLOB '*[^0-9a-f]*'),
+            expected_mission_version INTEGER NOT NULL
+                CHECK(expected_mission_version>0),
+            result_mission_version INTEGER NOT NULL
+                CHECK(result_mission_version=expected_mission_version+1),
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            reason TEXT NOT NULL,
+            authority_digest TEXT NOT NULL UNIQUE
+                CHECK(length(authority_digest)=64
+                      AND authority_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            CHECK((base_approval_id IS NULL)<>(base_authority_id IS NULL)),
+            CHECK(
+                (revision_origin='AGENT_MATERIAL'
+                 AND outcome='WAITING_FOR_APPROVAL'
+                 AND approved_item_stable_id IS NULL
+                 AND approved_item_digest IS NULL) OR
+                (revision_origin='HUMAN'
+                 AND outcome='APPLIED'
+                 AND approved_item_stable_id IS NULL
+                 AND approved_item_digest IS NULL) OR
+                (revision_origin='TECHNICAL_SUBTASK'
+                 AND outcome='APPLIED'
+                 AND approved_item_stable_id IS NOT NULL
+                 AND approved_item_digest IS NOT NULL)
+            )
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_revision_authorities
+            ON autonomous_backlog_revision_authorities(mission_id,id);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_authorities_no_update
+        BEFORE UPDATE ON autonomous_backlog_revision_authorities
+        BEGIN SELECT RAISE(ABORT, 'revision authorities are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_authorities_no_delete
+        BEFORE DELETE ON autonomous_backlog_revision_authorities
+        BEGIN SELECT RAISE(ABORT, 'revision authorities are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_authority_scope_valid
+        BEFORE INSERT ON autonomous_backlog_revision_authorities
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_backlog_revisions revision
+              JOIN autonomous_missions mission
+                ON mission.id=revision.mission_id
+              LEFT JOIN autonomous_backlog_items approved_item
+                ON approved_item.revision_id=NEW.parent_revision_id
+               AND approved_item.stable_id=NEW.approved_item_stable_id
+             WHERE revision.id=NEW.revision_id
+               AND revision.mission_id=NEW.mission_id
+               AND revision.origin=NEW.revision_origin
+               AND revision.parent_revision_id=NEW.parent_revision_id
+               AND mission.active_backlog_revision_id=NEW.parent_revision_id
+               AND mission.version=NEW.expected_mission_version
+               AND mission.disposition='RUNNING'
+               AND mission.phase IN (
+                   'APPROVED','ENVIRONMENT_DISCOVERY','ENVIRONMENT_BOOTSTRAP',
+                   'DEVELOPMENT','VALIDATION','INTEGRATION','FINAL_VALIDATION'
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM autonomous_backlog_revision_invalidations invalid
+                    WHERE invalid.revision_id=revision.id
+               )
+               AND NOT EXISTS (
+                   SELECT 1 FROM autonomous_backlog_revisions later
+                    WHERE later.mission_id=mission.id
+                      AND later.revision_number>revision.revision_number
+               )
+               AND (
+                   (NEW.base_approval_id IS NOT NULL AND EXISTS (
+                       SELECT 1
+                         FROM autonomous_backlog_approvals approval
+                         JOIN autonomous_backlog_approval_completions completion
+                           ON completion.approval_id=approval.id
+                        WHERE approval.id=NEW.base_approval_id
+                          AND approval.mission_id=mission.id
+                          AND approval.revision_id=NEW.parent_revision_id
+                   )) OR
+                   (NEW.base_authority_id IS NOT NULL AND EXISTS (
+                       SELECT 1
+                         FROM autonomous_backlog_revision_authorities base
+                        WHERE base.id=NEW.base_authority_id
+                          AND base.mission_id=mission.id
+                          AND base.revision_id=NEW.parent_revision_id
+                          AND base.outcome='APPLIED'
+                   ))
+               )
+               AND (
+                   (NEW.revision_origin='HUMAN'
+                    AND NEW.authenticated_actor=mission.mission_owner) OR
+                   (NEW.revision_origin='AGENT_MATERIAL'
+                    AND NEW.authenticated_actor=revision.created_by) OR
+                   (NEW.revision_origin='TECHNICAL_SUBTASK'
+                    AND NEW.authenticated_actor=revision.created_by
+                    AND approved_item.id IS NOT NULL
+                    AND approved_item.executable=1
+                    AND approved_item.item_digest=NEW.approved_item_digest)
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'revision authority scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_activation_requires_authority
+        BEFORE UPDATE OF active_backlog_revision_id ON autonomous_missions
+        WHEN COALESCE(NEW.active_backlog_revision_id,-1)<>
+             COALESCE(OLD.active_backlog_revision_id,-1)
+         AND EXISTS (
+             SELECT 1 FROM autonomous_proposal_verifications verification
+              WHERE verification.mission_id=OLD.id
+         )
+         AND NOT EXISTS (
+             SELECT 1
+               FROM autonomous_backlog_approvals approval
+               JOIN autonomous_backlog_approval_completions completion
+                 ON completion.approval_id=approval.id
+              WHERE approval.mission_id=OLD.id
+                AND approval.revision_id=NEW.active_backlog_revision_id
+                AND completion.result_mission_version=NEW.version
+         )
+         AND NOT EXISTS (
+             SELECT 1 FROM autonomous_backlog_revision_authorities authority
+              WHERE authority.mission_id=OLD.id
+                AND authority.revision_id=NEW.active_backlog_revision_id
+                AND authority.outcome='APPLIED'
+                AND authority.result_mission_version=NEW.version
+         )
+        BEGIN SELECT RAISE(ABORT, 'backlog revision activation lacks authority'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_material_wait_requires_authority
+        BEFORE UPDATE OF phase ON autonomous_missions
+        WHEN NEW.phase='WAITING_FOR_BACKLOG_APPROVAL'
+         AND OLD.phase IN (
+             'APPROVED','ENVIRONMENT_DISCOVERY','ENVIRONMENT_BOOTSTRAP',
+             'DEVELOPMENT','VALIDATION','INTEGRATION','FINAL_VALIDATION'
+         )
+         AND NOT EXISTS (
+             SELECT 1 FROM autonomous_backlog_revision_authorities authority
+              WHERE authority.mission_id=OLD.id
+                AND authority.revision_origin='AGENT_MATERIAL'
+                AND authority.outcome='WAITING_FOR_APPROVAL'
+                AND authority.result_mission_version=NEW.version
+         )
+        BEGIN SELECT RAISE(ABORT, 'material revision authority is required'); END;
+
+        DROP TRIGGER autonomous_missions_phase_transition;
+        CREATE TRIGGER autonomous_missions_phase_transition
+        BEFORE UPDATE OF phase ON autonomous_missions
+        WHEN NEW.phase<>OLD.phase AND NOT (
+            (OLD.phase='DRAFT' AND NEW.phase='SPECIFICATION_ANALYSIS') OR
+            (OLD.phase='SPECIFICATION_ANALYSIS' AND NEW.phase='BACKLOG_GENERATION') OR
+            (OLD.phase='BACKLOG_GENERATION' AND NEW.phase IN
+                ('SPECIFICATION_ANALYSIS','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='WAITING_FOR_BACKLOG_APPROVAL' AND NEW.phase IN
+                ('BACKLOG_GENERATION','APPROVED')) OR
+            (OLD.phase='APPROVED' AND NEW.phase IN
+                ('ENVIRONMENT_DISCOVERY','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='ENVIRONMENT_DISCOVERY' AND NEW.phase IN
+                ('ENVIRONMENT_BOOTSTRAP','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='ENVIRONMENT_BOOTSTRAP' AND NEW.phase IN
+                ('DEVELOPMENT','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='DEVELOPMENT' AND NEW.phase IN
+                ('VALIDATION','FINAL_VALIDATION','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='VALIDATION' AND NEW.phase IN
+                ('DEVELOPMENT','INTEGRATION','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='INTEGRATION' AND NEW.phase IN
+                ('DEVELOPMENT','FINAL_VALIDATION','WAITING_FOR_BACKLOG_APPROVAL')) OR
+            (OLD.phase='FINAL_VALIDATION' AND NEW.phase IN
+                ('DEVELOPMENT','COMPLETED','WAITING_FOR_BACKLOG_APPROVAL'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid autonomous mission phase transition'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

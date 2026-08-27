@@ -6,10 +6,18 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
+from .autonomous_backlog_approval import (
+    ApprovalStartResult,
+    AutonomousBacklogApprovalService,
+)
 from .autonomous_mission import AutonomousMissionConfiguration
 from .backlog import BacklogProposal, diff_issues, issue_operations, load_backlog
+from .backlog_revisions import (
+    BacklogRevisionApplyResult,
+    BacklogRevisionService,
+)
 from .config import config_path, config_path_for_workspace, load_yaml
 from .github import GitHubClient
 from .mission_intake import (
@@ -17,7 +25,13 @@ from .mission_intake import (
     AutonomousMissionIntakeService,
     AutonomousSpecificationSource,
 )
-from .models import Budget, ExecutionApproval, ProviderResult, WorkItem
+from .models import (
+    Budget,
+    ExecutionApproval,
+    ProviderCapabilities,
+    ProviderResult,
+    WorkItem,
+)
 from .registry import AgentRegistry
 from .runtime import AgentRuntime, ExecutionMode
 from .storage import SQLiteStorage
@@ -519,6 +533,71 @@ class AgentFactoryService:
         self, mission_id: int
     ) -> AutonomousSpecificationSource:
         return AutonomousMissionIntakeService(self.storage).current_source(mission_id)
+
+    def approve_autonomous_backlog_and_start(
+        self,
+        verification_id: int,
+        *,
+        expected_revision_id: int,
+        expected_canonical_digest: str,
+        expected_mission_version: int,
+        base_git_commit_sha: str,
+        epoch_branch: str,
+        temporal_workflow_id: str,
+        temporal_run_id: str,
+        actor: str,
+        command_id: str,
+        reason: str,
+        provider_capabilities: Mapping[str, ProviderCapabilities] | None = None,
+        authentication_context: dict[str, Any] | None = None,
+        temporal_chain_metadata: dict[str, Any] | None = None,
+        workflow_build_id: str | None = None,
+        allowed_permissions: tuple[str, ...] | None = None,
+    ) -> ApprovalStartResult:
+        """Consume the exact human boundary and mint bounded local authority."""
+
+        return AutonomousBacklogApprovalService(
+            self.storage, provider_capabilities
+        ).approve_and_start(
+            verification_id,
+            expected_revision_id=expected_revision_id,
+            expected_canonical_digest=expected_canonical_digest,
+            expected_mission_version=expected_mission_version,
+            base_git_commit_sha=base_git_commit_sha,
+            epoch_branch=epoch_branch,
+            temporal_workflow_id=temporal_workflow_id,
+            temporal_run_id=temporal_run_id,
+            actor=actor,
+            command_id=command_id,
+            reason=reason,
+            authentication_context=authentication_context,
+            temporal_chain_metadata=temporal_chain_metadata,
+            workflow_build_id=workflow_build_id,
+            allowed_permissions=allowed_permissions,
+        )
+
+    def apply_autonomous_backlog_revision(
+        self,
+        revision_id: int,
+        *,
+        actor: str,
+        command_id: str,
+        expected_mission_version: int,
+        reason: str,
+        approved_item_stable_id: str | None = None,
+        authentication_context: dict[str, Any] | None = None,
+    ) -> BacklogRevisionApplyResult:
+        """Apply the HUMAN/TECHNICAL authority matrix or route material scope."""
+
+        return BacklogRevisionService(self.storage).apply_revision(
+            revision_id,
+            actor=actor,
+            command_id=command_id,
+            expected_mission_version=expected_mission_version,
+            reason=reason,
+            approved_item_stable_id=approved_item_stable_id,
+            authentication_context=authentication_context,
+        )
 
     # Queries return immutable typed values and never depend on terminal formatting.
     def projects(self) -> list[ProjectView]:

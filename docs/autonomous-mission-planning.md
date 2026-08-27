@@ -1,6 +1,6 @@
-# Autonomous Mission planning and proposal generation
+# Autonomous Mission planning, approval, and bounded start
 
-AF-AMM-007 through AF-AMM-009 establish the pre-approval source, role-assignment, and proposal-generation boundary. They do not authorize repository, environment, service, or Git mutation, and they do not create executable `work_items`.
+AF-AMM-007 through AF-AMM-011 establish the source, role-assignment, proposal-generation, verification, and exact human approval boundary. Pre-approval operations do not authorize repository, environment, service, or Git mutation, and they do not create executable `work_items`.
 
 ## Specification source contract
 
@@ -46,4 +46,18 @@ Reviewer findings remain part of the immutable report. Resolved findings may rem
 
 A `READY` verification record and the mission transition to `WAITING_FOR_BACKLOG_APPROVAL` commit atomically. A database fence prevents a completed planning mission from entering that phase by calling the generic transition service directly. `BLOCKED` reports retain their evidence without changing mission state, and source/version races fail closed. No revision is activated and no executable work is created at this boundary.
 
-AF-AMM-011 supplies the exact human approval and mission-start transaction.
+## Exact approval and bounded mission start
+
+`AutonomousBacklogApprovalService.approve_and_start` consumes one authenticated mission-owner command. It requires the current `READY` verification, exact latest revision ID and canonical digest, unchanged source and planning manifest, current mission version, a clean reviewed Git base, an explicitly local provider set, and explicit execution role/model bindings. A mismatched digest, stale version or source, invalid actor context, blocked report, emergency stop, dirty repository, duplicate conflicting command, or superseded proposal fails before any durable start record is committed.
+
+One `BEGIN IMMEDIATE` transaction appends the approval and completion evidence, initial execution epoch and Temporal run-chain metadata, policy/tool/planning/execution model manifests, and the bounded Autonomous Local authorization. The same commit changes the mission from `WAITING_FOR_BACKLOG_APPROVAL` to `APPROVED` and binds its active revision and epoch. SQLite fences reject a direct phase or revision activation that lacks the exact completion evidence. The transaction records control metadata only: it does not dispatch a workflow, bootstrap an environment, invoke a development provider, or create a standard `work_item`.
+
+The resulting capability is reusable for ordinary local calls inside the exact mission/revision/epoch/provider/role/model/repository/tool/permission scope. The resolver still checks the current policy and scheduling fence before every operation; remote inference, protected integration, external mutation, secrets, and machine-global writes retain their existing gates.
+
+Later immutable revisions use an origin-specific authority ledger:
+
+- `HUMAN` is applied only by the authenticated mission owner at apply time;
+- `TECHNICAL_SUBTASK` must name and digest-bind an executable item in the active authorized parent revision;
+- `AGENT_MATERIAL` cannot activate itself and atomically routes the mission back to `WAITING_FOR_BACKLOG_APPROVAL` while retaining the previously active revision.
+
+Every authority action is append-only, digest-bound, version-fenced, idempotent, and audit-attributed. AF-AMM-012 adds the durable parent Workflow contracts that consume the committed start metadata.
