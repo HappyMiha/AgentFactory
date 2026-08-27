@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
-from .models import Agent, ExecutionApproval, ProviderResult, WorkItem
+from .models import (
+    Agent,
+    ExecutionApproval,
+    ProviderExecutionAuthorization,
+    ProviderResult,
+    WorkItem,
+)
 from .providers import Provider
 from .storage import SQLiteStorage
 
@@ -71,7 +77,7 @@ class NormalizedAdapter:
         agent: Agent,
         item: WorkItem,
         context: dict[str, Any],
-        approval: ExecutionApproval | None = None,
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None = None,
     ) -> ProviderResult:
         return self.provider.execute(agent, item, context, approval)
 

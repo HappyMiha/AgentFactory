@@ -3700,6 +3700,221 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'backlog item execution epoch is invalid'); END;
     """),
+    (61, """
+        CREATE TABLE IF NOT EXISTS autonomous_local_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            backlog_revision_digest TEXT NOT NULL
+                CHECK(length(backlog_revision_digest)=64
+                      AND backlog_revision_digest NOT GLOB '*[^0-9a-f]*'),
+            execution_epoch_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_execution_epochs(id),
+            epoch_branch TEXT NOT NULL,
+            repository_path TEXT NOT NULL,
+            provider_ids_json TEXT NOT NULL,
+            role_model_manifest_json TEXT NOT NULL,
+            role_model_manifest_digest TEXT NOT NULL
+                CHECK(length(role_model_manifest_digest)=64
+                      AND role_model_manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            allowed_permissions_json TEXT NOT NULL,
+            tool_profile TEXT NOT NULL,
+            bootstrap_profile TEXT NOT NULL,
+            policy_version INTEGER NOT NULL CHECK(policy_version > 0),
+            policy_snapshot_json TEXT NOT NULL,
+            policy_digest TEXT NOT NULL
+                CHECK(length(policy_digest)=64
+                      AND policy_digest NOT GLOB '*[^0-9a-f]*'),
+            granted_by TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            authorization_digest TEXT NOT NULL UNIQUE
+                CHECK(length(authorization_digest)=64
+                      AND authorization_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            UNIQUE(mission_id,backlog_revision_id,execution_epoch_id,policy_digest)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_local_authorizations
+            ON autonomous_local_authorizations(mission_id,created_at,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_authorization_revocations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            authorization_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_local_authorizations(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            planning_request_id TEXT NOT NULL,
+            requested_action TEXT NOT NULL CHECK(requested_action IN
+                ('ANALYZE','REGENERATE_BACKLOG')),
+            provider_ids_json TEXT NOT NULL,
+            role_models_json TEXT NOT NULL,
+            repository_path TEXT NOT NULL,
+            allowed_permissions_json TEXT NOT NULL,
+            tool_profile TEXT NOT NULL,
+            policy_version INTEGER NOT NULL CHECK(policy_version > 0),
+            policy_snapshot_json TEXT NOT NULL,
+            policy_digest TEXT NOT NULL
+                CHECK(length(policy_digest)=64
+                      AND policy_digest NOT GLOB '*[^0-9a-f]*'),
+            authorized_by TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            authorization_digest TEXT NOT NULL UNIQUE
+                CHECK(length(authorization_digest)=64
+                      AND authorization_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            UNIQUE(mission_id,planning_request_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_planning_authorizations
+            ON autonomous_planning_authorizations(mission_id,expires_at,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_authorization_closures(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            planning_authorization_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_authorizations(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_authorization_decisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL,
+            request_json TEXT NOT NULL,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            outcome TEXT NOT NULL CHECK(outcome IN
+                ('ALLOW_AUTONOMOUS','ALLOW_PLANNING',
+                 'REQUIRE_STANDARD_GATE','DENY')),
+            reason TEXT NOT NULL,
+            authority_valid INTEGER NOT NULL CHECK(authority_valid IN (0,1)),
+            autonomous_authorization_id INTEGER
+                REFERENCES autonomous_local_authorizations(id),
+            planning_authorization_id INTEGER
+                REFERENCES autonomous_planning_authorizations(id),
+            policy_version INTEGER NOT NULL CHECK(policy_version > 0),
+            policy_digest TEXT NOT NULL
+                CHECK(length(policy_digest)=64
+                      AND policy_digest NOT GLOB '*[^0-9a-f]*'),
+            evidence_json TEXT NOT NULL,
+            decision_digest TEXT NOT NULL UNIQUE
+                CHECK(length(decision_digest)=64
+                      AND decision_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_authorization_decisions
+            ON autonomous_authorization_decisions(mission_id,created_at,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_authorization_commands(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            command_id TEXT NOT NULL UNIQUE,
+            command_type TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_authorization_commands
+            ON autonomous_authorization_commands(mission_id,id);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_local_authorizations_no_update
+        BEFORE UPDATE ON autonomous_local_authorizations
+        BEGIN SELECT RAISE(ABORT, 'autonomous authorizations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_local_authorizations_no_delete
+        BEFORE DELETE ON autonomous_local_authorizations
+        BEGIN SELECT RAISE(ABORT, 'autonomous authorizations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_authorization_revocations_no_update
+        BEFORE UPDATE ON autonomous_authorization_revocations
+        BEGIN SELECT RAISE(ABORT, 'authorization revocations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_authorization_revocations_no_delete
+        BEFORE DELETE ON autonomous_authorization_revocations
+        BEGIN SELECT RAISE(ABORT, 'authorization revocations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_authorizations_no_update
+        BEFORE UPDATE ON autonomous_planning_authorizations
+        BEGIN SELECT RAISE(ABORT, 'planning authorizations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_authorizations_no_delete
+        BEFORE DELETE ON autonomous_planning_authorizations
+        BEGIN SELECT RAISE(ABORT, 'planning authorizations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_closures_no_update
+        BEFORE UPDATE ON autonomous_planning_authorization_closures
+        BEGIN SELECT RAISE(ABORT, 'planning authorization closures are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_closures_no_delete
+        BEFORE DELETE ON autonomous_planning_authorization_closures
+        BEGIN SELECT RAISE(ABORT, 'planning authorization closures are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_authorization_decisions_no_update
+        BEFORE UPDATE ON autonomous_authorization_decisions
+        BEGIN SELECT RAISE(ABORT, 'authorization decisions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_authorization_decisions_no_delete
+        BEFORE DELETE ON autonomous_authorization_decisions
+        BEGIN SELECT RAISE(ABORT, 'authorization decisions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_authorization_commands_no_update
+        BEFORE UPDATE ON autonomous_authorization_commands
+        BEGIN SELECT RAISE(ABORT, 'authorization commands are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_authorization_commands_no_delete
+        BEFORE DELETE ON autonomous_authorization_commands
+        BEGIN SELECT RAISE(ABORT, 'authorization commands are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_local_authorization_scope_valid
+        BEFORE INSERT ON autonomous_local_authorizations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions m
+              JOIN autonomous_backlog_revisions r
+                ON r.id=NEW.backlog_revision_id AND r.mission_id=m.id
+              JOIN autonomous_mission_execution_epochs e
+                ON e.id=NEW.execution_epoch_id AND e.mission_id=m.id
+             WHERE m.id=NEW.mission_id
+               AND m.active_backlog_revision_id=NEW.backlog_revision_id
+               AND m.active_execution_epoch_id=NEW.execution_epoch_id
+               AND r.revision_digest=NEW.backlog_revision_digest
+               AND e.epoch_branch=NEW.epoch_branch
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous authorization scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_revocation_scope_valid
+        BEFORE INSERT ON autonomous_authorization_revocations
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_local_authorizations a
+             WHERE a.id=NEW.authorization_id AND a.mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'authorization revocation scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_scope_valid
+        BEFORE INSERT ON autonomous_planning_authorizations
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_missions m WHERE m.id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning authorization mission is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_closure_scope_valid
+        BEFORE INSERT ON autonomous_planning_authorization_closures
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_planning_authorizations p
+             WHERE p.id=NEW.planning_authorization_id
+               AND p.mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning authorization closure scope is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

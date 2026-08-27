@@ -3,6 +3,15 @@
     {
       "id": "codex",
       "type": "cli",
+      "execution_location": "REMOTE",
+      "capabilities": {
+        "text_generation": true,
+        "structured_output": true,
+        "tool_calls": false,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "codex",
       "executable_candidates": [
@@ -21,6 +30,15 @@
     {
       "id": "claude",
       "type": "cli",
+      "execution_location": "REMOTE",
+      "capabilities": {
+        "text_generation": true,
+        "structured_output": true,
+        "tool_calls": false,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "claude",
       "executable_candidates": [
@@ -39,6 +57,15 @@
     {
       "id": "gemini",
       "type": "cli",
+      "execution_location": "REMOTE",
+      "capabilities": {
+        "text_generation": true,
+        "structured_output": true,
+        "tool_calls": false,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "gemini",
       "executable_candidates": ["%APPDATA%\\npm\\gemini.cmd", "gemini.cmd"],
@@ -53,6 +80,15 @@
     {
       "id": "antigravity",
       "type": "cli",
+      "execution_location": "REMOTE",
+      "capabilities": {
+        "text_generation": true,
+        "structured_output": true,
+        "tool_calls": false,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "agy",
       "executable_candidates": [
@@ -77,6 +113,15 @@
     {
       "id": "ollama",
       "type": "cli",
+      "execution_location": "LOCAL",
+      "capabilities": {
+        "text_generation": true,
+        "structured_output": false,
+        "tool_calls": false,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "ollama",
       "executable_candidates": [
@@ -94,6 +139,15 @@
     {
       "id": "openclaw",
       "type": "health_only_cli",
+      "execution_location": "REMOTE",
+      "capabilities": {
+        "text_generation": false,
+        "structured_output": false,
+        "tool_calls": false,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "openclaw",
       "executable_candidates": ["%APPDATA%\\npm\\openclaw.cmd", "openclaw.cmd"],
@@ -108,6 +162,15 @@
     {
       "id": "firecrawl",
       "type": "cli",
+      "execution_location": "REMOTE",
+      "capabilities": {
+        "text_generation": false,
+        "structured_output": true,
+        "tool_calls": true,
+        "model_listing": false,
+        "model_switching": false,
+        "model_load_release": false
+      },
       "enabled": true,
       "executable": "firecrawl",
       "executable_candidates": [

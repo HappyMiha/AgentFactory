@@ -13,7 +13,16 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from .models import Agent, ExecutionApproval, ProviderResult, WorkItem
+from .models import (
+    Agent,
+    ExecutionApproval,
+    ExecutionAuthorizationMode,
+    ExecutionLocation,
+    ProviderCapabilities,
+    ProviderExecutionAuthorization,
+    ProviderResult,
+    WorkItem,
+)
 
 SENSITIVE_ENV_MARKERS = ("TOKEN", "SECRET", "PASSWORD", "CREDENTIAL", "API_KEY", "AUTH")
 PASSING_VERDICTS = ("COMPLETE", "PASS", "ALIGNED", "CONDITIONALLY_ALIGNED")
@@ -141,6 +150,11 @@ class ProcessSupervisor:
 
 class Provider(ABC):
     name: str
+    capabilities = ProviderCapabilities()
+
+    @property
+    def autonomous_local_eligible(self) -> bool:
+        return self.capabilities.autonomous_local_eligible
 
     @abstractmethod
     def health(self) -> dict[str, Any]: ...
@@ -151,7 +165,7 @@ class Provider(ABC):
         agent: Agent,
         item: WorkItem,
         context: dict[str, Any],
-        approval: ExecutionApproval | None = None,
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None = None,
     ) -> ProviderResult: ...
 
 
@@ -176,6 +190,7 @@ class CLIProvider(Provider):
         safety_rules: list[str] | None = None,
         workspace: Path | None = None,
         supervisor: ProcessSupervisor | None = None,
+        capabilities: ProviderCapabilities | None = None,
     ):
         self.name = name
         self.executable = executable
@@ -194,6 +209,7 @@ class CLIProvider(Provider):
         self.safety_rules = tuple(safety_rules or [])
         self.workspace = (workspace or Path.cwd()).resolve()
         self.supervisor = supervisor or ProcessSupervisor()
+        self.capabilities = capabilities or ProviderCapabilities()
 
     def _executable_paths(self) -> list[str]:
         """Resolve only configured launchers, preferring stable native binaries."""
@@ -226,7 +242,12 @@ class CLIProvider(Provider):
     def health(self) -> dict[str, Any]:
         paths = self._executable_paths()
         if not paths:
-            return {"provider": self.name, "healthy": False, "error": "allowlisted executable not found"}
+            return {
+                "provider": self.name,
+                "healthy": False,
+                "capabilities": self.capabilities.to_dict(),
+                "error": "allowlisted executable not found",
+            }
         failures: list[str] = []
         for path in paths:
             try:
@@ -247,6 +268,7 @@ class CLIProvider(Provider):
                         "path": path,
                         "version": output[:1000],
                         "execution_enabled": self.allow_execution,
+                        "capabilities": self.capabilities.to_dict(),
                         "error": None,
                     }
                 failures.append(f"{Path(path).name}: exit {proc.returncode}")
@@ -257,6 +279,7 @@ class CLIProvider(Provider):
             "healthy": False,
             "path": paths[0],
             "execution_enabled": self.allow_execution,
+            "capabilities": self.capabilities.to_dict(),
             "error": "; ".join(failures)[:1000],
         }
 
@@ -264,7 +287,7 @@ class CLIProvider(Provider):
         self,
         agent: Agent,
         item: WorkItem,
-        approval: ExecutionApproval | None,
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None,
     ) -> str | None:
         if not self.allow_execution:
             return "provider execution disabled by configuration"
@@ -276,9 +299,54 @@ class CLIProvider(Provider):
         actual = (approval.provider, approval.agent_id, approval.task_id)
         if expected != actual:
             return f"approval scope mismatch: expected provider/agent/task {expected}"
+        if isinstance(approval, ProviderExecutionAuthorization):
+            if not self.capabilities.autonomous_local_eligible:
+                return "autonomous provider authority requires explicitly LOCAL text generation"
+            expected_operation = {
+                ExecutionAuthorizationMode.AUTONOMOUS_LOCAL: "LOCAL_INFERENCE",
+                ExecutionAuthorizationMode.BOUNDED_LOCAL_PLANNING: "PLANNING_INFERENCE",
+            }.get(approval.mode)
+            if expected_operation is None:
+                return "autonomous provider authority mode is invalid"
+            if approval.operation != expected_operation:
+                return "autonomous provider authority operation mismatch"
+            if "execute_provider" not in approval.permissions:
+                return "autonomous provider authority lacks execute_provider permission"
+            digest = approval.evidence_digest
+            if len(digest) != 64 or any(
+                character not in "0123456789abcdef" for character in digest
+            ):
+                return "autonomous provider authority evidence digest is invalid"
+            if approval.decision_id < 1 or approval.authorization_id < 1:
+                return "autonomous provider authority identity is invalid"
+            if not str(approval.authorized_by).strip():
+                return "autonomous provider authority issuer is required"
+            return None
         if not str(approval.approved_by).strip():
             return "approval issuer is required"
         return None
+
+    @staticmethod
+    def _approval_metadata(
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None,
+    ) -> dict[str, Any]:
+        metadata: dict[str, Any] = {
+            "gate_id": approval.gate_id if approval else None,
+        }
+        if isinstance(approval, ProviderExecutionAuthorization):
+            metadata.update(
+                {
+                    "authorization_mode": approval.mode.value,
+                    "authorization_id": approval.authorization_id,
+                    "authorization_decision_id": approval.decision_id,
+                    "authorization_evidence_digest": approval.evidence_digest,
+                    "mission_id": approval.mission_id,
+                    "backlog_revision_id": approval.backlog_revision_id,
+                    "execution_epoch_id": approval.execution_epoch_id,
+                    "planning_request_id": approval.planning_request_id,
+                }
+            )
+        return metadata
 
     def _safe_environment(self) -> dict[str, str]:
         return {
@@ -335,7 +403,7 @@ class CLIProvider(Provider):
         agent: Agent,
         item: WorkItem,
         context: dict[str, Any],
-        approval: ExecutionApproval | None = None,
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None = None,
         *,
         cancel_event: threading.Event | None = None,
     ) -> ProviderResult:
@@ -403,7 +471,7 @@ class CLIProvider(Provider):
                     provider=self.name,
                     error="all allowlisted launchers failed before process start",
                     metadata={
-                        "gate_id": approval.gate_id if approval else None,
+                        **self._approval_metadata(approval),
                         "launcher_failures": launcher_failures,
                     },
                 )
@@ -465,7 +533,7 @@ class CLIProvider(Provider):
             stderr = captured["stderr"]
             elapsed = round(time.monotonic() - started, 3)
             metadata = {
-                "gate_id": approval.gate_id if approval else None,
+                **self._approval_metadata(approval),
                 "executable": Path(path).name,
                 "args": list(self.args),
                 "timeout_seconds": timeout,
@@ -515,7 +583,7 @@ class CLIProvider(Provider):
                 provider=self.name,
                 error=f"provider process failed after start: {type(exc).__name__}",
                 metadata={
-                    "gate_id": approval.gate_id if approval else None,
+                    **self._approval_metadata(approval),
                     "launcher_failures": launcher_failures,
                 },
             )
@@ -528,9 +596,18 @@ class DeterministicProvider(Provider):
     """Offline provider that emits typed, reproducible workflow artifacts."""
 
     name = "deterministic"
+    capabilities = ProviderCapabilities(
+        execution_location=ExecutionLocation.LOCAL,
+        location_declared=True,
+    )
 
     def health(self) -> dict[str, Any]:
-        return {"provider": self.name, "healthy": True, "version": "1"}
+        return {
+            "provider": self.name,
+            "healthy": True,
+            "version": "1",
+            "capabilities": self.capabilities.to_dict(),
+        }
 
     @staticmethod
     def _verdict(item: WorkItem) -> str:
@@ -552,7 +629,7 @@ class DeterministicProvider(Provider):
         agent: Agent,
         item: WorkItem,
         context: dict[str, Any],
-        approval: ExecutionApproval | None = None,
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None = None,
     ) -> ProviderResult:
         verdict = self._verdict(item)
         evidence = {

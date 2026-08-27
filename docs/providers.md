@@ -34,6 +34,29 @@ Every enabled CLI provider uses:
 
 Provider output is untrusted and cannot grant final approval.
 
+## Execution location and capabilities
+
+Each configured provider declares `execution_location` as `LOCAL` or `REMOTE` and
+publishes provider-neutral capabilities for:
+
+- text generation and structured output;
+- tool calls;
+- model inventory and dynamic model switching;
+- model load/release lifecycle control.
+
+Location is a reviewed capability, never inferred from a provider ID or executable
+name. A legacy configuration without `execution_location` still loads for standard
+gated operation, but is treated as undeclared `REMOTE` and is ineligible for
+Autonomous Local authority. Model switching and load/release declarations require
+model-listing support. The shipped Ollama adapter is explicitly `LOCAL`; other
+shipped inference CLIs are `REMOTE`.
+
+Standard provider calls continue to require their exact one-use gate. An approved
+Autonomous Mission may instead present a typed, evidence-bound local authorization
+decision for its exact mission, provider, agent, task, revision, epoch, role/model,
+repository, and tool profile. This path is available only to explicitly local text
+generation and does not affect remote, external, or protected operations.
+
 ## Codex
 
 Official documentation: [Codex CLI](https://developers.openai.com/codex/cli/).

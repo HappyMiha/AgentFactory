@@ -6,7 +6,14 @@ import threading
 from typing import Any
 
 from .config import WORKSPACE, config_path_for_workspace, load_yaml
-from .models import Agent, ExecutionApproval, ProviderResult, WorkItem
+from .models import (
+    Agent,
+    ExecutionApproval,
+    ProviderCapabilities,
+    ProviderExecutionAuthorization,
+    ProviderResult,
+    WorkItem,
+)
 from .providers import CLIProvider, DeterministicProvider, Provider
 
 
@@ -67,6 +74,7 @@ class AgentRuntime:
                     *cfg.get("safety_rules", []),
                 ],
                 workspace=self.workspace,
+                capabilities=ProviderCapabilities.from_config(cfg),
             )
         return result
 
@@ -78,7 +86,7 @@ class AgentRuntime:
         agent: Agent,
         item: WorkItem,
         context: dict[str, Any],
-        approval: ExecutionApproval | None = None,
+        approval: ExecutionApproval | ProviderExecutionAuthorization | None = None,
         *,
         allow_fallback: bool = True,
         mode: ExecutionMode | str | None = None,
