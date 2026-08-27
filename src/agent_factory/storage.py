@@ -3235,6 +3235,143 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON autonomous_mission_commands
         BEGIN SELECT RAISE(ABORT, 'mission commands are immutable'); END;
     """),
+    (59, """
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_revisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            revision_number INTEGER NOT NULL CHECK(revision_number > 0),
+            parent_revision_id INTEGER REFERENCES autonomous_backlog_revisions(id),
+            origin TEXT NOT NULL CHECK(origin IN
+                ('HUMAN','AGENT_MATERIAL','TECHNICAL_SUBTASK')),
+            created_by TEXT NOT NULL,
+            rationale TEXT NOT NULL,
+            schema_version INTEGER NOT NULL CHECK(schema_version IN (1,2)),
+            source_sha256 TEXT NOT NULL,
+            snapshot_json TEXT NOT NULL,
+            revision_digest TEXT NOT NULL,
+            item_count INTEGER NOT NULL CHECK(item_count > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id,revision_number),
+            UNIQUE(mission_id,revision_digest)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_backlog_revision_parent
+            ON autonomous_backlog_revisions(mission_id,parent_revision_id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_items(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            revision_id INTEGER NOT NULL REFERENCES autonomous_backlog_revisions(id),
+            stable_id TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK(kind IN
+                ('epic','feature','story','task','bug','research','change')),
+            executable INTEGER NOT NULL CHECK(executable IN (0,1)),
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            parent_stable_id TEXT,
+            dependencies_json TEXT NOT NULL,
+            priority TEXT NOT NULL,
+            acceptance_criteria_json TEXT NOT NULL,
+            validation_method_json TEXT NOT NULL,
+            required_components_json TEXT NOT NULL,
+            required_infrastructure_json TEXT NOT NULL,
+            expected_artifacts_json TEXT NOT NULL,
+            definition_of_done_json TEXT NOT NULL,
+            assigned_role TEXT NOT NULL,
+            source_references_json TEXT NOT NULL,
+            review_notes_json TEXT NOT NULL,
+            labels_json TEXT NOT NULL,
+            item_digest TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(revision_id,stable_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_backlog_items_ready
+            ON autonomous_backlog_items(revision_id,executable,stable_id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_item_states(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            item_id INTEGER NOT NULL REFERENCES autonomous_backlog_items(id),
+            sequence INTEGER NOT NULL CHECK(sequence > 0),
+            status TEXT NOT NULL CHECK(status IN
+                ('DONE','RUNNING','READY','BLOCKED','FAILED','STALE','PROPOSED')),
+            attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count >= 0),
+            validation_result_json TEXT NOT NULL DEFAULT '{}',
+            git_commit_sha TEXT,
+            checkpoint_id INTEGER,
+            evidence_json TEXT NOT NULL DEFAULT '[]',
+            carried_from_state_id INTEGER REFERENCES autonomous_backlog_item_states(id),
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(item_id,sequence),
+            UNIQUE(item_id,command_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_backlog_item_state
+            ON autonomous_backlog_item_states(item_id,sequence DESC);
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_impacts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            revision_id INTEGER NOT NULL REFERENCES autonomous_backlog_revisions(id),
+            prior_revision_id INTEGER REFERENCES autonomous_backlog_revisions(id),
+            stable_id TEXT NOT NULL,
+            classification TEXT NOT NULL CHECK(classification IN
+                ('VALID','STALE','PARTIALLY_AFFECTED','REMOVED','NEW')),
+            changed_fields_json TEXT NOT NULL,
+            prior_item_digest TEXT,
+            current_item_digest TEXT,
+            rationale TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(revision_id,stable_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_commands(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            command_id TEXT NOT NULL UNIQUE,
+            command_type TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            result_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_backlog_commands_mission
+            ON autonomous_backlog_commands(mission_id,id);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_revisions_no_update
+        BEFORE UPDATE ON autonomous_backlog_revisions
+        BEGIN SELECT RAISE(ABORT, 'backlog revisions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_revisions_no_delete
+        BEFORE DELETE ON autonomous_backlog_revisions
+        BEGIN SELECT RAISE(ABORT, 'backlog revisions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_items_no_update
+        BEFORE UPDATE ON autonomous_backlog_items
+        BEGIN SELECT RAISE(ABORT, 'backlog revision items are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_items_no_delete
+        BEFORE DELETE ON autonomous_backlog_items
+        BEGIN SELECT RAISE(ABORT, 'backlog revision items are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_states_no_update
+        BEFORE UPDATE ON autonomous_backlog_item_states
+        BEGIN SELECT RAISE(ABORT, 'backlog item state evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_states_no_delete
+        BEFORE DELETE ON autonomous_backlog_item_states
+        BEGIN SELECT RAISE(ABORT, 'backlog item state evidence is immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_impacts_no_update
+        BEFORE UPDATE ON autonomous_backlog_impacts
+        BEGIN SELECT RAISE(ABORT, 'backlog impacts are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_impacts_no_delete
+        BEFORE DELETE ON autonomous_backlog_impacts
+        BEGIN SELECT RAISE(ABORT, 'backlog impacts are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_commands_no_update
+        BEFORE UPDATE ON autonomous_backlog_commands
+        BEGIN SELECT RAISE(ABORT, 'backlog commands are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_commands_no_delete
+        BEFORE DELETE ON autonomous_backlog_commands
+        BEGIN SELECT RAISE(ABORT, 'backlog commands are immutable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

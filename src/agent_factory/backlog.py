@@ -9,9 +9,13 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = frozenset({1, 2})
 STABLE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
-SUPPORTED_KINDS = frozenset({"epic", "story", "task", "bug", "research", "change"})
+SUPPORTED_KINDS = frozenset(
+    {"epic", "feature", "story", "task", "bug", "research", "change"}
+)
+EXECUTABLE_KINDS = frozenset({"task", "bug", "research", "change"})
 MARKER_PATTERN = re.compile(r"<!--\s*agent-factory-id:([^\s]+)\s*-->")
 
 
@@ -31,6 +35,26 @@ class ProposedItem:
     source_references: tuple[str, ...] = field(default_factory=tuple)
     review_notes: tuple[str, ...] = field(default_factory=tuple)
     labels: tuple[str, ...] = field(default_factory=tuple)
+    priority: str = "P2"
+    validation_method: tuple[str, ...] = field(default_factory=tuple)
+    required_components: tuple[str, ...] = field(default_factory=tuple)
+    required_infrastructure: tuple[str, ...] = field(default_factory=tuple)
+    expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
+    definition_of_done: tuple[str, ...] = field(default_factory=tuple)
+    assigned_role: str = "Developer"
+
+    @property
+    def executable(self) -> bool:
+        return self.kind in EXECUTABLE_KINDS
+
+    @property
+    def level(self) -> str:
+        if self.kind == "story" and "level:feature" in self.labels:
+            return "feature"
+        return self.kind
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
     def issue(self) -> dict[str, Any]:
         body = [
@@ -61,6 +85,30 @@ class ProposedItem:
                 "## Human review notes",
                 *[f"- {note}" for note in self.review_notes],
             ]
+        body += [
+            "",
+            "## Execution contract",
+            f"- Priority: `{self.priority}`",
+            f"- Assigned role: `{self.assigned_role}`",
+            "",
+            "### Validation method",
+            *[f"- {value}" for value in self.validation_method],
+            "",
+            "### Required components",
+            *([f"- {value}" for value in self.required_components] or ["- None declared"]),
+            "",
+            "### Required infrastructure",
+            *(
+                [f"- {value}" for value in self.required_infrastructure]
+                or ["- None declared"]
+            ),
+            "",
+            "### Expected artifacts",
+            *[f"- {value}" for value in self.expected_artifacts],
+            "",
+            "### Definition of Done",
+            *[f"- [ ] {value}" for value in self.definition_of_done],
+        ]
         labels = [f"type:{self.kind}", "status:triage", *self.labels]
         return {
             "stable_id": self.stable_id,
@@ -77,15 +125,67 @@ class BacklogProposal:
     source_sha256: str
     source_name: str
     items: tuple[ProposedItem, ...]
+    schema_version: int = 1
+    source_metadata: dict[str, Any] = field(default_factory=dict)
+    extension_schema: str | None = None
+    planning_contract: dict[str, Any] = field(default_factory=dict)
+    extensions: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+            raise BacklogManifestError(
+                f"Unsupported schema_version {self.schema_version!r}; expected one of "
+                f"{sorted(SUPPORTED_SCHEMA_VERSIONS)}"
+            )
+        if not self.source_path.strip() or not self.source_name.strip():
+            raise BacklogManifestError("Backlog source path and name are required")
+        if (
+            len(self.source_sha256) != 64
+            or any(value not in "0123456789abcdef" for value in self.source_sha256)
+        ):
+            raise BacklogManifestError("Backlog source_sha256 must be a lowercase digest")
+        if not self.items:
+            raise BacklogManifestError("Backlog proposal cannot be empty")
+        _validate_graph(self.items)
+        if self.schema_version >= 2:
+            for item in self.items:
+                if not item.executable:
+                    continue
+                required = {
+                    "priority": item.priority,
+                    "validation_method": item.validation_method,
+                    "required_components": item.required_components,
+                    "required_infrastructure": item.required_infrastructure,
+                    "expected_artifacts": item.expected_artifacts,
+                    "definition_of_done": item.definition_of_done,
+                    "assigned_role": item.assigned_role,
+                }
+                missing = sorted(name for name, value in required.items() if not value)
+                if missing:
+                    raise BacklogManifestError(
+                        f"Executable item {item.stable_id!r} is missing schema v2 "
+                        f"fields: {missing}"
+                    )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "schema_version": SCHEMA_VERSION,
+        source = dict(self.source_metadata)
+        source.setdefault("name", self.source_name)
+        document = {
+            "schema_version": self.schema_version,
             "source_path": self.source_path,
             "source_sha256": self.source_sha256,
             "source_name": self.source_name,
-            "items": [asdict(item) for item in self.items],
+            "source": source,
+            "items": [item.to_dict() for item in self.items],
         }
+        if self.extension_schema:
+            document["extension_schema"] = self.extension_schema
+        if self.planning_contract:
+            document["planning_contract"] = self.planning_contract
+        for key, value in self.extensions.items():
+            if key not in document:
+                document[key] = value
+        return document
 
 
 def _strings(value: Any, field_name: str, stable_id: str) -> tuple[str, ...]:
@@ -100,7 +200,9 @@ def _strings(value: Any, field_name: str, stable_id: str) -> tuple[str, ...]:
     return tuple(entry.strip() for entry in value)
 
 
-def _item(document: dict[str, Any], index: int) -> ProposedItem:
+def _item(
+    document: dict[str, Any], index: int, *, schema_version: int
+) -> ProposedItem:
     if not isinstance(document, dict):
         raise BacklogManifestError(f"Item at index {index} must be an object")
     stable_id = str(document.get("stable_id", "")).strip()
@@ -118,25 +220,96 @@ def _item(document: dict[str, Any], index: int) -> ProposedItem:
     description = str(document.get("description", "")).strip()
     if not title or not description:
         raise BacklogManifestError(f"Item {stable_id!r} requires title and description")
-    criteria = _strings(document.get("acceptance_criteria"), "acceptance_criteria", stable_id)
+    criteria = _strings(
+        document.get("acceptance_criteria"), "acceptance_criteria", stable_id
+    )
     if not criteria:
         raise BacklogManifestError(f"Item {stable_id!r} requires acceptance criteria")
     parent = document.get("parent_id")
     if parent is not None and not isinstance(parent, str):
         raise BacklogManifestError(f"Item {stable_id!r} parent_id must be a string or null")
+    dependencies = _strings(
+        document.get("dependencies", []), "dependencies", stable_id
+    )
+    labels = _strings(document.get("labels", []), "labels", stable_id)
+    executable = kind in EXECUTABLE_KINDS
+    raw_priority = str(document.get("priority", "")).strip()
+    label_priority = next(
+        (
+            label.split(":", 1)[1]
+            for label in labels
+            if label.casefold().startswith("priority:")
+        ),
+        "",
+    )
+    priority = raw_priority or label_priority.upper() or "P2"
+    validation_method = _strings(
+        document.get("validation_method", []), "validation_method", stable_id
+    )
+    required_components = _strings(
+        document.get("required_components", []), "required_components", stable_id
+    )
+    required_infrastructure = _strings(
+        document.get("required_infrastructure", []),
+        "required_infrastructure",
+        stable_id,
+    )
+    expected_artifacts = _strings(
+        document.get("expected_artifacts", []), "expected_artifacts", stable_id
+    )
+    definition_of_done = _strings(
+        document.get("definition_of_done", []), "definition_of_done", stable_id
+    )
+    assigned_role = str(document.get("assigned_role", "")).strip()
+    if schema_version >= 2 and executable:
+        required_fields = {
+            "priority": raw_priority,
+            "validation_method": validation_method,
+            "required_components": required_components,
+            "required_infrastructure": required_infrastructure,
+            "expected_artifacts": expected_artifacts,
+            "definition_of_done": definition_of_done,
+            "assigned_role": assigned_role,
+        }
+        missing = sorted(name for name, value in required_fields.items() if not value)
+        if "dependencies" not in document:
+            missing.append("dependencies")
+        if missing:
+            raise BacklogManifestError(
+                f"Executable item {stable_id!r} is missing schema v2 fields: "
+                f"{sorted(missing)}"
+            )
+    validation_method = validation_method or (
+        "Verify every acceptance criterion with deterministic evidence.",
+    )
+    expected_artifacts = expected_artifacts or (
+        "reviewable delivery artifact",
+        "acceptance evidence",
+    )
+    definition_of_done = definition_of_done or criteria
+    assigned_role = assigned_role or (
+        "Developer" if executable else "Backlog Planner"
+    )
     return ProposedItem(
         stable_id=stable_id,
         kind=kind,
         title=title,
         description=description,
         parent_id=parent.strip() if isinstance(parent, str) and parent.strip() else None,
-        dependencies=_strings(document.get("dependencies", []), "dependencies", stable_id),
+        dependencies=dependencies,
         acceptance_criteria=criteria,
         source_references=_strings(
             document.get("source_references", []), "source_references", stable_id
         ),
         review_notes=_strings(document.get("review_notes", []), "review_notes", stable_id),
-        labels=_strings(document.get("labels", []), "labels", stable_id),
+        labels=labels,
+        priority=priority.upper(),
+        validation_method=validation_method,
+        required_components=required_components,
+        required_infrastructure=required_infrastructure,
+        expected_artifacts=expected_artifacts,
+        definition_of_done=definition_of_done,
+        assigned_role=assigned_role,
     )
 
 
@@ -190,14 +363,19 @@ def load_backlog(path: Path) -> BacklogProposal:
         raise BacklogManifestError(f"Backlog manifest is not valid UTF-8 JSON: {exc}") from exc
     if not isinstance(document, dict):
         raise BacklogManifestError("Backlog manifest root must be an object")
-    if document.get("schema_version") != SCHEMA_VERSION:
+    schema_version = document.get("schema_version")
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise BacklogManifestError(
-            f"Unsupported schema_version {document.get('schema_version')!r}; expected {SCHEMA_VERSION}"
+            f"Unsupported schema_version {schema_version!r}; expected one of "
+            f"{sorted(SUPPORTED_SCHEMA_VERSIONS)}"
         )
     raw_items = document.get("items")
     if not isinstance(raw_items, list) or not raw_items:
         raise BacklogManifestError("Backlog manifest must contain a non-empty items list")
-    items = tuple(_item(value, index) for index, value in enumerate(raw_items))
+    items = tuple(
+        _item(value, index, schema_version=int(schema_version))
+        for index, value in enumerate(raw_items)
+    )
     _validate_graph(items)
     source = document.get("source", {})
     if source is None:
@@ -205,11 +383,36 @@ def load_backlog(path: Path) -> BacklogProposal:
     if not isinstance(source, dict):
         raise BacklogManifestError("source must be an object when present")
     source_name = str(source.get("name") or path.stem).strip()
+    known_root_fields = {
+        "schema_version",
+        "source_path",
+        "source_sha256",
+        "source_name",
+        "source",
+        "extension_schema",
+        "planning_contract",
+        "items",
+    }
     return BacklogProposal(
         source_path=path.resolve().as_posix(),
         source_sha256=hashlib.sha256(raw).hexdigest(),
         source_name=source_name,
         items=items,
+        schema_version=int(schema_version),
+        source_metadata=dict(source),
+        extension_schema=(
+            str(document["extension_schema"]).strip()
+            if document.get("extension_schema")
+            else None
+        ),
+        planning_contract=(
+            dict(document.get("planning_contract", {}))
+            if isinstance(document.get("planning_contract", {}), dict)
+            else {}
+        ),
+        extensions={
+            key: value for key, value in document.items() if key not in known_root_fields
+        },
     )
 
 

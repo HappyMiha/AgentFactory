@@ -41,7 +41,7 @@ def _slug(value: str, fallback: str) -> str:
 def _json_items(document: Any, source_name: str) -> list[dict[str, Any]]:
     """Normalize common export shapes into the validated backlog schema."""
     result: list[dict[str, Any]] = []
-    counters = {"epic": 0, "story": 0, "task": 0}
+    counters = {"epic": 0, "feature": 0, "story": 0, "task": 0}
 
     def visit(value: Any, parent: str | None = None, inherited_kind: str = "task") -> None:
         if isinstance(value, list):
@@ -51,7 +51,13 @@ def _json_items(document: Any, source_name: str) -> list[dict[str, Any]]:
         if not isinstance(value, dict):
             return
         raw_kind = str(value.get("kind") or value.get("type") or value.get("level") or inherited_kind).lower()
-        kind = "epic" if raw_kind in {"epic", "initiative", "feature", "project"} else ("story" if raw_kind in {"story", "user_story", "requirement"} else "task")
+        kind = (
+            "epic"
+            if raw_kind in {"epic", "initiative", "feature", "project"}
+            else "story"
+            if raw_kind in {"story", "user_story", "requirement"}
+            else "task"
+        )
         title = str(value.get("title") or value.get("name") or value.get("summary") or value.get("text") or "").strip()
         children = value.get("children") or value.get("subtasks") or value.get("tasks") or value.get("stories")
         if title:
@@ -95,7 +101,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
         # Accept manifests exported without the schema marker; validation still
         # applies before anything can be imported.
         normalized = dict(document)
-        normalized["schema_version"] = 1
+        normalized.setdefault("schema_version", 1)
         normalized.setdefault("source", {"name": source_name})
         with tempfile.NamedTemporaryFile(suffix=".json", mode="w", encoding="utf-8", delete=False) as handle:
             temporary = Path(handle.name)
@@ -104,7 +110,17 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
             proposal = load_backlog(temporary)
         finally:
             temporary.unlink(missing_ok=True)
-        return BacklogProposal("uploaded://" + source_name, digest, source_name, proposal.items)
+        return BacklogProposal(
+            "uploaded://" + source_name,
+            digest,
+            source_name,
+            proposal.items,
+            proposal.schema_version,
+            proposal.source_metadata,
+            proposal.extension_schema,
+            proposal.planning_contract,
+            proposal.extensions,
+        )
     if isinstance(document, (dict, list)):
         normalized_items = _json_items(document, source_name)
         if normalized_items:
@@ -116,7 +132,17 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
                 proposal = load_backlog(temporary)
             finally:
                 temporary.unlink(missing_ok=True)
-            return BacklogProposal("uploaded://" + source_name, digest, source_name, proposal.items)
+            return BacklogProposal(
+                "uploaded://" + source_name,
+                digest,
+                source_name,
+                proposal.items,
+                proposal.schema_version,
+                proposal.source_metadata,
+                proposal.extension_schema,
+                proposal.planning_contract,
+                proposal.extensions,
+            )
     if isinstance(document, dict) and document.get("schema_version") == 1:
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as handle:
             temporary = Path(handle.name)
@@ -125,7 +151,17 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
             proposal = load_backlog(temporary)
         finally:
             temporary.unlink(missing_ok=True)
-        return BacklogProposal("uploaded://" + source_name, digest, source_name, proposal.items)
+        return BacklogProposal(
+            "uploaded://" + source_name,
+            digest,
+            source_name,
+            proposal.items,
+            proposal.schema_version,
+            proposal.source_metadata,
+            proposal.extension_schema,
+            proposal.planning_contract,
+            proposal.extensions,
+        )
 
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     headings = [(len(match.group(1)), match.group(2).strip()) for line in lines if (match := re.match(r"^(#{1,6})\s+(.+)$", line))]

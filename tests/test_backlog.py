@@ -124,6 +124,65 @@ class BacklogManifestTests(unittest.TestCase):
             self.assertEqual(first, second)
             self.assertEqual(len(first), 2)
 
+    def test_schema_v2_requires_and_round_trips_execution_contract(self):
+        document = {
+            "schema_version": 2,
+            "extension_schema": "agentfactory.rich-backlog/v1",
+            "source": {"name": "Executable specification"},
+            "planning_contract": {"execution_rule": "tasks execute"},
+            "items": [
+                {
+                    "stable_id": "AFM:T1",
+                    "kind": "task",
+                    "title": "Implement durable behavior",
+                    "description": "Create the implementation and its evidence.",
+                    "dependencies": [],
+                    "priority": "P0",
+                    "acceptance_criteria": ["The behavior is durable"],
+                    "validation_method": ["Run deterministic restart tests"],
+                    "required_components": ["domain.py"],
+                    "required_infrastructure": ["SQLite"],
+                    "expected_artifacts": ["Implementation", "Test evidence"],
+                    "definition_of_done": ["Restart tests pass"],
+                    "assigned_role": "Developer",
+                    "labels": ["priority:p0"],
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            proposal = load_backlog(self.write(tmp, document))
+            item = proposal.items[0]
+            self.assertEqual(proposal.schema_version, 2)
+            self.assertTrue(item.executable)
+            self.assertEqual(item.priority, "P0")
+            self.assertEqual(item.assigned_role, "Developer")
+            self.assertEqual(item.required_infrastructure, ("SQLite",))
+            exported = Path(tmp) / "exported.json"
+            exported.write_text(json.dumps(proposal.to_dict()), encoding="utf-8")
+            reloaded = load_backlog(exported)
+            self.assertEqual(reloaded.items, proposal.items)
+            self.assertEqual(reloaded.planning_contract, proposal.planning_contract)
+
+            malformed = dict(document)
+            malformed["items"] = [dict(document["items"][0])]
+            malformed["items"][0].pop("assigned_role")
+            with self.assertRaisesRegex(
+                BacklogManifestError, "missing schema v2 fields"
+            ):
+                load_backlog(self.write(tmp, malformed))
+
+    def test_schema_v1_remains_compatible_with_safe_execution_defaults(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proposal = load_backlog(self.write(tmp))
+            executable = proposal.items[1]
+            self.assertEqual(proposal.schema_version, 1)
+            self.assertEqual(executable.assigned_role, "Developer")
+            self.assertTrue(executable.validation_method)
+            self.assertEqual(
+                executable.definition_of_done,
+                executable.acceptance_criteria,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

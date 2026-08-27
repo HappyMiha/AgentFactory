@@ -503,6 +503,119 @@ class AutonomousMissionService:
             target_disposition=target_disposition,
         )
 
+    def set_active_backlog_revision(
+        self,
+        mission_id: int,
+        revision_id: int,
+        *,
+        actor: str,
+        command_id: str,
+        expected_version: int,
+        reason: str,
+    ) -> AutonomousMission:
+        """Atomically bind an authorized immutable revision to the mission."""
+
+        actor = self._required(actor, "Actor")
+        command_id = self._required(command_id, "Command id")
+        reason = self._required(reason, "Activation reason")
+        revision = self.storage.db.execute(
+            """SELECT id,mission_id,revision_number,revision_digest
+                 FROM autonomous_backlog_revisions WHERE id=?""",
+            (revision_id,),
+        ).fetchone()
+        if not revision or int(revision["mission_id"]) != mission_id:
+            raise ValueError("Backlog revision does not belong to this mission")
+        request = {
+            "type": "set_active_backlog_revision",
+            "mission_id": mission_id,
+            "revision_id": revision_id,
+            "revision_number": int(revision["revision_number"]),
+            "revision_digest": str(revision["revision_digest"]),
+            "actor": actor,
+            "expected_version": expected_version,
+            "reason": reason,
+        }
+        request_digest = self._digest(request)
+        replay = self._command_replay(command_id, request_digest)
+        if replay:
+            return replay
+        with self.storage.db:
+            self.storage._begin_immediate()
+            replay = self._command_replay(command_id, request_digest)
+            if replay:
+                return replay
+            row = self.storage.db.execute(
+                "SELECT * FROM autonomous_missions WHERE id=?", (mission_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown Autonomous Mission: {mission_id}")
+            actual_version = int(row["version"])
+            if actual_version != expected_version:
+                raise MissionVersionConflictError(
+                    mission_id, expected_version, actual_version
+                )
+            if MissionPhase(row["phase"]) is MissionPhase.COMPLETED:
+                raise ValueError("Completed Autonomous Missions are immutable")
+            if self._optional_id(row["active_backlog_revision_id"]) == revision_id:
+                raise ValueError("Backlog revision is already active")
+            result_version = actual_version + 1
+            self._insert_state_version(
+                mission_id=mission_id,
+                version=result_version,
+                phase=MissionPhase(row["phase"]),
+                disposition=MissionDisposition(row["disposition"]),
+                configuration_json=str(row["configuration_json"]),
+                configuration_digest=str(row["configuration_digest"]),
+                active_backlog_revision_id=revision_id,
+                active_execution_epoch_id=self._optional_id(
+                    row["active_execution_epoch_id"]
+                ),
+                current_checkpoint_id=self._optional_id(row["current_checkpoint_id"]),
+                actor=actor,
+                command_id=command_id,
+                reason=reason,
+            )
+            updated = self.storage.db.execute(
+                """UPDATE autonomous_missions
+                      SET active_backlog_revision_id=?,version=?,
+                          updated_at=CURRENT_TIMESTAMP
+                    WHERE id=? AND version=?""",
+                (revision_id, result_version, mission_id, actual_version),
+            )
+            if updated.rowcount != 1:
+                raise MissionVersionConflictError(
+                    mission_id, expected_version, actual_version + 1
+                )
+            self._insert_command(
+                mission_id=mission_id,
+                command_id=command_id,
+                command_type="set_active_backlog_revision",
+                actor=actor,
+                expected_version=expected_version,
+                request_digest=request_digest,
+                result_version=result_version,
+            )
+            self.storage._event(
+                "autonomous_mission.backlog_revision_activated",
+                "autonomous_mission",
+                mission_id,
+                {
+                    "mission_id": mission_id,
+                    "project_id": int(row["project_id"]),
+                    "actor": actor,
+                    "command_id": command_id,
+                    "reason": reason,
+                    "previous_revision_id": self._optional_id(
+                        row["active_backlog_revision_id"]
+                    ),
+                    "revision_id": revision_id,
+                    "revision_number": int(revision["revision_number"]),
+                    "revision_digest": str(revision["revision_digest"]),
+                    "version": result_version,
+                },
+            )
+        return self.get(mission_id)
+
     def _transition(
         self,
         *,

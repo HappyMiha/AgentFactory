@@ -450,10 +450,15 @@ class AgentFactoryService:
             (str(task_id),),
         ).fetchone()
         labels = item.inputs.get("labels", [])
-        priority = next(
-            (str(label).split(":", 1)[1] for label in labels if str(label).startswith("priority:")),
+        priority = item.inputs.get("priority") or next(
+            (
+                str(label).split(":", 1)[1]
+                for label in labels
+                if str(label).startswith("priority:")
+            ),
             None,
         )
+        priority = str(priority).lower() if priority is not None else None
         return WorkItemView(
             id=task_id,
             project_id=item.project_id,
@@ -1580,17 +1585,28 @@ class AgentFactoryService:
                         inputs={
                             "stable_id": item.stable_id,
                             "parent_stable_id": item.parent_id,
+                            "parent_task_id": (
+                                known[item.parent_id] if item.parent_id else None
+                            ),
                             "source_path": proposal.source_path,
                             "source_sha256": proposal.source_sha256,
+                            "backlog_schema_version": proposal.schema_version,
                             "source_references": list(item.source_references),
                             "review_notes": list(item.review_notes),
                             "labels": list(item.labels),
+                            "priority": item.priority,
+                            "validation_method": list(item.validation_method),
+                            "required_components": list(item.required_components),
+                            "required_infrastructure": list(
+                                item.required_infrastructure
+                            ),
+                            "expected_artifacts": list(item.expected_artifacts),
+                            "definition_of_done": list(item.definition_of_done),
+                            "assigned_role": item.assigned_role,
+                            "backlog_level": item.level,
                         },
                         acceptance_criteria=list(item.acceptance_criteria),
-                        expected_outputs=[
-                            "reviewable delivery artifact",
-                            "acceptance evidence",
-                        ],
+                        expected_outputs=list(item.expected_artifacts),
                     )
                 )
                 known[item.stable_id] = task_id

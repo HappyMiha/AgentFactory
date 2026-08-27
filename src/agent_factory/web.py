@@ -485,7 +485,10 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         manifest_name = f"{proposal.source_sha256}.json"
         manifest = upload_dir / manifest_name
         manifest.write_text(json.dumps(proposal.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
-        counts = {kind: sum(item.kind == kind for item in proposal.items) for kind in ("epic", "story", "task")}
+        counts = {
+            kind: sum(item.level == kind for item in proposal.items)
+            for kind in ("epic", "feature", "story", "task")
+        }
         return UploadedBacklogResponse(
             source_path=manifest.relative_to(workspace).as_posix(),
             source_name=source_name,
