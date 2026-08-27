@@ -4,6 +4,8 @@ This roadmap converts the remaining requirements in *Agent Factory Technical Spe
 
 The importable source of the issue list is [`examples/development-backlog.json`](../examples/development-backlog.json). Stable IDs in that file are permanent. Titles, descriptions, priorities, dependencies, and implementation choices may evolve without changing those IDs. Completion claims and evidence are tracked separately in the [2026-08-11 implementation audit](implementation-audit-2026-08-11.md); the manifest describes required outcomes and must not be treated as proof that they exist.
 
+The next proposed product extension is **Autonomous Mission Mode**. Its repository-grounded architecture review is in [`docs/autonomous-mission-mode-review.md`](autonomous-mission-mode-review.md), and its separate validator-compatible planning backlog is [`examples/autonomous-mission-backlog.json`](../examples/autonomous-mission-backlog.json). That backlog contains 48 proposed executable tasks (`AF-AMM-001` through `AF-AMM-048`); none is complete merely because the earlier AF-001 through AF-057 roadmap is complete. Its rich extension fields are planning evidence and should not be imported into a live project expecting full fidelity until AF-AMM-002 adds their runtime schema.
+
 ## Current baseline
 
 | Capability | Assessment | Roadmap treatment |

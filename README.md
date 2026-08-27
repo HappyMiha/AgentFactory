@@ -102,6 +102,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Docker | Profile boundary | The image runs as a non-root user with persistent `/data`; external provider CLIs are intentionally not bundled and deployment profiles document supported topology paths. |
 | HTTP model APIs | Provider extension | DeepSeek, OpenRouter, Mistral, Groq, and similar services remain optional provider extensions; the guarded CLI/runtime boundary is the supported core contract. |
 | Local Control Center | Complete (R0.2) | Loopback dashboard, guarded operations, Founder authority, audit/settings, GitHub dry-run preview, Windows launch, and end-to-end qualification are complete. |
+| Autonomous Mission Mode | Proposed | The reviewed architecture and 48-task implementation backlog are defined; no autonomous authorization or execution path is implemented yet. |
 
 ## How it works
 
@@ -292,6 +293,7 @@ See:
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
 - [Development roadmap](docs/development-roadmap.md)
+- [Autonomous Mission Mode review](docs/autonomous-mission-mode-review.md) and [implementation backlog](examples/autonomous-mission-backlog.json)
 - [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
 - [Providers](docs/providers.md)
