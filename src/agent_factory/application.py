@@ -103,7 +103,6 @@ class ProviderView:
     id: str
     type: str
     enabled: bool
-    standby: bool
     executable: str
     execution_enabled: bool
     status: str
@@ -661,7 +660,6 @@ class AgentFactoryService:
                     id=provider_id,
                     type=str(item.get("type", "unknown")),
                     enabled=enabled,
-                    standby=bool(item.get("standby", False)),
                     executable=str(item.get("executable", "")),
                     execution_enabled=bool(item.get("allow_execution", False)),
                     status=status,

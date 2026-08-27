@@ -519,7 +519,7 @@ class WebHostTests(unittest.TestCase):
                         "project_id": project_id,
                         "task_id": task_id,
                         "run_id": run_id,
-                        "agent_id": "coding-worker-gemini",
+                        "agent_id": "coding-worker-codex",
                         "provider": "deterministic",
                     },
                 ).json()
@@ -570,15 +570,6 @@ class WebHostTests(unittest.TestCase):
                 )
                 self.assertIn("Policy Reviewer", codex["allowed_roles"])
                 self.assertIn("health_details", codex)
-                gemini = next(
-                    item for item in providers["items"] if item["id"] == "gemini"
-                )
-                claude = next(
-                    item for item in providers["items"] if item["id"] == "claude"
-                )
-                self.assertFalse(gemini["standby"])
-                self.assertTrue(claude["standby"])
-                self.assertEqual(gemini["allowed_roles"], ["Implementation Worker"])
 
                 reviews = client.get(
                     "/api/reviews", params={"run_id": run_id, "limit": 200}

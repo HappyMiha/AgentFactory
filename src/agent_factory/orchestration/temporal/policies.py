@@ -4,15 +4,12 @@ from datetime import timedelta
 
 from temporalio.common import RetryPolicy
 
-from ...token_failover import token_quota_exhausted
-
 
 NON_RETRYABLE_ERROR_TYPES = (
     "CONFIGURATION",
     "CANCELLED",
     "InvalidConfiguration",
     "UnsupportedAgent",
-    "TOKEN_EXHAUSTED",
 )
 
 
@@ -47,18 +44,12 @@ def coding_policy() -> RetryPolicy:
 
 
 def policy_for_provider(provider: str) -> RetryPolicy:
-    return (
-        coding_policy()
-        if provider in {"codex", "claude", "gemini", "hermes"}
-        else llm_policy()
-    )
+    return coding_policy() if provider in {"codex", "claude", "hermes"} else llm_policy()
 
 
 def classify_error(message: str, metadata: dict | None = None) -> tuple[str, bool]:
     text = message.casefold()
     metadata = metadata or {}
-    if token_quota_exhausted(message, metadata):
-        return "TOKEN_EXHAUSTED", False
     if metadata.get("blocked") or any(
         token in text
         for token in (

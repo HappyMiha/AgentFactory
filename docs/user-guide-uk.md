@@ -1,8 +1,8 @@
-# N0DRA: повний посібник оператора
+# Agent Factory: повний посібник оператора
 
 Версія посібника: 18 серпня 2026 року. Команди перевірено на Windows PowerShell у поточному репозиторії.
 
-N0DRA координує локальну AI-розробку, зберігає проєкти, backlog, запуски, артефакти, рев'ю та аудит у SQLite, а Temporal забезпечує довговічне виконання. Команда й Python-пакет досі називаються `agent-factory` та `agent_factory` для сумісності. Реальна мутація коду, provider-виклик, GitHub-операція і фінальне прийняття залишаються окремими контрольованими діями.
+Agent Factory координує спеціалізованих AI-агентів, зберігає проєкти, backlog, запуски, артефакти, рев'ю та аудит у SQLite, а Temporal забезпечує довговічне виконання. Реальна мутація коду, provider-виклик, GitHub-операція і фінальне прийняття залишаються окремими контрольованими діями.
 
 ## 1. Що вже працює і де межі
 
@@ -159,7 +159,7 @@ Worker навмисно працює на host, щоб бачити PowerShell, 
 
 ```powershell
 & .\.venv\Scripts\agent-factory.exe providers status
-& .\.venv\Scripts\agent-factory.exe providers request gemini --agent coding-worker-gemini --task-id 1
+& .\.venv\Scripts\agent-factory.exe providers request codex --agent coding-worker-codex --task-id 1
 & .\.venv\Scripts\agent-factory.exe providers gates
 & .\.venv\Scripts\agent-factory.exe providers approve 1 --note "One bounded implementation proposal"
 & .\.venv\Scripts\agent-factory.exe providers invoke 1
@@ -174,8 +174,6 @@ Worker навмисно працює на host, щоб бачити PowerShell, 
 ```
 
 Gate споживається однією логічною спробою навіть при crash; для retry потрібен новий gate. Provider approval не є final workflow approval.
-
-У стандартному coding route Codex є оркестратором і не створює додаткових задач для worker-ів. Gemini виконує implementation першим і закріплений за `gemini-3.1-pro-preview` з високим рівнем reasoning; якщо preview недоступний акаунту, CLI використовує `gemini-2.5-pro`, але headless-запуск N0DRA не погоджує перехід на Flash/Lite. Claude залишається standby та активується лише після явного вичерпання token/account quota Gemini. Після такого самого сигналу від Claude implementation продовжує Codex. Звичайна помилка коду, timeout, відсутній executable або тимчасовий HTTP 429 не перемикають кодера. Перемикання фіксується в audit trail і діє до завершення поточного durable run.
 
 ## 8. Самостійний запуск з агентною верифікацією
 

@@ -1,4 +1,4 @@
-"""Command-line interface for N0DRA (the agent-factory compatibility command)."""
+"""Command-line interface for the standalone Agent Factory."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _version() -> str:
 def parser() -> argparse.ArgumentParser:
     command = argparse.ArgumentParser(
         prog="agent-factory",
-        description="N0DRA coordinates local AI coding work with an inspectable trail and human approval.",
+        description="Provider-neutral orchestration for traceable, human-approved agent delivery.",
     )
     command.add_argument("--version", action="version", version=f"%(prog)s {_version()}")
     command.add_argument(
@@ -46,7 +46,7 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("init", help="Create the generic example project and work item.")
     sub.add_parser("bootstrap", help="Alias for init.")
     sub.add_parser("demo", help="Run the offline deterministic delivery demo.")
-    web = sub.add_parser("web", help="Start the loopback-only N0DRA control room.")
+    web = sub.add_parser("web", help="Start the loopback-only Local Control Center API.")
     web.add_argument("--host", default="127.0.0.1")
     web.add_argument("--port", default=8765, type=int)
     web.add_argument(
@@ -137,7 +137,7 @@ def parser() -> argparse.ArgumentParser:
     task = sub.add_parser("task").add_subparsers(dest="action", required=True)
     claim = task.add_parser("claim")
     claim.add_argument("task_id", type=int)
-    claim.add_argument("--agent", default="coding-worker-gemini")
+    claim.add_argument("--agent", default="coding-worker-codex")
     run_task = task.add_parser("run")
     run_task.add_argument("task_id", type=int)
     run_task.add_argument("--workflow", default="delivery")
@@ -330,14 +330,14 @@ def _execute(args: argparse.Namespace) -> int:
             from .web import create_app, validate_loopback_host
         except ImportError as exc:
             raise RuntimeError(
-                'N0DRA web dependencies are missing; install with pip install -e ".[web]"'
+                'Local Control Center dependencies are missing; install with pip install -e ".[web]"'
             ) from exc
         host = validate_loopback_host(args.host)
         if args.port < 1 or args.port > 65_535:
             raise ValueError("--port must be between 1 and 65535")
         if args.open_browser:
             url = _control_center_url(host, args.port)
-            print(f"Opening the N0DRA control room at {url}")
+            print(f"Opening Local Control Center at {url}")
             _schedule_browser_open(url)
         uvicorn.run(create_app(workspace, db_path), host=host, port=args.port)
         return 0

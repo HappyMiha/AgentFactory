@@ -6,7 +6,6 @@ from typing import Any
 
 
 class FailureClass(StrEnum):
-    TOKEN_EXHAUSTED = "TOKEN_EXHAUSTED"
     TRANSIENT = "TRANSIENT"
     CONFIGURATION = "CONFIGURATION"
     AGENT_ERROR = "AGENT_ERROR"

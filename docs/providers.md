@@ -1,15 +1,15 @@
-# N0DRA providers
+# Providers
 
-Providers are replaceable command-line backends. Roles and workflows use stable IDs, so changing a model does not quietly rewrite what the job is allowed to do.
+Providers are replaceable execution backends. Agent roles and workflows refer to stable provider IDs, while executable paths, arguments, timeouts, and role allowlists live in reviewed configuration.
 
 ## Shipped providers
 
 | ID | Adapter | Default posture | Primary uses |
 |---|---|---|---|
 | `deterministic` | Built-in | Offline simulation | CI, demonstrations, workflow contract development. |
-| `codex` | Codex CLI | Read-only sandbox | Orchestration, validation, and final coding fallback. |
-| `claude` | Claude Code | Standby plan mode | Implementation fallback only after Gemini token-quota exhaustion. |
-| `gemini` | Gemini CLI | Primary, pinned Pro plan mode | First high-reasoning implementation worker. |
+| `codex` | Codex CLI | Read-only sandbox | Implementation and validation artifacts. |
+| `claude` | Claude Code | Plan mode | Policy review, planning, implementation proposals, validation. |
+| `gemini` | Gemini CLI | Plan mode | Independent planning, implementation proposals, validation. |
 | `antigravity` | Antigravity CLI | Plan mode plus OS sandbox | Non-interactive implementation proposals, planning, and independent review. |
 | `ollama` | Ollama CLI | Local model, no tools | Private local artifacts and economical review. |
 | `openclaw` | OpenClaw CLI | Health-only | Version discovery; execution is intentionally disabled. |
@@ -106,19 +106,13 @@ npm.cmd install -g @google/gemini-cli
 & "$env:APPDATA\npm\gemini.cmd"
 ```
 
-Complete interactive authentication once. The factory then pins its primary coder to the
-highest-capability Pro profile recognized by the supported CLI and uses the non-interactive
-plan contract:
+Complete interactive authentication once. The factory then uses the non-interactive plan contract:
 
 ```text
-gemini --model gemini-3.1-pro-preview --prompt "" --output-format text --approval-mode plan
+gemini --prompt "" --output-format text --approval-mode plan
 ```
 
-Gemini CLI 0.53.1 configures this model with `HIGH` thinking. If preview access is not
-available, the CLI resolves it to `gemini-2.5-pro`; headless N0DRA execution never consents
-to a further Flash/Lite downgrade. Instead, an exhausted Pro quota is returned to the
-bounded coding failover and Claude takes over; Codex follows only if Claude also exhausts
-its coding quota. The actual task prompt travels over standard input.
+The actual task prompt travels over standard input.
 
 ## Antigravity CLI
 

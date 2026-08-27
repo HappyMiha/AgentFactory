@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agent-factory-orchestrator"
 version = "0.1.0"
-description = "N0DRA: a local, human-controlled switchboard for AI coding work"
+description = "A provider-neutral, human-controlled orchestration factory for AI agents"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
-keywords = ["agents", "orchestration", "workflow", "ai", "coding", "local-first"]
+keywords = ["agents", "orchestration", "workflow", "ai", "automation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",

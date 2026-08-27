@@ -1,4 +1,4 @@
-# N0DRA workflows
+# Workflows
 
 A workflow is a reviewed sequence of specialist stages connected by explicit dependencies. It converts a work item into artifacts and evidence, then stops for a human decision.
 
@@ -17,23 +17,11 @@ flowchart LR
 | Stage | Agent | Passing verdicts | Purpose |
 |---|---|---|---|
 | `policy-precheck` | `policy-guardian` | `ALIGNED`, `CONDITIONALLY_ALIGNED` | Confirm policy consistency and testable outcome before delivery. |
-| `implementation` | `coding-worker-gemini` → standby `coding-worker-claude` → `coding-worker-codex` | `COMPLETE` | Produce the smallest independently reviewable implementation artifact. |
+| `implementation` | `coding-worker-codex` | `COMPLETE` | Produce the smallest independently reviewable implementation artifact. |
 | `validation` | rotating `Proxy Reviewer` pool | `PASS` | Map evidence to all acceptance criteria and disclose concerns using a model other than the implementation producer. |
 | `policy-postcheck` | rotating `Policy Reviewer` pool | `ALIGNED`, `CONDITIONALLY_ALIGNED` | Compare delivered evidence to scope using a model other than the implementation and validation producers. |
 
 `NOT_ALIGNED` and `FAIL` block progression. A blocked or malformed run does not reach final approval.
-
-Codex owns orchestration and workers cannot create or delegate additional tasks.
-Gemini is the primary coding worker. Claude is absent from ordinary planning and
-policy routes and is activated for coding only when Gemini explicitly reports
-token/account quota exhaustion. Codex becomes the coding worker only after
-Claude reports the same condition. The chain does not advance for code errors,
-timeouts, missing executables, or a bare transient HTTP 429. Exhausted providers
-are remembered for the remainder of the durable run and each handoff is audited.
-The primary Gemini command is pinned to `gemini-3.1-pro-preview`, whose CLI
-profile uses high reasoning; accounts without preview access resolve to
-`gemini-2.5-pro`, while headless execution does not approve a Flash/Lite
-downgrade.
 
 Reviewer selection is durable and model-aware. The router excludes every agent and
 model that produced the reviewed artifacts, then chooses the least-used eligible
@@ -105,21 +93,17 @@ Defaults live in `agent_factory/defaults/workflows.json`. A workflow contains gu
   },
   "stages": [
     {
-      "id": "implementation",
-      "name": "Implementation proposal",
-      "agent": "coding-worker-gemini",
-      "token_exhaustion_fallback_agents": [
-        "coding-worker-claude",
-        "coding-worker-codex"
-      ],
-      "artifact": "implementation.json",
-      "depends_on": ["policy-precheck"],
+      "id": "policy-precheck",
+      "name": "Policy and scope pre-check",
+      "agent": "policy-guardian",
+      "artifact": "policy_precheck.json",
+      "depends_on": [],
       "acceptance_criteria": [
-        "The proposal addresses the approved task",
-        "The result is independently reviewable"
+        "The task is consistent with configured policy",
+        "The expected outcome is explicit and testable"
       ],
       "contract": {
-        "allowed_verdicts": ["COMPLETE"]
+        "allowed_verdicts": ["ALIGNED", "CONDITIONALLY_ALIGNED", "NOT_ALIGNED"]
       }
     }
   ]
@@ -154,9 +138,6 @@ These checks make the file order deterministic and prevent a delivery path from 
 Every stage agent must exist and be enabled. Its role must also be accepted by its
 provider. A stage with `reviewer_pool` must also declare ancestor stages in
 `review_of`; the configured default agent must belong to the pool.
-`token_exhaustion_fallback_agents` must contain unique enabled Implementation
-Worker IDs, cannot repeat the primary agent, and cannot be attached to a review
-stage.
 
 ## Agent replacement
 
@@ -164,9 +145,9 @@ Provider selection is independent of workflow structure:
 
 ```bash
 agent-factory agents list
-agent-factory agents replace coding-worker-gemini --provider ollama --model local:qwen2.5-coder:7b
-agent-factory agents disable coding-worker-gemini
-agent-factory agents enable coding-worker-gemini
+agent-factory agents replace coding-worker-codex --provider ollama --model local:qwen2.5-coder:7b
+agent-factory agents disable coding-worker-claude
+agent-factory agents enable coding-worker-claude
 ```
 
 Replacing a provider after an execution gate was approved invalidates that gate's scope. Request a new gate.

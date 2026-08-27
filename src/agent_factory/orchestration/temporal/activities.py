@@ -20,11 +20,6 @@ from ...registry import AgentRegistry
 from ...reviewers import ReviewerRouter, ReviewSubject
 from ...runtime import AgentRuntime, ExecutionMode
 from ...storage import SQLiteStorage
-from ...token_failover import (
-    configured_coding_chain,
-    exhausted_providers_for_run,
-    record_exhausted_providers,
-)
 from ...workflow_contracts import PASSING_VERDICTS, StageContractError, parse_stage_verdict, validate_workflow
 from .models import ActivityResult, AgentFactoryJobInput, DemoWorkflowInput, StageActivityInput
 from .policies import classify_error
@@ -189,9 +184,6 @@ class AgentFactoryActivities:
             candidate_ids=list(reviewer_pool),
             subjects=subjects,
             required_role=placeholder.role,
-            excluded_provider_ids=exhausted_providers_for_run(
-                storage, request.job.run_id
-            ),
         )
 
     @staticmethod
@@ -215,7 +207,6 @@ class AgentFactoryActivities:
         mode: str,
         job: AgentFactoryJobInput,
         stage_label: str,
-        token_exhaustion_fallback_agents: tuple[Any, ...] = (),
     ) -> ProviderResult:
         cancel_event = threading.Event()
         execution = asyncio.create_task(
@@ -227,7 +218,6 @@ class AgentFactoryActivities:
                 None,
                 mode=ExecutionMode(mode),
                 cancel_event=cancel_event,
-                token_exhaustion_fallback_agents=token_exhaustion_fallback_agents,
             )
         )
         try:
@@ -301,24 +291,6 @@ class AgentFactoryActivities:
             registry = AgentRegistry(workspace=workspace)
             runtime = AgentRuntime(workspace=workspace)
             agent = self._stage_agent(storage, registry, request)
-            coding_chain = (
-                configured_coding_chain(stage, registry.list())
-                if stage.get("token_exhaustion_fallback_agents")
-                else (agent,)
-            )
-            exhausted_providers = exhausted_providers_for_run(storage, job.run_id)
-            available_chain = tuple(
-                candidate
-                for candidate in coding_chain
-                if candidate.provider.casefold() not in exhausted_providers
-            )
-            if not available_chain:
-                raise ApplicationError(
-                    f"No coding worker with token capacity remains for stage {stage['id']}",
-                    type="TOKEN_EXHAUSTED",
-                    non_retryable=True,
-                )
-            agent = available_chain[0]
             task = storage.get_task(job.task_id)
             child = WorkItem(
                 id=task.id,
@@ -347,15 +319,6 @@ class AgentFactoryActivities:
                 job.mode,
                 job,
                 stage_label,
-                token_exhaustion_fallback_agents=available_chain[1:],
-            )
-            record_exhausted_providers(
-                storage,
-                run_id=job.run_id,
-                stage_id=stage_label,
-                exhausted=provider_result.metadata.get(
-                    "token_exhausted_providers", []
-                ),
             )
             if not provider_result.ok:
                 message = provider_result.error or "Agent provider failed"
@@ -369,11 +332,6 @@ class AgentFactoryActivities:
                     type=failure_class,
                     non_retryable=not retryable,
                 )
-
-            selected_agent_id = str(
-                provider_result.metadata.get("selected_agent_id", agent.id)
-            )
-            agent = registry.get(selected_agent_id)
 
             passed = True
             failure_class: str | None = None

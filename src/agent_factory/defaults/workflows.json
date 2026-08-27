@@ -3,11 +3,6 @@
     {
       "id": "delivery",
       "name": "Review-gated delivery",
-      "orchestration": {
-        "provider": "codex",
-        "worker_task_creation": false,
-        "max_delegation_depth": 1
-      },
       "guardrails": {
         "precheck_stage": "policy-precheck",
         "postcheck_stage": "policy-postcheck",
@@ -31,11 +26,7 @@
         {
           "id": "implementation",
           "name": "Implementation proposal",
-          "agent": "coding-worker-gemini",
-          "token_exhaustion_fallback_agents": [
-            "coding-worker-claude",
-            "coding-worker-codex"
-          ],
+          "agent": "coding-worker-codex",
           "artifact": "implementation.json",
           "depends_on": ["policy-precheck"],
           "acceptance_criteria": [
@@ -52,6 +43,9 @@
           "agent": "validation-agent",
           "reviewer_pool": [
             "validation-agent",
+            "proxy-reviewer-claude",
+            "proxy-reviewer-gemini",
+            "proxy-reviewer-antigravity",
             "proxy-reviewer-ollama"
           ],
           "review_of": ["implementation"],
@@ -71,6 +65,8 @@
           "agent": "policy-guardian",
           "reviewer_pool": [
             "policy-guardian",
+            "policy-guardian-codex",
+            "policy-guardian-gemini",
             "policy-guardian-ollama"
           ],
           "review_of": ["implementation", "validation"],

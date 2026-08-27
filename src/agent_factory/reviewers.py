@@ -31,7 +31,6 @@ class ReviewerRouter:
         candidate_ids: list[str],
         subjects: list[ReviewSubject],
         required_role: str,
-        excluded_provider_ids: set[str] | None = None,
     ) -> Agent:
         if not candidate_ids:
             raise ValueError(f"Review stage {stage} has an empty reviewer pool")
@@ -40,17 +39,12 @@ class ReviewerRouter:
 
         excluded_models = {subject.producer.model_identity.casefold() for subject in subjects}
         producer_ids = {subject.producer.id for subject in subjects}
-        excluded_providers = {
-            value.casefold() for value in (excluded_provider_ids or set())
-        }
         eligible: list[Agent] = []
         excluded: dict[str, str] = {}
         for agent_id in dict.fromkeys(candidate_ids):
             agent = self.registry.get(agent_id)
             if not agent.enabled:
                 excluded[agent.id] = "disabled"
-            elif agent.provider.casefold() in excluded_providers:
-                excluded[agent.id] = "provider token quota exhausted for this run"
             elif agent.role != required_role:
                 excluded[agent.id] = f"role is {agent.role!r}, expected {required_role!r}"
             elif agent.id in producer_ids:

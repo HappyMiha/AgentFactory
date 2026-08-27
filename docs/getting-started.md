@@ -1,6 +1,6 @@
 # Getting started
 
-This guide takes a new operator from an empty machine to a safe offline N0DRA run, then to one explicitly approved provider call. The installed command is still named `agent-factory` for compatibility.
+This guide takes a new operator from an empty machine to a deterministic workflow, then to one explicitly approved provider call.
 
 ## 1. Requirements
 
@@ -16,7 +16,7 @@ Optional:
 - one or more supported provider CLIs;
 - Docker Desktop, Docker Engine, or a compatible container runtime for the simulation image.
 
-Provider subscriptions and API billing are external to N0DRA.
+Provider subscriptions and API billing are external to Agent Factory.
 
 ## 2. Install on Windows
 
@@ -29,7 +29,7 @@ winget install --id Git.Git --exact --source winget
 winget install --id Python.Python.3.12 --exact --source winget
 ```
 
-Close and reopen PowerShell so the newly installed commands are visible, then verify and install N0DRA. Replace `<repository-url>` with the clone URL supplied by the publisher.
+Close and reopen PowerShell so the newly installed commands are visible, then verify and install Agent Factory. Replace `<repository-url>` with the clone URL supplied by the publisher.
 
 ```powershell
 git --version

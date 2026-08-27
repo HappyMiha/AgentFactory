@@ -111,30 +111,6 @@ def validate_workflow(workflow: dict[str, Any]) -> tuple[dict[str, Any], ...]:
                 raise WorkflowContractError(
                     f"Stage {stage_id} can only review ancestor stages: {not_dependencies}"
                 )
-        quota_fallbacks = stage.get("token_exhaustion_fallback_agents")
-        if quota_fallbacks is not None:
-            if (
-                not isinstance(quota_fallbacks, list)
-                or not quota_fallbacks
-                or not all(
-                    isinstance(value, str) and value.strip()
-                    for value in quota_fallbacks
-                )
-                or len(set(quota_fallbacks)) != len(quota_fallbacks)
-            ):
-                raise WorkflowContractError(
-                    f"Stage {stage_id} token_exhaustion_fallback_agents must "
-                    "contain unique agent ids"
-                )
-            if stage["agent"] in quota_fallbacks:
-                raise WorkflowContractError(
-                    f"Stage {stage_id} cannot repeat its primary agent in the "
-                    "token-exhaustion fallback chain"
-                )
-            if reviewer_pool is not None:
-                raise WorkflowContractError(
-                    f"Review stage {stage_id} cannot use coding token failover"
-                )
         contract = stage.get("contract")
         if not isinstance(contract, dict):
             raise WorkflowContractError(f"Stage {stage_id} requires a typed contract")

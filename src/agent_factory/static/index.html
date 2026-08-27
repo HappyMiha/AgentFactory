@@ -4,161 +4,72 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#050806">
-  <meta name="description" content="N0DRA is a local, human-controlled switchboard for AI coding work.">
-  <title>N0DRA // Local Control Room</title>
+  <title>Agent Factory · Local Control Center</title>
   <link rel="stylesheet" href="/assets/styles.css">
-  <script src="/assets/app.js?v=n0dra-1" defer></script>
+  <script src="/assets/app.js?v=temporal-durable-1" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to dashboard</a>
   <div class="shell">
     <aside class="sidebar" aria-label="Primary navigation">
-      <a class="brand" href="#overview" aria-label="N0DRA overview">
-        <span class="brand-mark" aria-hidden="true">N0</span>
-        <span><strong>N0DRA</strong><small>Local Control Center</small></span>
+      <a class="brand" href="#overview" aria-label="Agent Factory overview">
+        <span class="brand-mark" aria-hidden="true">AF</span>
+        <span><strong>Agent Factory</strong><small>Local Control Center</small></span>
       </a>
-
-      <div class="side-ascii" aria-hidden="true">
-<pre>  _  _  ___  ___  ___    _
- | \| |/ _ \|   \| _ \  /_\
- | .` | (_) | |) |   / / _ \
- |_|\_|\___/|___/|_|_\/_/ \_\</pre>
-        <span>PRIVATE NODE // LOOPBACK</span>
-      </div>
-
       <nav>
-        <a class="active" href="#overview"><b>00</b> Home</a>
-        <a href="#monitor"><b>01</b> Health</a>
-        <a href="#work"><b>02</b> Backlog</a>
-        <a href="#runs"><b>03</b> Runs</a>
-        <a href="#executions"><b>04</b> Kill switch</a>
-        <a href="#agents"><b>05</b> Crew</a>
-        <a href="#reviews"><b>06</b> Reviews</a>
-        <a href="#audit"><b>07</b> Logs</a>
+        <a class="active" href="#overview">Overview</a>
+        <a href="#monitor">System monitor</a>
+        <a href="#work">Work items</a>
+        <a href="#runs">Workflow runs</a>
+        <a href="#executions">Execution control</a>
+        <a href="#agents">Agents &amp; providers</a>
+        <a href="#reviews">Reviews &amp; approvals</a>
+        <a href="#audit">Audit &amp; settings</a>
       </nav>
-
-      <div class="coding-line" aria-label="Default coding line">
-        <span>CODING LINE</span>
-        <ol>
-          <li class="route-live"><b>1</b> Gemini 3.1 Pro</li>
-          <li><b>2</b> Claude Sonnet 5</li>
-          <li><b>3</b> Codex</li>
-        </ol>
-        <small>quota exhaustion only</small>
-      </div>
-
-      <div class="connection"><span id="connection-dot"></span><span id="connection-text">Connecting...</span></div>
+      <div class="connection"><span id="connection-dot"></span><span id="connection-text">Connecting…</span></div>
     </aside>
-
     <main id="main">
       <header class="topbar">
-        <div><p class="eyebrow">N0DRA // local node</p><h1>Control room</h1></div>
-        <div class="top-actions"><span id="updated">Waiting for local data</span><button id="refresh" type="button">[ REFRESH ]</button></div>
+        <div><p class="eyebrow">Development operations</p><h1>Delivery overview</h1></div>
+        <div class="top-actions"><span id="updated">Waiting for data</span><button id="refresh" type="button">Refresh</button></div>
       </header>
-
       <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-
-      <section class="boot-hero" aria-labelledby="boot-title">
-        <div class="hero-copy">
-          <p class="terminal-kicker">BOOT: OK // HUMAN AUTHORITY: ARMED</p>
-          <h2 id="boot-title">One task in.<br>One coder at a time.</h2>
-          <p>Codex coordinates. Gemini codes first at full strength. Claude takes over only when Gemini runs out of quota; Codex codes only when both are empty.</p>
-          <div class="hero-route" aria-label="Coding fallback route">
-            <span class="active"><small>PRIMARY</small>GEMINI 3.1 PRO</span>
-            <i aria-hidden="true">&gt;</i>
-            <span><small>STANDBY</small>CLAUDE SONNET 5</span>
-            <i aria-hidden="true">&gt;</i>
-            <span><small>LAST LINE</small>CODEX</span>
-          </div>
-          <p class="hero-rule">Ordinary errors stop here. They do not quietly burn the next account.</p>
-        </div>
-        <div class="hero-art">
-          <img src="/assets/n0dra-terminal-hero.png" alt="Pixel-art hacker workstation with a green phosphor CRT">
-          <span>CAM_01 // LOCAL OPERATOR</span>
-        </div>
-      </section>
-
       <section id="overview" aria-labelledby="overview-title">
-        <div class="section-heading"><div><p class="eyebrow">Live local state</p><h2 id="overview-title">What needs attention</h2></div><p>No external mutation happens from this screen without a separate confirmation.</p></div>
+        <div class="section-heading"><div><p class="eyebrow">Current state</p><h2 id="overview-title">Work pulse</h2></div><p>Live local state. No external mutations.</p></div>
         <div id="metrics" class="metrics" aria-live="polite">
           <div class="metric loading"></div><div class="metric loading"></div><div class="metric loading"></div>
         </div>
       </section>
-
-      <section id="executions" class="panel execution-panel" aria-labelledby="executions-title">
-        <div class="panel-head"><div><p class="eyebrow">Emergency desk</p><h2 id="executions-title">Execution control</h2></div><span id="execution-summary">Loading active executions...</span></div>
-        <div id="execution-list" class="execution-list loading-block">Loading sessions, runs, and leases...</div>
-      </section>
-
+      <section id="executions" class="panel execution-panel" aria-labelledby="executions-title"><div class="panel-head"><div><p class="eyebrow">Control plane</p><h2 id="executions-title">Execution control</h2></div><span id="execution-summary">Loading active executions…</span></div><div id="execution-list" class="execution-list loading-block">Loading sessions, runs, and leases…</div></section>
       <section id="monitor" class="panel monitor-panel" aria-labelledby="monitor-title">
-        <div class="panel-head"><div><p class="eyebrow">Preflight</p><h2 id="monitor-title">System health</h2></div><span id="monitor-checked">Not checked</span></div>
-        <div id="monitor-summary" class="monitor-summary loading-block">Checking the local node...</div>
+        <div class="panel-head"><div><p class="eyebrow">Readiness</p><h2 id="monitor-title">System monitor</h2></div><span id="monitor-checked">Not checked</span></div>
+        <div id="monitor-summary" class="monitor-summary loading-block">Checking system readiness…</div>
         <div id="monitor-checks" class="monitor-grid"></div>
         <div id="monitor-blockers" class="monitor-blockers"></div>
       </section>
-
       <div class="dashboard-grid">
-        <section id="runs" class="panel" aria-labelledby="runs-title">
-          <div class="panel-head"><div><p class="eyebrow">Recent signal</p><h2 id="runs-title">Workflow runs</h2></div><a href="#work">Open backlog &gt;</a></div>
-          <div id="run-list" class="list loading-block">Loading workflow runs...</div>
-        </section>
-
-        <section id="reviews" class="panel" aria-labelledby="approval-title">
-          <div class="panel-head"><div><p class="eyebrow">Your call</p><h2 id="approval-title">Waiting for a human</h2></div></div>
-          <div id="approval-list" class="list loading-block">Loading approvals...</div>
-        </section>
-
+        <section id="runs" class="panel" aria-labelledby="runs-title"><div class="panel-head"><div><p class="eyebrow">Execution</p><h2 id="runs-title">Recent runs</h2></div><a href="#work">View work</a></div><div id="run-list" class="list loading-block">Loading workflow runs…</div></section>
+        <section id="reviews" class="panel" aria-labelledby="approval-title"><div class="panel-head"><div><p class="eyebrow">Human authority</p><h2 id="approval-title">Pending decisions</h2></div></div><div id="approval-list" class="list loading-block">Loading approvals…</div></section>
         <section id="agents" class="panel wide" aria-labelledby="provider-title">
-          <div class="panel-head"><div><p class="eyebrow">Coding crew</p><h2 id="provider-title">Agents, providers, and review route</h2></div><p class="panel-copy">Changes affect future assignments only.</p></div>
-          <div id="provider-list" class="provider-grid loading-block">Checking provider lines...</div>
+          <div class="panel-head"><div><p class="eyebrow">Runtime</p><h2 id="provider-title">Agents, providers &amp; reviewer routing</h2></div><p class="panel-copy">Changes affect future assignments only.</p></div>
+          <div id="provider-list" class="provider-grid loading-block">Checking providers…</div>
           <div class="runtime-grid">
-            <section aria-labelledby="agent-catalog-title">
-              <div class="subhead"><h3 id="agent-catalog-title">Agent roster</h3><span>Enable, disable, or replace a compatible provider</span></div>
-              <div id="agent-list" class="agent-list loading-block">Loading agents...</div>
-            </section>
-            <section aria-labelledby="routing-title">
-              <div class="subhead"><h3 id="routing-title">Independent review trail</h3><span>The reviewer model must differ from every producer</span></div>
-              <div id="routing-list" class="routing-list loading-block">Loading reviewer history...</div>
-            </section>
+            <section aria-labelledby="agent-catalog-title"><div class="subhead"><h3 id="agent-catalog-title">Agent catalog</h3><span>Enable, disable, or replace a compatible provider</span></div><div id="agent-list" class="agent-list loading-block">Loading agents…</div></section>
+            <section aria-labelledby="routing-title"><div class="subhead"><h3 id="routing-title">Independent reviewer evidence</h3><span>Selected model must differ from every producer</span></div><div id="routing-list" class="routing-list loading-block">Loading reviewer history…</div></section>
           </div>
         </section>
-
-        <section class="panel wide" aria-labelledby="failures-title">
-          <div class="panel-head"><div><p class="eyebrow">Broken packets</p><h2 id="failures-title">Recent failures</h2></div></div>
-          <div id="failure-list" class="list loading-block">Checking the audit stream...</div>
-        </section>
+        <section class="panel wide" aria-labelledby="failures-title"><div class="panel-head"><div><p class="eyebrow">Attention</p><h2 id="failures-title">Recent failures</h2></div></div><div id="failure-list" class="list loading-block">Checking the audit stream…</div></section>
       </div>
-
       <section id="work" class="panel work-panel" aria-labelledby="work-title">
         <div class="panel-head">
-          <div><p class="eyebrow">The actual work</p><h2 id="work-title">Backlog</h2></div>
+          <div><p class="eyebrow">Backlog</p><h2 id="work-title">Work item controls</h2></div>
           <p class="panel-copy">Explicit confirmation is required for every local action.</p>
         </div>
-
-        <details class="backlog-import">
-          <summary>[+] Turn a specification into a draft backlog</summary>
-          <form id="spec-upload-form">
-            <label>Project name<input name="project_name" required placeholder="Small Windows tool"></label>
-            <label>Specification file<input name="specification" type="file" required accept="*/*"></label>
-            <button type="submit">Analyze file</button>
-          </form>
-          <div id="spec-analysis" class="preview-result"><div class="empty">Upload a document. N0DRA will propose a reviewable plan; it will not import anything yet.</div></div>
-        </details>
-
-        <details class="backlog-import">
-          <summary>[+] Import a backlog already in this workspace</summary>
-          <form id="backlog-import-form">
-            <label>Project name<input name="project_name" required placeholder="N0DRA field test"></label>
-            <label>Workspace-relative manifest<input name="backlog_path" required value="examples/backlog.json"></label>
-            <button type="submit">Import backlog</button>
-          </form>
-          <button id="archive-all-work-items" class="danger" type="button">Archive all active work items</button>
-        </details>
-
+        <details class="backlog-import"><summary>Upload technical specification</summary><form id="spec-upload-form"><label>Project name<input name="project_name" required placeholder="Windows Mini Game"></label><label>Specification file<input name="specification" type="file" required accept="*/*"></label><button type="submit">Send to suitable agent</button></form><div id="spec-analysis" class="preview-result"><div class="empty">Upload any supported document. The suitable planning agent will extract requirements, propose epics, tasks, subtasks, and show a reviewable plan before import.</div></div></details>
+        <details class="backlog-import"><summary>Import a workspace backlog</summary><form id="backlog-import-form"><label>Project name<input name="project_name" required placeholder="Local project"></label><label>Workspace-relative manifest<input name="backlog_path" required value="examples/development-backlog.json"></label><button type="submit">Import backlog</button></form><button id="archive-all-work-items" class="danger" type="button">Archive all work items</button></details>
         <form id="work-filters" class="filter-grid" aria-label="Filter work items">
           <label>Project<select id="filter-project" name="project_id"><option value="">All projects</option></select></label>
-          <label>Type<input id="filter-kind" name="kind" placeholder="task"></label>
+          <label>Type<input id="filter-kind" name="kind" placeholder="feature"></label>
           <label>Status<input id="filter-status" name="status" placeholder="pending"></label>
           <label>Priority<input id="filter-priority" name="priority" placeholder="high"></label>
           <label>Dependency<input id="filter-dependency" name="dependency" inputmode="numeric" placeholder="Task ID"></label>
@@ -166,15 +77,13 @@
           <button type="submit">Apply filters</button>
           <button id="clear-filters" class="secondary" type="button">Clear</button>
         </form>
-
         <div class="work-grid">
           <div><p id="work-count" class="result-count">Loading work items...</p><div id="work-list" class="work-list loading-block">Loading backlog...</div></div>
-          <aside id="work-detail" class="detail-pane" aria-live="polite"><div class="empty">Choose a work item to see its contract, evidence, and controls.</div></aside>
+          <aside id="work-detail" class="detail-pane" aria-live="polite"><div class="empty">Select a work item to inspect its delivery contract</div></aside>
         </div>
       </section>
-
       <section id="audit" class="panel operations-panel" aria-labelledby="audit-title">
-        <div class="panel-head"><div><p class="eyebrow">Black box recorder</p><h2 id="audit-title">Logs, settings, and GitHub preview</h2></div><p class="panel-copy">Search local evidence and preview external intent without applying it.</p></div>
+        <div class="panel-head"><div><p class="eyebrow">Traceability</p><h2 id="audit-title">Audit, settings &amp; GitHub preview</h2></div><p class="panel-copy">Search local evidence and preview external intent without applying it.</p></div>
         <form id="audit-filters" class="filter-grid audit-filters" aria-label="Filter audit events">
           <label>From<input name="from_time" type="datetime-local"></label>
           <label>To<input name="to_time" type="datetime-local"></label>
@@ -185,31 +94,24 @@
           <label>Provider<input name="provider" placeholder="Provider ID"></label>
           <label>Action<input name="action" placeholder="workflow"></label>
           <label>Outcome<select name="outcome"><option value="">All outcomes</option><option>success</option><option>failure</option><option>pending</option><option>info</option></select></label>
-          <button type="submit">Search logs</button><button id="clear-audit" class="secondary" type="button">Clear</button>
+          <button type="submit">Search audit</button><button id="clear-audit" class="secondary" type="button">Clear</button>
         </form>
-        <p id="audit-count" class="result-count">Loading audit trail...</p>
-        <div id="audit-list" class="audit-list loading-block">Loading correlated events...</div>
-
+        <p id="audit-count" class="result-count">Loading audit trail...</p><div id="audit-list" class="audit-list loading-block">Loading correlated events…</div>
         <div class="operations-grid">
-          <section aria-labelledby="settings-title">
-            <div class="subhead"><h3 id="settings-title">Safe runtime knobs</h3><span>Numeric values only; every version is audited</span></div>
-            <div id="settings-list" class="settings-list loading-block">Loading settings...</div>
-          </section>
-          <section aria-labelledby="github-title">
-            <div class="subhead"><h3 id="github-title">GitHub dry-run</h3><span>Preview only; apply has its own gate</span></div>
+          <section aria-labelledby="settings-title"><div class="subhead"><h3 id="settings-title">Allowlisted runtime settings</h3><span>Numeric values only; every version is audited</span></div><div id="settings-list" class="settings-list loading-block">Loading settings…</div></section>
+          <section aria-labelledby="github-title"><div class="subhead"><h3 id="github-title">GitHub sync preview</h3><span>Dry-run only; apply requires the separate existing gate</span></div>
             <form id="github-preview-form" class="github-form">
               <label>Repository<input name="repo" required placeholder="owner/repository" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"></label>
-              <label>Workspace-relative backlog path<input name="backlog_path" required value="examples/backlog.json"></label>
+              <label>Workspace-relative backlog path<input name="backlog_path" required value="examples/development-backlog.json"></label>
               <label>Existing issue snapshot (JSON array)<textarea name="existing_issues" rows="5">[]</textarea></label>
-              <button type="submit">Build dry-run preview</button>
+              <button type="submit">Create dry-run preview</button>
             </form>
-            <div id="github-preview" class="preview-result"><div class="empty">No GitHub preview yet.</div></div>
+            <div id="github-preview" class="preview-result"><div class="empty">No GitHub preview created</div></div>
           </section>
         </div>
       </section>
     </main>
   </div>
-
   <dialog id="confirm-dialog" aria-labelledby="confirm-title">
     <form method="dialog" class="dialog-card">
       <p class="eyebrow">Guarded command</p>
@@ -219,17 +121,15 @@
       <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="confirm-action" value="confirm">Confirm command</button></div>
     </form>
   </dialog>
-
   <dialog id="run-dialog" aria-labelledby="run-detail-title">
     <div class="dialog-card run-card">
       <div class="panel-head"><div><p class="eyebrow">Workflow evidence</p><h2 id="run-detail-title">Run detail</h2></div><button id="close-run" class="secondary" type="button">Close</button></div>
       <div id="run-detail" class="run-detail" aria-live="polite"></div>
     </div>
   </dialog>
-
   <dialog id="founder-dialog" aria-labelledby="founder-title">
     <div class="dialog-card founder-card">
-      <div class="panel-head"><div><p class="eyebrow">Human authority</p><h2 id="founder-title">Founder decision</h2></div><button id="close-founder" class="secondary" type="button">Close</button></div>
+      <div class="panel-head"><div><p class="eyebrow">Separate human authority</p><h2 id="founder-title">Founder decision</h2></div><button id="close-founder" class="secondary" type="button">Close</button></div>
       <div id="founder-detail" class="founder-detail" aria-live="polite"></div>
       <label>Optional decision note<textarea id="founder-note" rows="3" placeholder="Record rationale, conditions, or rejection reason"></textarea></label>
       <div class="dialog-actions"><button id="founder-reject" class="danger" type="button">Reject evidence</button><button id="founder-approve" type="button">Approve evidence</button></div>

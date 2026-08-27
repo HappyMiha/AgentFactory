@@ -170,32 +170,6 @@ class WorkflowGraphContractTests(unittest.TestCase):
         with self.assertRaisesRegex(WorkflowContractError, "ancestor"):
             validate_workflow(invalid_default)
 
-    def test_token_failover_chain_is_unique_and_separate_from_reviewers(self):
-        implementation = stage("implementation", "claude", ["policy-precheck"])
-        implementation["token_exhaustion_fallback_agents"] = ["gemini", "codex"]
-        valid = workflow(
-            [
-                stage("policy-precheck", "policy-guardian"),
-                implementation,
-                stage("policy-postcheck", "policy-guardian", ["implementation"]),
-            ]
-        )
-        self.assertEqual(len(validate_workflow(valid)), 3)
-
-        implementation["token_exhaustion_fallback_agents"] = ["gemini", "gemini"]
-        with self.assertRaisesRegex(WorkflowContractError, "unique agent ids"):
-            validate_workflow(valid)
-
-        implementation["token_exhaustion_fallback_agents"] = ["claude", "gemini"]
-        with self.assertRaisesRegex(WorkflowContractError, "cannot repeat"):
-            validate_workflow(valid)
-
-        implementation["token_exhaustion_fallback_agents"] = ["gemini", "codex"]
-        implementation["reviewer_pool"] = ["claude"]
-        implementation["review_of"] = ["policy-precheck"]
-        with self.assertRaisesRegex(WorkflowContractError, "cannot use coding"):
-            validate_workflow(valid)
-
 
 class WorkflowStageContractTests(unittest.TestCase):
     def run_with(self, provider):
