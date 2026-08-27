@@ -271,6 +271,7 @@ class AutonomousMissionService:
         specification_metadata: dict[str, Any] | None = None,
         intake_id: int | None = None,
         blueprint_id: int | None = None,
+        project_id: int | None = None,
     ) -> AutonomousMission:
         name = self._required(name, "Mission name")
         mission_owner = self._required(mission_owner, "Mission owner")
@@ -282,7 +283,8 @@ class AutonomousMissionService:
         config = configuration or AutonomousMissionConfiguration()
         config_json = self._json(config.to_dict())
         config_digest = hashlib.sha256(config_json.encode("utf-8")).hexdigest()
-        specification = initial_specification.strip()
+        raw_specification = str(initial_specification)
+        specification = raw_specification if raw_specification.strip() else ""
         specification_digest = (
             hashlib.sha256(specification.encode("utf-8")).hexdigest()
             if specification
@@ -303,6 +305,7 @@ class AutonomousMissionService:
             "specification_metadata": metadata,
             "intake_id": intake_id,
             "blueprint_id": blueprint_id,
+            "project_id": project_id,
         }
         request_digest = self._digest(request)
         replay = self._command_replay(command_id, request_digest)
@@ -314,15 +317,43 @@ class AutonomousMissionService:
             replay = self._command_replay(command_id, request_digest)
             if replay:
                 return replay
-            project = self.storage.db.execute(
-                "INSERT INTO projects(name,description) VALUES(?,?)",
-                (
-                    name,
-                    description.strip()
-                    or f"Autonomous Mission project container for {key}",
-                ),
-            )
-            project_id = int(project.lastrowid)
+            created_project = project_id is None
+            if created_project:
+                project = self.storage.db.execute(
+                    "INSERT INTO projects(name,description) VALUES(?,?)",
+                    (
+                        name,
+                        description.strip()
+                        or f"Autonomous Mission project container for {key}",
+                    ),
+                )
+                resolved_project_id = int(project.lastrowid)
+            else:
+                project = self.storage.db.execute(
+                    "SELECT id FROM projects WHERE id=?", (project_id,)
+                ).fetchone()
+                if not project:
+                    raise KeyError(f"Unknown project: {project_id}")
+                if self.storage.db.execute(
+                    "SELECT 1 FROM autonomous_missions WHERE project_id=?",
+                    (project_id,),
+                ).fetchone():
+                    raise ValueError("Project already belongs to an Autonomous Mission")
+                resolved_project_id = int(project_id)
+            if intake_id is not None:
+                intake = self.storage.db.execute(
+                    "SELECT project_id,mission_owner FROM mission_intakes WHERE id=?",
+                    (intake_id,),
+                ).fetchone()
+                if not intake:
+                    raise KeyError(f"Unknown mission intake: {intake_id}")
+                if (
+                    int(intake["project_id"]) != resolved_project_id
+                    or str(intake["mission_owner"]) != mission_owner
+                ):
+                    raise ValueError(
+                        "Mission intake must match the project and mission owner"
+                    )
             cursor = self.storage.db.execute(
                 """INSERT INTO autonomous_missions(
                        identity,mission_key,project_id,intake_id,blueprint_id,name,
@@ -333,7 +364,7 @@ class AutonomousMissionService:
                 (
                     self.storage._identity("autonomous-mission"),
                     key,
-                    project_id,
+                    resolved_project_id,
                     intake_id,
                     blueprint_id,
                     name,
@@ -372,9 +403,9 @@ class AutonomousMissionService:
                 result_version=1,
             )
             self.storage._event(
-                "project.created",
+                "project.created" if created_project else "autonomous_mission.project_linked",
                 "project",
-                project_id,
+                resolved_project_id,
                 {
                     "mission_id": mission_id,
                     "name": name,
@@ -388,7 +419,7 @@ class AutonomousMissionService:
                 mission_id,
                 {
                     "mission_id": mission_id,
-                    "project_id": project_id,
+                    "project_id": resolved_project_id,
                     "mission_key": key,
                     "actor": actor,
                     "command_id": command_id,
@@ -539,11 +570,25 @@ class AutonomousMissionService:
         replay = self._command_replay(command_id, request_digest)
         if replay:
             return replay
+        if self.storage.db.execute(
+            "SELECT 1 FROM autonomous_backlog_revision_invalidations WHERE revision_id=?",
+            (revision_id,),
+        ).fetchone():
+            raise PermissionError(
+                "An invalidated backlog revision cannot become active"
+            )
         with self.storage.db:
             self.storage._begin_immediate()
             replay = self._command_replay(command_id, request_digest)
             if replay:
                 return replay
+            if self.storage.db.execute(
+                "SELECT 1 FROM autonomous_backlog_revision_invalidations WHERE revision_id=?",
+                (revision_id,),
+            ).fetchone():
+                raise PermissionError(
+                    "An invalidated backlog revision cannot become active"
+                )
             row = self.storage.db.execute(
                 "SELECT * FROM autonomous_missions WHERE id=?", (mission_id,)
             ).fetchone()

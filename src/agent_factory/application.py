@@ -8,9 +8,15 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .autonomous_mission import AutonomousMissionConfiguration
 from .backlog import BacklogProposal, diff_issues, issue_operations, load_backlog
 from .config import config_path, config_path_for_workspace, load_yaml
 from .github import GitHubClient
+from .mission_intake import (
+    AutonomousMissionIntakeResult,
+    AutonomousMissionIntakeService,
+    AutonomousSpecificationSource,
+)
 from .models import Budget, ExecutionApproval, ProviderResult, WorkItem
 from .registry import AgentRegistry
 from .runtime import AgentRuntime, ExecutionMode
@@ -396,6 +402,123 @@ class AgentFactoryService:
         self.workspace = (workspace or storage.path.parent.parent).resolve()
         self.registry = registry or AgentRegistry(workspace=self.workspace)
         self.runtime = runtime or AgentRuntime(workspace=self.workspace)
+
+    def create_autonomous_mission_from_text(
+        self,
+        *,
+        name: str,
+        mission_owner: str,
+        specification: str,
+        actor: str,
+        command_id: str,
+        configuration: AutonomousMissionConfiguration | None = None,
+        mission_key: str | None = None,
+        description: str = "",
+        source_name: str = "specification.txt",
+        media_type: str | None = None,
+        provenance: str = "human-paste",
+    ) -> AutonomousMissionIntakeResult:
+        return AutonomousMissionIntakeService(self.storage).create_from_text(
+            name=name,
+            mission_owner=mission_owner,
+            specification=specification,
+            actor=actor,
+            command_id=command_id,
+            configuration=configuration,
+            mission_key=mission_key,
+            description=description,
+            source_name=source_name,
+            media_type=media_type,
+            provenance=provenance,
+        )
+
+    def update_autonomous_mission_specification(
+        self,
+        mission_id: int,
+        *,
+        specification: str,
+        actor: str,
+        command_id: str,
+        reason: str,
+        expected_mission_version: int,
+        expected_source_version: int,
+        source_name: str = "specification.txt",
+        media_type: str | None = None,
+        provenance: str = "human-edit",
+    ) -> AutonomousSpecificationSource:
+        return AutonomousMissionIntakeService(self.storage).update_from_text(
+            mission_id,
+            specification=specification,
+            actor=actor,
+            command_id=command_id,
+            reason=reason,
+            expected_mission_version=expected_mission_version,
+            expected_source_version=expected_source_version,
+            source_name=source_name,
+            media_type=media_type,
+            provenance=provenance,
+        )
+
+    def create_autonomous_mission_from_upload(
+        self,
+        *,
+        name: str,
+        mission_owner: str,
+        raw: bytes,
+        source_name: str,
+        actor: str,
+        command_id: str,
+        configuration: AutonomousMissionConfiguration | None = None,
+        mission_key: str | None = None,
+        description: str = "",
+        media_type: str | None = None,
+        provenance: str = "human-upload",
+    ) -> AutonomousMissionIntakeResult:
+        return AutonomousMissionIntakeService(self.storage).create_from_upload(
+            name=name,
+            mission_owner=mission_owner,
+            raw=raw,
+            source_name=source_name,
+            actor=actor,
+            command_id=command_id,
+            configuration=configuration,
+            mission_key=mission_key,
+            description=description,
+            media_type=media_type,
+            provenance=provenance,
+        )
+
+    def update_autonomous_mission_specification_from_upload(
+        self,
+        mission_id: int,
+        *,
+        raw: bytes,
+        source_name: str,
+        actor: str,
+        command_id: str,
+        reason: str,
+        expected_mission_version: int,
+        expected_source_version: int,
+        media_type: str | None = None,
+        provenance: str = "human-upload",
+    ) -> AutonomousSpecificationSource:
+        return AutonomousMissionIntakeService(self.storage).update_from_upload(
+            mission_id,
+            raw=raw,
+            source_name=source_name,
+            actor=actor,
+            command_id=command_id,
+            reason=reason,
+            expected_mission_version=expected_mission_version,
+            expected_source_version=expected_source_version,
+            media_type=media_type,
+            provenance=provenance,
+        )
+
+    def autonomous_mission_specification(
+        self, mission_id: int
+    ) -> AutonomousSpecificationSource:
+        return AutonomousMissionIntakeService(self.storage).current_source(mission_id)
 
     # Queries return immutable typed values and never depend on terminal formatting.
     def projects(self) -> list[ProjectView]:

@@ -3915,6 +3915,361 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'planning authorization closure scope is invalid'); END;
     """),
+    (62, """
+        CREATE TABLE IF NOT EXISTS autonomous_mission_specification_sources(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            version INTEGER NOT NULL CHECK(version > 0),
+            source_kind TEXT NOT NULL CHECK(source_kind IN ('TEXT','UPLOAD')),
+            source_name TEXT NOT NULL,
+            media_type TEXT NOT NULL CHECK(media_type IN (
+                'text/plain','text/markdown','application/json','application/pdf'
+            )),
+            provenance TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            content_text TEXT NOT NULL,
+            content_digest TEXT NOT NULL
+                CHECK(length(content_digest)=64
+                      AND content_digest NOT GLOB '*[^0-9a-f]*'),
+            raw_digest TEXT NOT NULL
+                CHECK(length(raw_digest)=64
+                      AND raw_digest NOT GLOB '*[^0-9a-f]*'),
+            byte_count INTEGER NOT NULL CHECK(byte_count > 0),
+            metadata_json TEXT NOT NULL,
+            source_digest TEXT NOT NULL UNIQUE
+                CHECK(length(source_digest)=64
+                      AND source_digest NOT GLOB '*[^0-9a-f]*'),
+            intake_source_id INTEGER REFERENCES mission_sources(id),
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            UNIQUE(mission_id,version)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_specification_sources
+            ON autonomous_mission_specification_sources(mission_id,version);
+
+        CREATE TABLE IF NOT EXISTS autonomous_mission_specification_heads(
+            mission_id INTEGER PRIMARY KEY REFERENCES autonomous_missions(id),
+            source_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_specification_sources(id),
+            source_version INTEGER NOT NULL CHECK(source_version > 0),
+            source_digest TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_specification_supersessions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            previous_source_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_specification_sources(id),
+            replacement_source_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_specification_sources(id),
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            CHECK(previous_source_id<>replacement_source_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_backlog_revision_invalidations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            revision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_backlog_revisions(id),
+            previous_source_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_specification_sources(id),
+            replacement_source_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_specification_sources(id),
+            revision_source_digest TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_revision_invalidations
+            ON autonomous_backlog_revision_invalidations(mission_id,revision_id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_specification_commands(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            command_id TEXT NOT NULL UNIQUE,
+            command_type TEXT NOT NULL CHECK(command_type IN
+                ('CREATE_SOURCE','UPDATE_SOURCE')),
+            actor TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            result_source_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_specification_sources(id),
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_manifests(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            specification_source_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_specification_sources(id),
+            specification_source_digest TEXT NOT NULL
+                CHECK(length(specification_source_digest)=64
+                      AND specification_source_digest NOT GLOB '*[^0-9a-f]*'),
+            proposal_key TEXT NOT NULL,
+            role_pack_id INTEGER NOT NULL REFERENCES software_role_packs(id),
+            default_provider_id TEXT NOT NULL,
+            default_model TEXT NOT NULL,
+            assignments_json TEXT NOT NULL,
+            context_policy_json TEXT NOT NULL,
+            manifest_digest TEXT NOT NULL UNIQUE
+                CHECK(length(manifest_digest)=64
+                      AND manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            created_by TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(mission_id,proposal_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_planning_manifests
+            ON autonomous_planning_manifests(mission_id,specification_source_id,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_manifest_revision_bindings(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            manifest_id INTEGER NOT NULL REFERENCES autonomous_planning_manifests(id),
+            manifest_digest TEXT NOT NULL
+                CHECK(length(manifest_digest)=64
+                      AND manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            revision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_backlog_revisions(id),
+            revision_digest TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(manifest_id,revision_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_contexts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            manifest_id INTEGER NOT NULL REFERENCES autonomous_planning_manifests(id),
+            role_id TEXT NOT NULL,
+            invocation_sequence INTEGER NOT NULL CHECK(invocation_sequence > 0),
+            context_key TEXT NOT NULL UNIQUE,
+            context_json TEXT NOT NULL,
+            context_digest TEXT NOT NULL UNIQUE
+                CHECK(length(context_digest)=64
+                      AND context_digest NOT GLOB '*[^0-9a-f]*'),
+            byte_count INTEGER NOT NULL CHECK(byte_count > 0),
+            token_count INTEGER NOT NULL CHECK(token_count > 0),
+            read_only INTEGER NOT NULL CHECK(read_only=1),
+            fresh_session INTEGER NOT NULL CHECK(fresh_session=1),
+            created_by TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(manifest_id,role_id,invocation_sequence)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_planning_contexts
+            ON autonomous_planning_contexts(manifest_id,role_id,invocation_sequence);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_sources_no_update
+        BEFORE UPDATE ON autonomous_mission_specification_sources
+        BEGIN SELECT RAISE(ABORT, 'mission specification sources are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_sources_no_delete
+        BEFORE DELETE ON autonomous_mission_specification_sources
+        BEGIN SELECT RAISE(ABORT, 'mission specification sources are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_supersessions_no_update
+        BEFORE UPDATE ON autonomous_specification_supersessions
+        BEGIN SELECT RAISE(ABORT, 'specification supersessions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_supersessions_no_delete
+        BEFORE DELETE ON autonomous_specification_supersessions
+        BEGIN SELECT RAISE(ABORT, 'specification supersessions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_invalidations_no_update
+        BEFORE UPDATE ON autonomous_backlog_revision_invalidations
+        BEGIN SELECT RAISE(ABORT, 'backlog revision invalidations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_invalidations_no_delete
+        BEFORE DELETE ON autonomous_backlog_revision_invalidations
+        BEGIN SELECT RAISE(ABORT, 'backlog revision invalidations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_commands_no_update
+        BEFORE UPDATE ON autonomous_specification_commands
+        BEGIN SELECT RAISE(ABORT, 'specification commands are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_commands_no_delete
+        BEFORE DELETE ON autonomous_specification_commands
+        BEGIN SELECT RAISE(ABORT, 'specification commands are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_manifests_no_update
+        BEFORE UPDATE ON autonomous_planning_manifests
+        BEGIN SELECT RAISE(ABORT, 'planning manifests are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_manifests_no_delete
+        BEFORE DELETE ON autonomous_planning_manifests
+        BEGIN SELECT RAISE(ABORT, 'planning manifests are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_bindings_no_update
+        BEFORE UPDATE ON autonomous_planning_manifest_revision_bindings
+        BEGIN SELECT RAISE(ABORT, 'planning manifest bindings are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_bindings_no_delete
+        BEFORE DELETE ON autonomous_planning_manifest_revision_bindings
+        BEGIN SELECT RAISE(ABORT, 'planning manifest bindings are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_contexts_no_update
+        BEFORE UPDATE ON autonomous_planning_contexts
+        BEGIN SELECT RAISE(ABORT, 'planning contexts are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_contexts_no_delete
+        BEFORE DELETE ON autonomous_planning_contexts
+        BEGIN SELECT RAISE(ABORT, 'planning contexts are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_heads_no_delete
+        BEFORE DELETE ON autonomous_mission_specification_heads
+        BEGIN SELECT RAISE(ABORT, 'specification head projection is durable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_source_phase_valid
+        BEFORE INSERT ON autonomous_mission_specification_sources
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_missions m
+             WHERE m.id=NEW.mission_id AND m.phase IN (
+                'DRAFT','SPECIFICATION_ANALYSIS','BACKLOG_GENERATION',
+                'WAITING_FOR_BACKLOG_APPROVAL'
+             )
+        )
+        BEGIN SELECT RAISE(ABORT, 'specification changes are pre-approval only'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_source_sequence_valid
+        BEFORE INSERT ON autonomous_mission_specification_sources
+        WHEN NEW.version<>COALESCE((
+            SELECT MAX(s.version)+1
+              FROM autonomous_mission_specification_sources s
+             WHERE s.mission_id=NEW.mission_id
+        ),1)
+        BEGIN SELECT RAISE(ABORT, 'specification source version is not sequential'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_head_scope_valid_insert
+        BEFORE INSERT ON autonomous_mission_specification_heads
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_specification_sources s
+             WHERE s.id=NEW.source_id AND s.mission_id=NEW.mission_id
+               AND s.version=NEW.source_version
+               AND s.source_digest=NEW.source_digest
+        )
+        BEGIN SELECT RAISE(ABORT, 'specification head scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_head_scope_valid_update
+        BEFORE UPDATE ON autonomous_mission_specification_heads
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_specification_sources s
+             WHERE s.id=NEW.source_id AND s.mission_id=NEW.mission_id
+               AND s.version=NEW.source_version
+               AND s.source_digest=NEW.source_digest
+        ) OR NOT EXISTS (
+            SELECT 1 FROM autonomous_specification_supersessions x
+             WHERE x.mission_id=NEW.mission_id
+               AND x.previous_source_id=OLD.source_id
+               AND x.replacement_source_id=NEW.source_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'specification head update lacks supersession evidence'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_specification_supersession_scope_valid
+        BEFORE INSERT ON autonomous_specification_supersessions
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_mission_specification_sources prior
+              JOIN autonomous_mission_specification_sources next
+                ON next.id=NEW.replacement_source_id
+               AND next.mission_id=prior.mission_id
+               AND next.version=prior.version+1
+             WHERE prior.id=NEW.previous_source_id
+               AND prior.mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'specification supersession scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_revision_invalidation_scope_valid
+        BEFORE INSERT ON autonomous_backlog_revision_invalidations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_backlog_revisions r
+              JOIN autonomous_mission_specification_sources prior
+                ON prior.id=NEW.previous_source_id
+               AND prior.mission_id=r.mission_id
+             JOIN autonomous_mission_specification_sources next
+                ON next.id=NEW.replacement_source_id
+               AND next.mission_id=r.mission_id
+              JOIN autonomous_specification_supersessions x
+                ON x.mission_id=r.mission_id
+               AND x.previous_source_id=prior.id
+               AND x.replacement_source_id=next.id
+             WHERE r.id=NEW.revision_id AND r.mission_id=NEW.mission_id
+               AND r.source_sha256=NEW.revision_source_digest
+               AND r.source_sha256<>next.raw_digest
+        )
+        BEGIN SELECT RAISE(ABORT, 'backlog revision invalidation scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_invalidated_revision_not_activatable
+        BEFORE UPDATE OF active_backlog_revision_id ON autonomous_missions
+        WHEN NEW.active_backlog_revision_id IS NOT NULL AND EXISTS (
+            SELECT 1 FROM autonomous_backlog_revision_invalidations i
+             WHERE i.mission_id=NEW.id
+               AND i.revision_id=NEW.active_backlog_revision_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalidated backlog revision cannot be activated'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_manifest_scope_valid
+        BEFORE INSERT ON autonomous_planning_manifests
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_mission_specification_heads h
+              JOIN autonomous_mission_specification_sources s ON s.id=h.source_id
+              JOIN autonomous_missions m ON m.id=h.mission_id
+             WHERE h.mission_id=NEW.mission_id
+               AND h.source_id=NEW.specification_source_id
+               AND s.source_digest=NEW.specification_source_digest
+               AND m.phase IN (
+                  'DRAFT','SPECIFICATION_ANALYSIS','BACKLOG_GENERATION',
+                  'WAITING_FOR_BACKLOG_APPROVAL'
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning manifest source is not current'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_binding_scope_valid
+        BEFORE INSERT ON autonomous_planning_manifest_revision_bindings
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_manifests p
+              JOIN autonomous_backlog_revisions r
+                ON r.id=NEW.revision_id AND r.mission_id=p.mission_id
+             WHERE p.id=NEW.manifest_id AND p.mission_id=NEW.mission_id
+               AND p.manifest_digest=NEW.manifest_digest
+               AND r.revision_digest=NEW.revision_digest
+               AND NOT EXISTS (
+                   SELECT 1 FROM autonomous_backlog_revision_invalidations i
+                    WHERE i.revision_id=r.id
+               )
+               AND EXISTS (
+                   SELECT 1 FROM autonomous_mission_specification_heads h
+                    WHERE h.mission_id=p.mission_id
+                      AND h.source_id=p.specification_source_id
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning manifest revision scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_context_scope_valid
+        BEFORE INSERT ON autonomous_planning_contexts
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_manifests p
+              JOIN autonomous_mission_specification_heads h
+                ON h.mission_id=p.mission_id
+               AND h.source_id=p.specification_source_id
+              JOIN autonomous_missions m ON m.id=p.mission_id
+             WHERE p.id=NEW.manifest_id AND p.mission_id=NEW.mission_id
+               AND m.phase IN (
+                   'DRAFT','SPECIFICATION_ANALYSIS','BACKLOG_GENERATION',
+                   'WAITING_FOR_BACKLOG_APPROVAL'
+               )
+               AND m.disposition='RUNNING'
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning context manifest scope is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

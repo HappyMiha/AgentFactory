@@ -22,6 +22,15 @@ SOFTWARE_ROLE_IDS = (
     "release_integration_agent",
     "policy_guardian",
 )
+AUTONOMOUS_PLANNING_PACK_ID = "autonomous-planning"
+AUTONOMOUS_PLANNING_PACK_VERSION = "1.0.0"
+AUTONOMOUS_PLANNING_ROLE_IDS = (
+    "mission_analyst",
+    "product_requirements_analyst",
+    "software_architect",
+    "backlog_planner",
+    "backlog_reviewer",
+)
 
 
 def _field(name: str, kind: str = "object") -> tuple[ContractField, ...]:
@@ -99,6 +108,141 @@ def software_role_definitions() -> tuple[RoleDefinition, ...]:
             ("read_file",), ("evaluate_policy", "read_project"), shared_limits,
             _field("policy_digest", "string"),
             ("implementation_worker", "requirements_backlog_steward", "solution_architect"),
+        ),
+    )
+
+
+def _fields(*values: tuple[str, str]) -> tuple[ContractField, ...]:
+    return tuple(ContractField(name, kind) for name, kind in values)
+
+
+def autonomous_planning_role_definitions() -> tuple[RoleDefinition, ...]:
+    """Logical read-only planning roles; sessions are assigned separately."""
+
+    limits = (
+        ("max_context_bytes", 50_000),
+        ("max_context_tokens", 12_500),
+        ("max_output_tokens", 8_000),
+        ("max_seconds", 600),
+    )
+    producer_incompatibilities = (
+        "implementation_worker",
+        "release_integration_agent",
+    )
+    return (
+        RoleDefinition(
+            "mission_analyst",
+            AUTONOMOUS_PLANNING_PACK_VERSION,
+            "Interpret the exact mission source without decomposing implementation work.",
+            (
+                "Identify outcomes, constraints, ambiguities, and source traceability",
+                "Preserve authoritative wording and surface unanswered questions",
+            ),
+            _fields(
+                ("planning_request", "object"),
+                ("specification_source", "object"),
+            ),
+            _fields(("mission_analysis", "object")),
+            ("read_file",),
+            ("create_artifact", "read_project"),
+            limits,
+            _fields(("analysis_digest", "string"), ("source_trace", "array")),
+            producer_incompatibilities,
+        ),
+        RoleDefinition(
+            "product_requirements_analyst",
+            AUTONOMOUS_PLANNING_PACK_VERSION,
+            "Normalize measurable product requirements without architecture authority.",
+            (
+                "Derive functional and non-functional requirements",
+                "Define measurable outcomes and retain source references",
+            ),
+            _fields(
+                ("mission_analysis", "object"),
+                ("specification_source", "object"),
+            ),
+            _fields(("normalized_requirements", "object")),
+            ("read_file",),
+            ("create_artifact", "read_project"),
+            limits,
+            _fields(
+                ("requirements_digest", "string"),
+                ("traceability_matrix", "array"),
+            ),
+            producer_incompatibilities,
+        ),
+        RoleDefinition(
+            "software_architect",
+            AUTONOMOUS_PLANNING_PACK_VERSION,
+            "Design a bounded implementation architecture without coding authority.",
+            (
+                "Define components, interfaces, infrastructure, and tradeoffs",
+                "Order prerequisite infrastructure before dependent development",
+            ),
+            _fields(
+                ("normalized_requirements", "object"),
+                ("specification_source", "object"),
+            ),
+            _fields(("architecture_proposal", "object")),
+            ("read_file",),
+            ("create_artifact", "read_project"),
+            limits,
+            _fields(
+                ("architecture_digest", "string"),
+                ("decision_trace", "array"),
+            ),
+            producer_incompatibilities,
+        ),
+        RoleDefinition(
+            "backlog_planner",
+            AUTONOMOUS_PLANNING_PACK_VERSION,
+            "Produce a rich dependency-aware proposal without execution authority.",
+            (
+                "Create complete epics and executable work items",
+                "Bind dependencies, roles, validation, artifacts, and Definition of Done",
+            ),
+            _fields(
+                ("architecture_proposal", "object"),
+                ("normalized_requirements", "object"),
+            ),
+            _fields(("backlog_proposal", "object")),
+            ("read_file",),
+            ("create_artifact", "propose_backlog", "read_project"),
+            limits,
+            _fields(
+                ("backlog_digest", "string"),
+                ("dependency_evidence", "array"),
+            ),
+            (
+                "backlog_reviewer",
+                "implementation_worker",
+                "release_integration_agent",
+            ),
+        ),
+        RoleDefinition(
+            "backlog_reviewer",
+            AUTONOMOUS_PLANNING_PACK_VERSION,
+            "Review planning artifacts independently and issue non-executable findings.",
+            (
+                "Check completeness, traceability, measurability, and dependency safety",
+                "Retain findings and an explicit readiness verdict",
+            ),
+            _fields(
+                ("architecture_proposal", "object"),
+                ("backlog_proposal", "object"),
+                ("normalized_requirements", "object"),
+                ("specification_source", "object"),
+            ),
+            _fields(("review_report", "object")),
+            ("read_file",),
+            ("create_artifact", "read_project", "review_evidence"),
+            limits,
+            _fields(("findings", "array"), ("review_digest", "string")),
+            (
+                "backlog_planner",
+                "implementation_worker",
+                "release_integration_agent",
+            ),
         ),
     )
 
@@ -196,3 +340,91 @@ class SoftwareEngineeringRolePack:
                 "release_agent_id": release_agent_id,
             })
         return authorization_id
+
+
+class AutonomousPlanningRolePack:
+    """Install the five provider-neutral Autonomous Mission planning roles."""
+
+    def __init__(self, storage: SQLiteStorage):
+        self.storage = storage
+        self.roles = RoleRegistry(storage)
+
+    def install(self) -> SoftwareRolePack:
+        definitions = autonomous_planning_role_definitions()
+        if tuple(role.id for role in definitions) != AUTONOMOUS_PLANNING_ROLE_IDS:
+            raise RuntimeError("Autonomous planning role order is invalid")
+        registered: list[tuple[RoleDefinition, int, str]] = []
+        for role in definitions:
+            definition_id = self.roles.register(role)
+            row = self.storage.db.execute(
+                "SELECT contract_digest FROM role_definitions WHERE id=?",
+                (definition_id,),
+            ).fetchone()
+            registered.append((role, definition_id, str(row["contract_digest"])))
+        manifest = {
+            "pack_id": AUTONOMOUS_PLANNING_PACK_ID,
+            "version": AUTONOMOUS_PLANNING_PACK_VERSION,
+            "roles": [
+                {
+                    "id": role.id,
+                    "version": role.version,
+                    "definition_id": definition_id,
+                    "contract_digest": contract_digest,
+                }
+                for role, definition_id, contract_digest in registered
+            ],
+            "session_policy": {
+                "fresh_context_per_role": True,
+                "session_reuse": False,
+                "transcript_reuse": False,
+                "tool_authority": "read-only",
+            },
+        }
+        payload = json.dumps(
+            manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        existing = self.storage.db.execute(
+            "SELECT * FROM software_role_packs WHERE pack_id=? AND version=?",
+            (AUTONOMOUS_PLANNING_PACK_ID, AUTONOMOUS_PLANNING_PACK_VERSION),
+        ).fetchone()
+        if existing:
+            if existing["manifest_digest"] != digest:
+                raise ValueError("Autonomous planning role pack version has another manifest")
+            return SoftwareRolePack(
+                int(existing["id"]),
+                AUTONOMOUS_PLANNING_PACK_VERSION,
+                AUTONOMOUS_PLANNING_ROLE_IDS,
+                digest,
+            )
+        with self.storage.db:
+            cursor = self.storage.db.execute(
+                """INSERT INTO software_role_packs(
+                       identity,pack_id,version,manifest_json,manifest_digest
+                   ) VALUES(?,?,?,?,?)""",
+                (
+                    self.storage._identity("autonomous-planning-role-pack"),
+                    AUTONOMOUS_PLANNING_PACK_ID,
+                    AUTONOMOUS_PLANNING_PACK_VERSION,
+                    payload,
+                    digest,
+                ),
+            )
+            pack_id = int(cursor.lastrowid)
+            self.storage._event(
+                "autonomous_planning.role_pack.installed",
+                "software_role_pack",
+                pack_id,
+                {
+                    "pack_id": AUTONOMOUS_PLANNING_PACK_ID,
+                    "version": AUTONOMOUS_PLANNING_PACK_VERSION,
+                    "role_ids": AUTONOMOUS_PLANNING_ROLE_IDS,
+                    "manifest_digest": digest,
+                },
+            )
+        return SoftwareRolePack(
+            pack_id,
+            AUTONOMOUS_PLANNING_PACK_VERSION,
+            AUTONOMOUS_PLANNING_ROLE_IDS,
+            digest,
+        )

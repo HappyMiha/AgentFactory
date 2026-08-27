@@ -339,6 +339,7 @@ class AutonomousAuthorizationService:
             "structured_artifacts",
             "propose_backlog",
             "execute_provider",
+            "review_evidence",
         }
     )
     OPERATION_PERMISSION = {
