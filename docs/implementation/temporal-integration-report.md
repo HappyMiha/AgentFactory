@@ -16,9 +16,9 @@ FastAPI or the CLI called `AgentFactoryService.run_workflow()`, which called `Wo
 
 The product/domain boundary remains AgentFactory: projects, work items/backlog, agents, policies, provider gates, evidence, artifacts, approvals, and SQLite. Temporal is the durable orchestration boundary: Workflow history, completed stage sequence, Activity scheduling/retry, timers, live orchestration state, Signals, cancellation, and recovery.
 
-`AgentFactoryJobWorkflow` contains deterministic orchestration only. `AgentFactoryActivities` performs workspace/config reads, SQLite reads and writes, agent execution, review routing, artifact persistence, validation, and final gate creation. Long-running runtime calls execute in a host thread with Temporal heartbeats and a cancellation event. CLI processes are placed in their own process group; cancellation first requests graceful group termination and then uses bounded forceful tree cleanup.
+`AgentFactoryJobWorkflow` contains deterministic orchestration only. The additive `AutonomousMissionWorkflow` is the stable, long-lived parent for an opt-in Autonomous Mission; its history contains identifiers and bounded summaries only, and its initial DRAFT contract waits without polling or side effects. `AgentFactoryActivities` performs workspace/config reads, SQLite reads and writes, agent execution, review routing, artifact persistence, validation, and final gate creation. Long-running runtime calls execute in a host thread with Temporal heartbeats and a cancellation event. CLI processes are placed in their own process group; cancellation first requests graceful group termination and then uses bounded forceful tree cleanup.
 
-Stable IDs have the form `agentfactory-job-{jobId}`; the current application assigns `jobId=run-{runId}`. Duplicate starts do not create a second independent execution. The current task queue is configurable and defaults to `agentfactory-main`.
+Standard-job stable IDs have the form `agentfactory-job-{jobId}`; the current application assigns `jobId=run-{runId}`. Autonomous parent IDs have the form `agentfactory-autonomous-mission-{missionId}`. Duplicate starts attach to the existing exact identity rather than creating a second independent execution. The current task queue is configurable and defaults to `agentfactory-main`.
 
 ## 4. Files added
 

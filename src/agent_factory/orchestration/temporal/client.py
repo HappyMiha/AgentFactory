@@ -15,12 +15,22 @@ from temporalio.common import WorkflowIDConflictPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
-from .models import AgentFactoryJobInput, DemoWorkflowInput
+from ...autonomous_mission import AutonomousMission
+from .models import (
+    AgentFactoryJobInput,
+    AutonomousMissionCarryOver,
+    AutonomousMissionWorkflowInput,
+    DemoWorkflowInput,
+)
 from .settings import TemporalSettings
 
 
 class TemporalUnavailableError(RuntimeError):
     pass
+
+
+class AutonomousMissionWorkflowConflictError(ValueError):
+    """Raised when a stable mission Workflow ID resolves to another identity."""
 
 
 @dataclass(frozen=True)
@@ -30,11 +40,90 @@ class WorkflowStartResult:
     duplicate: bool
 
 
+@dataclass(frozen=True)
+class AutonomousMissionWorkflowStartResult:
+    workflow_id: str
+    run_id: str
+    duplicate: bool
+    mission_id: int
+    mission_identity: str
+    mission_key: str
+    mission_version: int
+    chain_sequence: int
+    previous_run_id: str | None
+
+    def correlation(self) -> dict[str, Any]:
+        return {
+            "mission_id": self.mission_id,
+            "mission_identity": self.mission_identity,
+            "mission_key": self.mission_key,
+            "mission_version": self.mission_version,
+            "workflow_id": self.workflow_id,
+            "run_id": self.run_id,
+            "chain_sequence": self.chain_sequence,
+            "previous_run_id": self.previous_run_id,
+        }
+
+    def approval_start_correlation(self) -> dict[str, Any]:
+        """Return the AF-AMM-011 fields that bind approval to this parent run."""
+
+        return {
+            "temporal_workflow_id": self.workflow_id,
+            "temporal_run_id": self.run_id,
+            "temporal_chain_metadata": {
+                **self.correlation(),
+                "workflow_id": self.workflow_id,
+                "first_run_id": self.run_id,
+            },
+        }
+
+
 def workflow_id_for_job(job_id: str) -> str:
     normalized = job_id.strip()
     if not normalized:
         raise ValueError("AgentFactory job ID is required")
     return f"agentfactory-job-{normalized}"
+
+
+def workflow_id_for_autonomous_mission(
+    mission_id: int,
+    prefix: str = "agentfactory-autonomous-mission",
+) -> str:
+    if int(mission_id) <= 0:
+        raise ValueError("Autonomous Mission ID must be positive")
+    normalized_prefix = str(prefix).strip()
+    if not normalized_prefix:
+        raise ValueError("Autonomous Mission Workflow prefix is required")
+    if len(normalized_prefix) > 100 or any(
+        character
+        not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        for character in normalized_prefix
+    ):
+        raise ValueError("Autonomous Mission Workflow prefix is invalid")
+    return f"{normalized_prefix}-{int(mission_id)}"
+
+
+def autonomous_mission_workflow_input(
+    mission: AutonomousMission,
+    *,
+    workspace: str,
+    database: str,
+    carry_over: AutonomousMissionCarryOver | None = None,
+) -> AutonomousMissionWorkflowInput:
+    """Build a compact Workflow input from the authoritative domain projection."""
+
+    return AutonomousMissionWorkflowInput(
+        mission_id=mission.id,
+        mission_identity=mission.identity,
+        mission_key=mission.mission_key,
+        project_id=mission.project_id,
+        mission_version=mission.version,
+        phase=mission.phase.value,
+        disposition=mission.disposition.value,
+        workspace=workspace,
+        database=database,
+        carry_over=carry_over,
+    )
 
 
 async def ensure_namespace(client: Client, namespace: str) -> None:
@@ -109,6 +198,80 @@ async def start_job_workflow(
         return WorkflowStartResult(workflow_id, handle.first_execution_run_id, True)
 
 
+async def start_autonomous_mission_workflow(
+    client: Client,
+    request: AutonomousMissionWorkflowInput,
+    settings: TemporalSettings | None = None,
+) -> AutonomousMissionWorkflowStartResult:
+    """Start or attach to the one stable parent Workflow for a mission."""
+
+    selected = settings or TemporalSettings.from_env()
+    selected.validate()
+    request.to_dict()
+    workflow_id = workflow_id_for_autonomous_mission(
+        request.mission_id, selected.autonomous_workflow_id_prefix
+    )
+    duplicate = False
+    correlated_version = request.mission_version
+    chain_sequence = request.chain_sequence
+    previous_run_id = (
+        request.carry_over.previous_run_id if request.carry_over else None
+    )
+    try:
+        handle = await client.start_workflow(
+            "AutonomousMissionWorkflow",
+            request,
+            id=workflow_id,
+            task_queue=selected.task_queue,
+            id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+            id_conflict_policy=WorkflowIDConflictPolicy.FAIL,
+            static_summary=f"Autonomous Mission {request.mission_key}",
+            static_details=(
+                f"Mission {request.mission_id}, project {request.project_id}, "
+                f"domain version {request.mission_version}"
+            ),
+        )
+        run_id = handle.first_execution_run_id
+        if not run_id:
+            description = await handle.describe()
+            run_id = description.run_id
+    except WorkflowAlreadyStartedError:
+        duplicate = True
+        handle = client.get_workflow_handle(workflow_id)
+        status = await handle.query("get_mission_status", result_type=dict)
+        immutable = (
+            int(status.get("mission_id", 0)),
+            str(status.get("mission_identity", "")),
+            str(status.get("mission_key", "")),
+        )
+        expected = (
+            request.mission_id,
+            request.mission_identity,
+            request.mission_key,
+        )
+        if immutable != expected:
+            raise AutonomousMissionWorkflowConflictError(
+                "Stable Autonomous Mission Workflow identity is already bound"
+            )
+        run_id = str(status.get("temporal_run_id", "")).strip()
+        if not run_id:
+            raise RuntimeError("Attached mission Workflow did not expose its run id")
+        correlated_version = int(status["mission_version"])
+        chain_sequence = int(status["chain_sequence"])
+        previous_run_id = status.get("previous_temporal_run_id")
+    return AutonomousMissionWorkflowStartResult(
+        workflow_id=workflow_id,
+        run_id=str(run_id),
+        duplicate=duplicate,
+        mission_id=request.mission_id,
+        mission_identity=request.mission_identity,
+        mission_key=request.mission_key,
+        mission_version=correlated_version,
+        chain_sequence=chain_sequence,
+        previous_run_id=previous_run_id,
+    )
+
+
 async def start_demo_workflow(
     client: Client,
     request: DemoWorkflowInput,
@@ -147,6 +310,40 @@ async def workflow_snapshot(client: Client, workflow_id: str) -> dict[str, Any]:
         )
         snapshot.update(
             {"status": status, "progress": progress, "current_task": current}
+        )
+    return snapshot
+
+
+async def autonomous_mission_workflow_snapshot(
+    client: Client,
+    mission_id: int,
+    settings: TemporalSettings | None = None,
+) -> dict[str, Any]:
+    selected = settings or TemporalSettings.from_env()
+    workflow_id = workflow_id_for_autonomous_mission(
+        mission_id, selected.autonomous_workflow_id_prefix
+    )
+    handle = client.get_workflow_handle(workflow_id)
+    description = await handle.describe()
+    snapshot: dict[str, Any] = {
+        "workflow_id": workflow_id,
+        "run_id": description.run_id,
+        "temporal_status": description.status.name,
+    }
+    if description.status.name == "RUNNING":
+        status, progress, current_role, environment = await asyncio.gather(
+            handle.query("get_mission_status", result_type=dict),
+            handle.query("get_mission_progress", result_type=dict),
+            handle.query("get_current_role", result_type=dict),
+            handle.query("get_environment_status", result_type=dict),
+        )
+        snapshot.update(
+            {
+                "status": status,
+                "progress": progress,
+                "current_role": current_role,
+                "environment": environment,
+            }
         )
     return snapshot
 

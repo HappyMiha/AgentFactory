@@ -10,6 +10,8 @@ with workflow.unsafe.imports_passed_through():
     from .models import (
         ActivityResult,
         AgentFactoryJobInput,
+        AutonomousMissionWorkflowInput,
+        AutonomousMissionWorkflowState,
         DemoWorkflowInput,
         StageActivityInput,
         WorkflowState,
@@ -249,6 +251,85 @@ class AgentFactoryJobWorkflow:
             self.state.last_progress = f"{type(exc).__name__}: {exc}"
             await self._persist_failure(job, self.state.last_progress, "INTERNAL")
             raise
+
+
+@workflow.defn(name="AutonomousMissionWorkflow")
+class AutonomousMissionWorkflow:
+    """Long-lived identifier-only parent for one Autonomous Mission."""
+
+    def __init__(self) -> None:
+        self.state: AutonomousMissionWorkflowState | None = None
+
+    def _state(self) -> AutonomousMissionWorkflowState:
+        if self.state is None:
+            raise RuntimeError("Autonomous Mission Workflow has not initialized")
+        return self.state
+
+    @workflow.query(name="get_mission_status")
+    def get_mission_status(self) -> dict[str, Any]:
+        return self._state().to_dict()
+
+    @workflow.query(name="get_mission_progress")
+    def get_mission_progress(self) -> dict[str, Any]:
+        state = self._state()
+        percent = (
+            round((state.completed_items / state.total_items) * 100, 2)
+            if state.total_items
+            else 0.0
+        )
+        return {
+            "mission_id": state.mission_id,
+            "mission_version": state.mission_version,
+            "active_backlog_revision_id": state.active_backlog_revision_id,
+            "active_execution_epoch_id": state.active_execution_epoch_id,
+            "current_checkpoint_id": state.current_checkpoint_id,
+            "current_work_item_stable_id": state.current_work_item_stable_id,
+            "completed_items": state.completed_items,
+            "total_items": state.total_items,
+            "percent": percent,
+            "last_activity": state.last_activity,
+            "last_activity_at": state.last_activity_at,
+        }
+
+    @workflow.query(name="get_current_role")
+    def get_current_role(self) -> dict[str, Any]:
+        state = self._state()
+        return {
+            "mission_id": state.mission_id,
+            "current_work_item_stable_id": state.current_work_item_stable_id,
+            "role": state.current_role,
+            "model": state.current_model,
+        }
+
+    @workflow.query(name="get_environment_status")
+    def get_environment_status(self) -> dict[str, Any]:
+        state = self._state()
+        return {
+            "mission_id": state.mission_id,
+            "phase": state.phase,
+            "disposition": state.disposition,
+            "environment_status": state.environment_status,
+            "active_execution_epoch_id": state.active_execution_epoch_id,
+            "current_checkpoint_id": state.current_checkpoint_id,
+            "last_activity": state.last_activity,
+            "last_activity_at": state.last_activity_at,
+        }
+
+    @workflow.run
+    async def run(
+        self, request: AutonomousMissionWorkflowInput
+    ) -> dict[str, Any]:
+        info = workflow.info()
+        self.state = AutonomousMissionWorkflowState.from_input(
+            request,
+            workflow_id=info.workflow_id,
+            run_id=info.run_id,
+            started_at=workflow.now().isoformat(),
+        )
+        # AF-AMM-013 adds domain hydration and AF-AMM-014 adds child scheduling.
+        # This parent deliberately waits without polling or loading domain payloads.
+        await workflow.wait_condition(lambda: False)
+        return self.state.to_dict()
 
 
 @workflow.defn(name="TemporalDemoWorkflow")

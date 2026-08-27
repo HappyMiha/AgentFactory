@@ -1,4 +1,4 @@
-# Autonomous Mission planning, approval, and bounded start
+# Autonomous Mission planning, approval, and orchestration foundation
 
 AF-AMM-007 through AF-AMM-011 establish the source, role-assignment, proposal-generation, verification, and exact human approval boundary. Pre-approval operations do not authorize repository, environment, service, or Git mutation, and they do not create executable `work_items`.
 
@@ -60,4 +60,14 @@ Later immutable revisions use an origin-specific authority ledger:
 - `TECHNICAL_SUBTASK` must name and digest-bind an executable item in the active authorized parent revision;
 - `AGENT_MATERIAL` cannot activate itself and atomically routes the mission back to `WAITING_FOR_BACKLOG_APPROVAL` while retaining the previously active revision.
 
-Every authority action is append-only, digest-bound, version-fenced, idempotent, and audit-attributed. AF-AMM-012 adds the durable parent Workflow contracts that consume the committed start metadata.
+Every authority action is append-only, digest-bound, version-fenced, idempotent, and audit-attributed. The durable parent Workflow contract below supplies the Temporal identity and run-chain metadata consumed by the start boundary.
+
+## Durable parent Workflow contract
+
+`AutonomousMissionWorkflow` is registered additively beside the unchanged `AgentFactoryJobWorkflow` and `TemporalDemoWorkflow`. Its logical ID is `agentfactory-autonomous-mission-{mission_id}` (with a validated deployment prefix), so repeated client starts attach to the one existing parent instead of launching a second mission.
+
+The typed input, carry-over, and query state contain only domain identifiers, revision/epoch/checkpoint references, current item and role/model names, progress counters, phase, disposition, environment status, Temporal chain references, timestamps, and bounded activity summaries. Constructors reject oversized summaries, malformed digests, invalid counters, and cross-mission carry-over. Specifications, backlog snapshots, source trees, logs, provider output, manifests, and artifact bodies remain in SQLite or content-addressed storage rather than Workflow history.
+
+Four queries expose mission status, progress and last activity, current role/model, and environment state. Phase and runtime disposition remain separate fields. A DRAFT parent waits durably without polling or performing side effects; AF-AMM-013 adds authoritative domain hydration and AF-AMM-014 adds post-approval child scheduling.
+
+`start_autonomous_mission_workflow` uses strict Temporal workflow-ID reuse, returns mission/run/chain correlation metadata, verifies immutable mission identity when attaching, and rejects an ID collision. The matching snapshot helper queries all four bounded projections. Initial run IDs feed the exact approval/epoch transaction, while later continue-as-new references use the existing append-only epoch run-chain ledger.

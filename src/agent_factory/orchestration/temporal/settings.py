@@ -33,6 +33,7 @@ class TemporalSettings:
     address: str = "localhost:7233"
     namespace: str = "agentfactory"
     task_queue: str = "agentfactory-main"
+    autonomous_workflow_id_prefix: str = "agentfactory-autonomous-mission"
     ui_url: str = "http://localhost:8080"
     connect_timeout_seconds: int = 10
     fast_activity_timeout_seconds: int = 120
@@ -49,6 +50,10 @@ class TemporalSettings:
             address=os.getenv("TEMPORAL_ADDRESS", "localhost:7233").strip(),
             namespace=os.getenv("TEMPORAL_NAMESPACE", "agentfactory").strip(),
             task_queue=os.getenv("TEMPORAL_TASK_QUEUE", "agentfactory-main").strip(),
+            autonomous_workflow_id_prefix=os.getenv(
+                "TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX",
+                "agentfactory-autonomous-mission",
+            ).strip(),
             ui_url=os.getenv("TEMPORAL_UI_URL", "http://localhost:8080").strip().rstrip("/"),
             connect_timeout_seconds=_positive_int("TEMPORAL_CONNECT_TIMEOUT_SECONDS", 10),
             fast_activity_timeout_seconds=_positive_int(
@@ -78,10 +83,25 @@ class TemporalSettings:
             ("TEMPORAL_ADDRESS", self.address),
             ("TEMPORAL_NAMESPACE", self.namespace),
             ("TEMPORAL_TASK_QUEUE", self.task_queue),
+            (
+                "TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX",
+                self.autonomous_workflow_id_prefix,
+            ),
             ("TEMPORAL_UI_URL", self.ui_url),
         ):
             if not value:
                 raise ValueError(f"{name} cannot be empty")
+        if (
+            len(self.autonomous_workflow_id_prefix) > 100
+            or any(
+                character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+                for character in self.autonomous_workflow_id_prefix
+            )
+        ):
+            raise ValueError(
+                "TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX must be a bounded "
+                "identifier"
+            )
         if self.heartbeat_interval_seconds >= self.heartbeat_timeout_seconds:
             raise ValueError(
                 "TEMPORAL_HEARTBEAT_INTERVAL_SECONDS must be less than "

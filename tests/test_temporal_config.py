@@ -21,6 +21,10 @@ class TemporalConfigurationTests(unittest.TestCase):
         self.assertEqual(settings.address, "localhost:7233")
         self.assertEqual(settings.namespace, "agentfactory")
         self.assertEqual(settings.task_queue, "agentfactory-main")
+        self.assertEqual(
+            settings.autonomous_workflow_id_prefix,
+            "agentfactory-autonomous-mission",
+        )
         self.assertEqual(workflow_id_for_job("run-17"), "agentfactory-job-run-17")
 
     def test_invalid_boolean_and_heartbeat_window_fail_closed(self):
@@ -36,6 +40,13 @@ class TemporalConfigurationTests(unittest.TestCase):
             clear=True,
         ):
             with self.assertRaisesRegex(ValueError, "must be less"):
+                TemporalSettings.from_env()
+        with patch.dict(
+            os.environ,
+            {"TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX": "invalid prefix"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "bounded identifier"):
                 TemporalSettings.from_env()
 
     def test_retry_policies_are_category_specific(self):

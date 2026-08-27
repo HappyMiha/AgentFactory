@@ -38,6 +38,8 @@ $env:TEMPORAL_ENABLED = "true"
 
 Other defaults are documented in the repository `.env.example`. Environment variables override them. Secret provider credentials must stay in the existing provider CLI profile, OS keyring, or AgentFactory secret mechanism; never put secrets in Workflow input.
 
+Autonomous Mission parents use the stable ID prefix `agentfactory-autonomous-mission` by default. A deployment may set `TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX` before its first mission starts, but must then keep that value stable so later clients attach to the same logical parents.
+
 ## Start AgentFactory
 
 Start the Local Control Center in one PowerShell window:

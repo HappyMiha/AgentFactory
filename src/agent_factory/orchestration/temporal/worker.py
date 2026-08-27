@@ -9,7 +9,18 @@ from temporalio.worker import Worker
 from .activities import AgentFactoryActivities
 from .client import connect_temporal
 from .settings import TemporalSettings
-from .workflows import AgentFactoryJobWorkflow, TemporalDemoWorkflow
+from .workflows import (
+    AgentFactoryJobWorkflow,
+    AutonomousMissionWorkflow,
+    TemporalDemoWorkflow,
+)
+
+
+REGISTERED_WORKFLOWS = (
+    AgentFactoryJobWorkflow,
+    AutonomousMissionWorkflow,
+    TemporalDemoWorkflow,
+)
 
 
 async def run_worker(settings: TemporalSettings | None = None) -> None:
@@ -19,7 +30,7 @@ async def run_worker(settings: TemporalSettings | None = None) -> None:
     worker = Worker(
         client,
         task_queue=selected.task_queue,
-        workflows=[AgentFactoryJobWorkflow, TemporalDemoWorkflow],
+        workflows=list(REGISTERED_WORKFLOWS),
         activities=[
             activities.validate_job,
             activities.load_project_context,
