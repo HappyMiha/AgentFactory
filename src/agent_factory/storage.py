@@ -4270,6 +4270,321 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'planning context manifest scope is invalid'); END;
     """),
+    (63, """
+        CREATE TABLE IF NOT EXISTS autonomous_planning_pipeline_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            manifest_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_manifests(id),
+            planning_authorization_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_authorizations(id),
+            proposal_key TEXT NOT NULL,
+            requested_action TEXT NOT NULL CHECK(requested_action IN
+                ('ANALYZE','REGENERATE_BACKLOG')),
+            max_attempts_per_role INTEGER NOT NULL
+                CHECK(max_attempts_per_role BETWEEN 1 AND 5),
+            created_by TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_planning_pipeline_runs
+            ON autonomous_planning_pipeline_runs(mission_id,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_pipeline_invocations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_pipeline_runs(id),
+            role_id TEXT NOT NULL,
+            invocation_order INTEGER NOT NULL CHECK(invocation_order BETWEEN 1 AND 5),
+            attempt_number INTEGER NOT NULL CHECK(attempt_number BETWEEN 1 AND 5),
+            context_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_contexts(id),
+            authorization_decision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_authorization_decisions(id),
+            provider_id TEXT NOT NULL,
+            model TEXT NOT NULL,
+            logical_agent_id TEXT NOT NULL,
+            provider_ok INTEGER NOT NULL CHECK(provider_ok IN (0,1)),
+            response_text TEXT NOT NULL,
+            response_digest TEXT NOT NULL
+                CHECK(length(response_digest)=64
+                      AND response_digest NOT GLOB '*[^0-9a-f]*'),
+            provider_metadata_json TEXT NOT NULL,
+            output_json TEXT,
+            evidence_json TEXT,
+            valid INTEGER NOT NULL CHECK(valid IN (0,1)),
+            validation_errors_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(run_id,role_id,attempt_number),
+            CHECK(valid=0 OR (provider_ok=1 AND output_json IS NOT NULL
+                              AND evidence_json IS NOT NULL))
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_planning_invocations
+            ON autonomous_planning_pipeline_invocations(run_id,invocation_order,attempt_number);
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_pipeline_artifacts(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_pipeline_runs(id),
+            manifest_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_manifests(id),
+            invocation_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_pipeline_invocations(id),
+            role_id TEXT NOT NULL,
+            invocation_order INTEGER NOT NULL CHECK(invocation_order BETWEEN 1 AND 5),
+            artifact_kind TEXT NOT NULL CHECK(artifact_kind IN (
+                'MISSION_ANALYSIS','NORMALIZED_REQUIREMENTS',
+                'ARCHITECTURE_PROPOSAL','BACKLOG_PROPOSAL','REVIEW_REPORT'
+            )),
+            content_json TEXT NOT NULL,
+            output_digest TEXT NOT NULL
+                CHECK(length(output_digest)=64
+                      AND output_digest NOT GLOB '*[^0-9a-f]*'),
+            evidence_json TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL
+                CHECK(length(evidence_digest)=64
+                      AND evidence_digest NOT GLOB '*[^0-9a-f]*'),
+            artifact_digest TEXT NOT NULL UNIQUE
+                CHECK(length(artifact_digest)=64
+                      AND artifact_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            UNIQUE(run_id,role_id),
+            UNIQUE(run_id,invocation_order)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_planning_artifacts
+            ON autonomous_planning_pipeline_artifacts(run_id,invocation_order);
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_pipeline_failures(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_pipeline_runs(id),
+            role_id TEXT NOT NULL,
+            attempt_count INTEGER NOT NULL CHECK(attempt_count BETWEEN 1 AND 5),
+            validation_errors_json TEXT NOT NULL,
+            failure_digest TEXT NOT NULL UNIQUE
+                CHECK(length(failure_digest)=64
+                      AND failure_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS autonomous_planning_pipeline_completions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_pipeline_runs(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            manifest_id INTEGER NOT NULL REFERENCES autonomous_planning_manifests(id),
+            manifest_revision_binding_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_manifest_revision_bindings(id),
+            revision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_backlog_revisions(id),
+            revision_digest TEXT NOT NULL
+                CHECK(length(revision_digest)=64
+                      AND revision_digest NOT GLOB '*[^0-9a-f]*'),
+            final_artifact_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_planning_pipeline_artifacts(id),
+            completion_digest TEXT NOT NULL UNIQUE
+                CHECK(length(completion_digest)=64
+                      AND completion_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_pipeline_runs_no_update
+        BEFORE UPDATE ON autonomous_planning_pipeline_runs
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline runs are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_pipeline_runs_no_delete
+        BEFORE DELETE ON autonomous_planning_pipeline_runs
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline runs are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_invocations_no_update
+        BEFORE UPDATE ON autonomous_planning_pipeline_invocations
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline invocations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_invocations_no_delete
+        BEFORE DELETE ON autonomous_planning_pipeline_invocations
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline invocations are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_artifacts_no_update
+        BEFORE UPDATE ON autonomous_planning_pipeline_artifacts
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline artifacts are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_artifacts_no_delete
+        BEFORE DELETE ON autonomous_planning_pipeline_artifacts
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline artifacts are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_failures_no_update
+        BEFORE UPDATE ON autonomous_planning_pipeline_failures
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline failures are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_failures_no_delete
+        BEFORE DELETE ON autonomous_planning_pipeline_failures
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline failures are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_completions_no_update
+        BEFORE UPDATE ON autonomous_planning_pipeline_completions
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline completions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_completions_no_delete
+        BEFORE DELETE ON autonomous_planning_pipeline_completions
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline completions are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_pipeline_run_scope_valid
+        BEFORE INSERT ON autonomous_planning_pipeline_runs
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_manifests p
+              JOIN autonomous_planning_authorizations a
+                ON a.id=NEW.planning_authorization_id
+               AND a.mission_id=p.mission_id
+               AND a.planning_request_id=p.proposal_key
+               AND a.requested_action=NEW.requested_action
+              JOIN autonomous_mission_specification_heads h
+                ON h.mission_id=p.mission_id
+               AND h.source_id=p.specification_source_id
+             WHERE p.id=NEW.manifest_id AND p.mission_id=NEW.mission_id
+               AND p.proposal_key=NEW.proposal_key
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline run scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_invocation_scope_valid
+        BEFORE INSERT ON autonomous_planning_pipeline_invocations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_pipeline_runs r
+              JOIN autonomous_planning_manifests p
+                ON p.id=r.manifest_id
+              JOIN autonomous_mission_specification_heads h
+                ON h.mission_id=r.mission_id
+               AND h.source_id=p.specification_source_id
+              JOIN autonomous_planning_contexts c
+                ON c.id=NEW.context_id AND c.manifest_id=r.manifest_id
+              JOIN autonomous_authorization_decisions d
+                ON d.id=NEW.authorization_decision_id
+               AND d.mission_id=r.mission_id
+               AND d.planning_authorization_id=r.planning_authorization_id
+               AND d.outcome='ALLOW_PLANNING'
+             WHERE r.id=NEW.run_id
+               AND c.role_id=NEW.role_id
+               AND c.invocation_sequence=NEW.attempt_number
+               AND json_extract(
+                       p.assignments_json,
+                       '$[' || (NEW.invocation_order - 1) || '].role_id'
+                   )=NEW.role_id
+               AND json_extract(
+                       p.assignments_json,
+                       '$[' || (NEW.invocation_order - 1) || '].provider_id'
+                   )=NEW.provider_id
+               AND json_extract(
+                       p.assignments_json,
+                       '$[' || (NEW.invocation_order - 1) || '].model'
+                   )=NEW.model
+               AND json_extract(
+                       p.assignments_json,
+                       '$[' || (NEW.invocation_order - 1) || '].logical_agent_id'
+                   )=NEW.logical_agent_id
+               AND json_extract(d.request_json,'$.role')=NEW.role_id
+               AND json_extract(d.request_json,'$.provider_id')=NEW.provider_id
+               AND json_extract(d.request_json,'$.model')=NEW.model
+               AND json_extract(d.request_json,'$.agent_id')=NEW.logical_agent_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline invocation scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_artifact_scope_valid
+        BEFORE INSERT ON autonomous_planning_pipeline_artifacts
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_pipeline_runs r
+              JOIN autonomous_planning_manifests p
+                ON p.id=r.manifest_id
+              JOIN autonomous_mission_specification_heads h
+                ON h.mission_id=r.mission_id
+               AND h.source_id=p.specification_source_id
+              JOIN autonomous_planning_pipeline_invocations i
+                ON i.id=NEW.invocation_id AND i.run_id=r.id AND i.valid=1
+             WHERE r.id=NEW.run_id AND r.manifest_id=NEW.manifest_id
+               AND i.role_id=NEW.role_id
+               AND i.invocation_order=NEW.invocation_order
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline artifact scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_revision_source_valid
+        BEFORE INSERT ON autonomous_backlog_revisions
+        WHEN json_extract(
+                 NEW.snapshot_json,'$.extension_schema'
+             )='agentfactory.autonomous-planning/v1'
+         AND NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_manifests p
+              JOIN autonomous_planning_pipeline_runs run
+                ON run.manifest_id=p.id
+              JOIN autonomous_mission_specification_heads h
+                ON h.mission_id=p.mission_id
+               AND h.source_id=p.specification_source_id
+              JOIN autonomous_mission_specification_sources s
+                ON s.id=p.specification_source_id
+             WHERE p.id=json_extract(
+                       NEW.snapshot_json,'$.planning_contract.manifest_id'
+                   )
+               AND run.id=json_extract(
+                       NEW.snapshot_json,'$.planning_contract.planning_run_id'
+                   )
+               AND run.proposal_key=json_extract(
+                       NEW.snapshot_json,'$.planning_contract.proposal_key'
+                   )
+               AND run.planning_authorization_id=json_extract(
+                       NEW.snapshot_json,
+                       '$.planning_contract.planning_authorization_id'
+                   )
+               AND p.mission_id=NEW.mission_id
+               AND p.manifest_digest=json_extract(
+                       NEW.snapshot_json,'$.planning_contract.manifest_digest'
+                   )
+               AND s.raw_digest=NEW.source_sha256
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning revision source scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_failure_scope_valid
+        BEFORE INSERT ON autonomous_planning_pipeline_failures
+        WHEN EXISTS (
+            SELECT 1 FROM autonomous_planning_pipeline_completions c
+             WHERE c.run_id=NEW.run_id
+        ) OR NOT EXISTS (
+            SELECT 1 FROM autonomous_planning_pipeline_runs r WHERE r.id=NEW.run_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline failure scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_planning_completion_scope_valid
+        BEFORE INSERT ON autonomous_planning_pipeline_completions
+        WHEN EXISTS (
+            SELECT 1 FROM autonomous_planning_pipeline_failures f
+             WHERE f.run_id=NEW.run_id
+        ) OR NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_pipeline_runs run
+              JOIN autonomous_planning_manifests p
+                ON p.id=run.manifest_id
+              JOIN autonomous_mission_specification_heads h
+                ON h.mission_id=run.mission_id
+               AND h.source_id=p.specification_source_id
+              JOIN autonomous_backlog_revisions r
+                ON r.id=NEW.revision_id AND r.mission_id=run.mission_id
+               AND r.revision_digest=NEW.revision_digest
+              LEFT JOIN autonomous_backlog_revision_invalidations invalidation
+                ON invalidation.revision_id=r.id
+              JOIN autonomous_planning_manifest_revision_bindings b
+                ON b.id=NEW.manifest_revision_binding_id
+               AND b.manifest_id=p.id AND b.revision_id=r.id
+              JOIN autonomous_planning_pipeline_artifacts a
+                ON a.id=NEW.final_artifact_id AND a.run_id=run.id
+               AND a.role_id='backlog_reviewer'
+             WHERE run.id=NEW.run_id AND run.mission_id=NEW.mission_id
+               AND run.manifest_id=NEW.manifest_id
+               AND invalidation.id IS NULL
+               AND (SELECT COUNT(*)
+                      FROM autonomous_planning_pipeline_artifacts x
+                     WHERE x.run_id=run.id)=5
+        )
+        BEGIN SELECT RAISE(ABORT, 'planning pipeline completion scope is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

@@ -353,14 +353,15 @@ def _validate_graph(items: tuple[ProposedItem, ...]) -> None:
         visit(item_id)
 
 
-def load_backlog(path: Path) -> BacklogProposal:
-    """Load and validate a versioned JSON or JSON-compatible YAML manifest."""
+def proposal_from_document(
+    document: dict[str, Any],
+    *,
+    source_path: str,
+    source_sha256: str,
+    source_name: str,
+) -> BacklogProposal:
+    """Validate an in-memory document through the canonical backlog schema."""
 
-    raw = path.read_bytes()
-    try:
-        document = json.loads(raw.decode("utf-8-sig"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise BacklogManifestError(f"Backlog manifest is not valid UTF-8 JSON: {exc}") from exc
     if not isinstance(document, dict):
         raise BacklogManifestError("Backlog manifest root must be an object")
     schema_version = document.get("schema_version")
@@ -382,7 +383,7 @@ def load_backlog(path: Path) -> BacklogProposal:
         source = {}
     if not isinstance(source, dict):
         raise BacklogManifestError("source must be an object when present")
-    source_name = str(source.get("name") or path.stem).strip()
+    resolved_source_name = str(source.get("name") or source_name).strip()
     known_root_fields = {
         "schema_version",
         "source_path",
@@ -394,9 +395,9 @@ def load_backlog(path: Path) -> BacklogProposal:
         "items",
     }
     return BacklogProposal(
-        source_path=path.resolve().as_posix(),
-        source_sha256=hashlib.sha256(raw).hexdigest(),
-        source_name=source_name,
+        source_path=source_path,
+        source_sha256=source_sha256,
+        source_name=resolved_source_name,
         items=items,
         schema_version=int(schema_version),
         source_metadata=dict(source),
@@ -413,6 +414,24 @@ def load_backlog(path: Path) -> BacklogProposal:
         extensions={
             key: value for key, value in document.items() if key not in known_root_fields
         },
+    )
+
+
+def load_backlog(path: Path) -> BacklogProposal:
+    """Load and validate a versioned JSON or JSON-compatible YAML manifest."""
+
+    raw = path.read_bytes()
+    try:
+        document = json.loads(raw.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise BacklogManifestError(
+            f"Backlog manifest is not valid UTF-8 JSON: {exc}"
+        ) from exc
+    return proposal_from_document(
+        document,
+        source_path=path.resolve().as_posix(),
+        source_sha256=hashlib.sha256(raw).hexdigest(),
+        source_name=path.stem,
     )
 
 

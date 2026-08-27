@@ -1,6 +1,6 @@
-# Autonomous Mission planning intake
+# Autonomous Mission planning and proposal generation
 
-AF-AMM-007 and AF-AMM-008 establish the pre-approval source and role-assignment boundary. They do not authorize repository, environment, service, or Git mutation, and they do not create executable `work_items`.
+AF-AMM-007 through AF-AMM-009 establish the pre-approval source, role-assignment, and proposal-generation boundary. They do not authorize repository, environment, service, or Git mutation, and they do not create executable `work_items`.
 
 ## Specification source contract
 
@@ -30,4 +30,12 @@ A content-addressed manifest binds the exact specification source digest, role-p
 
 Each role invocation receives a newly persisted context envelope with a unique sequence, context key, and digest. It contains only the exact specification, the selected logical role contract, and explicitly supplied upstream artifact references. It has no parent session or prior transcript, carries read-only tool authority, denies repository/environment/external mutation, and fails if mandatory content exceeds the manifest byte or token limits. A specification update makes earlier manifests stale, preventing new contexts or revision bindings.
 
-AF-AMM-009 adds schema-validated role invocation and artifact production on top of these records; AF-AMM-010 verifies proposal completeness; AF-AMM-011 supplies the exact human approval boundary.
+## Proposal generation pipeline
+
+`AutonomousPlanningPipelineService` invokes the five manifest assignments in their fixed order through typed `BOUNDED_LOCAL_PLANNING` authority. Every attempt gets a fresh persisted context. A strict JSON envelope, the role contract, and deterministic nested semantics are validated before a content-addressed artifact can enter the next role's context. Invalid or partial output is retained as evidence and may be repaired only in another fresh invocation with bounded validation feedback.
+
+The deterministic validator requires measurable requirements and task acceptance criteria, complete schema-v2 execution fields, requirement coverage, an acyclic canonical dependency order, and explicit bootstrap tasks ahead of every dependent use of bootstrap-required infrastructure. A successful run appends an `AGENT_MATERIAL` backlog revision and binds it to the exact source/role/model manifest. It deliberately leaves the revision proposed and creates no executable `work_items`.
+
+Runs, attempts, artifacts, failures, completions, and regeneration history are append-only and idempotency-bound. Provider failures or exhausted repair attempts close the one-request planning authority and cannot leave a partial proposal that looks complete. A new proposal key produces a new manifest, run, artifact chain, and revision rather than overwriting prior planning evidence.
+
+AF-AMM-010 verifies proposal completeness and readiness for presentation; AF-AMM-011 supplies the exact human approval boundary.

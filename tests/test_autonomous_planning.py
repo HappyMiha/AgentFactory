@@ -1,3 +1,5 @@
+import hashlib
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -225,7 +227,13 @@ class AutonomousPlanningTests(unittest.TestCase):
             upstream = (
                 {
                     "artifact_type": "prior-role-output",
-                    "digest": f"{index:064x}",
+                    "digest": hashlib.sha256(
+                        json.dumps(
+                            {"sequence": index},
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode("utf-8")
+                    ).hexdigest(),
                     "content": {"sequence": index},
                 },
             ) if index > 1 else ()
@@ -283,7 +291,7 @@ class AutonomousPlanningTests(unittest.TestCase):
                 upstream_artifacts=(
                     {
                         "artifact_type": "changed",
-                        "digest": "f" * 64,
+                        "digest": hashlib.sha256(b"{}").hexdigest(),
                         "content": {},
                     },
                 ),

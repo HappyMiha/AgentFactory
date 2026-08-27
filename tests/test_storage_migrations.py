@@ -8,6 +8,49 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v62_database_upgrades_to_append_only_planning_pipeline_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v62.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 63:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertGreaterEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                63,
+            )
+            for table in (
+                "autonomous_planning_pipeline_runs",
+                "autonomous_planning_pipeline_invocations",
+                "autonomous_planning_pipeline_artifacts",
+                "autonomous_planning_pipeline_failures",
+                "autonomous_planning_pipeline_completions",
+            ):
+                with self.subTest(table=table):
+                    self.assertIsNotNone(
+                        storage.db.execute(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table,),
+                        ).fetchone()
+                    )
+            storage.close()
+
     def test_migrations_are_versioned_and_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "test.db"

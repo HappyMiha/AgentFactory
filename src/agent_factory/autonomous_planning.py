@@ -721,6 +721,12 @@ class AutonomousPlanningService:
                 character not in "0123456789abcdef" for character in digest
             ):
                 raise ValueError("Upstream planning artifacts require a SHA-256 digest")
+            if "content" not in artifact:
+                raise ValueError("Upstream planning artifacts require canonical content")
+            if self._digest(artifact["content"]) != digest:
+                raise ValueError(
+                    "Upstream planning artifact content does not match its digest"
+                )
         request = {
             "type": "create_planning_context",
             "manifest_id": manifest_id,
