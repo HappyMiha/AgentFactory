@@ -8,6 +8,48 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v63_database_upgrades_to_proposal_verification_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v63.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 64:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertGreaterEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                64,
+            )
+            self.assertIsNotNone(
+                storage.db.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' "
+                    "AND name='autonomous_proposal_verifications'"
+                ).fetchone()
+            )
+            self.assertIsNotNone(
+                storage.db.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='trigger' "
+                    "AND name='autonomous_waiting_requires_verified_proposal'"
+                ).fetchone()
+            )
+            storage.close()
+
     def test_v62_database_upgrades_to_append_only_planning_pipeline_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v62.db"

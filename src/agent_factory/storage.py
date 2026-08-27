@@ -4585,6 +4585,147 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'planning pipeline completion scope is invalid'); END;
     """),
+    (64, """
+        CREATE TABLE IF NOT EXISTS autonomous_proposal_verifications(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            pipeline_run_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_pipeline_runs(id),
+            completion_id INTEGER NOT NULL
+                REFERENCES autonomous_planning_pipeline_completions(id),
+            completion_digest TEXT NOT NULL
+                CHECK(length(completion_digest)=64
+                      AND completion_digest NOT GLOB '*[^0-9a-f]*'),
+            manifest_id INTEGER NOT NULL REFERENCES autonomous_planning_manifests(id),
+            manifest_digest TEXT NOT NULL
+                CHECK(length(manifest_digest)=64
+                      AND manifest_digest NOT GLOB '*[^0-9a-f]*'),
+            revision_id INTEGER NOT NULL REFERENCES autonomous_backlog_revisions(id),
+            revision_digest TEXT NOT NULL
+                CHECK(length(revision_digest)=64
+                      AND revision_digest NOT GLOB '*[^0-9a-f]*'),
+            source_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_specification_sources(id),
+            source_digest TEXT NOT NULL
+                CHECK(length(source_digest)=64
+                      AND source_digest NOT GLOB '*[^0-9a-f]*'),
+            verifier_version TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('READY','BLOCKED')),
+            canonical_snapshot_json TEXT NOT NULL,
+            canonical_digest TEXT NOT NULL
+                CHECK(length(canonical_digest)=64
+                      AND canonical_digest NOT GLOB '*[^0-9a-f]*'),
+            presentation_json TEXT NOT NULL,
+            presentation_digest TEXT NOT NULL
+                CHECK(length(presentation_digest)=64
+                      AND presentation_digest NOT GLOB '*[^0-9a-f]*'),
+            checks_json TEXT NOT NULL,
+            findings_json TEXT NOT NULL,
+            reviewer_findings_json TEXT NOT NULL,
+            human_visible_findings_json TEXT NOT NULL,
+            verified_by TEXT NOT NULL,
+            expected_mission_version INTEGER NOT NULL CHECK(expected_mission_version>0),
+            mission_result_version INTEGER,
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            report_digest TEXT NOT NULL
+                CHECK(length(report_digest)=64
+                      AND report_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            CHECK(
+                (status='READY'
+                 AND mission_result_version=expected_mission_version+1)
+                OR (status='BLOCKED' AND mission_result_version IS NULL)
+            )
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_proposal_verifications
+            ON autonomous_proposal_verifications(mission_id,id);
+        CREATE INDEX IF NOT EXISTS idx_autonomous_proposal_verification_revision
+            ON autonomous_proposal_verifications(revision_id,status,id);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_proposal_verifications_no_update
+        BEFORE UPDATE ON autonomous_proposal_verifications
+        BEGIN SELECT RAISE(ABORT, 'proposal verifications are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_proposal_verifications_no_delete
+        BEFORE DELETE ON autonomous_proposal_verifications
+        BEGIN SELECT RAISE(ABORT, 'proposal verifications are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_proposal_verification_scope_valid
+        BEFORE INSERT ON autonomous_proposal_verifications
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_planning_pipeline_runs run
+              JOIN autonomous_planning_pipeline_completions completion
+                ON completion.id=NEW.completion_id
+               AND completion.run_id=run.id
+               AND completion.completion_digest=NEW.completion_digest
+              JOIN autonomous_planning_manifests manifest
+                ON manifest.id=run.manifest_id
+               AND manifest.manifest_digest=NEW.manifest_digest
+              JOIN autonomous_planning_manifest_revision_bindings binding
+                ON binding.id=completion.manifest_revision_binding_id
+               AND binding.manifest_id=manifest.id
+              JOIN autonomous_backlog_revisions revision
+                ON revision.id=completion.revision_id
+               AND revision.id=binding.revision_id
+               AND revision.revision_digest=NEW.revision_digest
+               AND revision.snapshot_json=NEW.canonical_snapshot_json
+              JOIN autonomous_mission_specification_sources source
+                ON source.id=manifest.specification_source_id
+               AND source.source_digest=NEW.source_digest
+             WHERE run.id=NEW.pipeline_run_id
+               AND run.mission_id=NEW.mission_id
+               AND manifest.id=NEW.manifest_id
+               AND revision.mission_id=NEW.mission_id
+               AND source.id=NEW.source_id
+               AND NEW.revision_id=revision.id
+               AND NEW.canonical_digest=revision.revision_digest
+        )
+        BEGIN SELECT RAISE(ABORT, 'proposal verification scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_ready_proposal_scope_valid
+        BEFORE INSERT ON autonomous_proposal_verifications
+        WHEN NEW.status='READY' AND NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_mission_specification_heads head
+                ON head.mission_id=mission.id AND head.source_id=NEW.source_id
+              JOIN autonomous_planning_manifests manifest
+                ON manifest.id=NEW.manifest_id
+               AND manifest.specification_source_id=head.source_id
+              LEFT JOIN autonomous_backlog_revision_invalidations invalidation
+                ON invalidation.revision_id=NEW.revision_id
+             WHERE mission.id=NEW.mission_id
+               AND mission.phase='BACKLOG_GENERATION'
+               AND mission.disposition='RUNNING'
+               AND mission.version=NEW.expected_mission_version
+               AND invalidation.id IS NULL
+        )
+        BEGIN SELECT RAISE(ABORT, 'ready proposal scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_waiting_requires_verified_proposal
+        BEFORE UPDATE OF phase ON autonomous_missions
+        WHEN OLD.phase='BACKLOG_GENERATION'
+         AND NEW.phase='WAITING_FOR_BACKLOG_APPROVAL'
+         AND EXISTS (
+            SELECT 1
+              FROM autonomous_planning_pipeline_runs run
+              JOIN autonomous_planning_pipeline_completions completion
+                ON completion.run_id=run.id
+             WHERE run.mission_id=OLD.id
+         )
+         AND NOT EXISTS (
+            SELECT 1
+              FROM autonomous_proposal_verifications verification
+             WHERE verification.mission_id=OLD.id
+               AND verification.status='READY'
+               AND verification.mission_result_version=NEW.version
+         )
+        BEGIN SELECT RAISE(ABORT, 'verified proposal is required before approval wait'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

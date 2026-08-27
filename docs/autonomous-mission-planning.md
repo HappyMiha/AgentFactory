@@ -38,4 +38,12 @@ The deterministic validator requires measurable requirements and task acceptance
 
 Runs, attempts, artifacts, failures, completions, and regeneration history are append-only and idempotency-bound. Provider failures or exhausted repair attempts close the one-request planning authority and cannot leave a partial proposal that looks complete. A new proposal key produces a new manifest, run, artifact chain, and revision rather than overwriting prior planning evidence.
 
-AF-AMM-010 verifies proposal completeness and readiness for presentation; AF-AMM-011 supplies the exact human approval boundary.
+## Deterministic readiness verification
+
+`AutonomousProposalVerificationService` has no provider-invocation authority. It independently replays the canonical revision, completion, source, manifest, role/model, artifact, reviewer-evidence, and proposal digests. Its document verifier rejects malformed rich fields, duplicates, orphaned references, dependency cycles, non-canonical order, non-measurable acceptance criteria, uncovered requirements, unsafe infrastructure ordering, and references outside the authoritative source scope.
+
+Reviewer findings remain part of the immutable report. Resolved findings may remain hidden; unresolved findings must be explicitly displayed, and open `BLOCKER` or `HIGH` findings still block readiness. The human presentation packet contains the exact canonical revision digest, complete backlog, normalized requirements, architecture, manifest assignments, checks, and visible findings.
+
+A `READY` verification record and the mission transition to `WAITING_FOR_BACKLOG_APPROVAL` commit atomically. A database fence prevents a completed planning mission from entering that phase by calling the generic transition service directly. `BLOCKED` reports retain their evidence without changing mission state, and source/version races fail closed. No revision is activated and no executable work is created at this boundary.
+
+AF-AMM-011 supplies the exact human approval and mission-start transaction.
