@@ -3372,6 +3372,334 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON autonomous_backlog_commands
         BEGIN SELECT RAISE(ABORT, 'backlog commands are immutable'); END;
     """),
+    (60, """
+        CREATE TABLE IF NOT EXISTS autonomous_mission_execution_epochs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            epoch_number INTEGER NOT NULL CHECK(epoch_number > 0),
+            base_backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            base_backlog_revision_digest TEXT NOT NULL
+                CHECK(length(base_backlog_revision_digest)=64
+                      AND base_backlog_revision_digest NOT GLOB '*[^0-9a-f]*'),
+            base_checkpoint_id INTEGER
+                REFERENCES autonomous_mission_checkpoints(id)
+                DEFERRABLE INITIALLY DEFERRED,
+            base_checkpoint_digest TEXT
+                CHECK(base_checkpoint_digest IS NULL OR
+                      (length(base_checkpoint_digest)=64
+                       AND base_checkpoint_digest NOT GLOB '*[^0-9a-f]*')),
+            base_git_commit_sha TEXT NOT NULL
+                CHECK(length(base_git_commit_sha) IN (40,64)
+                      AND base_git_commit_sha NOT GLOB '*[^0-9a-f]*'),
+            epoch_branch TEXT NOT NULL,
+            origin TEXT NOT NULL CHECK(origin IN
+                ('INITIAL','CHECKPOINT_RESTART','BACKLOG_REVISION_RESTART','RECOVERY')),
+            temporal_workflow_id TEXT NOT NULL,
+            temporal_first_run_id TEXT NOT NULL,
+            temporal_chain_metadata_json TEXT NOT NULL,
+            temporal_chain_metadata_digest TEXT NOT NULL
+                CHECK(length(temporal_chain_metadata_digest)=64
+                      AND temporal_chain_metadata_digest NOT GLOB '*[^0-9a-f]*'),
+            supersedes_epoch_id INTEGER
+                REFERENCES autonomous_mission_execution_epochs(id),
+            activation_mission_version INTEGER NOT NULL
+                CHECK(activation_mission_version > 1),
+            created_by TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(mission_id,epoch_number),
+            UNIQUE(mission_id,epoch_branch),
+            UNIQUE(mission_id,temporal_workflow_id),
+            CHECK((base_checkpoint_id IS NULL) =
+                  (base_checkpoint_digest IS NULL)),
+            CHECK((epoch_number=1 AND base_checkpoint_id IS NULL
+                   AND supersedes_epoch_id IS NULL AND origin='INITIAL') OR
+                  (epoch_number>1 AND base_checkpoint_id IS NOT NULL
+                   AND supersedes_epoch_id IS NOT NULL AND origin<>'INITIAL'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_epochs_mission
+            ON autonomous_mission_execution_epochs(mission_id,epoch_number);
+
+        CREATE TABLE IF NOT EXISTS autonomous_mission_checkpoints(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            checkpoint_key TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            execution_epoch_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_execution_epochs(id),
+            sequence INTEGER NOT NULL CHECK(sequence > 0),
+            checkpoint_type TEXT NOT NULL CHECK(checkpoint_type IN
+                ('BACKLOG_APPROVED','ENVIRONMENT_BOOTSTRAPPED',
+                 'ARCHITECTURE_BASELINE','WORK_ITEM_ACCEPTED','REPAIR_ACCEPTED',
+                 'BACKLOG_REVISION_APPLIED','INTEGRATION_MILESTONE',
+                 'FINAL_VALIDATION','MANUAL')),
+            reason TEXT NOT NULL,
+            created_by TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            backlog_revision_digest TEXT NOT NULL
+                CHECK(length(backlog_revision_digest)=64
+                      AND backlog_revision_digest NOT GLOB '*[^0-9a-f]*'),
+            current_work_item_stable_id TEXT,
+            completed_work_items_json TEXT NOT NULL,
+            pending_work_items_json TEXT NOT NULL,
+            git_commit_sha TEXT NOT NULL
+                CHECK(length(git_commit_sha) IN (40,64)
+                      AND git_commit_sha NOT GLOB '*[^0-9a-f]*'),
+            git_branch TEXT NOT NULL,
+            git_worktree_path TEXT NOT NULL,
+            architecture_version TEXT,
+            architecture_digest TEXT
+                CHECK(architecture_digest IS NULL OR
+                      (length(architecture_digest)=64
+                       AND architecture_digest NOT GLOB '*[^0-9a-f]*')),
+            environment_manifest_version TEXT,
+            environment_manifest_digest TEXT
+                CHECK(environment_manifest_digest IS NULL OR
+                      (length(environment_manifest_digest)=64
+                       AND environment_manifest_digest NOT GLOB '*[^0-9a-f]*')),
+            role_model_assignments_json TEXT NOT NULL,
+            role_model_assignments_digest TEXT NOT NULL
+                CHECK(length(role_model_assignments_digest)=64
+                      AND role_model_assignments_digest NOT GLOB '*[^0-9a-f]*'),
+            artifacts_json TEXT NOT NULL,
+            memory_context_json TEXT NOT NULL,
+            service_manifest_version TEXT,
+            service_manifest_digest TEXT
+                CHECK(service_manifest_digest IS NULL OR
+                      (length(service_manifest_digest)=64
+                       AND service_manifest_digest NOT GLOB '*[^0-9a-f]*')),
+            validation_state_json TEXT NOT NULL,
+            validation_state_digest TEXT NOT NULL
+                CHECK(length(validation_state_digest)=64
+                      AND validation_state_digest NOT GLOB '*[^0-9a-f]*'),
+            document_json TEXT NOT NULL,
+            checkpoint_digest TEXT NOT NULL
+                CHECK(length(checkpoint_digest)=64
+                      AND checkpoint_digest NOT GLOB '*[^0-9a-f]*'),
+            UNIQUE(execution_epoch_id,sequence),
+            UNIQUE(mission_id,checkpoint_digest),
+            CHECK((architecture_version IS NULL) =
+                  (architecture_digest IS NULL)),
+            CHECK((environment_manifest_version IS NULL) =
+                  (environment_manifest_digest IS NULL)),
+            CHECK((service_manifest_version IS NULL) =
+                  (service_manifest_digest IS NULL))
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_checkpoints_mission
+            ON autonomous_mission_checkpoints(mission_id,created_at,id);
+        CREATE INDEX IF NOT EXISTS idx_autonomous_checkpoints_epoch
+            ON autonomous_mission_checkpoints(execution_epoch_id,sequence);
+
+        CREATE TABLE IF NOT EXISTS autonomous_epoch_supersessions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            superseded_epoch_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_execution_epochs(id),
+            superseding_epoch_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_execution_epochs(id),
+            selected_checkpoint_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_checkpoints(id),
+            actor TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            CHECK(superseded_epoch_id<>superseding_epoch_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_epoch_supersessions_mission
+            ON autonomous_epoch_supersessions(mission_id,id);
+
+        CREATE TABLE IF NOT EXISTS autonomous_epoch_temporal_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            execution_epoch_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_execution_epochs(id),
+            sequence INTEGER NOT NULL CHECK(sequence > 0),
+            workflow_id TEXT NOT NULL,
+            run_id TEXT NOT NULL UNIQUE,
+            previous_run_id TEXT,
+            workflow_build_id TEXT,
+            metadata_json TEXT NOT NULL,
+            metadata_digest TEXT NOT NULL
+                CHECK(length(metadata_digest)=64
+                      AND metadata_digest NOT GLOB '*[^0-9a-f]*'),
+            command_id TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            UNIQUE(execution_epoch_id,sequence),
+            UNIQUE(execution_epoch_id,workflow_id,run_id),
+            CHECK((sequence=1 AND previous_run_id IS NULL) OR
+                  (sequence>1 AND previous_run_id IS NOT NULL))
+        );
+        CREATE INDEX IF NOT EXISTS idx_autonomous_epoch_temporal_chain
+            ON autonomous_epoch_temporal_runs(execution_epoch_id,sequence);
+
+        ALTER TABLE autonomous_backlog_item_states
+            ADD COLUMN execution_epoch_id INTEGER
+                REFERENCES autonomous_mission_execution_epochs(id);
+        CREATE INDEX IF NOT EXISTS idx_autonomous_backlog_state_epoch
+            ON autonomous_backlog_item_states(execution_epoch_id,item_id,sequence);
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_epochs_no_update
+        BEFORE UPDATE ON autonomous_mission_execution_epochs
+        BEGIN SELECT RAISE(ABORT, 'mission execution epochs are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_epochs_no_delete
+        BEFORE DELETE ON autonomous_mission_execution_epochs
+        BEGIN SELECT RAISE(ABORT, 'mission execution epochs are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_checkpoints_no_update
+        BEFORE UPDATE ON autonomous_mission_checkpoints
+        BEGIN SELECT RAISE(ABORT, 'mission checkpoints are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_checkpoints_no_delete
+        BEFORE DELETE ON autonomous_mission_checkpoints
+        BEGIN SELECT RAISE(ABORT, 'mission checkpoints are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_supersessions_no_update
+        BEFORE UPDATE ON autonomous_epoch_supersessions
+        BEGIN SELECT RAISE(ABORT, 'epoch supersessions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_supersessions_no_delete
+        BEFORE DELETE ON autonomous_epoch_supersessions
+        BEGIN SELECT RAISE(ABORT, 'epoch supersessions are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_temporal_runs_no_update
+        BEFORE UPDATE ON autonomous_epoch_temporal_runs
+        BEGIN SELECT RAISE(ABORT, 'epoch Temporal runs are immutable'); END;
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_temporal_runs_no_delete
+        BEFORE DELETE ON autonomous_epoch_temporal_runs
+        BEGIN SELECT RAISE(ABORT, 'epoch Temporal runs are immutable'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_sequence_valid
+        BEFORE INSERT ON autonomous_mission_execution_epochs
+        WHEN NEW.epoch_number<>(
+            SELECT COALESCE(MAX(epoch_number),0)+1
+              FROM autonomous_mission_execution_epochs
+             WHERE mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission epoch sequence must be append-only'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_revision_valid
+        BEFORE INSERT ON autonomous_mission_execution_epochs
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_backlog_revisions r
+             WHERE r.id=NEW.base_backlog_revision_id
+               AND r.mission_id=NEW.mission_id
+               AND r.revision_digest=NEW.base_backlog_revision_digest
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission epoch backlog revision is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_predecessor_valid
+        BEFORE INSERT ON autonomous_mission_execution_epochs
+        WHEN NEW.supersedes_epoch_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_execution_epochs e
+             WHERE e.id=NEW.supersedes_epoch_id
+               AND e.mission_id=NEW.mission_id
+               AND e.epoch_number=NEW.epoch_number-1
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission epoch predecessor is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_epoch_checkpoint_valid
+        BEFORE INSERT ON autonomous_mission_execution_epochs
+        WHEN NEW.base_checkpoint_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_checkpoints c
+             WHERE c.id=NEW.base_checkpoint_id
+               AND c.mission_id=NEW.mission_id
+               AND c.checkpoint_digest=NEW.base_checkpoint_digest
+               AND c.git_commit_sha=NEW.base_git_commit_sha
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission epoch base checkpoint is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_checkpoint_sequence_valid
+        BEFORE INSERT ON autonomous_mission_checkpoints
+        WHEN NEW.sequence<>(
+            SELECT COALESCE(MAX(sequence),0)+1
+              FROM autonomous_mission_checkpoints
+             WHERE execution_epoch_id=NEW.execution_epoch_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission checkpoint sequence must be append-only'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_checkpoint_epoch_valid
+        BEFORE INSERT ON autonomous_mission_checkpoints
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_execution_epochs e
+             WHERE e.id=NEW.execution_epoch_id AND e.mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission checkpoint epoch is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_checkpoint_revision_valid
+        BEFORE INSERT ON autonomous_mission_checkpoints
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_backlog_revisions r
+             WHERE r.id=NEW.backlog_revision_id
+               AND r.mission_id=NEW.mission_id
+               AND r.revision_digest=NEW.backlog_revision_digest
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission checkpoint backlog revision is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_supersession_scope_valid
+        BEFORE INSERT ON autonomous_epoch_supersessions
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_mission_execution_epochs old
+              JOIN autonomous_mission_execution_epochs new
+                ON new.id=NEW.superseding_epoch_id
+             WHERE old.id=NEW.superseded_epoch_id
+               AND old.mission_id=NEW.mission_id
+               AND new.mission_id=NEW.mission_id
+               AND new.supersedes_epoch_id=old.id
+        ) OR NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_checkpoints c
+             WHERE c.id=NEW.selected_checkpoint_id
+               AND c.mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission epoch supersession scope is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_temporal_run_sequence_valid
+        BEFORE INSERT ON autonomous_epoch_temporal_runs
+        WHEN NEW.sequence<>(
+            SELECT COALESCE(MAX(sequence),0)+1
+              FROM autonomous_epoch_temporal_runs
+             WHERE execution_epoch_id=NEW.execution_epoch_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch Temporal run sequence must be append-only'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_temporal_run_chain_valid
+        BEFORE INSERT ON autonomous_epoch_temporal_runs
+        WHEN NEW.sequence>1 AND NOT EXISTS (
+            SELECT 1 FROM autonomous_epoch_temporal_runs r
+             WHERE r.execution_epoch_id=NEW.execution_epoch_id
+               AND r.sequence=NEW.sequence-1
+               AND r.run_id=NEW.previous_run_id
+               AND r.workflow_id=NEW.workflow_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch Temporal run chain is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_mission_active_epoch_valid
+        BEFORE UPDATE OF active_execution_epoch_id ON autonomous_missions
+        WHEN NEW.active_execution_epoch_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_execution_epochs e
+             WHERE e.id=NEW.active_execution_epoch_id AND e.mission_id=NEW.id
+        )
+        BEGIN SELECT RAISE(ABORT, 'active mission epoch is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_mission_current_checkpoint_valid
+        BEFORE UPDATE OF current_checkpoint_id ON autonomous_missions
+        WHEN NEW.current_checkpoint_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_checkpoints c
+             WHERE c.id=NEW.current_checkpoint_id AND c.mission_id=NEW.id
+        )
+        BEGIN SELECT RAISE(ABORT, 'current mission checkpoint is invalid'); END;
+
+        CREATE TRIGGER IF NOT EXISTS autonomous_backlog_state_epoch_valid
+        BEFORE INSERT ON autonomous_backlog_item_states
+        WHEN NEW.execution_epoch_id IS NOT NULL AND NOT EXISTS (
+            SELECT 1
+              FROM autonomous_mission_execution_epochs e
+              JOIN autonomous_backlog_revisions r ON r.mission_id=e.mission_id
+              JOIN autonomous_backlog_items i ON i.revision_id=r.id
+             WHERE e.id=NEW.execution_epoch_id AND i.id=NEW.item_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'backlog item execution epoch is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

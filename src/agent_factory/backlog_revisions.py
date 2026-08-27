@@ -118,8 +118,32 @@ class BacklogItemProjection:
     validation_result: dict[str, Any]
     git_commit_sha: str | None
     checkpoint_id: int | None
+    execution_epoch_id: int | None
+    epoch_superseded: bool
     evidence: tuple[dict[str, Any], ...]
     impact: BacklogImpactClassification
+
+
+@dataclass(frozen=True)
+class BacklogItemStateEvidence:
+    state_id: int
+    revision_id: int
+    item_id: int
+    stable_id: str
+    sequence: int
+    status: BacklogItemStatus
+    attempt_count: int
+    validation_result: dict[str, Any]
+    git_commit_sha: str | None
+    checkpoint_id: int | None
+    execution_epoch_id: int | None
+    epoch_superseded: bool
+    evidence: tuple[dict[str, Any], ...]
+    carried_from_state_id: int | None
+    actor: str
+    command_id: str
+    reason: str
+    created_at: str
 
 
 class BacklogCommandConflictError(ValueError):
@@ -491,9 +515,10 @@ class BacklogRevisionService:
         self.storage.db.execute(
             """INSERT INTO autonomous_backlog_item_states(
                    identity,item_id,sequence,status,attempt_count,
-                   validation_result_json,git_commit_sha,checkpoint_id,evidence_json,
-                   carried_from_state_id,actor,command_id,reason
-               ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   validation_result_json,git_commit_sha,checkpoint_id,
+                   execution_epoch_id,evidence_json,carried_from_state_id,
+                   actor,command_id,reason
+               ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 self.storage._identity("autonomous-backlog-item-state"),
                 item_id,
@@ -503,6 +528,7 @@ class BacklogRevisionService:
                 str(prior_state["validation_result_json"]) if carry else "{}",
                 prior_state["git_commit_sha"] if carry else None,
                 prior_state["checkpoint_id"] if carry else None,
+                prior_state["execution_epoch_id"] if carry else None,
                 str(prior_state["evidence_json"]) if carry else "[]",
                 int(prior_state["id"]) if carry else None,
                 actor,
@@ -626,6 +652,7 @@ class BacklogRevisionService:
         command_id = self._required(command_id, "Command id")
         reason = self._required(reason, "State reason")
         target = BacklogItemStatus(target)
+        execution_epoch_id = mission.active_execution_epoch_id
         validation_result = dict(validation_result or {})
         evidence = tuple(dict(value) for value in evidence)
         if git_commit_sha is not None:
@@ -649,6 +676,7 @@ class BacklogRevisionService:
             "validation_result": validation_result,
             "git_commit_sha": git_commit_sha,
             "checkpoint_id": checkpoint_id,
+            "execution_epoch_id": execution_epoch_id,
             "evidence": evidence,
             "attempt_count": attempt_count,
         }
@@ -661,6 +689,11 @@ class BacklogRevisionService:
             replay = self._replay(command_id, request_digest)
             if replay:
                 return self.item(revision_id, stable_id)
+            current_mission = self.missions.get(mission_id)
+            if current_mission.active_backlog_revision_id != revision_id:
+                raise ValueError("Active backlog revision changed before state update")
+            if current_mission.active_execution_epoch_id != execution_epoch_id:
+                raise ValueError("Active execution epoch changed before state update")
             item_row = self.storage.db.execute(
                 """SELECT * FROM autonomous_backlog_items
                    WHERE revision_id=? AND stable_id=?""",
@@ -712,8 +745,8 @@ class BacklogRevisionService:
                 """INSERT INTO autonomous_backlog_item_states(
                        identity,item_id,sequence,status,attempt_count,
                        validation_result_json,git_commit_sha,checkpoint_id,
-                       evidence_json,actor,command_id,reason
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                       execution_epoch_id,evidence_json,actor,command_id,reason
+                    ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     self.storage._identity("autonomous-backlog-item-state"),
                     item_row["id"],
@@ -723,6 +756,7 @@ class BacklogRevisionService:
                     self._json(validation_result),
                     git_commit_sha,
                     checkpoint_id,
+                    execution_epoch_id,
                     self._json(evidence),
                     actor,
                     command_id,
@@ -759,6 +793,7 @@ class BacklogRevisionService:
                     "reason": reason,
                     "git_commit_sha": git_commit_sha,
                     "checkpoint_id": checkpoint_id,
+                    "execution_epoch_id": execution_epoch_id,
                 },
             )
         return self.item(revision_id, stable_id)
@@ -778,6 +813,18 @@ class BacklogRevisionService:
             (revision_id,),
         ).fetchall()
         states = {str(row["stable_id"]): self._latest_state(int(row["id"])) for row in rows}
+        epoch_ids = {
+            int(state["execution_epoch_id"])
+            for state in states.values()
+            if state is not None and state["execution_epoch_id"] is not None
+        }
+        superseded_epochs = {
+            int(row["superseded_epoch_id"])
+            for row in self.storage.db.execute(
+                "SELECT superseded_epoch_id FROM autonomous_epoch_supersessions"
+            )
+            if int(row["superseded_epoch_id"]) in epoch_ids
+        }
         executable = {str(row["stable_id"]): bool(row["executable"]) for row in rows}
         impact_rows = {
             str(row["stable_id"]): BacklogImpactClassification(row["classification"])
@@ -823,6 +870,11 @@ class BacklogRevisionService:
                     validation_result=json.loads(state["validation_result_json"]),
                     git_commit_sha=state["git_commit_sha"],
                     checkpoint_id=self._optional_id(state["checkpoint_id"]),
+                    execution_epoch_id=self._optional_id(state["execution_epoch_id"]),
+                    epoch_superseded=(
+                        self._optional_id(state["execution_epoch_id"])
+                        in superseded_epochs
+                    ),
                     evidence=tuple(json.loads(state["evidence_json"])),
                     impact=impact_rows[stable_id],
                 )
@@ -834,6 +886,51 @@ class BacklogRevisionService:
         if revision_id is None:
             return ()
         return self.items(revision_id)
+
+    def item_history(
+        self, revision_id: int, stable_id: str
+    ) -> tuple[BacklogItemStateEvidence, ...]:
+        item = self.storage.db.execute(
+            """SELECT id FROM autonomous_backlog_items
+               WHERE revision_id=? AND stable_id=?""",
+            (revision_id, stable_id),
+        ).fetchone()
+        if not item:
+            raise KeyError(f"Unknown backlog item {stable_id!r} in revision {revision_id}")
+        rows = self.storage.db.execute(
+            """SELECT s.*,
+                      CASE WHEN x.id IS NULL THEN 0 ELSE 1 END AS epoch_superseded
+                 FROM autonomous_backlog_item_states s
+                 LEFT JOIN autonomous_epoch_supersessions x
+                   ON x.superseded_epoch_id=s.execution_epoch_id
+                WHERE s.item_id=? ORDER BY s.sequence""",
+            (item["id"],),
+        ).fetchall()
+        return tuple(
+            BacklogItemStateEvidence(
+                state_id=int(row["id"]),
+                revision_id=revision_id,
+                item_id=int(row["item_id"]),
+                stable_id=stable_id,
+                sequence=int(row["sequence"]),
+                status=BacklogItemStatus(row["status"]),
+                attempt_count=int(row["attempt_count"]),
+                validation_result=json.loads(row["validation_result_json"]),
+                git_commit_sha=row["git_commit_sha"],
+                checkpoint_id=self._optional_id(row["checkpoint_id"]),
+                execution_epoch_id=self._optional_id(row["execution_epoch_id"]),
+                epoch_superseded=bool(row["epoch_superseded"]),
+                evidence=tuple(json.loads(row["evidence_json"])),
+                carried_from_state_id=self._optional_id(
+                    row["carried_from_state_id"]
+                ),
+                actor=str(row["actor"]),
+                command_id=str(row["command_id"]),
+                reason=str(row["reason"]),
+                created_at=str(row["created_at"]),
+            )
+            for row in rows
+        )
 
     def progress(self, mission_id: int) -> dict[str, Any]:
         items = tuple(item for item in self.active_items(mission_id) if item.item.executable)
