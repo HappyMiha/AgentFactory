@@ -8,6 +8,71 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v70_database_upgrades_to_epoch_worktree_authority_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v70.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 71:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                MIGRATIONS[-1][0],
+            )
+            for table in (
+                "autonomous_epoch_worktrees",
+                "autonomous_epoch_worktree_events",
+            ):
+                with self.subTest(table=table):
+                    self.assertIsNotNone(
+                        storage.db.execute(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table,),
+                        ).fetchone()
+                    )
+            authority_columns = {
+                str(row["name"])
+                for row in storage.db.execute(
+                    "PRAGMA table_info(autonomous_epoch_worktrees)"
+                )
+            }
+            self.assertTrue(
+                {
+                    "authority_key",
+                    "execution_epoch_id",
+                    "repository_key",
+                    "epoch_branch",
+                    "worktree_path_key",
+                    "reservation_digest",
+                }.issubset(authority_columns)
+            )
+            storage.close()
+
+            reopened = SQLiteStorage(path)
+            self.assertEqual(
+                reopened.db.execute(
+                    "SELECT COUNT(*) FROM schema_migrations WHERE version=71"
+                ).fetchone()[0],
+                1,
+            )
+            reopened.close()
+
     def test_v69_database_upgrades_to_mission_operation_recovery_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v69.db"
@@ -32,7 +97,7 @@ class StorageMigrationTests(unittest.TestCase):
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],
-                70,
+                MIGRATIONS[-1][0],
             )
             for table in (
                 "autonomous_mission_operations",
@@ -98,7 +163,7 @@ class StorageMigrationTests(unittest.TestCase):
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],
-                70,
+                MIGRATIONS[-1][0],
             )
             self.assertIsNotNone(
                 storage.db.execute(
@@ -147,7 +212,7 @@ class StorageMigrationTests(unittest.TestCase):
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],
-                70,
+                MIGRATIONS[-1][0],
             )
             for table in (
                 "autonomous_epoch_handoff_requests",

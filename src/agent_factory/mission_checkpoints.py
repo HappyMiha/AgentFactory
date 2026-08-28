@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 import subprocess
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -30,6 +31,7 @@ from .storage import SQLiteStorage
 
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+MISSION_GIT_SEGMENT_PATTERN = re.compile(r"^[A-Z0-9][A-Z0-9._-]{0,63}$")
 EXECUTION_PHASES = frozenset(
     {
         MissionPhase.APPROVED,
@@ -49,6 +51,46 @@ TEMPORAL_ROLLOVER_REASONS = frozenset(
         "WORKER_DEPLOYMENT_CHANGED",
     }
 )
+
+
+def normalize_mission_git_segment(mission_key: str) -> str:
+    """Return a stable, path-safe Git component for one mission identity.
+
+    Existing AgentFactory mission keys already use the human-readable safe form.
+    Keys requiring transliteration or truncation receive a digest suffix so two
+    different keys cannot silently normalize to the same branch/path component.
+    """
+
+    canonical = unicodedata.normalize("NFKC", str(mission_key)).strip().upper()
+    if not canonical:
+        raise ValueError("Mission key is required for epoch Git identity")
+    ascii_key = (
+        unicodedata.normalize("NFKD", canonical)
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    candidate = re.sub(r"[^A-Z0-9._-]+", "-", ascii_key).strip(".-_")
+    safe_without_suffix = (
+        candidate == canonical
+        and bool(MISSION_GIT_SEGMENT_PATTERN.fullmatch(candidate))
+        and ".." not in candidate
+        and "@{" not in candidate
+        and not candidate.casefold().endswith(".lock")
+    )
+    if safe_without_suffix:
+        return candidate
+    base = candidate[:48].rstrip(".-_") or "MISSION"
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
+    return f"{base}-{digest}"
+
+
+def mission_epoch_branch(mission_key: str, epoch_number: int) -> str:
+    """Build the deterministic AgentFactory-owned branch for an execution epoch."""
+
+    number = int(epoch_number)
+    if number < 1:
+        raise ValueError("Execution epoch number must be positive")
+    return f"autonomous/{normalize_mission_git_segment(mission_key)}/epoch-{number}"
 
 
 class ExecutionEpochOrigin(StrEnum):
@@ -251,6 +293,12 @@ class MissionCheckpointService:
         self.storage = storage
         self.missions = AutonomousMissionService(storage)
         self.provider_capabilities = dict(provider_capabilities or {})
+
+    @staticmethod
+    def epoch_branch_name(mission_key: str, epoch_number: int) -> str:
+        """Expose the shared epoch-branch policy to orchestration callers."""
+
+        return mission_epoch_branch(mission_key, epoch_number)
 
     @staticmethod
     def _json(value: Any) -> str:

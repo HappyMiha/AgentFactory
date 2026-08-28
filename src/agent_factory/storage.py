@@ -6320,6 +6320,143 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON autonomous_mission_recovery_decisions
         BEGIN SELECT RAISE(ABORT, 'recovery decisions are durable'); END;
     """),
+    (71, """
+        CREATE TABLE autonomous_epoch_worktrees(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            authority_key TEXT NOT NULL UNIQUE CHECK(
+                length(authority_key)=64
+                AND authority_key NOT GLOB '*[^0-9a-f]*'
+            ),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            mission_key TEXT NOT NULL,
+            execution_epoch_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_execution_epochs(id),
+            epoch_number INTEGER NOT NULL CHECK(epoch_number>0),
+            repository_path TEXT NOT NULL,
+            repository_key TEXT NOT NULL,
+            base_git_commit_sha TEXT NOT NULL CHECK(
+                length(base_git_commit_sha) IN (40,64)
+                AND base_git_commit_sha NOT GLOB '*[^0-9a-f]*'
+            ),
+            base_checkpoint_id INTEGER REFERENCES autonomous_mission_checkpoints(id),
+            base_checkpoint_digest TEXT CHECK(
+                base_checkpoint_digest IS NULL OR
+                (length(base_checkpoint_digest)=64
+                 AND base_checkpoint_digest NOT GLOB '*[^0-9a-f]*')
+            ),
+            epoch_branch TEXT NOT NULL,
+            branch_key TEXT NOT NULL,
+            worktree_path TEXT NOT NULL,
+            worktree_path_key TEXT NOT NULL UNIQUE,
+            mission_segment TEXT NOT NULL,
+            policy_version INTEGER NOT NULL CHECK(policy_version=1),
+            reservation_json TEXT NOT NULL,
+            reservation_digest TEXT NOT NULL CHECK(
+                length(reservation_digest)=64
+                AND reservation_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            created_at TEXT NOT NULL,
+            UNIQUE(repository_key,branch_key),
+            CHECK(repository_path<>worktree_path),
+            CHECK((base_checkpoint_id IS NULL)=(base_checkpoint_digest IS NULL)),
+            CHECK(epoch_branch LIKE 'autonomous/%/epoch-%')
+        );
+        CREATE INDEX idx_autonomous_epoch_worktrees_repository
+            ON autonomous_epoch_worktrees(repository_key,epoch_number,id);
+
+        CREATE TABLE autonomous_epoch_worktree_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            epoch_worktree_id INTEGER NOT NULL
+                REFERENCES autonomous_epoch_worktrees(id),
+            sequence INTEGER NOT NULL CHECK(sequence>0),
+            status TEXT NOT NULL CHECK(status IN (
+                'RESERVED','PROVISIONING','READY','DIRTY','MISSING','CONFLICT'
+            )),
+            observation_json TEXT NOT NULL,
+            observation_digest TEXT NOT NULL CHECK(
+                length(observation_digest)=64
+                AND observation_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            reason TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(epoch_worktree_id,sequence)
+        );
+        CREATE INDEX idx_autonomous_epoch_worktree_events_latest
+            ON autonomous_epoch_worktree_events(epoch_worktree_id,sequence);
+
+        CREATE TRIGGER autonomous_epoch_worktree_scope_valid
+        BEFORE INSERT ON autonomous_epoch_worktrees
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_mission_execution_epochs epoch
+              JOIN autonomous_missions mission ON mission.id=epoch.mission_id
+             WHERE epoch.id=NEW.execution_epoch_id
+               AND epoch.mission_id=NEW.mission_id
+               AND mission.mission_key=NEW.mission_key
+               AND epoch.epoch_number=NEW.epoch_number
+               AND epoch.base_git_commit_sha=NEW.base_git_commit_sha
+               AND epoch.base_checkpoint_id IS NEW.base_checkpoint_id
+               AND epoch.base_checkpoint_digest IS NEW.base_checkpoint_digest
+               AND epoch.epoch_branch=NEW.epoch_branch
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree authority scope is invalid'); END;
+        CREATE TRIGGER autonomous_epoch_worktrees_no_update
+        BEFORE UPDATE ON autonomous_epoch_worktrees
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree authorities are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_worktrees_no_delete
+        BEFORE DELETE ON autonomous_epoch_worktrees
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree authorities are durable'); END;
+
+        CREATE TRIGGER autonomous_epoch_worktree_event_sequence_valid
+        BEFORE INSERT ON autonomous_epoch_worktree_events
+        WHEN NEW.sequence<>(
+            SELECT COALESCE(MAX(sequence),0)+1
+              FROM autonomous_epoch_worktree_events
+             WHERE epoch_worktree_id=NEW.epoch_worktree_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree events must be append-only'); END;
+        CREATE TRIGGER autonomous_epoch_worktree_event_initial_valid
+        BEFORE INSERT ON autonomous_epoch_worktree_events
+        WHEN NEW.sequence=1 AND (
+            NEW.status<>'RESERVED' OR NOT EXISTS (
+                SELECT 1 FROM autonomous_epoch_worktrees authority
+                 WHERE authority.id=NEW.epoch_worktree_id
+                   AND authority.reservation_json=NEW.observation_json
+                   AND authority.reservation_digest=NEW.observation_digest
+            )
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree must begin with its reservation'); END;
+        CREATE TRIGGER autonomous_epoch_worktree_event_transition_valid
+        BEFORE INSERT ON autonomous_epoch_worktree_events
+        WHEN NEW.sequence>1 AND NOT EXISTS (
+            SELECT 1 FROM autonomous_epoch_worktree_events previous
+             WHERE previous.epoch_worktree_id=NEW.epoch_worktree_id
+               AND previous.sequence=NEW.sequence-1
+               AND (
+                   (previous.status='RESERVED' AND NEW.status IN (
+                       'PROVISIONING','READY','DIRTY','MISSING','CONFLICT')) OR
+                   (previous.status='PROVISIONING' AND NEW.status IN (
+                       'READY','DIRTY','MISSING','CONFLICT')) OR
+                   (previous.status='READY' AND NEW.status IN (
+                       'READY','DIRTY','MISSING','CONFLICT')) OR
+                   (previous.status='DIRTY' AND NEW.status IN (
+                       'READY','DIRTY','MISSING','CONFLICT')) OR
+                   (previous.status='MISSING' AND NEW.status IN (
+                       'PROVISIONING','READY','MISSING','CONFLICT')) OR
+                   (previous.status='CONFLICT' AND NEW.status IN (
+                       'READY','DIRTY','MISSING','CONFLICT'))
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid epoch worktree event transition'); END;
+        CREATE TRIGGER autonomous_epoch_worktree_events_no_update
+        BEFORE UPDATE ON autonomous_epoch_worktree_events
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree events are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_worktree_events_no_delete
+        BEFORE DELETE ON autonomous_epoch_worktree_events
+        BEGIN SELECT RAISE(ABORT, 'epoch worktree events are durable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -9072,6 +9209,273 @@ class SQLiteStorage:
                 },
             )
         return True
+
+    @staticmethod
+    def _canonical_epoch_worktree_observation(
+        value: dict[str, Any]
+    ) -> tuple[str, str]:
+        payload = json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        return payload, hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def reserve_autonomous_epoch_worktree(
+        self,
+        *,
+        mission_id: int,
+        mission_key: str,
+        execution_epoch_id: int,
+        epoch_number: int,
+        repository_path: str,
+        repository_key: str,
+        base_git_commit_sha: str,
+        base_checkpoint_id: int | None,
+        base_checkpoint_digest: str | None,
+        epoch_branch: str,
+        branch_key: str,
+        worktree_path: str,
+        worktree_path_key: str,
+        mission_segment: str,
+        reservation: dict[str, Any],
+        policy_version: int = 1,
+        now: datetime | None = None,
+    ) -> int:
+        """Persist immutable epoch Git authority before any caller mutates Git."""
+
+        current = _timestamp(_utc(now))
+        reservation_json, reservation_digest = (
+            self._canonical_epoch_worktree_observation(reservation)
+        )
+        scope = {
+            "mission_id": int(mission_id),
+            "mission_key": str(mission_key),
+            "execution_epoch_id": int(execution_epoch_id),
+            "epoch_number": int(epoch_number),
+            "repository_path": str(repository_path),
+            "repository_key": str(repository_key),
+            "base_git_commit_sha": str(base_git_commit_sha),
+            "base_checkpoint_id": base_checkpoint_id,
+            "base_checkpoint_digest": base_checkpoint_digest,
+            "epoch_branch": str(epoch_branch),
+            "branch_key": str(branch_key),
+            "worktree_path": str(worktree_path),
+            "worktree_path_key": str(worktree_path_key),
+            "mission_segment": str(mission_segment),
+            "policy_version": int(policy_version),
+        }
+        authority_json = json.dumps(
+            scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        authority_key = hashlib.sha256(authority_json.encode("utf-8")).hexdigest()
+        self._begin_immediate()
+        try:
+            existing = self.db.execute(
+                "SELECT * FROM autonomous_epoch_worktrees WHERE execution_epoch_id=?",
+                (execution_epoch_id,),
+            ).fetchone()
+            if existing:
+                stored = {
+                    key: existing[key]
+                    for key in scope
+                }
+                if stored != scope or str(existing["authority_key"]) != authority_key:
+                    raise ValueError(
+                        "Execution epoch already owns a different Git worktree authority"
+                    )
+                self.db.commit()
+                return int(existing["id"])
+            cursor = self.db.execute(
+                """INSERT INTO autonomous_epoch_worktrees(
+                       identity,authority_key,mission_id,mission_key,
+                       execution_epoch_id,epoch_number,repository_path,
+                       repository_key,base_git_commit_sha,base_checkpoint_id,
+                       base_checkpoint_digest,epoch_branch,branch_key,
+                       worktree_path,worktree_path_key,mission_segment,
+                       policy_version,reservation_json,reservation_digest,created_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("autonomous-epoch-worktree"),
+                    authority_key,
+                    mission_id,
+                    mission_key,
+                    execution_epoch_id,
+                    epoch_number,
+                    repository_path,
+                    repository_key,
+                    base_git_commit_sha,
+                    base_checkpoint_id,
+                    base_checkpoint_digest,
+                    epoch_branch,
+                    branch_key,
+                    worktree_path,
+                    worktree_path_key,
+                    mission_segment,
+                    policy_version,
+                    reservation_json,
+                    reservation_digest,
+                    current,
+                ),
+            )
+            worktree_id = int(cursor.lastrowid)
+            self.db.execute(
+                """INSERT INTO autonomous_epoch_worktree_events(
+                       identity,epoch_worktree_id,sequence,status,
+                       observation_json,observation_digest,reason,created_at
+                   ) VALUES(?, ?, 1, 'RESERVED', ?, ?, ?, ?)""",
+                (
+                    self._identity("autonomous-epoch-worktree-event"),
+                    worktree_id,
+                    reservation_json,
+                    reservation_digest,
+                    "Deterministic epoch Git authority reserved before mutation",
+                    current,
+                ),
+            )
+            self._event(
+                "autonomous_epoch_worktree.reserved",
+                "autonomous_epoch_worktree",
+                worktree_id,
+                {
+                    **scope,
+                    "authority_key": authority_key,
+                    "reservation_digest": reservation_digest,
+                },
+            )
+            self.db.commit()
+            return worktree_id
+        except sqlite3.IntegrityError as exc:
+            self.db.rollback()
+            raise ValueError(
+                "Epoch branch or worktree authority collides with durable state"
+            ) from exc
+        except Exception:
+            self.db.rollback()
+            raise
+
+    @staticmethod
+    def _autonomous_epoch_worktree_query() -> str:
+        return """SELECT authority.*,
+                         event.sequence AS event_sequence,
+                         event.status AS status,
+                         event.observation_json AS observation_json,
+                         event.observation_digest AS observation_digest,
+                         event.reason AS event_reason,
+                         event.created_at AS observed_at
+                    FROM autonomous_epoch_worktrees authority
+                    JOIN autonomous_epoch_worktree_events event
+                      ON event.id=(
+                          SELECT latest.id
+                            FROM autonomous_epoch_worktree_events latest
+                           WHERE latest.epoch_worktree_id=authority.id
+                           ORDER BY latest.sequence DESC LIMIT 1
+                      )"""
+
+    def autonomous_epoch_worktree(self, worktree_id: int):
+        row = self.db.execute(
+            self._autonomous_epoch_worktree_query() + " WHERE authority.id=?",
+            (worktree_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown autonomous epoch worktree: {worktree_id}")
+        return row
+
+    def autonomous_epoch_worktree_for_epoch(self, execution_epoch_id: int):
+        row = self.db.execute(
+            self._autonomous_epoch_worktree_query()
+            + " WHERE authority.execution_epoch_id=?",
+            (execution_epoch_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(
+                f"Execution epoch has no worktree authority: {execution_epoch_id}"
+            )
+        return row
+
+    def autonomous_epoch_worktrees(self, repository_key: str | None = None):
+        query = self._autonomous_epoch_worktree_query()
+        parameters: tuple[Any, ...] = ()
+        if repository_key is not None:
+            query += " WHERE authority.repository_key=?"
+            parameters = (repository_key,)
+        query += " ORDER BY authority.mission_id,authority.epoch_number,authority.id"
+        return self.db.execute(query, parameters).fetchall()
+
+    def append_autonomous_epoch_worktree_event(
+        self,
+        worktree_id: int,
+        *,
+        status: str,
+        observation: dict[str, Any],
+        reason: str,
+        now: datetime | None = None,
+    ) -> int:
+        normalized_status = str(status).strip().upper()
+        if normalized_status not in {
+            "PROVISIONING",
+            "READY",
+            "DIRTY",
+            "MISSING",
+            "CONFLICT",
+        }:
+            raise ValueError("Invalid autonomous epoch worktree observation status")
+        normalized_reason = str(reason).strip()
+        if not normalized_reason:
+            raise ValueError("Epoch worktree observation reason is required")
+        observation_json, observation_digest = (
+            self._canonical_epoch_worktree_observation(observation)
+        )
+        current = _timestamp(_utc(now))
+        self._begin_immediate()
+        try:
+            authority = self.db.execute(
+                """SELECT id,mission_id,execution_epoch_id
+                     FROM autonomous_epoch_worktrees WHERE id=?""",
+                (worktree_id,),
+            ).fetchone()
+            if not authority:
+                raise KeyError(f"Unknown autonomous epoch worktree: {worktree_id}")
+            sequence = int(
+                self.db.execute(
+                    """SELECT COALESCE(MAX(sequence),0)+1
+                         FROM autonomous_epoch_worktree_events
+                        WHERE epoch_worktree_id=?""",
+                    (worktree_id,),
+                ).fetchone()[0]
+            )
+            cursor = self.db.execute(
+                """INSERT INTO autonomous_epoch_worktree_events(
+                       identity,epoch_worktree_id,sequence,status,
+                       observation_json,observation_digest,reason,created_at
+                   ) VALUES(?,?,?,?,?,?,?,?)""",
+                (
+                    self._identity("autonomous-epoch-worktree-event"),
+                    worktree_id,
+                    sequence,
+                    normalized_status,
+                    observation_json,
+                    observation_digest,
+                    normalized_reason,
+                    current,
+                ),
+            )
+            event_id = int(cursor.lastrowid)
+            self._event(
+                f"autonomous_epoch_worktree.{normalized_status.casefold()}",
+                "autonomous_epoch_worktree",
+                worktree_id,
+                {
+                    "mission_id": int(authority["mission_id"]),
+                    "execution_epoch_id": int(authority["execution_epoch_id"]),
+                    "sequence": sequence,
+                    "observation_digest": observation_digest,
+                    "reason": normalized_reason,
+                },
+            )
+            self.db.commit()
+            return event_id
+        except Exception:
+            self.db.rollback()
+            raise
 
     def close(self) -> None:
         self.db.close()

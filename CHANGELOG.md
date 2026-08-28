@@ -17,6 +17,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-AMM-019 deterministic `autonomous/<mission>/epoch-<n>` branches and workspace-contained epoch worktrees rooted at exact approved/checkpoint commits, with immutable pre-mutation authority, append-only Git observations, collision-safe normalization, checkpoint-lineage reconciliation, and non-destructive dirty/divergent/missing recovery.
 - AF-AMM-018 typed mutation journaling for commands, installs, services, model lifecycle, Git/worktrees, checkpoints, and revision/epoch transitions, with actual-state unknown-result reconciliation, immutable authoritative recovery snapshots/decisions, SQLite reopen recovery, and fail-closed artifact/audit/Git integrity checks.
 - AF-AMM-017 safe-boundary continue-as-new with compact schema-v2 carry-over, configurable history thresholds, per-run Search Attributes and memo identity, immutable mission-wide Temporal run audit, seven-day retention policy, explicit patch/replay gates, and opt-in pinned Worker Deployment versioning.
 - AF-AMM-016 typed `restart_from_checkpoint` and `apply_backlog_revision` Signals backed by an immutable owner-authorized handoff ledger, safe-boundary child supersession, exactly-once epoch activation, carried checkpoint/revision state, renewed epoch-scoped execution authority, stale/spoofed command rejection, and replay-safe parent resumption.

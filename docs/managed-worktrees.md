@@ -1,6 +1,6 @@
 # Managed Git worktrees
 
-`AF-048` makes AgentFactory the sole authority that creates and removes task worktrees. A scheduler assignment plus its live fencing token is the task-attempt authority; workers and managed Hermes sessions receive the resulting path and never run `git worktree add` themselves.
+`AF-048` makes AgentFactory the sole authority that creates and removes task worktrees. AF-AMM-019 extends that same `WorktreeManager` authority to Autonomous Mission epoch worktrees. A scheduler assignment plus its live fencing token is the task-attempt authority; an immutable execution epoch plus its exact approved/checkpoint base is the epoch authority. Workers and managed Hermes sessions receive resulting paths and never run `git worktree add` themselves.
 
 ## Provisioning
 
@@ -22,6 +22,8 @@ Startup reconciliation compares durable records, `git worktree list --porcelain`
 - base or branch authority conflicts.
 
 Reconciliation is non-destructive. It never adopts, removes, or rewrites an orphan automatically.
+
+The `autonomous/` subdirectory is a separate managed namespace and is therefore not reported as a standard task orphan. Epoch reconciliation verifies the deterministic branch, registered path, current ref/HEAD, filtered worktree content, and base-or-checkpoint lineage against an append-only authority ledger. See [Mission epoch branches and worktrees](development/mission-epoch-worktrees.md) for the branch policy, statuses, recovery rules, and real-Git fault matrix.
 
 ## Retention and cleanup
 

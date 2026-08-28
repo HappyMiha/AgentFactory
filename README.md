@@ -22,7 +22,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Safe-by-default execution.** Fixed executables and arguments, no shell, role allowlists, timeouts, output caps, and process-tree cleanup.
 - **Fail-closed writable isolation.** Qualified OS sandbox backends restrict future writable workers to one task worktree and declared temporary paths, with network denied and teardown evidence preserved.
 - **Lifecycle-aware runtimes.** Direct CLI and Hermes ACP execution share durable start/resume/heartbeat/cancel/event/finalize semantics without transferring Control Plane authority.
-- **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path with durable ownership, reconciliation, and retention controls.
+- **Control-Plane-owned worktrees.** Every writable task attempt receives one deterministic fenced Git branch/path; Autonomous Missions additionally receive preserved, checkpoint-rooted epoch branches/worktrees with immutable pre-mutation authority and fail-closed reconciliation.
 - **Immutable dispatch context.** Every Worker Runtime launch is bound to a content-addressed, size-bounded package with explicit included, excluded, and superseded sources.
 - **Governed context brokerage.** Role/purpose packages enforce provenance, freshness, and token limits while preserving authoritative requirements, safety constraints, decisions, unresolved risks, evidence, and next steps.
 - **Typed memory and governed skills.** Eight separately queryable stores enforce scoped write/retrieval policy; invalidation preserves provenance and consumers, while reusable skills require curated test, security, and evaluation evidence.
@@ -293,7 +293,7 @@ See:
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
 - [Development roadmap](docs/development-roadmap.md)
-- [Autonomous Mission Mode review](docs/autonomous-mission-mode-review.md), [planning intake contract](docs/autonomous-mission-planning.md), and [implementation backlog](examples/autonomous-mission-backlog.json)
+- [Autonomous Mission Mode review](docs/autonomous-mission-mode-review.md), [planning intake contract](docs/autonomous-mission-planning.md), [epoch worktree runbook](docs/development/mission-epoch-worktrees.md), and [implementation backlog](examples/autonomous-mission-backlog.json)
 - [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
 - [Providers](docs/providers.md)
