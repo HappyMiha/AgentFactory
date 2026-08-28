@@ -28,6 +28,7 @@ from .backlog_revisions import (
     BacklogRevisionService,
 )
 from .candidate_changes import CandidateChangeService
+from .control_plane import MissionControlFenceService
 from .engineering_loop import EngineeringLoopService, IterationUsage, LoopLimits
 from .evaluation import EvaluationService, ReviewFunction
 from .mission_checkpoints import MissionCheckpointService, MissionCheckpointType
@@ -221,6 +222,7 @@ class AutonomousChildJob:
     stable_item_id: str
     item_digest: str
     logical_attempt: int
+    control_fencing_token: int
     task_id: int
     run_id: int
     job_id: str
@@ -380,6 +382,7 @@ class AutonomousCodingDeliveryService:
             stable_item_id=str(row["stable_item_id"]),
             item_digest=str(row["item_digest"]),
             logical_attempt=int(row["logical_attempt"]),
+            control_fencing_token=int(row["control_fencing_token"]),
             task_id=int(row["task_id"]),
             run_id=int(row["run_id"]),
             job_id=str(context["job_id"]),
@@ -406,7 +409,10 @@ class AutonomousCodingDeliveryService:
             """SELECT job.* FROM autonomous_child_jobs job
                LEFT JOIN autonomous_child_reconciliations reconciliation
                  ON reconciliation.child_job_id=job.id
+               LEFT JOIN autonomous_mission_retry_requests retry
+                 ON retry.child_job_id=job.id
               WHERE job.mission_id=? AND reconciliation.id IS NULL
+                AND retry.id IS NULL
               ORDER BY job.id LIMIT 1""",
             (mission_id,),
         ).fetchone()
@@ -500,6 +506,7 @@ class AutonomousCodingDeliveryService:
         execution_mode: str,
         workflow_definition_id: str,
         command_id: str,
+        expected_fencing_token: int | None = None,
     ) -> AutonomousChildJob:
         command_id = self._required(command_id, "Child preparation command id")
         execution_mode = self._required(execution_mode, "Child execution mode")
@@ -516,6 +523,17 @@ class AutonomousCodingDeliveryService:
             or mission.active_execution_epoch_id is None
         ):
             raise PermissionError("Mission is not schedulable for a child job")
+        control_fence = MissionControlFenceService(self.storage).current(mission_id)
+        selected_fencing_token = (
+            control_fence.fencing_token
+            if expected_fencing_token is None
+            else int(expected_fencing_token)
+        )
+        MissionControlFenceService(self.storage).assert_allows(
+            mission_id,
+            expected_fencing_token=selected_fencing_token,
+            execution_epoch_id=mission.active_execution_epoch_id,
+        )
         revision = self.revisions.get_revision(
             mission.active_backlog_revision_id
         )
@@ -585,6 +603,7 @@ class AutonomousCodingDeliveryService:
             "stable_item_id": stable_item_id,
             "item_digest": str(item_row["item_digest"]),
             "logical_attempt": logical_attempt,
+            "control_fencing_token": selected_fencing_token,
             "child_workflow_id": child_workflow_id,
             "workflow_definition_id": workflow_definition_id,
             "execution_mode": execution_mode,
@@ -627,6 +646,7 @@ class AutonomousCodingDeliveryService:
                 "autonomous_epoch_id": mission.active_execution_epoch_id,
                 "autonomous_stable_item_id": stable_item_id,
                 "logical_attempt": logical_attempt,
+                "control_fencing_token": selected_fencing_token,
             },
             expected_outputs=list(item.item.expected_artifacts),
             acceptance_criteria=list(item.item.acceptance_criteria),
@@ -720,6 +740,7 @@ class AutonomousCodingDeliveryService:
                 "run_id": run_id,
                 "project_id": mission.project_id,
                 "repository_path": mission.configuration.repository_path,
+                "control_fencing_token": selected_fencing_token,
             }
             context_digest = self._digest(context)
             cursor = self.storage.db.execute(
@@ -727,10 +748,10 @@ class AutonomousCodingDeliveryService:
                        identity,mission_id,backlog_revision_id,
                        backlog_revision_digest,execution_epoch_id,
                        authorization_id,backlog_item_id,stable_item_id,item_digest,
-                       logical_attempt,task_id,run_id,child_workflow_id,
+                       logical_attempt,control_fencing_token,task_id,run_id,child_workflow_id,
                        workflow_definition_id,execution_mode,context_json,
                        context_digest,prepared_by,command_id,request_digest,created_at
-                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     self.storage._identity("autonomous-child-job"),
                     mission_id,
@@ -742,6 +763,7 @@ class AutonomousCodingDeliveryService:
                     stable_item_id,
                     item_row["item_digest"],
                     logical_attempt,
+                    selected_fencing_token,
                     task_id,
                     run_id,
                     child_workflow_id,
@@ -994,6 +1016,7 @@ class AutonomousCodingDeliveryService:
         child_job_id: int,
         *,
         command_id: str,
+        expected_fencing_token: int | None = None,
     ) -> AutonomousChildCompletion:
         command_id = self._required(command_id, "Child completion command id")
         job = self.get_job(child_job_id)
@@ -1010,6 +1033,16 @@ class AutonomousCodingDeliveryService:
         if not authorized:
             raise PermissionError("Autonomous child job has no persisted authorization")
         mission = self.missions.get(job.mission_id)
+        selected_fencing_token = (
+            job.control_fencing_token
+            if expected_fencing_token is None
+            else int(expected_fencing_token)
+        )
+        MissionControlFenceService(self.storage).assert_allows(
+            job.mission_id,
+            expected_fencing_token=selected_fencing_token,
+            execution_epoch_id=job.execution_epoch_id,
+        )
         authorization = self.authorizations.get_authorization(job.authorization_id)
         if (
             mission.phase is not MissionPhase.DEVELOPMENT
@@ -1158,6 +1191,29 @@ class AutonomousCodingDeliveryService:
         completion_digest = self._digest(binding)
         created_at = self._timestamp()
         with self.storage.db:
+            current_scope = self.storage.db.execute(
+                """SELECT mission.disposition,mission.active_execution_epoch_id,
+                          fence.fencing_token,fence.disposition AS fence_disposition
+                     FROM autonomous_missions mission
+                     JOIN autonomous_mission_control_fences fence
+                       ON fence.mission_id=mission.id
+                    WHERE mission.id=?""",
+                (job.mission_id,),
+            ).fetchone()
+            if (
+                not current_scope
+                or current_scope["disposition"]
+                != MissionDisposition.RUNNING.value
+                or current_scope["fence_disposition"]
+                != MissionDisposition.RUNNING.value
+                or int(current_scope["fencing_token"])
+                != selected_fencing_token
+                or int(current_scope["active_execution_epoch_id"])
+                != job.execution_epoch_id
+            ):
+                raise PermissionError(
+                    "Mission control fence changed before child completion commit"
+                )
             row = self.storage.db.execute(
                 "SELECT * FROM autonomous_child_delivery_completions WHERE child_job_id=?",
                 (child_job_id,),

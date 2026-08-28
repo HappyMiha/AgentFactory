@@ -8,6 +8,65 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v66_database_upgrades_to_mission_control_fence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v66.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 67:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertGreaterEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                67,
+            )
+            for table in (
+                "autonomous_mission_control_fences",
+                "autonomous_mission_control_commands",
+                "autonomous_mission_operation_leases",
+                "autonomous_mission_retry_requests",
+                "autonomous_mission_retry_settlements",
+            ):
+                with self.subTest(table=table):
+                    self.assertIsNotNone(
+                        storage.db.execute(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table,),
+                        ).fetchone()
+                    )
+            child_columns = {
+                str(row["name"])
+                for row in storage.db.execute(
+                    "PRAGMA table_info(autonomous_child_jobs)"
+                )
+            }
+            self.assertIn("control_fencing_token", child_columns)
+            storage.close()
+
+            reopened = SQLiteStorage(path)
+            self.assertEqual(
+                reopened.db.execute(
+                    "SELECT COUNT(*) FROM schema_migrations WHERE version=67"
+                ).fetchone()[0],
+                1,
+            )
+            reopened.close()
+
     def test_v65_database_upgrades_to_autonomous_child_delivery_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v65.db"
@@ -28,7 +87,7 @@ class StorageMigrationTests(unittest.TestCase):
             db.close()
 
             storage = SQLiteStorage(path)
-            self.assertEqual(
+            self.assertGreaterEqual(
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],

@@ -20,6 +20,7 @@ from ...autonomous_authorization import (
 from ...autonomous_backlog_approval import AutonomousBacklogApprovalService
 from ...autonomous_mission import (
     AutonomousMissionService,
+    MissionControlFenceConflictError,
     MissionDisposition,
     MissionPhase,
 )
@@ -38,6 +39,17 @@ from ...autonomous_proposal_verifier import (
 from ...backlog_revisions import BacklogRevisionService
 from ...coding_delivery import AutonomousCodingDeliveryService
 from ...config import config_path_for_workspace, load_yaml
+from ...control_plane import (
+    MissionControlAction,
+    MissionControlCommand,
+    MissionControlFenceService,
+    MissionOperationKind,
+    MissionSchedulingFencedError,
+)
+from ...local_model_scheduler import (
+    LocalInferenceControlGuard,
+    LocalInferenceFenceBinding,
+)
 from ...models import (
     Agent,
     Budget,
@@ -71,10 +83,16 @@ from .models import (
     AutonomousExecutionPreparationInput,
     AutonomousExecutionPreparationResult,
     AutonomousMissionActivityScope,
+    AutonomousMissionControlActivityInput,
+    AutonomousMissionControlResult,
+    AutonomousMissionControlSnapshotInput,
+    AutonomousMissionControlSnapshotResult,
     AutonomousMissionCompletionInput,
     AutonomousMissionCompletionResult,
     AutonomousPlanningActivityInput,
     AutonomousPlanningActivityResult,
+    AutonomousRetrySettlementInput,
+    AutonomousRetrySettlementResult,
     DemoWorkflowInput,
     StageActivityInput,
 )
@@ -83,6 +101,73 @@ from .settings import TemporalSettings
 
 LOGGER = logging.getLogger(__name__)
 MARKER_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
+
+
+class _FencedPlanningInvoker:
+    """Re-check mission control before every role inference in one Activity."""
+
+    def __init__(
+        self,
+        storage: SQLiteStorage,
+        delegate: PlanningProviderInvoker,
+    ):
+        self.control = MissionControlFenceService(storage)
+        self.delegate = delegate
+
+    def invoke(self, request: Any) -> ProviderResult:
+        while True:
+            fence = self.control.current(request.mission_id)
+            if fence.disposition == MissionDisposition.RUNNING.value:
+                operation_id = (
+                    f"planning:{request.run_id}:{request.assignment.role_id}:"
+                    f"attempt-{request.attempt_number}:token-{fence.fencing_token}"
+                )
+                try:
+                    self.control.begin_operation(
+                        operation_id=operation_id,
+                        mission_id=request.mission_id,
+                        execution_epoch_id=fence.execution_epoch_id,
+                        child_job_id=None,
+                        operation_kind=MissionOperationKind.INFERENCE,
+                        expected_fencing_token=fence.fencing_token,
+                        request={
+                            "role": request.assignment.role_id,
+                            "provider_id": request.assignment.provider_id,
+                            "model": request.assignment.model,
+                            "planning_attempt": request.attempt_number,
+                        },
+                    )
+                    break
+                except (
+                    MissionControlFenceConflictError,
+                    MissionSchedulingFencedError,
+                ):
+                    continue
+            if fence.disposition not in {
+                MissionDisposition.PAUSED.value,
+                MissionDisposition.STOPPED.value,
+            }:
+                raise PermissionError(
+                    f"Planning is fenced by mission disposition {fence.disposition}"
+                )
+            activity.heartbeat(
+                {
+                    "mission_id": request.mission_id,
+                    "planning_run_id": request.run_id,
+                    "role": request.assignment.role_id,
+                    "progress": (
+                        f"waiting at mission {fence.disposition.lower()} fence"
+                    ),
+                    "fencing_token": fence.fencing_token,
+                }
+            )
+            time.sleep(0.05)
+        try:
+            return self.delegate.invoke(request)
+        finally:
+            self.control.finish_operation(
+                operation_id, reason="Planning role inference boundary completed"
+            )
 
 
 class AgentFactoryActivities:
@@ -248,7 +333,7 @@ class AgentFactoryActivities:
             planning = AutonomousPlanningService(storage, capabilities)
             authorizations = AutonomousAuthorizationService(storage, capabilities)
             pipeline = AutonomousPlanningPipelineService(
-                storage, invoker, capabilities
+                storage, _FencedPlanningInvoker(storage, invoker), capabilities
             )
             verifier = AutonomousProposalVerificationService(storage)
             revisions = BacklogRevisionService(storage)
@@ -521,6 +606,140 @@ class AgentFactoryActivities:
                 str(exc)[:4000], type="CONFIGURATION", non_retryable=True
             ) from exc
 
+    def _read_autonomous_control_fence_sync(
+        self, request: AutonomousMissionControlSnapshotInput
+    ) -> AutonomousMissionControlSnapshotResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            fence = MissionControlFenceService(storage).current(
+                request.scope.mission_id
+            )
+            return AutonomousMissionControlSnapshotResult(
+                mission_id=fence.mission_id,
+                mission_version=fence.mission_version,
+                phase=fence.phase,
+                disposition=fence.disposition,
+                fencing_token=fence.fencing_token,
+                backlog_revision_id=fence.backlog_revision_id,
+                execution_epoch_id=fence.execution_epoch_id,
+                occurred_at=fence.updated_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="read_autonomous_mission_control_fence")
+    async def read_autonomous_mission_control_fence(
+        self, request: AutonomousMissionControlSnapshotInput
+    ) -> AutonomousMissionControlSnapshotResult:
+        try:
+            return await asyncio.to_thread(
+                self._read_autonomous_control_fence_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+
+    def _apply_autonomous_control_sync(
+        self, request: AutonomousMissionControlActivityInput
+    ) -> AutonomousMissionControlResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            command = request.command
+            if command.mission_id != request.scope.mission_id:
+                raise PermissionError("Control Signal mission identity is spoofed")
+            result = MissionControlFenceService(storage).apply(
+                MissionControlCommand(
+                    mission_id=command.mission_id,
+                    command_id=command.command_id,
+                    action=MissionControlAction(command.action),
+                    actor=command.actor,
+                    reason=command.reason,
+                    expected_mission_version=command.expected_mission_version,
+                    expected_fencing_token=command.expected_fencing_token,
+                    expected_backlog_revision_id=(
+                        command.expected_backlog_revision_id
+                    ),
+                    expected_execution_epoch_id=(
+                        command.expected_execution_epoch_id
+                    ),
+                    child_job_id=command.child_job_id,
+                )
+            )
+            return AutonomousMissionControlResult(
+                mission_id=result.mission_id,
+                command_id=result.command_id,
+                action=result.action.value,
+                mission_version=result.mission_version,
+                phase=result.phase,
+                disposition=result.disposition,
+                fencing_token=result.fencing_token,
+                active_operations=result.active_operations,
+                releasing_operations=result.releasing_operations,
+                duplicate=result.duplicate,
+                occurred_at=result.occurred_at,
+                child_job_id=result.child_job_id,
+                logical_attempt=result.logical_attempt,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="apply_autonomous_mission_control")
+    async def apply_autonomous_mission_control(
+        self, request: AutonomousMissionControlActivityInput
+    ) -> AutonomousMissionControlResult:
+        try:
+            return await asyncio.to_thread(
+                self._apply_autonomous_control_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+
+    def _settle_autonomous_retry_sync(
+        self, request: AutonomousRetrySettlementInput
+    ) -> AutonomousRetrySettlementResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            settlement = MissionControlFenceService(storage).settle_retry(
+                request.child_job_id, command_id=request.command_id
+            )
+            return AutonomousRetrySettlementResult(
+                mission_id=request.scope.mission_id,
+                child_job_id=settlement.child_job_id,
+                retry_request_id=settlement.retry_request_id,
+                failed_state_id=settlement.failed_state_id,
+                ready_state_id=settlement.ready_state_id,
+                next_logical_attempt=settlement.next_logical_attempt,
+                summary=(
+                    "Current child strategy retired at a safe boundary; "
+                    f"logical attempt {settlement.next_logical_attempt} is ready"
+                ),
+                occurred_at=settlement.created_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="settle_autonomous_child_retry")
+    async def settle_autonomous_child_retry(
+        self, request: AutonomousRetrySettlementInput
+    ) -> AutonomousRetrySettlementResult:
+        try:
+            return await asyncio.to_thread(
+                self._settle_autonomous_retry_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+
     @staticmethod
     def _autonomous_activity_error(exc: Exception) -> ApplicationError:
         return ApplicationError(
@@ -547,6 +766,11 @@ class AgentFactoryActivities:
                 raise PermissionError(
                     "Environment request does not match persisted approval authority"
                 )
+            MissionControlFenceService(storage).assert_allows(
+                request.scope.mission_id,
+                expected_fencing_token=request.expected_fencing_token,
+                execution_epoch_id=approval.execution_epoch_id,
+            )
             mission = delivery.enter_development(
                 request.scope.mission_id,
                 expected_mission_version=request.expected_mission_version,
@@ -557,6 +781,9 @@ class AgentFactoryActivities:
                 mission_version=mission.version,
                 phase=mission.phase.value,
                 disposition=mission.disposition.value,
+                fencing_token=MissionControlFenceService(storage)
+                .current(mission.id)
+                .fencing_token,
                 environment_status="READY",
                 summary=(
                     "Authorized environment discovery and bootstrap completed; "
@@ -612,6 +839,7 @@ class AgentFactoryActivities:
             child_workflow_id=child_job.child_workflow_id,
             repository_path=authorization.repository_path,
             epoch_branch=epoch.epoch_branch,
+            control_fencing_token=child_job.control_fencing_token,
         )
         return context, role, model
 
@@ -619,6 +847,7 @@ class AgentFactoryActivities:
         self, request: AutonomousChildPreparationInput
     ) -> AutonomousChildPreparationResult:
         storage = self._autonomous_storage(request.scope)
+        operation_id: str | None = None
         try:
             missions = AutonomousMissionService(storage)
             mission = self._assert_autonomous_scope(request.scope, missions)
@@ -635,6 +864,23 @@ class AgentFactoryActivities:
                 )
             delivery = AutonomousCodingDeliveryService(
                 storage, self._autonomous_capabilities(request.scope)
+            )
+            operation_id = (
+                f"{request.command_id}:next-work-item:"
+                f"token-{request.expected_fencing_token}"
+            )
+            MissionControlFenceService(storage).begin_operation(
+                operation_id=operation_id,
+                mission_id=mission.id,
+                execution_epoch_id=mission.active_execution_epoch_id,
+                child_job_id=None,
+                operation_kind=MissionOperationKind.NEXT_WORK_ITEM,
+                expected_fencing_token=request.expected_fencing_token,
+                request={
+                    "mission_version": request.expected_mission_version,
+                    "execution_mode": request.execution_mode,
+                    "workflow_definition_id": request.workflow_definition_id,
+                },
             )
             child_job = delivery.open_job(mission.id)
             projections = tuple(
@@ -677,6 +923,7 @@ class AgentFactoryActivities:
                     execution_mode=request.execution_mode,
                     workflow_definition_id=request.workflow_definition_id,
                     command_id=request.command_id,
+                    expected_fencing_token=request.expected_fencing_token,
                 )
             context, role, model = self._autonomous_job_context(
                 delivery, child_job
@@ -716,6 +963,14 @@ class AgentFactoryActivities:
                 job=job,
             )
         finally:
+            if operation_id is not None:
+                try:
+                    MissionControlFenceService(storage).finish_operation(
+                        operation_id,
+                        reason="Next work-item admission boundary completed",
+                    )
+                except KeyError:
+                    pass
             storage.close()
 
     @activity.defn(name="prepare_autonomous_child_job")
@@ -819,6 +1074,13 @@ class AgentFactoryActivities:
                 storage, self._autonomous_capabilities(scope)
             )
             persisted = self._assert_autonomous_job_binding(delivery, job)
+            MissionControlFenceService(storage).assert_allows(
+                persisted.mission_id,
+                expected_fencing_token=(
+                    job.autonomous_context.control_fencing_token
+                ),
+                execution_epoch_id=persisted.execution_epoch_id,
+            )
             authorization = delivery.authorize_job(
                 persisted.id,
                 command_id=f"{persisted.child_workflow_id}:authorize",
@@ -883,9 +1145,19 @@ class AgentFactoryActivities:
                 storage, self._autonomous_capabilities(scope)
             )
             persisted = self._assert_autonomous_job_binding(delivery, job)
+            MissionControlFenceService(storage).assert_allows(
+                persisted.mission_id,
+                expected_fencing_token=(
+                    job.autonomous_context.control_fencing_token
+                ),
+                execution_epoch_id=persisted.execution_epoch_id,
+            )
             completion = delivery.complete_job(
                 persisted.id,
                 command_id=f"{persisted.child_workflow_id}:complete",
+                expected_fencing_token=(
+                    job.autonomous_context.control_fencing_token
+                ),
             )
             return ActivityResult(
                 True,
@@ -927,6 +1199,11 @@ class AgentFactoryActivities:
                 storage, self._autonomous_capabilities(request.scope)
             )
             job = delivery.get_job(request.child_job_id)
+            MissionControlFenceService(storage).assert_allows(
+                job.mission_id,
+                expected_fencing_token=request.expected_fencing_token,
+                execution_epoch_id=job.execution_epoch_id,
+            )
             reconciliation = delivery.reconcile_job(
                 request.child_job_id,
                 expected_mission_version=request.expected_mission_version,
@@ -968,7 +1245,12 @@ class AgentFactoryActivities:
         storage = self._autonomous_storage(request.scope)
         try:
             missions = AutonomousMissionService(storage)
-            self._assert_autonomous_scope(request.scope, missions)
+            current = self._assert_autonomous_scope(request.scope, missions)
+            MissionControlFenceService(storage).assert_allows(
+                current.id,
+                expected_fencing_token=request.expected_fencing_token,
+                execution_epoch_id=current.active_execution_epoch_id,
+            )
             delivery = AutonomousCodingDeliveryService(
                 storage, self._autonomous_capabilities(request.scope)
             )
@@ -1263,6 +1545,49 @@ class AgentFactoryActivities:
             else provider_authorization,
         )
 
+    async def _await_autonomous_stage_fence(
+        self,
+        storage: SQLiteStorage,
+        request: StageActivityInput,
+        stage_label: str,
+    ) -> int | None:
+        context = request.job.autonomous_context
+        if context is None:
+            return None
+        while True:
+            retry = storage.db.execute(
+                """SELECT 1
+                     FROM autonomous_mission_retry_requests retry
+                     LEFT JOIN autonomous_mission_retry_settlements settlement
+                       ON settlement.retry_request_id=retry.id
+                    WHERE retry.child_job_id=? AND settlement.id IS NULL""",
+                (context.child_job_id,),
+            ).fetchone()
+            if retry:
+                return None
+            fence = MissionControlFenceService(storage).current(
+                context.mission_id
+            )
+            if fence.disposition == MissionDisposition.RUNNING.value:
+                return fence.fencing_token
+            if fence.disposition not in {
+                MissionDisposition.PAUSED.value,
+                MissionDisposition.STOPPED.value,
+            }:
+                raise PermissionError(
+                    f"Autonomous stage is fenced by {fence.disposition}"
+                )
+            activity.heartbeat(
+                {
+                    "job_id": request.job.job_id,
+                    "run_id": request.job.run_id,
+                    "stage": stage_label,
+                    "progress": f"waiting at mission {fence.disposition.lower()} fence",
+                    "fencing_token": fence.fencing_token,
+                }
+            )
+            await asyncio.sleep(0.05)
+
     @activity.defn(name="execute_agentfactory_stage")
     async def execute_stage(self, request: StageActivityInput) -> ActivityResult:
         job = request.job
@@ -1272,6 +1597,22 @@ class AgentFactoryActivities:
         storage = self._storage(job)
         LOGGER.info("%s stage started", self._correlation(job, "execute_stage"))
         try:
+            admitted_fencing_token: int | None = None
+            if job.autonomous_context is not None:
+                admitted_fencing_token = await self._await_autonomous_stage_fence(
+                    storage, request, stage_label
+                )
+                if admitted_fencing_token is None:
+                    return ActivityResult(
+                        True,
+                        passed=False,
+                        summary=(
+                            "Current autonomous strategy was superseded by a "
+                            "persisted retry command"
+                        ),
+                        metadata={"retry_requested": True},
+                        failure_class="RETRY_REQUESTED",
+                    )
             mutation, _created = storage.reserve_workflow_mutation(
                 run_id=job.run_id,
                 stage_key="workflow",
@@ -1329,16 +1670,74 @@ class AgentFactoryActivities:
                 budget=Budget(**stage.get("budget", {})),
                 status=Status.RUNNING,
             )
-            provider_result = await self._run_agent_with_heartbeat(
-                runtime,
-                agent,
-                child,
-                self._stage_context(storage, job),
-                job.mode,
-                job,
-                stage_label,
-                provider_authorization,
-            )
+            inference_operation_id: str | None = None
+            if job.autonomous_context is not None:
+                inference_operation_id = (
+                    f"{key}:inference:activity-attempt-{activity.info().attempt}"
+                )
+                while True:
+                    token = admitted_fencing_token or (
+                        request.control_fencing_token
+                        or job.autonomous_context.control_fencing_token
+                    )
+                    try:
+                        LocalInferenceControlGuard(storage).begin(
+                            LocalInferenceFenceBinding(
+                                mission_id=job.autonomous_context.mission_id,
+                                execution_epoch_id=(
+                                    job.autonomous_context.execution_epoch_id
+                                ),
+                                child_job_id=job.autonomous_context.child_job_id,
+                                fencing_token=token,
+                                role=agent.role,
+                                provider_id=agent.provider,
+                                model=agent.model_identity,
+                            ),
+                            request_id=inference_operation_id,
+                            request={
+                                "stage": stage_label,
+                                "repair_iteration": request.repair_iteration,
+                                "run_id": job.run_id,
+                            },
+                        )
+                        break
+                    except (
+                        MissionControlFenceConflictError,
+                        MissionSchedulingFencedError,
+                    ):
+                        admitted_fencing_token = (
+                            await self._await_autonomous_stage_fence(
+                                storage, request, stage_label
+                            )
+                        )
+                        if admitted_fencing_token is None:
+                            return ActivityResult(
+                                True,
+                                passed=False,
+                                summary=(
+                                    "Current autonomous strategy was superseded "
+                                    "before inference admission"
+                                ),
+                                metadata={"retry_requested": True},
+                                failure_class="RETRY_REQUESTED",
+                            )
+            try:
+                provider_result = await self._run_agent_with_heartbeat(
+                    runtime,
+                    agent,
+                    child,
+                    self._stage_context(storage, job),
+                    job.mode,
+                    job,
+                    stage_label,
+                    provider_authorization,
+                )
+            finally:
+                if inference_operation_id is not None:
+                    LocalInferenceControlGuard(storage).finish(
+                        inference_operation_id,
+                        reason="Autonomous stage inference boundary completed",
+                    )
             if not provider_result.ok:
                 message = provider_result.error or "Agent provider failed"
                 failure_class, retryable = classify_error(

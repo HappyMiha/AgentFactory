@@ -16,11 +16,17 @@ with workflow.unsafe.imports_passed_through():
         AutonomousBacklogApprovalNotice,
         AutonomousChildPreparationInput,
         AutonomousChildPreparationResult,
+        AutonomousChildControlNotice,
         AutonomousChildReconciliationInput,
         AutonomousChildReconciliationResult,
         AutonomousExecutionPreparationInput,
         AutonomousExecutionPreparationResult,
         AutonomousMissionActivityScope,
+        AutonomousMissionControlActivityInput,
+        AutonomousMissionControlCommand,
+        AutonomousMissionControlResult,
+        AutonomousMissionControlSnapshotInput,
+        AutonomousMissionControlSnapshotResult,
         AutonomousMissionCompletionInput,
         AutonomousMissionCompletionResult,
         AutonomousPlanningActivityInput,
@@ -28,12 +34,18 @@ with workflow.unsafe.imports_passed_through():
         AutonomousPlanningCommand,
         AutonomousMissionWorkflowInput,
         AutonomousMissionWorkflowState,
+        AutonomousRetrySettlementInput,
+        AutonomousRetrySettlementResult,
         DemoWorkflowInput,
         StageActivityInput,
         WorkflowState,
         WorkflowStatus,
     )
     from .policies import fast_transient_policy, llm_policy, policy_for_provider
+
+
+class _AutonomousRetryRequested(Exception):
+    """Internal deterministic child safe-boundary control flow."""
 
 
 @workflow.defn(name="AgentFactoryJobWorkflow")
@@ -45,6 +57,9 @@ class AgentFactoryJobWorkflow:
         self._paused = False
         self._cancel_requested = False
         self._active_activity: Any = None
+        self._autonomous_job: AgentFactoryJobInput | None = None
+        self._mission_control_token = 1
+        self._retry_notice: AutonomousChildControlNotice | None = None
 
     @workflow.query(name="get_status")
     def get_status(self) -> dict[str, Any]:
@@ -89,15 +104,59 @@ class AgentFactoryJobWorkflow:
         if self._active_activity is not None:
             self._active_activity.cancel()
 
+    @workflow.signal(name="autonomous_mission_control_applied")
+    async def autonomous_mission_control_applied(
+        self, notice: AutonomousChildControlNotice
+    ) -> None:
+        job = self._autonomous_job
+        context = job.autonomous_context if job is not None else None
+        if (
+            context is None
+            or notice.mission_id != context.mission_id
+            or notice.child_job_id != context.child_job_id
+        ):
+            return
+        if notice.fencing_token < self._mission_control_token:
+            return
+        self._mission_control_token = notice.fencing_token
+        context.control_fencing_token = notice.fencing_token
+        if notice.action in {"PAUSE", "STOP"}:
+            self._paused = True
+            self.state.status = (
+                WorkflowStatus.STOPPED
+                if notice.action == "STOP"
+                else WorkflowStatus.PAUSED
+            )
+            self.state.last_progress = (
+                f"Mission {notice.action.lower()} persisted; waiting after the "
+                "current atomic operation"
+            )
+        elif notice.action == "RESUME":
+            self._paused = False
+            self.state.status = WorkflowStatus.RUNNING
+            self.state.last_progress = "Mission control fence resumed child execution"
+        elif notice.action == "RETRY_CURRENT_TASK":
+            self._retry_notice = notice
+            self.state.status = WorkflowStatus.RETRYING
+            self.state.last_progress = (
+                "Retry requested; retiring this strategy at the next safe boundary"
+            )
+
     async def _wait_until_runnable(self) -> None:
         if self._cancel_requested:
             raise asyncio.CancelledError
         if self._paused:
             await workflow.wait_condition(
-                lambda: not self._paused or self._cancel_requested
+                lambda: (
+                    not self._paused
+                    or self._cancel_requested
+                    or self._retry_notice is not None
+                )
             )
         if self._cancel_requested:
             raise asyncio.CancelledError
+        if self._retry_notice is not None:
+            raise _AutonomousRetryRequested
         self.state.status = WorkflowStatus.RUNNING
 
     async def _fast_activity(
@@ -175,6 +234,11 @@ class AgentFactoryJobWorkflow:
             temporal_workflow_id=info.workflow_id,
             started_at=workflow.now().isoformat(),
         )
+        self._autonomous_job = job
+        if job.autonomous_context is not None:
+            self._mission_control_token = (
+                job.autonomous_context.control_fencing_token
+            )
         try:
             self.state.phase = "validation"
             self.state.last_progress = "Validating persisted AgentFactory job"
@@ -213,8 +277,18 @@ class AgentFactoryJobWorkflow:
                             ordinal=ordinal,
                             repair_iteration=repair_iteration,
                             failure_summary=failure_summary,
+                            control_fencing_token=(
+                                self._mission_control_token
+                                if job.autonomous_context is not None
+                                else None
+                            ),
                         )
                     )
+                    if result.failure_class == "RETRY_REQUESTED":
+                        self.state.status = WorkflowStatus.RETRYING
+                        self.state.phase = "retry_requested"
+                        self.state.last_progress = result.summary
+                        return self.state.to_dict()
                     if result.passed:
                         self.state.completed_tasks = ordinal
                         self.state.last_progress = result.summary
@@ -266,6 +340,13 @@ class AgentFactoryJobWorkflow:
             )
             self.state.last_progress = final.summary
             return self.state.to_dict()
+        except _AutonomousRetryRequested:
+            self.state.status = WorkflowStatus.RETRYING
+            self.state.phase = "retry_requested"
+            self.state.last_progress = (
+                "Autonomous strategy stopped at a safe boundary for logical retry"
+            )
+            return self.state.to_dict()
         except asyncio.CancelledError:
             self.state.status = WorkflowStatus.CANCELLED
             self.state.phase = "cancelled"
@@ -291,6 +372,11 @@ class AutonomousMissionWorkflow:
         self._approval_notices: list[AutonomousBacklogApprovalNotice] = []
         self._seen_planning_commands: set[str] = set()
         self._seen_approval_notices: set[str] = set()
+        self._active_child: Any = None
+        self._control_handlers = 0
+        self._seen_control_payloads: dict[
+            str, AutonomousMissionControlCommand
+        ] = {}
 
     def _state(self) -> AutonomousMissionWorkflowState:
         if self.state is None:
@@ -321,6 +407,13 @@ class AutonomousMissionWorkflow:
             "current_child_job_id": state.current_child_job_id,
             "current_child_workflow_id": state.current_child_workflow_id,
             "current_work_item_stable_id": state.current_work_item_stable_id,
+            "control_fencing_token": state.control_fencing_token,
+            "last_control_command_id": state.last_control_command_id,
+            "last_control_action": state.last_control_action,
+            "pending_retry_child_job_id": state.pending_retry_child_job_id,
+            "pending_retry_logical_attempt": (
+                state.pending_retry_logical_attempt
+            ),
             "completed_items": state.completed_items,
             "total_items": state.total_items,
             "percent": percent,
@@ -346,6 +439,126 @@ class AutonomousMissionWorkflow:
         self._seen_approval_notices.add(notice.notice_id)
         self._approval_notices.append(notice)
 
+    async def _apply_control_command(
+        self, command: AutonomousMissionControlCommand
+    ) -> None:
+        seen = self._seen_control_payloads.get(command.command_id)
+        if seen == command:
+            return
+        if seen is None:
+            self._seen_control_payloads[command.command_id] = command
+        self._control_handlers += 1
+        try:
+            try:
+                result = await workflow.execute_activity(
+                    "apply_autonomous_mission_control",
+                    AutonomousMissionControlActivityInput(
+                        scope=self._activity_scope(), command=command
+                    ),
+                    result_type=AutonomousMissionControlResult,
+                    start_to_close_timeout=timedelta(
+                        seconds=(
+                            self._request.fast_activity_timeout_seconds
+                            if self._request is not None
+                            else 120
+                        )
+                    ),
+                    retry_policy=fast_transient_policy(),
+                )
+            except ActivityError as exc:
+                self._touch(
+                    f"Mission control command {command.command_id} rejected: {exc}"
+                )
+                return
+            state = self._state()
+            if result.fencing_token < state.control_fencing_token:
+                self._touch(
+                    f"Ignored out-of-order control result {result.command_id} "
+                    f"at superseded fence token {result.fencing_token}"
+                )
+                return
+            state.mission_version = result.mission_version
+            state.phase = result.phase
+            state.disposition = result.disposition
+            state.control_fencing_token = result.fencing_token
+            state.last_control_command_id = result.command_id
+            state.last_control_action = result.action
+            if result.action == "PAUSE":
+                state.workflow_status = WorkflowStatus.PAUSED.value
+            elif result.action == "STOP":
+                state.workflow_status = WorkflowStatus.STOPPED.value
+            elif result.action == "RESUME":
+                state.workflow_status = WorkflowStatus.RUNNING.value
+            else:
+                state.workflow_status = WorkflowStatus.RETRYING.value
+                state.pending_retry_child_job_id = result.child_job_id
+                state.pending_retry_logical_attempt = result.logical_attempt
+            self._touch(
+                f"Mission control {result.action.lower()} persisted at fence "
+                f"token {result.fencing_token}"
+            )
+            if (
+                self._active_child is not None
+                and state.current_child_job_id is not None
+            ):
+                try:
+                    await self._active_child.signal(
+                        "autonomous_mission_control_applied",
+                        AutonomousChildControlNotice(
+                            mission_id=state.mission_id,
+                            child_job_id=state.current_child_job_id,
+                            command_id=result.command_id,
+                            action=result.action,
+                            mission_version=result.mission_version,
+                            fencing_token=result.fencing_token,
+                            logical_attempt=result.logical_attempt,
+                        ),
+                    )
+                except Exception:  # Child may have closed at the same safe boundary.
+                    self._touch(
+                        "Mission control persisted after the active child closed"
+                    )
+        finally:
+            self._control_handlers -= 1
+
+    @workflow.signal(name="control_autonomous_mission")
+    async def control_autonomous_mission(
+        self, command: AutonomousMissionControlCommand
+    ) -> None:
+        await self._apply_control_command(command)
+
+    @workflow.signal(name="pause_autonomous_mission")
+    async def pause_autonomous_mission(
+        self, command: AutonomousMissionControlCommand
+    ) -> None:
+        if command.action != "PAUSE":
+            return
+        await self._apply_control_command(command)
+
+    @workflow.signal(name="resume_autonomous_mission")
+    async def resume_autonomous_mission(
+        self, command: AutonomousMissionControlCommand
+    ) -> None:
+        if command.action != "RESUME":
+            return
+        await self._apply_control_command(command)
+
+    @workflow.signal(name="stop_autonomous_mission")
+    async def stop_autonomous_mission(
+        self, command: AutonomousMissionControlCommand
+    ) -> None:
+        if command.action != "STOP":
+            return
+        await self._apply_control_command(command)
+
+    @workflow.signal(name="retry_current_task")
+    async def retry_current_task(
+        self, command: AutonomousMissionControlCommand
+    ) -> None:
+        if command.action != "RETRY_CURRENT_TASK":
+            return
+        await self._apply_control_command(command)
+
     def _activity_scope(self) -> AutonomousMissionActivityScope:
         request = self._request
         state = self._state()
@@ -366,6 +579,44 @@ class AutonomousMissionWorkflow:
         state = self._state()
         state.last_activity = summary[:512]
         state.last_activity_at = workflow.now().isoformat()
+
+    async def _read_control_activity(
+        self,
+    ) -> AutonomousMissionControlSnapshotResult:
+        request = self._request
+        if request is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        return await workflow.execute_activity(
+            "read_autonomous_mission_control_fence",
+            AutonomousMissionControlSnapshotInput(scope=self._activity_scope()),
+            result_type=AutonomousMissionControlSnapshotResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    def _apply_control_snapshot(
+        self, snapshot: AutonomousMissionControlSnapshotResult
+    ) -> None:
+        state = self._state()
+        state.mission_version = snapshot.mission_version
+        state.phase = snapshot.phase
+        state.disposition = snapshot.disposition
+        state.control_fencing_token = snapshot.fencing_token
+        state.active_backlog_revision_id = snapshot.backlog_revision_id
+        state.active_execution_epoch_id = snapshot.execution_epoch_id
+
+    async def _wait_until_mission_runnable(self) -> None:
+        state = self._state()
+        if self._control_handlers or state.disposition != "RUNNING":
+            await workflow.wait_condition(
+                lambda: (
+                    self._control_handlers == 0
+                    and self._state().disposition == "RUNNING"
+                )
+            )
+        state.workflow_status = WorkflowStatus.RUNNING.value
 
     async def _run_planning_activity(
         self, command: AutonomousPlanningCommand
@@ -459,6 +710,7 @@ class AutonomousMissionWorkflow:
             AutonomousExecutionPreparationInput(
                 scope=self._activity_scope(),
                 expected_mission_version=state.mission_version,
+                expected_fencing_token=state.control_fencing_token,
                 approval_id=state.backlog_approval_id,
                 authorization_id=state.execution_authorization_id,
                 command_id=(
@@ -485,6 +737,7 @@ class AutonomousMissionWorkflow:
             AutonomousChildPreparationInput(
                 scope=self._activity_scope(),
                 expected_mission_version=state.mission_version,
+                expected_fencing_token=state.control_fencing_token,
                 execution_mode=request.autonomous_child_execution_mode,
                 workflow_definition_id=(
                     request.autonomous_child_workflow_definition_id
@@ -501,7 +754,8 @@ class AutonomousMissionWorkflow:
                 ),
                 command_id=(
                     f"{state.temporal_workflow_id}:prepare-child:"
-                    f"v{state.mission_version}"
+                    f"v{state.mission_version}:"
+                    f"f{state.control_fencing_token}"
                 ),
             ),
             result_type=AutonomousChildPreparationResult,
@@ -524,6 +778,7 @@ class AutonomousMissionWorkflow:
                 scope=self._activity_scope(),
                 child_job_id=child_job_id,
                 expected_mission_version=state.mission_version,
+                expected_fencing_token=state.control_fencing_token,
                 command_id=(
                     f"{state.temporal_workflow_id}:reconcile-child:"
                     f"{child_job_id}:v{state.mission_version}"
@@ -548,12 +803,37 @@ class AutonomousMissionWorkflow:
             AutonomousMissionCompletionInput(
                 scope=self._activity_scope(),
                 expected_mission_version=state.mission_version,
+                expected_fencing_token=state.control_fencing_token,
                 command_id=(
                     f"{state.temporal_workflow_id}:complete:"
                     f"v{state.mission_version}"
                 ),
             ),
             result_type=AutonomousMissionCompletionResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    async def _settle_retry_activity(
+        self, child_job_id: int
+    ) -> AutonomousRetrySettlementResult:
+        request = self._request
+        state = self._state()
+        if request is None or state.last_control_command_id is None:
+            raise RuntimeError("Retry control command is unavailable")
+        return await workflow.execute_activity(
+            "settle_autonomous_child_retry",
+            AutonomousRetrySettlementInput(
+                scope=self._activity_scope(),
+                child_job_id=child_job_id,
+                command_id=(
+                    f"{state.last_control_command_id}:settle-child:"
+                    f"{child_job_id}"
+                ),
+            ),
+            result_type=AutonomousRetrySettlementResult,
             start_to_close_timeout=timedelta(
                 seconds=request.fast_activity_timeout_seconds
             ),
@@ -602,6 +882,17 @@ class AutonomousMissionWorkflow:
             if self.state.phase == "APPROVED":
                 if not request.post_approval_execution_enabled:
                     await workflow.wait_condition(lambda: False)
+                try:
+                    self._apply_control_snapshot(
+                        await self._read_control_activity()
+                    )
+                except ActivityError as exc:
+                    self.state.workflow_status = (
+                        WorkflowStatus.NEEDS_ATTENTION.value
+                    )
+                    self._touch("Control fence synchronization failed: " + str(exc))
+                    await workflow.wait_condition(lambda: False)
+                await self._wait_until_mission_runnable()
                 self.state.workflow_status = WorkflowStatus.RUNNING.value
                 self.state.environment_status = "DISCOVERING"
                 self._touch("Starting authorized environment orchestration")
@@ -619,11 +910,13 @@ class AutonomousMissionWorkflow:
                 self.state.mission_version = environment.mission_version
                 self.state.phase = environment.phase
                 self.state.disposition = environment.disposition
+                self.state.control_fencing_token = environment.fencing_token
                 self.state.environment_status = environment.environment_status
                 self._touch(environment.summary)
                 continue
 
             if self.state.phase == "DEVELOPMENT":
+                await self._wait_until_mission_runnable()
                 self.state.workflow_status = WorkflowStatus.RUNNING.value
                 self._touch("Selecting the next dependency-ready backlog item")
                 try:
@@ -631,6 +924,7 @@ class AutonomousMissionWorkflow:
                     self.state.completed_items = prepared.completed_items
                     self.state.total_items = prepared.total_items
                     if prepared.all_complete:
+                        await self._wait_until_mission_runnable()
                         completed = await self._complete_mission_activity()
                         self.state.mission_version = completed.mission_version
                         self.state.phase = completed.phase
@@ -657,7 +951,18 @@ class AutonomousMissionWorkflow:
                     self.state.current_role = prepared.role
                     self.state.current_model = prepared.model
                     self._touch(prepared.summary)
-                    child_result = await workflow.execute_child_workflow(
+                    await self._wait_until_mission_runnable()
+                    if (
+                        prepared.job is None
+                        or prepared.job.autonomous_context is None
+                    ):
+                        raise RuntimeError(
+                            "Prepared child omitted its autonomous control context"
+                        )
+                    prepared.job.autonomous_context.control_fencing_token = (
+                        self.state.control_fencing_token
+                    )
+                    self._active_child = await workflow.start_child_workflow(
                         "AgentFactoryJobWorkflow",
                         prepared.job,
                         id=prepared.child_workflow_id,
@@ -671,7 +976,34 @@ class AutonomousMissionWorkflow:
                             f"{prepared.child_job_id}"
                         ),
                     )
-                    if child_result.get("status") != WorkflowStatus.COMPLETED.value:
+                    try:
+                        child_result = await self._active_child
+                    finally:
+                        self._active_child = None
+                    child_status = child_result.get("status")
+                    if child_status == WorkflowStatus.RETRYING.value:
+                        if (
+                            prepared.child_job_id is None
+                            or self.state.pending_retry_child_job_id
+                            != prepared.child_job_id
+                        ):
+                            raise RuntimeError(
+                                "Child requested retry without matching control command"
+                            )
+                        settled = await self._settle_retry_activity(
+                            prepared.child_job_id
+                        )
+                        self.state.pending_retry_child_job_id = None
+                        self.state.pending_retry_logical_attempt = None
+                        self.state.current_child_job_id = None
+                        self.state.current_child_workflow_id = None
+                        self.state.current_work_item_stable_id = None
+                        self.state.current_role = None
+                        self.state.current_model = None
+                        self.state.workflow_status = WorkflowStatus.RUNNING.value
+                        self._touch(settled.summary)
+                        continue
+                    if child_status != WorkflowStatus.COMPLETED.value:
                         self.state.workflow_status = (
                             WorkflowStatus.NEEDS_ATTENTION.value
                         )
@@ -683,6 +1015,7 @@ class AutonomousMissionWorkflow:
                         raise RuntimeError(
                             "Prepared child result omitted its persisted job id"
                         )
+                    await self._wait_until_mission_runnable()
                     reconciled = await self._reconcile_child_activity(
                         prepared.child_job_id
                     )
@@ -715,6 +1048,7 @@ class AutonomousMissionWorkflow:
             )
             if self._planning_commands:
                 command = self._planning_commands.pop(0)
+                await self._wait_until_mission_runnable()
                 self.state.workflow_status = WorkflowStatus.RUNNING.value
                 self._touch(
                     f"Executing bounded planning command {command.command_id}"

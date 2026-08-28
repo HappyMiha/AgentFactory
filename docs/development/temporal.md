@@ -42,6 +42,8 @@ Autonomous Mission parents use the stable ID prefix `agentfactory-autonomous-mis
 
 After exact backlog approval, an execution-enabled Autonomous Mission parent advances the authorized environment phases and starts one dependency-ready `AgentFactoryJobWorkflow` child at a time. Child IDs are deterministic across replay and bind the mission/revision/epoch/item/logical-attempt scope. The parent does not schedule another item until the prior child has persisted accepted validation, review, and clean-Git integration evidence and the reconciliation Activity has committed its mission checkpoint. Standard jobs still create the normal Founder gate; only a child carrying the persisted autonomous context uses mission authority and skips that per-item gate.
 
+Autonomous controls use typed `PAUSE`, `RESUME`, `STOP`, and `RETRY_CURRENT_TASK` Signals. Each Signal carries an idempotent command ID plus the expected mission version, active revision/epoch, current child, and fencing token; an Activity revalidates those claims against SQLite before changing state. Pause and stop retain the mission phase, let an already admitted atomic operation reach its boundary, and reject every later inference, command-class operation, installation, service action, next-item reservation, or worker tool turn. Resume requires the newest token and waits for releasing stop/retry leases. Retry retires the active strategy and creates exactly one higher logical attempt without replaying an accepted completion. `STOPPED` is a resumable disposition, not Temporal cancellation or mission failure.
+
 ## Start AgentFactory
 
 Start the Local Control Center in one PowerShell window:

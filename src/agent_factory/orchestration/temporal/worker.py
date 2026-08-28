@@ -34,6 +34,9 @@ async def run_worker(settings: TemporalSettings | None = None) -> None:
         activities=[
             activities.run_autonomous_planning,
             activities.revalidate_autonomous_approval,
+            activities.read_autonomous_mission_control_fence,
+            activities.apply_autonomous_mission_control,
+            activities.settle_autonomous_child_retry,
             activities.enter_autonomous_development,
             activities.prepare_autonomous_child_job,
             activities.validate_autonomous_child_job,

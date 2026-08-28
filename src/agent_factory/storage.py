@@ -5370,6 +5370,257 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'autonomous child reconciliation is invalid'); END;
     """),
+    (67, """
+        ALTER TABLE autonomous_child_jobs
+            ADD COLUMN control_fencing_token INTEGER NOT NULL DEFAULT 1
+                CHECK(control_fencing_token>0);
+
+        CREATE TABLE autonomous_mission_control_fences(
+            mission_id INTEGER PRIMARY KEY REFERENCES autonomous_missions(id),
+            fencing_token INTEGER NOT NULL CHECK(fencing_token>0),
+            mission_version INTEGER NOT NULL CHECK(mission_version>0),
+            phase TEXT NOT NULL,
+            disposition TEXT NOT NULL CHECK(disposition IN (
+                'RUNNING','PAUSED','STOPPED','NEEDS_ATTENTION',
+                'NEEDS_HUMAN_ACTION','REPLANNING','RECOVERING','FAILED'
+            )),
+            backlog_revision_id INTEGER REFERENCES autonomous_backlog_revisions(id),
+            execution_epoch_id INTEGER REFERENCES autonomous_mission_execution_epochs(id),
+            updated_by_command_id TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO autonomous_mission_control_fences(
+            mission_id,fencing_token,mission_version,phase,disposition,
+            backlog_revision_id,execution_epoch_id,updated_by_command_id
+        )
+        SELECT id,1,version,phase,disposition,active_backlog_revision_id,
+               active_execution_epoch_id,'migration-67:' || id
+          FROM autonomous_missions;
+
+        CREATE TABLE autonomous_mission_control_commands(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            command_id TEXT NOT NULL UNIQUE,
+            action TEXT NOT NULL CHECK(action IN (
+                'PAUSE','RESUME','STOP','RETRY_CURRENT_TASK'
+            )),
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            expected_mission_version INTEGER NOT NULL CHECK(expected_mission_version>0),
+            expected_fencing_token INTEGER NOT NULL CHECK(expected_fencing_token>0),
+            expected_backlog_revision_id INTEGER REFERENCES autonomous_backlog_revisions(id),
+            expected_execution_epoch_id INTEGER REFERENCES autonomous_mission_execution_epochs(id),
+            child_job_id INTEGER REFERENCES autonomous_child_jobs(id),
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            result_mission_version INTEGER NOT NULL CHECK(result_mission_version>0),
+            result_fencing_token INTEGER NOT NULL CHECK(result_fencing_token>0),
+            result_phase TEXT NOT NULL,
+            result_disposition TEXT NOT NULL,
+            result_logical_attempt INTEGER CHECK(result_logical_attempt IS NULL OR result_logical_attempt>0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_autonomous_control_commands_mission
+            ON autonomous_mission_control_commands(mission_id,id);
+
+        CREATE TABLE autonomous_mission_operation_leases(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            operation_id TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            execution_epoch_id INTEGER REFERENCES autonomous_mission_execution_epochs(id),
+            child_job_id INTEGER REFERENCES autonomous_child_jobs(id),
+            operation_kind TEXT NOT NULL CHECK(operation_kind IN (
+                'INFERENCE','COMMAND','INSTALLATION','SERVICE_OPERATION',
+                'NEXT_WORK_ITEM','WORKER_TOOL'
+            )),
+            fencing_token INTEGER NOT NULL CHECK(fencing_token>0),
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            status TEXT NOT NULL CHECK(status IN (
+                'ACTIVE','RELEASING','FINISHED','RELEASED'
+            )),
+            release_reason TEXT,
+            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            terminal_at TEXT
+        );
+        CREATE INDEX idx_autonomous_operation_leases_active
+            ON autonomous_mission_operation_leases(mission_id,status,id);
+
+        CREATE TABLE autonomous_mission_retry_requests(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            child_job_id INTEGER NOT NULL UNIQUE REFERENCES autonomous_child_jobs(id),
+            backlog_item_id INTEGER NOT NULL REFERENCES autonomous_backlog_items(id),
+            stable_item_id TEXT NOT NULL,
+            previous_logical_attempt INTEGER NOT NULL CHECK(previous_logical_attempt>0),
+            next_logical_attempt INTEGER NOT NULL CHECK(next_logical_attempt=previous_logical_attempt+1),
+            control_command_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_control_commands(id),
+            fencing_token INTEGER NOT NULL CHECK(fencing_token>0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_autonomous_retry_requests_mission
+            ON autonomous_mission_retry_requests(mission_id,id);
+
+        CREATE TABLE autonomous_mission_retry_settlements(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            retry_request_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_retry_requests(id),
+            child_job_id INTEGER NOT NULL UNIQUE REFERENCES autonomous_child_jobs(id),
+            failed_state_id INTEGER NOT NULL REFERENCES autonomous_backlog_item_states(id),
+            ready_state_id INTEGER NOT NULL REFERENCES autonomous_backlog_item_states(id),
+            command_id TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TRIGGER autonomous_control_fences_no_delete
+        BEFORE DELETE ON autonomous_mission_control_fences
+        BEGIN SELECT RAISE(ABORT, 'mission control fences are durable'); END;
+        CREATE TRIGGER autonomous_control_fence_valid_update
+        BEFORE UPDATE ON autonomous_mission_control_fences
+        WHEN NEW.mission_id<>OLD.mission_id
+          OR NEW.fencing_token NOT IN (OLD.fencing_token,OLD.fencing_token+1)
+          OR NEW.mission_version<OLD.mission_version
+          OR (NEW.disposition<>OLD.disposition
+              AND NEW.fencing_token<>OLD.fencing_token+1)
+          OR (COALESCE(NEW.execution_epoch_id,-1)<>
+              COALESCE(OLD.execution_epoch_id,-1)
+              AND NEW.fencing_token<>OLD.fencing_token+1)
+        BEGIN SELECT RAISE(ABORT, 'invalid mission control fence update'); END;
+        CREATE TRIGGER autonomous_control_fence_scope_valid
+        BEFORE UPDATE ON autonomous_mission_control_fences
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_missions mission
+             WHERE mission.id=NEW.mission_id
+               AND mission.version=NEW.mission_version
+               AND mission.phase=NEW.phase
+               AND mission.disposition=NEW.disposition
+               AND COALESCE(mission.active_backlog_revision_id,-1)=
+                   COALESCE(NEW.backlog_revision_id,-1)
+               AND COALESCE(mission.active_execution_epoch_id,-1)=
+                   COALESCE(NEW.execution_epoch_id,-1)
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission control fence scope is stale'); END;
+
+        CREATE TRIGGER autonomous_control_commands_no_update
+        BEFORE UPDATE ON autonomous_mission_control_commands
+        BEGIN SELECT RAISE(ABORT, 'mission control commands are immutable'); END;
+        CREATE TRIGGER autonomous_control_commands_no_delete
+        BEFORE DELETE ON autonomous_mission_control_commands
+        BEGIN SELECT RAISE(ABORT, 'mission control commands are immutable'); END;
+
+        CREATE TRIGGER autonomous_child_job_control_fence_valid
+        BEFORE INSERT ON autonomous_child_jobs
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_control_fences fence
+             WHERE fence.mission_id=NEW.mission_id
+               AND fence.disposition='RUNNING'
+               AND fence.fencing_token=NEW.control_fencing_token
+               AND COALESCE(fence.execution_epoch_id,-1)=
+                   COALESCE(NEW.execution_epoch_id,-1)
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous child job control fence is stale'); END;
+
+        CREATE TRIGGER autonomous_operation_lease_scope_valid
+        BEFORE INSERT ON autonomous_mission_operation_leases
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_mission_control_fences fence
+                ON fence.mission_id=mission.id
+             WHERE mission.id=NEW.mission_id
+               AND mission.disposition='RUNNING'
+               AND fence.disposition='RUNNING'
+               AND fence.fencing_token=NEW.fencing_token
+               AND COALESCE(mission.active_execution_epoch_id,-1)=
+                   COALESCE(NEW.execution_epoch_id,-1)
+               AND (NEW.child_job_id IS NULL OR EXISTS (
+                   SELECT 1 FROM autonomous_child_jobs child
+                    WHERE child.id=NEW.child_job_id
+                      AND child.mission_id=NEW.mission_id
+                      AND child.execution_epoch_id=NEW.execution_epoch_id
+               ))
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission operation is fenced'); END;
+        CREATE TRIGGER autonomous_operation_lease_scope_immutable
+        BEFORE UPDATE ON autonomous_mission_operation_leases
+        WHEN NEW.identity<>OLD.identity OR NEW.operation_id<>OLD.operation_id
+          OR NEW.mission_id<>OLD.mission_id
+          OR COALESCE(NEW.execution_epoch_id,-1)<>
+             COALESCE(OLD.execution_epoch_id,-1)
+          OR COALESCE(NEW.child_job_id,-1)<>COALESCE(OLD.child_job_id,-1)
+          OR NEW.operation_kind<>OLD.operation_kind
+          OR NEW.fencing_token<>OLD.fencing_token
+          OR NEW.request_digest<>OLD.request_digest
+          OR NEW.started_at<>OLD.started_at
+        BEGIN SELECT RAISE(ABORT, 'mission operation lease scope is immutable'); END;
+        CREATE TRIGGER autonomous_operation_lease_valid_transition
+        BEFORE UPDATE OF status ON autonomous_mission_operation_leases
+        WHEN NEW.status<>OLD.status AND NOT (
+            (OLD.status='ACTIVE' AND NEW.status IN
+                ('RELEASING','FINISHED','RELEASED')) OR
+            (OLD.status='RELEASING' AND NEW.status='RELEASED')
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid mission operation lease transition'); END;
+        CREATE TRIGGER autonomous_operation_leases_no_delete
+        BEFORE DELETE ON autonomous_mission_operation_leases
+        BEGIN SELECT RAISE(ABORT, 'mission operation leases are durable'); END;
+
+        CREATE TRIGGER autonomous_retry_requests_no_update
+        BEFORE UPDATE ON autonomous_mission_retry_requests
+        BEGIN SELECT RAISE(ABORT, 'mission retry requests are immutable'); END;
+        CREATE TRIGGER autonomous_retry_requests_no_delete
+        BEFORE DELETE ON autonomous_mission_retry_requests
+        BEGIN SELECT RAISE(ABORT, 'mission retry requests are immutable'); END;
+        CREATE TRIGGER autonomous_retry_request_scope_valid
+        BEFORE INSERT ON autonomous_mission_retry_requests
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_child_jobs child
+              JOIN autonomous_mission_control_commands command
+                ON command.id=NEW.control_command_id
+             WHERE child.id=NEW.child_job_id
+               AND child.mission_id=NEW.mission_id
+               AND child.backlog_item_id=NEW.backlog_item_id
+               AND child.stable_item_id=NEW.stable_item_id
+               AND child.logical_attempt=NEW.previous_logical_attempt
+               AND command.mission_id=NEW.mission_id
+               AND command.action='RETRY_CURRENT_TASK'
+               AND command.result_fencing_token=NEW.fencing_token
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission retry request scope is invalid'); END;
+        CREATE TRIGGER autonomous_retry_settlements_no_update
+        BEFORE UPDATE ON autonomous_mission_retry_settlements
+        BEGIN SELECT RAISE(ABORT, 'mission retry settlements are immutable'); END;
+        CREATE TRIGGER autonomous_retry_settlements_no_delete
+        BEFORE DELETE ON autonomous_mission_retry_settlements
+        BEGIN SELECT RAISE(ABORT, 'mission retry settlements are immutable'); END;
+        CREATE TRIGGER autonomous_retry_settlement_scope_valid
+        BEFORE INSERT ON autonomous_mission_retry_settlements
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_mission_retry_requests retry
+              JOIN autonomous_backlog_item_states failed
+                ON failed.id=NEW.failed_state_id
+              JOIN autonomous_backlog_item_states ready
+                ON ready.id=NEW.ready_state_id
+             WHERE retry.id=NEW.retry_request_id
+               AND retry.child_job_id=NEW.child_job_id
+               AND failed.item_id=retry.backlog_item_id
+               AND failed.status='FAILED'
+               AND ready.item_id=retry.backlog_item_id
+               AND ready.status='READY'
+               AND ready.sequence=failed.sequence+1
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission retry settlement scope is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

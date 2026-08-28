@@ -148,6 +148,19 @@ class MissionCommandConflictError(ValueError):
     """Raised when an idempotency key is reused for a different mutation."""
 
 
+class MissionControlFenceConflictError(PermissionError):
+    """Raised when a control or operation holder presents a stale token."""
+
+    def __init__(self, mission_id: int, expected: int, actual: int):
+        self.mission_id = mission_id
+        self.expected = expected
+        self.actual = actual
+        super().__init__(
+            f"Autonomous Mission {mission_id} control fence conflict: "
+            f"expected token {expected}, current token {actual}"
+        )
+
+
 class AutonomousMissionService:
     def __init__(self, storage: SQLiteStorage):
         self.storage = storage
@@ -379,6 +392,21 @@ class AutonomousMissionService:
                 ),
             )
             mission_id = int(cursor.lastrowid)
+            self.storage.db.execute(
+                """INSERT INTO autonomous_mission_control_fences(
+                       mission_id,fencing_token,mission_version,phase,
+                       disposition,backlog_revision_id,execution_epoch_id,
+                       updated_by_command_id
+                   ) VALUES(?,1,1,?,?,?,?,?)""",
+                (
+                    mission_id,
+                    MissionPhase.DRAFT.value,
+                    MissionDisposition.RUNNING.value,
+                    None,
+                    None,
+                    command_id,
+                ),
+            )
             self._insert_state_version(
                 mission_id=mission_id,
                 version=1,
@@ -521,6 +549,11 @@ class AutonomousMissionService:
         command_id: str,
         expected_version: int,
         reason: str,
+        expected_fencing_token: int | None = None,
+        control_action: str | None = None,
+        expected_backlog_revision_id: int | None = None,
+        expected_execution_epoch_id: int | None = None,
+        child_job_id: int | None = None,
     ) -> AutonomousMission:
         target_disposition = MissionDisposition(target)
         return self._transition(
@@ -532,6 +565,11 @@ class AutonomousMissionService:
             reason=reason,
             target_phase=None,
             target_disposition=target_disposition,
+            expected_fencing_token=expected_fencing_token,
+            control_action=control_action,
+            expected_backlog_revision_id=expected_backlog_revision_id,
+            expected_execution_epoch_id=expected_execution_epoch_id,
+            child_job_id=child_job_id,
         )
 
     def set_active_backlog_revision(
@@ -672,6 +710,11 @@ class AutonomousMissionService:
         reason: str,
         target_phase: MissionPhase | None,
         target_disposition: MissionDisposition | None,
+        expected_fencing_token: int | None = None,
+        control_action: str | None = None,
+        expected_backlog_revision_id: int | None = None,
+        expected_execution_epoch_id: int | None = None,
+        child_job_id: int | None = None,
     ) -> AutonomousMission:
         actor = self._required(actor, "Actor")
         command_id = self._required(command_id, "Command id")
@@ -687,6 +730,25 @@ class AutonomousMissionService:
                 target_disposition.value if target_disposition else None
             ),
         }
+        if any(
+            value is not None
+            for value in (
+                expected_fencing_token,
+                control_action,
+                expected_backlog_revision_id,
+                expected_execution_epoch_id,
+                child_job_id,
+            )
+        ):
+            request.update(
+                {
+                    "expected_fencing_token": expected_fencing_token,
+                    "control_action": control_action,
+                    "expected_backlog_revision_id": expected_backlog_revision_id,
+                    "expected_execution_epoch_id": expected_execution_epoch_id,
+                    "child_job_id": child_job_id,
+                }
+            )
         request_digest = self._digest(request)
         replay = self._command_replay(command_id, request_digest)
         if replay:
@@ -709,6 +771,36 @@ class AutonomousMissionService:
                 )
             source_phase = MissionPhase(row["phase"])
             source_disposition = MissionDisposition(row["disposition"])
+            fence = self.storage.db.execute(
+                "SELECT * FROM autonomous_mission_control_fences WHERE mission_id=?",
+                (mission_id,),
+            ).fetchone()
+            if not fence:
+                raise RuntimeError("Autonomous Mission control fence is missing")
+            current_fencing_token = int(fence["fencing_token"])
+            if (
+                expected_fencing_token is not None
+                and current_fencing_token != int(expected_fencing_token)
+            ):
+                raise MissionControlFenceConflictError(
+                    mission_id,
+                    int(expected_fencing_token),
+                    current_fencing_token,
+                )
+            current_revision_id = self._optional_id(
+                row["active_backlog_revision_id"]
+            )
+            current_epoch_id = self._optional_id(row["active_execution_epoch_id"])
+            if (
+                expected_backlog_revision_id is not None
+                and current_revision_id != int(expected_backlog_revision_id)
+            ):
+                raise PermissionError("Active backlog revision changed before control")
+            if (
+                expected_execution_epoch_id is not None
+                and current_epoch_id != int(expected_execution_epoch_id)
+            ):
+                raise PermissionError("Active execution epoch changed before control")
             if source_phase is MissionPhase.COMPLETED:
                 raise ValueError("Completed Autonomous Missions are immutable")
             if target_phase is not None:
@@ -762,6 +854,30 @@ class AutonomousMissionService:
                 raise MissionVersionConflictError(
                     mission_id, expected_version, actual_version + 1
                 )
+            result_fencing_token = current_fencing_token
+            if (
+                resulting_disposition is not source_disposition
+                or current_epoch_id
+                != self._optional_id(fence["execution_epoch_id"])
+            ):
+                result_fencing_token += 1
+            self.storage.db.execute(
+                """UPDATE autonomous_mission_control_fences
+                      SET fencing_token=?,mission_version=?,phase=?,disposition=?,
+                          backlog_revision_id=?,execution_epoch_id=?,
+                          updated_by_command_id=?,updated_at=CURRENT_TIMESTAMP
+                    WHERE mission_id=?""",
+                (
+                    result_fencing_token,
+                    result_version,
+                    resulting_phase.value,
+                    resulting_disposition.value,
+                    current_revision_id,
+                    current_epoch_id,
+                    command_id,
+                    mission_id,
+                ),
+            )
             self._insert_command(
                 mission_id=mission_id,
                 command_id=command_id,
@@ -771,6 +887,51 @@ class AutonomousMissionService:
                 request_digest=request_digest,
                 result_version=result_version,
             )
+            if control_action is not None:
+                normalized_action = control_action.strip().upper()
+                if normalized_action not in {"PAUSE", "RESUME", "STOP"}:
+                    raise ValueError(
+                        f"Unsupported disposition control action: {control_action}"
+                    )
+                if expected_fencing_token is None:
+                    raise ValueError("Control actions require an expected fence token")
+                self.storage.db.execute(
+                    """INSERT INTO autonomous_mission_control_commands(
+                           identity,mission_id,command_id,action,actor,reason,
+                           expected_mission_version,expected_fencing_token,
+                           expected_backlog_revision_id,
+                           expected_execution_epoch_id,child_job_id,
+                           request_digest,result_mission_version,
+                           result_fencing_token,result_phase,result_disposition,
+                           result_logical_attempt
+                       ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)""",
+                    (
+                        self.storage._identity("autonomous-control-command"),
+                        mission_id,
+                        command_id,
+                        normalized_action,
+                        actor,
+                        reason,
+                        expected_version,
+                        expected_fencing_token,
+                        expected_backlog_revision_id,
+                        expected_execution_epoch_id,
+                        child_job_id,
+                        request_digest,
+                        result_version,
+                        result_fencing_token,
+                        resulting_phase.value,
+                        resulting_disposition.value,
+                    ),
+                )
+                if normalized_action == "STOP":
+                    self.storage.db.execute(
+                        """UPDATE autonomous_mission_operation_leases
+                              SET status='RELEASING',
+                                  release_reason='Mission stop requested'
+                            WHERE mission_id=? AND status='ACTIVE'""",
+                        (mission_id,),
+                    )
             event_suffix = (
                 resulting_phase.value.lower()
                 if target_phase is not None

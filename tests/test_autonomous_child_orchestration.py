@@ -385,6 +385,9 @@ class AutonomousChildTemporalTests(
             activities=[
                 self.activities.run_autonomous_planning,
                 self.activities.revalidate_autonomous_approval,
+                self.activities.read_autonomous_mission_control_fence,
+                self.activities.apply_autonomous_mission_control,
+                self.activities.settle_autonomous_child_retry,
                 self.activities.enter_autonomous_development,
                 self.activities.prepare_autonomous_child_job,
                 self.activities.validate_autonomous_child_job,

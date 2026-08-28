@@ -20,6 +20,7 @@ from .models import (
     AgentFactoryJobInput,
     AutonomousBacklogApprovalNotice,
     AutonomousMissionCarryOver,
+    AutonomousMissionControlCommand,
     AutonomousMissionWorkflowInput,
     AutonomousPlanningCommand,
     DemoWorkflowInput,
@@ -177,6 +178,32 @@ async def signal_autonomous_backlog_approved(
     await client.get_workflow_handle(workflow_id).signal(
         "autonomous_backlog_approved", notice
     )
+
+
+async def signal_autonomous_mission_control(
+    client: Client,
+    command: AutonomousMissionControlCommand,
+    settings: TemporalSettings | None = None,
+) -> None:
+    """Persist one typed control command through the parent Workflow Activity."""
+
+    selected = settings or TemporalSettings.from_env()
+    workflow_id = workflow_id_for_autonomous_mission(
+        command.mission_id, selected.autonomous_workflow_id_prefix
+    )
+    signals = {
+        "PAUSE": "pause_autonomous_mission",
+        "RESUME": "resume_autonomous_mission",
+        "STOP": "stop_autonomous_mission",
+        "RETRY_CURRENT_TASK": "retry_current_task",
+    }
+    try:
+        signal = signals[command.action]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unsupported Autonomous Mission control action: {command.action}"
+        ) from exc
+    await client.get_workflow_handle(workflow_id).signal(signal, command)
 
 
 async def ensure_namespace(client: Client, namespace: str) -> None:

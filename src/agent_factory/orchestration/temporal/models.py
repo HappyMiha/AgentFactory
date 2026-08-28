@@ -41,6 +41,9 @@ AUTONOMOUS_ENVIRONMENT_STATUSES = frozenset(
     {"NOT_STARTED", "DISCOVERING", "BOOTSTRAPPING", "READY", "UNKNOWN"}
 )
 AUTONOMOUS_PLANNING_ACTIONS = frozenset({"ANALYZE", "REGENERATE_BACKLOG"})
+AUTONOMOUS_CONTROL_ACTIONS = frozenset(
+    {"PAUSE", "RESUME", "STOP", "RETRY_CURRENT_TASK"}
+)
 
 
 def _bounded(value: str, label: str, limit: int) -> str:
@@ -98,6 +101,7 @@ class WorkflowStatus(StrEnum):
     FAILED = "FAILED"
     COMPLETED = "COMPLETED"
     NEEDS_ATTENTION = "NEEDS_ATTENTION"
+    STOPPED = "STOPPED"
 
 
 @dataclass
@@ -137,6 +141,7 @@ class AutonomousChildJobContext:
     child_workflow_id: str
     repository_path: str
     epoch_branch: str
+    control_fencing_token: int = 1
 
     def __post_init__(self) -> None:
         for value, label in (
@@ -147,6 +152,7 @@ class AutonomousChildJobContext:
             (self.authorization_id, "Authorization id"),
             (self.backlog_item_id, "Backlog item id"),
             (self.logical_attempt, "Logical attempt"),
+            (self.control_fencing_token, "Mission control fencing token"),
         ):
             _optional_id(value, label)
         _sha256(self.backlog_revision_digest, "Backlog revision digest")
@@ -217,6 +223,7 @@ class StageActivityInput:
     ordinal: int
     repair_iteration: int = 0
     failure_summary: str = ""
+    control_fencing_token: int | None = None
 
 
 @dataclass
@@ -271,6 +278,11 @@ class AutonomousMissionCarryOver:
     completed_items: int = 0
     total_items: int = 0
     environment_status: str = "NOT_STARTED"
+    control_fencing_token: int = 1
+    last_control_command_id: str | None = None
+    last_control_action: str | None = None
+    pending_retry_child_job_id: int | None = None
+    pending_retry_logical_attempt: int | None = None
     last_activity: str = "Mission workflow created"
     last_activity_at: str = ""
     schema_version: int = AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION
@@ -350,6 +362,31 @@ class AutonomousMissionCarryOver:
         if self.environment_status not in AUTONOMOUS_ENVIRONMENT_STATUSES:
             raise ValueError(
                 f"Unsupported environment status: {self.environment_status}"
+            )
+        if int(self.control_fencing_token) <= 0:
+            raise ValueError("Mission control fencing token must be positive")
+        _optional_bounded(
+            self.last_control_command_id, "Last control command id"
+        )
+        if (
+            self.last_control_action is not None
+            and self.last_control_action not in AUTONOMOUS_CONTROL_ACTIONS
+        ):
+            raise ValueError(
+                f"Unsupported mission control action: {self.last_control_action}"
+            )
+        _optional_id(
+            self.pending_retry_child_job_id, "Pending retry child job id"
+        )
+        _optional_id(
+            self.pending_retry_logical_attempt,
+            "Pending retry logical attempt",
+        )
+        if (self.pending_retry_child_job_id is None) != (
+            self.pending_retry_logical_attempt is None
+        ):
+            raise ValueError(
+                "Pending retry child and logical attempt must be supplied together"
             )
         _bounded(self.last_activity, "Last activity", AUTONOMOUS_SUMMARY_LIMIT)
         if self.last_activity_at:
@@ -495,6 +532,11 @@ class AutonomousMissionWorkflowState:
     completed_items: int = 0
     total_items: int = 0
     environment_status: str = "NOT_STARTED"
+    control_fencing_token: int = 1
+    last_control_command_id: str | None = None
+    last_control_action: str | None = None
+    pending_retry_child_job_id: int | None = None
+    pending_retry_logical_attempt: int | None = None
     last_activity: str = "Mission workflow created"
     last_activity_at: str = ""
     started_at: str = ""
@@ -550,6 +592,11 @@ class AutonomousMissionWorkflowState:
             completed_items=carry.completed_items,
             total_items=carry.total_items,
             environment_status=carry.environment_status,
+            control_fencing_token=carry.control_fencing_token,
+            last_control_command_id=carry.last_control_command_id,
+            last_control_action=carry.last_control_action,
+            pending_retry_child_job_id=carry.pending_retry_child_job_id,
+            pending_retry_logical_attempt=carry.pending_retry_logical_attempt,
             last_activity=carry.last_activity,
             last_activity_at=carry.last_activity_at or started_at,
             started_at=started_at,
@@ -636,6 +683,11 @@ class AutonomousMissionWorkflowState:
             completed_items=self.completed_items,
             total_items=self.total_items,
             environment_status=self.environment_status,
+            control_fencing_token=self.control_fencing_token,
+            last_control_command_id=self.last_control_command_id,
+            last_control_action=self.last_control_action,
+            pending_retry_child_job_id=self.pending_retry_child_job_id,
+            pending_retry_logical_attempt=self.pending_retry_logical_attempt,
             last_activity=self.last_activity,
             last_activity_at=self.last_activity_at,
         )
@@ -669,6 +721,205 @@ class AutonomousMissionActivityScope:
         _bounded(
             self.temporal_first_run_id,
             "Temporal first run id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousMissionControlCommand:
+    """Typed, idempotent mission control request carried by a Signal."""
+
+    mission_id: int
+    command_id: str
+    action: str
+    actor: str
+    reason: str
+    expected_mission_version: int
+    expected_fencing_token: int
+    expected_backlog_revision_id: int | None = None
+    expected_execution_epoch_id: int | None = None
+    child_job_id: int | None = None
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _bounded(
+            self.command_id,
+            "Mission control command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.action not in AUTONOMOUS_CONTROL_ACTIONS:
+            raise ValueError(f"Unsupported mission control action: {self.action}")
+        _bounded(self.actor, "Mission control actor", AUTONOMOUS_IDENTIFIER_LIMIT)
+        _bounded(self.reason, "Mission control reason", AUTONOMOUS_SUMMARY_LIMIT)
+        _optional_id(self.expected_mission_version, "Expected mission version")
+        _optional_id(self.expected_fencing_token, "Expected fencing token")
+        _optional_id(
+            self.expected_backlog_revision_id,
+            "Expected backlog revision id",
+        )
+        _optional_id(
+            self.expected_execution_epoch_id,
+            "Expected execution epoch id",
+        )
+        _optional_id(self.child_job_id, "Current child job id")
+        if self.action == "RETRY_CURRENT_TASK" and self.child_job_id is None:
+            raise ValueError("Retry requires the current child job id")
+
+
+@dataclass(frozen=True)
+class AutonomousMissionControlActivityInput:
+    scope: AutonomousMissionActivityScope
+    command: AutonomousMissionControlCommand
+
+
+@dataclass(frozen=True)
+class AutonomousMissionControlResult:
+    mission_id: int
+    command_id: str
+    action: str
+    mission_version: int
+    phase: str
+    disposition: str
+    fencing_token: int
+    active_operations: int
+    releasing_operations: int
+    duplicate: bool
+    occurred_at: str
+    child_job_id: int | None = None
+    logical_attempt: int | None = None
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _bounded(
+            self.command_id,
+            "Mission control command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.action not in AUTONOMOUS_CONTROL_ACTIONS:
+            raise ValueError(f"Unsupported mission control action: {self.action}")
+        _optional_id(self.mission_version, "Mission version")
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        _optional_id(self.fencing_token, "Mission fencing token")
+        if self.active_operations < 0 or self.releasing_operations < 0:
+            raise ValueError("Mission operation counts cannot be negative")
+        _optional_id(self.child_job_id, "Current child job id")
+        _optional_id(self.logical_attempt, "Retry logical attempt")
+        if self.action == "RETRY_CURRENT_TASK" and any(
+            value is None for value in (self.child_job_id, self.logical_attempt)
+        ):
+            raise ValueError("Retry result requires child and attempt identity")
+        _bounded(
+            self.occurred_at,
+            "Mission control timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousMissionControlSnapshotInput:
+    scope: AutonomousMissionActivityScope
+
+
+@dataclass(frozen=True)
+class AutonomousMissionControlSnapshotResult:
+    mission_id: int
+    mission_version: int
+    phase: str
+    disposition: str
+    fencing_token: int
+    backlog_revision_id: int | None
+    execution_epoch_id: int | None
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.mission_version, "Mission version")
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        _optional_id(self.fencing_token, "Mission fencing token")
+        _optional_id(self.backlog_revision_id, "Active backlog revision id")
+        _optional_id(self.execution_epoch_id, "Active execution epoch id")
+        _bounded(
+            self.occurred_at,
+            "Mission control snapshot timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousChildControlNotice:
+    mission_id: int
+    child_job_id: int
+    command_id: str
+    action: str
+    mission_version: int
+    fencing_token: int
+    logical_attempt: int | None = None
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.child_job_id, "Child job id")
+        _bounded(
+            self.command_id,
+            "Child control command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.action not in AUTONOMOUS_CONTROL_ACTIONS:
+            raise ValueError(f"Unsupported child control action: {self.action}")
+        _optional_id(self.mission_version, "Mission version")
+        _optional_id(self.fencing_token, "Mission fencing token")
+        _optional_id(self.logical_attempt, "Retry logical attempt")
+
+
+@dataclass(frozen=True)
+class AutonomousRetrySettlementInput:
+    scope: AutonomousMissionActivityScope
+    child_job_id: int
+    command_id: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.child_job_id, "Retry child job id")
+        _bounded(
+            self.command_id,
+            "Retry settlement command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousRetrySettlementResult:
+    mission_id: int
+    child_job_id: int
+    retry_request_id: int
+    failed_state_id: int
+    ready_state_id: int
+    next_logical_attempt: int
+    summary: str
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.child_job_id, "Retry child job id"),
+            (self.retry_request_id, "Retry request id"),
+            (self.failed_state_id, "Failed backlog state id"),
+            (self.ready_state_id, "Ready backlog state id"),
+            (self.next_logical_attempt, "Next logical attempt"),
+        ):
+            _optional_id(value, label)
+        _bounded(self.summary, "Retry settlement summary", AUTONOMOUS_SUMMARY_LIMIT)
+        _bounded(
+            self.occurred_at,
+            "Retry settlement timestamp",
             AUTONOMOUS_IDENTIFIER_LIMIT,
         )
 
@@ -850,12 +1101,14 @@ class AutonomousApprovalRevalidationResult:
 class AutonomousExecutionPreparationInput:
     scope: AutonomousMissionActivityScope
     expected_mission_version: int
+    expected_fencing_token: int
     approval_id: int
     authorization_id: int
     command_id: str
 
     def __post_init__(self) -> None:
         _optional_id(self.expected_mission_version, "Expected mission version")
+        _optional_id(self.expected_fencing_token, "Expected fencing token")
         _optional_id(self.approval_id, "Backlog approval id")
         _optional_id(self.authorization_id, "Execution authorization id")
         _bounded(self.command_id, "Environment command id", AUTONOMOUS_IDENTIFIER_LIMIT)
@@ -867,6 +1120,7 @@ class AutonomousExecutionPreparationResult:
     mission_version: int
     phase: str
     disposition: str
+    fencing_token: int
     environment_status: str
     summary: str
     occurred_at: str
@@ -874,6 +1128,7 @@ class AutonomousExecutionPreparationResult:
     def __post_init__(self) -> None:
         _optional_id(self.mission_id, "Mission id")
         _optional_id(self.mission_version, "Mission version")
+        _optional_id(self.fencing_token, "Mission fencing token")
         if self.phase not in AUTONOMOUS_PHASES:
             raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
         if self.disposition not in AUTONOMOUS_DISPOSITIONS:
@@ -896,6 +1151,7 @@ class AutonomousExecutionPreparationResult:
 class AutonomousChildPreparationInput:
     scope: AutonomousMissionActivityScope
     expected_mission_version: int
+    expected_fencing_token: int
     execution_mode: str
     workflow_definition_id: str
     fast_activity_timeout_seconds: int
@@ -906,6 +1162,7 @@ class AutonomousChildPreparationInput:
 
     def __post_init__(self) -> None:
         _optional_id(self.expected_mission_version, "Expected mission version")
+        _optional_id(self.expected_fencing_token, "Expected fencing token")
         if self.execution_mode not in {"simulation", "live"}:
             raise ValueError("Child execution mode must be simulation or live")
         _bounded(
@@ -992,11 +1249,13 @@ class AutonomousChildReconciliationInput:
     scope: AutonomousMissionActivityScope
     child_job_id: int
     expected_mission_version: int
+    expected_fencing_token: int
     command_id: str
 
     def __post_init__(self) -> None:
         _optional_id(self.child_job_id, "Child job id")
         _optional_id(self.expected_mission_version, "Expected mission version")
+        _optional_id(self.expected_fencing_token, "Expected fencing token")
         _bounded(
             self.command_id,
             "Child reconciliation command id",
@@ -1047,10 +1306,12 @@ class AutonomousChildReconciliationResult:
 class AutonomousMissionCompletionInput:
     scope: AutonomousMissionActivityScope
     expected_mission_version: int
+    expected_fencing_token: int
     command_id: str
 
     def __post_init__(self) -> None:
         _optional_id(self.expected_mission_version, "Expected mission version")
+        _optional_id(self.expected_fencing_token, "Expected fencing token")
         _bounded(
             self.command_id,
             "Mission completion command id",

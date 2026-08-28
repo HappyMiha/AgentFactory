@@ -10,6 +10,11 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from .models import Agent, ExecutionApproval, WorkItem
+from .control_plane import (
+    MissionControlFenceService,
+    MissionOperationKind,
+    MissionOperationLease,
+)
 from .policy import ControlPlanePolicy, PolicyOutcome, PolicyRequest
 from .providers import Provider
 from .storage import SQLiteStorage
@@ -29,6 +34,28 @@ class RuntimeBinding:
 
 
 @dataclass(frozen=True)
+class RuntimeMissionControlBinding:
+    """Exact mission fence carried by an opt-in autonomous worker session."""
+
+    mission_id: int
+    execution_epoch_id: int
+    child_job_id: int
+    fencing_token: int
+
+    def __post_init__(self) -> None:
+        if any(
+            int(value) <= 0
+            for value in (
+                self.mission_id,
+                self.execution_epoch_id,
+                self.child_job_id,
+                self.fencing_token,
+            )
+        ):
+            raise ValueError("Mission runtime control identifiers must be positive")
+
+
+@dataclass(frozen=True)
 class RuntimeLaunch:
     assignment_id: int
     fencing_token: int
@@ -40,6 +67,7 @@ class RuntimeLaunch:
     approval: ExecutionApproval | None = None
     mutable: bool = False
     permission_bridge_id: str | None = None
+    mission_control: RuntimeMissionControlBinding | None = None
 
     def durable_scope(self) -> dict[str, Any]:
         context_json = json.dumps(
@@ -58,6 +86,9 @@ class RuntimeLaunch:
             "context_sha256": hashlib.sha256(context_json.encode("utf-8")).hexdigest(),
             "context_package_digest": self.context_digest,
             "binding": asdict(self.binding) if self.binding else None,
+            "mission_control": (
+                asdict(self.mission_control) if self.mission_control else None
+            ),
         }
 
 
@@ -243,6 +274,75 @@ class WorkerRuntime(ABC):
         self.driver = driver
         self.runtime_id = runtime_id
 
+    @staticmethod
+    def _control_binding(value: Any) -> RuntimeMissionControlBinding | None:
+        if value is None:
+            return None
+        if isinstance(value, RuntimeMissionControlBinding):
+            return value
+        if not isinstance(value, dict):
+            raise TypeError("Runtime mission control binding must be an object")
+        return RuntimeMissionControlBinding(**value)
+
+    def _session_control_binding(
+        self, session_id: int
+    ) -> RuntimeMissionControlBinding | None:
+        row = self.storage.runtime_session(session_id)
+        request = json.loads(row["request_json"])
+        return self._control_binding(request.get("mission_control"))
+
+    def _begin_control_operation(
+        self,
+        binding: RuntimeMissionControlBinding | None,
+        *,
+        operation_id: str,
+        kind: MissionOperationKind,
+        request: dict[str, Any],
+    ) -> MissionOperationLease | None:
+        if binding is None:
+            return None
+        return MissionControlFenceService(self.storage).begin_operation(
+            operation_id=operation_id,
+            mission_id=binding.mission_id,
+            execution_epoch_id=binding.execution_epoch_id,
+            child_job_id=binding.child_job_id,
+            operation_kind=kind,
+            expected_fencing_token=binding.fencing_token,
+            request=request,
+        )
+
+    def _finish_control_operation(
+        self, lease: MissionOperationLease | None, *, reason: str
+    ) -> None:
+        if lease is not None:
+            MissionControlFenceService(self.storage).finish_operation(
+                lease.operation_id, reason=reason
+            )
+
+    def admit_tool_operation(
+        self,
+        session_id: int,
+        *,
+        operation_id: str,
+        tool_name: str,
+        request: dict[str, Any] | None = None,
+        mission_control: RuntimeMissionControlBinding | None = None,
+    ) -> MissionOperationLease | None:
+        """Fence every tool turn inside a long-lived multi-tool worker session."""
+
+        binding = mission_control or self._session_control_binding(session_id)
+        return self._begin_control_operation(
+            binding,
+            operation_id=operation_id,
+            kind=MissionOperationKind.WORKER_TOOL,
+            request={"tool_name": tool_name, **dict(request or {})},
+        )
+
+    def finish_tool_operation(
+        self, lease: MissionOperationLease | None, *, reason: str
+    ) -> None:
+        self._finish_control_operation(lease, reason=reason)
+
     def _validate_launch(self, launch: RuntimeLaunch) -> None:
         self.storage.assert_fenced_lease(
             launch.assignment_id, launch.fencing_token
@@ -338,14 +438,28 @@ class WorkerRuntime(ABC):
     def start(self, launch: RuntimeLaunch) -> RuntimeSession:
         self._validate_launch(launch)
         self._authorize_mutable_launch(launch)
-        session_id = self.storage.create_runtime_session(
-            assignment_id=launch.assignment_id,
-            runtime=self.runtime_id,
-            request=launch.durable_scope(),
-            context_digest=launch.context_digest,
-            fencing_token=launch.fencing_token,
+        control_lease = self._begin_control_operation(
+            launch.mission_control,
+            operation_id=(
+                f"runtime:{self.runtime_id}:assignment:{launch.assignment_id}:"
+                f"start:{launch.context_digest}"
+            ),
+            kind=MissionOperationKind.COMMAND,
+            request={
+                "runtime": self.runtime_id,
+                "operation": "start",
+                "assignment_id": launch.assignment_id,
+            },
         )
+        session_id: int | None = None
         try:
+            session_id = self.storage.create_runtime_session(
+                assignment_id=launch.assignment_id,
+                runtime=self.runtime_id,
+                request=launch.durable_scope(),
+                context_digest=launch.context_digest,
+                fencing_token=launch.fencing_token,
+            )
             external_id = self.driver.start(
                 launch, control_session_id=session_id
             )
@@ -358,17 +472,27 @@ class WorkerRuntime(ABC):
                     mutable=True,
                 )
         except Exception as exc:
-            self.storage.append_runtime_event(
-                session_id,
-                kind="error",
-                payload={"error_type": type(exc).__name__},
-            )
-            self.storage.finalize_runtime_session(
-                session_id,
-                status="failed",
-                result={"status": "failed", "error_type": type(exc).__name__},
-            )
+            if session_id is not None:
+                self.storage.append_runtime_event(
+                    session_id,
+                    kind="error",
+                    payload={"error_type": type(exc).__name__},
+                )
+                self.storage.finalize_runtime_session(
+                    session_id,
+                    status="failed",
+                    result={
+                        "status": "failed",
+                        "error_type": type(exc).__name__,
+                    },
+                )
             raise
+        finally:
+            self._finish_control_operation(
+                control_lease, reason="Worker runtime start boundary completed"
+            )
+        if session_id is None:
+            raise RuntimeError("Runtime session was not created")
         return self.session(session_id)
 
     def session(self, session_id: int) -> RuntimeSession:
@@ -393,25 +517,54 @@ class WorkerRuntime(ABC):
             ),
         )
 
-    def resume(self, session_id: int) -> RuntimeSession:
+    def resume(
+        self,
+        session_id: int,
+        *,
+        mission_control: RuntimeMissionControlBinding | None = None,
+    ) -> RuntimeSession:
         session = self.session(session_id)
         if not session.external_session_id:
             raise ValueError("Runtime session has no external identity")
-        self.driver.resume(session.external_session_id)
-        self.storage.resume_runtime_session(session_id)
+        row = self.storage.runtime_session(session_id)
+        lease = self._begin_control_operation(
+            mission_control or self._session_control_binding(session_id),
+            operation_id=f"runtime:{self.runtime_id}:session:{session_id}:resume:v{row['version']}",
+            kind=MissionOperationKind.COMMAND,
+            request={"runtime": self.runtime_id, "operation": "resume"},
+        )
+        try:
+            self.driver.resume(session.external_session_id)
+            self.storage.resume_runtime_session(session_id)
+        finally:
+            self._finish_control_operation(
+                lease, reason="Worker runtime resume boundary completed"
+            )
         return self.session(session_id)
 
     def heartbeat(self, session_id: int) -> str:
         session = self.session(session_id)
         if not session.external_session_id:
             raise ValueError("Runtime session has no external identity")
-        self.driver.heartbeat(session.external_session_id)
-        heartbeat = self.storage.heartbeat_runtime_session(session_id)
-        self.storage.append_runtime_event(
-            session_id,
-            kind="heartbeat",
-            payload={"heartbeat_at": heartbeat},
+        row = self.storage.runtime_session(session_id)
+        lease = self._begin_control_operation(
+            self._session_control_binding(session_id),
+            operation_id=f"runtime:{self.runtime_id}:session:{session_id}:heartbeat:v{row['version']}",
+            kind=MissionOperationKind.SERVICE_OPERATION,
+            request={"runtime": self.runtime_id, "operation": "heartbeat"},
         )
+        try:
+            self.driver.heartbeat(session.external_session_id)
+            heartbeat = self.storage.heartbeat_runtime_session(session_id)
+            self.storage.append_runtime_event(
+                session_id,
+                kind="heartbeat",
+                payload={"heartbeat_at": heartbeat},
+            )
+        finally:
+            self._finish_control_operation(
+                lease, reason="Worker runtime heartbeat boundary completed"
+            )
         return heartbeat
 
     @staticmethod
@@ -435,16 +588,28 @@ class WorkerRuntime(ABC):
         session = self.session(session_id)
         if not session.external_session_id:
             raise ValueError("Runtime session has no external identity")
-        if session.status in {"starting", "running", "suspended"}:
-            for event in self.driver.collect_events(session.external_session_id):
-                if not isinstance(event.payload, dict):
-                    raise TypeError("Runtime driver event payload must be an object")
-                self.storage.append_runtime_event(
-                    session_id,
-                    kind=event.kind,
-                    payload=event.payload,
-                    mutable=event.mutable,
-                )
+        row = self.storage.runtime_session(session_id)
+        lease = self._begin_control_operation(
+            self._session_control_binding(session_id),
+            operation_id=f"runtime:{self.runtime_id}:session:{session_id}:collect:v{row['version']}",
+            kind=MissionOperationKind.COMMAND,
+            request={"runtime": self.runtime_id, "operation": "collect_events"},
+        )
+        try:
+            if session.status in {"starting", "running", "suspended"}:
+                for event in self.driver.collect_events(session.external_session_id):
+                    if not isinstance(event.payload, dict):
+                        raise TypeError("Runtime driver event payload must be an object")
+                    self.storage.append_runtime_event(
+                        session_id,
+                        kind=event.kind,
+                        payload=event.payload,
+                        mutable=event.mutable,
+                    )
+        finally:
+            self._finish_control_operation(
+                lease, reason="Worker event collection boundary completed"
+            )
         return tuple(
             self._event(row)
             for row in self.storage.runtime_events(
