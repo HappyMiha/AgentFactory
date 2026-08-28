@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Any
 
 from temporalio import workflow
-from temporalio.exceptions import ActivityError
+from temporalio.exceptions import ActivityError, ChildWorkflowError
 
 with workflow.unsafe.imports_passed_through():
     from .models import (
@@ -14,7 +14,15 @@ with workflow.unsafe.imports_passed_through():
         AutonomousApprovalRevalidationInput,
         AutonomousApprovalRevalidationResult,
         AutonomousBacklogApprovalNotice,
+        AutonomousChildPreparationInput,
+        AutonomousChildPreparationResult,
+        AutonomousChildReconciliationInput,
+        AutonomousChildReconciliationResult,
+        AutonomousExecutionPreparationInput,
+        AutonomousExecutionPreparationResult,
         AutonomousMissionActivityScope,
+        AutonomousMissionCompletionInput,
+        AutonomousMissionCompletionResult,
         AutonomousPlanningActivityInput,
         AutonomousPlanningActivityResult,
         AutonomousPlanningCommand,
@@ -143,20 +151,7 @@ class AgentFactoryJobWorkflow:
             await workflow.execute_activity(
                 "fail_agentfactory_job",
                 {
-                    "job": {
-                        "job_id": job.job_id,
-                        "run_id": job.run_id,
-                        "project_id": job.project_id,
-                        "task_id": job.task_id,
-                        "workspace": job.workspace,
-                        "database": job.database,
-                        "workflow_definition_id": job.workflow_definition_id,
-                        "mode": job.mode,
-                        "fast_activity_timeout_seconds": job.fast_activity_timeout_seconds,
-                        "llm_activity_timeout_seconds": job.llm_activity_timeout_seconds,
-                        "heartbeat_timeout_seconds": job.heartbeat_timeout_seconds,
-                        "max_repair_iterations": job.max_repair_iterations,
-                    },
+                    "job": job.to_dict(),
                     "summary": summary,
                     "failure_class": failure_class,
                 },
@@ -183,7 +178,12 @@ class AgentFactoryJobWorkflow:
         try:
             self.state.phase = "validation"
             self.state.last_progress = "Validating persisted AgentFactory job"
-            await self._fast_activity("validate_agentfactory_job", job, job)
+            validation_activity = (
+                "validate_autonomous_child_job"
+                if job.autonomous_context is not None
+                else "validate_agentfactory_job"
+            )
+            await self._fast_activity(validation_activity, job, job)
 
             self.state.phase = "planning"
             self.state.last_progress = "Loading reviewed workflow and project context"
@@ -241,10 +241,29 @@ class AgentFactoryJobWorkflow:
             self.state.phase = "final_validation"
             self.state.current_task_id = None
             self.state.current_agent = None
-            self.state.last_progress = "Persisting final evidence and approval gate"
-            final = await self._fast_activity("finalize_agentfactory_job", job, job)
-            self.state.status = WorkflowStatus.WAITING
-            self.state.phase = "awaiting_approval"
+            autonomous = job.autonomous_context is not None
+            self.state.last_progress = (
+                "Persisting autonomous validation, review, and integration evidence"
+                if autonomous
+                else "Persisting final evidence and approval gate"
+            )
+            final = await self._fast_activity(
+                (
+                    "finalize_autonomous_child_job"
+                    if autonomous
+                    else "finalize_agentfactory_job"
+                ),
+                job,
+                job,
+            )
+            self.state.status = (
+                WorkflowStatus.COMPLETED
+                if autonomous
+                else WorkflowStatus.WAITING
+            )
+            self.state.phase = (
+                "autonomous_completed" if autonomous else "awaiting_approval"
+            )
             self.state.last_progress = final.summary
             return self.state.to_dict()
         except asyncio.CancelledError:
@@ -299,6 +318,8 @@ class AutonomousMissionWorkflow:
             "proposal_revision_count": state.proposal_revision_count,
             "active_execution_epoch_id": state.active_execution_epoch_id,
             "current_checkpoint_id": state.current_checkpoint_id,
+            "current_child_job_id": state.current_child_job_id,
+            "current_child_workflow_id": state.current_child_workflow_id,
             "current_work_item_stable_id": state.current_work_item_stable_id,
             "completed_items": state.completed_items,
             "total_items": state.total_items,
@@ -415,10 +436,129 @@ class AutonomousMissionWorkflow:
             state.active_backlog_revision_id = result.revision_id
             state.active_backlog_revision_digest = result.revision_digest
             state.active_execution_epoch_id = result.execution_epoch_id
+            state.backlog_approval_id = result.approval_id
+            state.execution_authorization_id = result.authorization_id
             state.workflow_status = WorkflowStatus.WAITING.value
         else:
             state.workflow_status = WorkflowStatus.WAITING.value
         self._touch(result.reason)
+
+    async def _enter_development_activity(
+        self,
+    ) -> AutonomousExecutionPreparationResult:
+        request = self._request
+        state = self._state()
+        if (
+            request is None
+            or state.backlog_approval_id is None
+            or state.execution_authorization_id is None
+        ):
+            raise RuntimeError("Approved mission authority is unavailable")
+        return await workflow.execute_activity(
+            "enter_autonomous_development",
+            AutonomousExecutionPreparationInput(
+                scope=self._activity_scope(),
+                expected_mission_version=state.mission_version,
+                approval_id=state.backlog_approval_id,
+                authorization_id=state.execution_authorization_id,
+                command_id=(
+                    f"{state.temporal_workflow_id}:environment:"
+                    f"v{state.mission_version}"
+                ),
+            ),
+            result_type=AutonomousExecutionPreparationResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    async def _prepare_child_activity(
+        self,
+    ) -> AutonomousChildPreparationResult:
+        request = self._request
+        state = self._state()
+        if request is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        return await workflow.execute_activity(
+            "prepare_autonomous_child_job",
+            AutonomousChildPreparationInput(
+                scope=self._activity_scope(),
+                expected_mission_version=state.mission_version,
+                execution_mode=request.autonomous_child_execution_mode,
+                workflow_definition_id=(
+                    request.autonomous_child_workflow_definition_id
+                ),
+                fast_activity_timeout_seconds=(
+                    request.fast_activity_timeout_seconds
+                ),
+                llm_activity_timeout_seconds=(
+                    request.planning_activity_timeout_seconds
+                ),
+                heartbeat_timeout_seconds=request.heartbeat_timeout_seconds,
+                max_repair_iterations=(
+                    request.autonomous_child_max_repair_iterations
+                ),
+                command_id=(
+                    f"{state.temporal_workflow_id}:prepare-child:"
+                    f"v{state.mission_version}"
+                ),
+            ),
+            result_type=AutonomousChildPreparationResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    async def _reconcile_child_activity(
+        self, child_job_id: int
+    ) -> AutonomousChildReconciliationResult:
+        request = self._request
+        state = self._state()
+        if request is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        return await workflow.execute_activity(
+            "reconcile_autonomous_child_job",
+            AutonomousChildReconciliationInput(
+                scope=self._activity_scope(),
+                child_job_id=child_job_id,
+                expected_mission_version=state.mission_version,
+                command_id=(
+                    f"{state.temporal_workflow_id}:reconcile-child:"
+                    f"{child_job_id}:v{state.mission_version}"
+                ),
+            ),
+            result_type=AutonomousChildReconciliationResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    async def _complete_mission_activity(
+        self,
+    ) -> AutonomousMissionCompletionResult:
+        request = self._request
+        state = self._state()
+        if request is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        return await workflow.execute_activity(
+            "complete_autonomous_mission",
+            AutonomousMissionCompletionInput(
+                scope=self._activity_scope(),
+                expected_mission_version=state.mission_version,
+                command_id=(
+                    f"{state.temporal_workflow_id}:complete:"
+                    f"v{state.mission_version}"
+                ),
+            ),
+            result_type=AutonomousMissionCompletionResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
 
     @workflow.query(name="get_current_role")
     def get_current_role(self) -> dict[str, Any]:
@@ -460,9 +600,116 @@ class AutonomousMissionWorkflow:
         self._touch("Waiting for explicit bounded planning or persisted approval")
         while True:
             if self.state.phase == "APPROVED":
-                # AF-AMM-014 begins environment discovery. AF-AMM-013 must stop
-                # here so approval can never fall through into execution.
-                await workflow.wait_condition(lambda: False)
+                if not request.post_approval_execution_enabled:
+                    await workflow.wait_condition(lambda: False)
+                self.state.workflow_status = WorkflowStatus.RUNNING.value
+                self.state.environment_status = "DISCOVERING"
+                self._touch("Starting authorized environment orchestration")
+                try:
+                    environment = await self._enter_development_activity()
+                except ActivityError as exc:
+                    self.state.workflow_status = (
+                        WorkflowStatus.NEEDS_ATTENTION.value
+                    )
+                    self.state.environment_status = "UNKNOWN"
+                    self._touch(
+                        "Environment orchestration failed: " + str(exc)
+                    )
+                    await workflow.wait_condition(lambda: False)
+                self.state.mission_version = environment.mission_version
+                self.state.phase = environment.phase
+                self.state.disposition = environment.disposition
+                self.state.environment_status = environment.environment_status
+                self._touch(environment.summary)
+                continue
+
+            if self.state.phase == "DEVELOPMENT":
+                self.state.workflow_status = WorkflowStatus.RUNNING.value
+                self._touch("Selecting the next dependency-ready backlog item")
+                try:
+                    prepared = await self._prepare_child_activity()
+                    self.state.completed_items = prepared.completed_items
+                    self.state.total_items = prepared.total_items
+                    if prepared.all_complete:
+                        completed = await self._complete_mission_activity()
+                        self.state.mission_version = completed.mission_version
+                        self.state.phase = completed.phase
+                        self.state.disposition = completed.disposition
+                        self.state.completed_items = completed.completed_items
+                        self.state.total_items = completed.total_items
+                        self.state.workflow_status = WorkflowStatus.COMPLETED.value
+                        self._touch(completed.summary)
+                        return self.state.to_dict()
+                    if prepared.blocked or prepared.job is None:
+                        self.state.workflow_status = (
+                            WorkflowStatus.NEEDS_ATTENTION.value
+                        )
+                        self._touch(prepared.summary)
+                        await workflow.wait_condition(lambda: False)
+
+                    self.state.current_child_job_id = prepared.child_job_id
+                    self.state.current_child_workflow_id = (
+                        prepared.child_workflow_id
+                    )
+                    self.state.current_work_item_stable_id = (
+                        prepared.stable_item_id
+                    )
+                    self.state.current_role = prepared.role
+                    self.state.current_model = prepared.model
+                    self._touch(prepared.summary)
+                    child_result = await workflow.execute_child_workflow(
+                        "AgentFactoryJobWorkflow",
+                        prepared.job,
+                        id=prepared.child_workflow_id,
+                        task_queue=info.task_queue,
+                        result_type=dict,
+                        static_summary=(
+                            f"Autonomous item {prepared.stable_item_id}"
+                        ),
+                        static_details=(
+                            f"Mission {self.state.mission_id}, child job "
+                            f"{prepared.child_job_id}"
+                        ),
+                    )
+                    if child_result.get("status") != WorkflowStatus.COMPLETED.value:
+                        self.state.workflow_status = (
+                            WorkflowStatus.NEEDS_ATTENTION.value
+                        )
+                        self._touch(
+                            "Autonomous child did not produce accepted completion"
+                        )
+                        await workflow.wait_condition(lambda: False)
+                    if prepared.child_job_id is None:
+                        raise RuntimeError(
+                            "Prepared child result omitted its persisted job id"
+                        )
+                    reconciled = await self._reconcile_child_activity(
+                        prepared.child_job_id
+                    )
+                except (ActivityError, ChildWorkflowError) as exc:
+                    self.state.workflow_status = (
+                        WorkflowStatus.NEEDS_ATTENTION.value
+                    )
+                    self._touch("Autonomous child orchestration failed: " + str(exc))
+                    await workflow.wait_condition(lambda: False)
+
+                self.state.mission_version = reconciled.mission_version
+                self.state.current_checkpoint_id = reconciled.checkpoint_id
+                self.state.completed_items = reconciled.completed_items
+                self.state.total_items = reconciled.total_items
+                self.state.current_child_job_id = None
+                self.state.current_child_workflow_id = None
+                self.state.current_work_item_stable_id = None
+                self.state.current_role = None
+                self.state.current_model = None
+                self.state.workflow_status = WorkflowStatus.RUNNING.value
+                self._touch(reconciled.summary)
+                continue
+
+            if self.state.phase == "COMPLETED":
+                self.state.workflow_status = WorkflowStatus.COMPLETED.value
+                return self.state.to_dict()
+
             await workflow.wait_condition(
                 lambda: bool(self._planning_commands or self._approval_notices)
             )

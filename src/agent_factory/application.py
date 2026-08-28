@@ -19,6 +19,11 @@ from .backlog_revisions import (
     BacklogRevisionService,
 )
 from .config import config_path, config_path_for_workspace, load_yaml
+from .coding_delivery import (
+    AutonomousChildJob,
+    AutonomousChildReconciliation,
+    AutonomousCodingDeliveryService,
+)
 from .github import GitHubClient
 from .mission_intake import (
     AutonomousMissionIntakeResult,
@@ -597,6 +602,50 @@ class AgentFactoryService:
             reason=reason,
             approved_item_stable_id=approved_item_stable_id,
             authentication_context=authentication_context,
+        )
+
+    def _autonomous_coding_delivery(self) -> AutonomousCodingDeliveryService:
+        capabilities = {
+            provider_id: provider.capabilities
+            for provider_id, provider in self.runtime.providers.items()
+        }
+        return AutonomousCodingDeliveryService(self.storage, capabilities)
+
+    def prepare_autonomous_child_job(
+        self,
+        mission_id: int,
+        stable_item_id: str,
+        *,
+        execution_mode: str,
+        workflow_definition_id: str = "delivery",
+        command_id: str,
+    ) -> AutonomousChildJob:
+        """Prepare or recover one persisted post-approval child attempt."""
+
+        return self._autonomous_coding_delivery().prepare_job(
+            mission_id,
+            stable_item_id,
+            execution_mode=execution_mode,
+            workflow_definition_id=workflow_definition_id,
+            command_id=command_id,
+        )
+
+    def autonomous_child_job(self, child_job_id: int) -> AutonomousChildJob:
+        return self._autonomous_coding_delivery().get_job(child_job_id)
+
+    def reconcile_autonomous_child_job(
+        self,
+        child_job_id: int,
+        *,
+        expected_mission_version: int,
+        command_id: str,
+    ) -> AutonomousChildReconciliation:
+        """Commit accepted child evidence to backlog state and a checkpoint."""
+
+        return self._autonomous_coding_delivery().reconcile_job(
+            child_job_id,
+            expected_mission_version=expected_mission_version,
+            command_id=command_id,
         )
 
     # Queries return immutable typed values and never depend on terminal formatting.

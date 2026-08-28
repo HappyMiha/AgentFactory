@@ -36,8 +36,17 @@ from ...autonomous_proposal_verifier import (
     ProposalReadinessReport,
 )
 from ...backlog_revisions import BacklogRevisionService
+from ...coding_delivery import AutonomousCodingDeliveryService
 from ...config import config_path_for_workspace, load_yaml
-from ...models import Budget, ProviderCapabilities, ProviderResult, Status, WorkItem
+from ...models import (
+    Agent,
+    Budget,
+    ProviderCapabilities,
+    ProviderExecutionAuthorization,
+    ProviderResult,
+    Status,
+    WorkItem,
+)
 from ...providers import ProcessSupervisor
 from ...registry import AgentRegistry
 from ...reviewers import ReviewerRouter, ReviewSubject
@@ -54,7 +63,16 @@ from .models import (
     AgentFactoryJobInput,
     AutonomousApprovalRevalidationInput,
     AutonomousApprovalRevalidationResult,
+    AutonomousChildJobContext,
+    AutonomousChildPreparationInput,
+    AutonomousChildPreparationResult,
+    AutonomousChildReconciliationInput,
+    AutonomousChildReconciliationResult,
+    AutonomousExecutionPreparationInput,
+    AutonomousExecutionPreparationResult,
     AutonomousMissionActivityScope,
+    AutonomousMissionCompletionInput,
+    AutonomousMissionCompletionResult,
     AutonomousPlanningActivityInput,
     AutonomousPlanningActivityResult,
     DemoWorkflowInput,
@@ -138,6 +156,17 @@ class AgentFactoryActivities:
             for provider_id, provider in runtime.providers.items()
         }
         return RuntimePlanningInvoker(runtime), capabilities
+
+    def _autonomous_capabilities(
+        self, scope: AutonomousMissionActivityScope
+    ) -> dict[str, ProviderCapabilities]:
+        if self.autonomous_provider_capabilities:
+            return dict(self.autonomous_provider_capabilities)
+        runtime = AgentRuntime(workspace=Path(scope.workspace).expanduser().resolve())
+        return {
+            provider_id: provider.capabilities
+            for provider_id, provider in runtime.providers.items()
+        }
 
     @staticmethod
     def _planning_phase_steps(
@@ -492,6 +521,487 @@ class AgentFactoryActivities:
                 str(exc)[:4000], type="CONFIGURATION", non_retryable=True
             ) from exc
 
+    @staticmethod
+    def _autonomous_activity_error(exc: Exception) -> ApplicationError:
+        return ApplicationError(
+            str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+        )
+
+    def _enter_autonomous_development_sync(
+        self, request: AutonomousExecutionPreparationInput
+    ) -> AutonomousExecutionPreparationResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            delivery = AutonomousCodingDeliveryService(
+                storage, self._autonomous_capabilities(request.scope)
+            )
+            approval = delivery.approvals.get(request.approval_id)
+            if (
+                approval.mission_id != request.scope.mission_id
+                or approval.authorization_id != request.authorization_id
+                or approval.result_mission_version
+                != request.expected_mission_version
+            ):
+                raise PermissionError(
+                    "Environment request does not match persisted approval authority"
+                )
+            mission = delivery.enter_development(
+                request.scope.mission_id,
+                expected_mission_version=request.expected_mission_version,
+                command_id=request.command_id,
+            )
+            return AutonomousExecutionPreparationResult(
+                mission_id=mission.id,
+                mission_version=mission.version,
+                phase=mission.phase.value,
+                disposition=mission.disposition.value,
+                environment_status="READY",
+                summary=(
+                    "Authorized environment discovery and bootstrap completed; "
+                    "mission development is ready"
+                ),
+                occurred_at=mission.updated_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="enter_autonomous_development")
+    async def enter_autonomous_development(
+        self, request: AutonomousExecutionPreparationInput
+    ) -> AutonomousExecutionPreparationResult:
+        try:
+            return await asyncio.to_thread(
+                self._enter_autonomous_development_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise self._autonomous_activity_error(exc) from exc
+
+    @staticmethod
+    def _autonomous_job_context(
+        delivery: AutonomousCodingDeliveryService,
+        child_job: Any,
+    ) -> tuple[AutonomousChildJobContext, str, str]:
+        authorization = delivery.authorizations.get_authorization(
+            child_job.authorization_id
+        )
+        epoch = delivery.checkpoints.get_epoch(child_job.execution_epoch_id)
+        item = delivery.revisions.item(
+            child_job.backlog_revision_id, child_job.stable_item_id
+        )
+        role = item.item.assigned_role
+        model = str(
+            authorization.role_model_manifest.get("role_models", {}).get(role, "")
+        )
+        if not model:
+            raise PermissionError(
+                f"Approved role/model manifest omits child role {role!r}"
+            )
+        context = AutonomousChildJobContext(
+            child_job_id=child_job.id,
+            mission_id=child_job.mission_id,
+            backlog_revision_id=child_job.backlog_revision_id,
+            backlog_revision_digest=child_job.backlog_revision_digest,
+            execution_epoch_id=child_job.execution_epoch_id,
+            authorization_id=child_job.authorization_id,
+            backlog_item_id=child_job.backlog_item_id,
+            stable_item_id=child_job.stable_item_id,
+            item_digest=child_job.item_digest,
+            logical_attempt=child_job.logical_attempt,
+            child_workflow_id=child_job.child_workflow_id,
+            repository_path=authorization.repository_path,
+            epoch_branch=epoch.epoch_branch,
+        )
+        return context, role, model
+
+    def _prepare_autonomous_child_sync(
+        self, request: AutonomousChildPreparationInput
+    ) -> AutonomousChildPreparationResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            mission = self._assert_autonomous_scope(request.scope, missions)
+            if mission.version != request.expected_mission_version:
+                raise ValueError(
+                    "Mission version changed before autonomous child preparation"
+                )
+            if (
+                mission.phase is not MissionPhase.DEVELOPMENT
+                or mission.disposition is not MissionDisposition.RUNNING
+            ):
+                raise PermissionError(
+                    "Mission is not in authorized autonomous development"
+                )
+            delivery = AutonomousCodingDeliveryService(
+                storage, self._autonomous_capabilities(request.scope)
+            )
+            child_job = delivery.open_job(mission.id)
+            projections = tuple(
+                item
+                for item in delivery.revisions.active_items(mission.id)
+                if item.item.executable
+            )
+            completed = sum(
+                item.status.value == "DONE" for item in projections
+            )
+            total = len(projections)
+            if child_job is None:
+                candidate = next(
+                    (
+                        item
+                        for item in projections
+                        if item.status.value in {"READY", "RUNNING"}
+                    ),
+                    None,
+                )
+                if candidate is None:
+                    all_complete = bool(total) and completed == total
+                    return AutonomousChildPreparationResult(
+                        mission_id=mission.id,
+                        mission_version=mission.version,
+                        completed_items=completed,
+                        total_items=total,
+                        all_complete=all_complete,
+                        blocked=not all_complete,
+                        summary=(
+                            "All executable backlog items have accepted checkpoints"
+                            if all_complete
+                            else "No dependency-ready executable backlog item is available"
+                        ),
+                        occurred_at=mission.updated_at,
+                    )
+                child_job = delivery.prepare_job(
+                    mission.id,
+                    candidate.item.stable_id,
+                    execution_mode=request.execution_mode,
+                    workflow_definition_id=request.workflow_definition_id,
+                    command_id=request.command_id,
+                )
+            context, role, model = self._autonomous_job_context(
+                delivery, child_job
+            )
+            job = AgentFactoryJobInput(
+                job_id=child_job.job_id,
+                run_id=child_job.run_id,
+                project_id=mission.project_id,
+                task_id=child_job.task_id,
+                workspace=context.repository_path,
+                database=request.scope.database,
+                workflow_definition_id=child_job.workflow_definition_id,
+                mode=child_job.execution_mode,
+                fast_activity_timeout_seconds=request.fast_activity_timeout_seconds,
+                llm_activity_timeout_seconds=request.llm_activity_timeout_seconds,
+                heartbeat_timeout_seconds=request.heartbeat_timeout_seconds,
+                max_repair_iterations=request.max_repair_iterations,
+                autonomous_context=context,
+            )
+            return AutonomousChildPreparationResult(
+                mission_id=mission.id,
+                mission_version=mission.version,
+                completed_items=completed,
+                total_items=total,
+                all_complete=False,
+                blocked=False,
+                summary=(
+                    f"Prepared deterministic autonomous child for "
+                    f"{child_job.stable_item_id}"
+                ),
+                occurred_at=child_job.created_at,
+                child_job_id=child_job.id,
+                child_workflow_id=child_job.child_workflow_id,
+                stable_item_id=child_job.stable_item_id,
+                role=role,
+                model=model,
+                job=job,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="prepare_autonomous_child_job")
+    async def prepare_autonomous_child_job(
+        self, request: AutonomousChildPreparationInput
+    ) -> AutonomousChildPreparationResult:
+        try:
+            return await asyncio.to_thread(
+                self._prepare_autonomous_child_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise self._autonomous_activity_error(exc) from exc
+
+    @staticmethod
+    def _assert_autonomous_job_binding(
+        delivery: AutonomousCodingDeliveryService,
+        job: AgentFactoryJobInput,
+    ):
+        context = job.autonomous_context
+        if context is None:
+            raise PermissionError("AgentFactory job has no autonomous context")
+        persisted = delivery.get_job(context.child_job_id)
+        expected = (
+            context.mission_id,
+            context.backlog_revision_id,
+            context.backlog_revision_digest,
+            context.execution_epoch_id,
+            context.authorization_id,
+            context.backlog_item_id,
+            context.stable_item_id,
+            context.item_digest,
+            context.logical_attempt,
+            context.child_workflow_id,
+            job.job_id,
+            job.task_id,
+            job.run_id,
+            job.project_id,
+            job.workflow_definition_id,
+            job.mode,
+        )
+        actual = (
+            persisted.mission_id,
+            persisted.backlog_revision_id,
+            persisted.backlog_revision_digest,
+            persisted.execution_epoch_id,
+            persisted.authorization_id,
+            persisted.backlog_item_id,
+            persisted.stable_item_id,
+            persisted.item_digest,
+            persisted.logical_attempt,
+            persisted.child_workflow_id,
+            persisted.job_id,
+            persisted.task_id,
+            persisted.run_id,
+            delivery.missions.get(persisted.mission_id).project_id,
+            persisted.workflow_definition_id,
+            persisted.execution_mode,
+        )
+        if actual != expected:
+            raise PermissionError(
+                "Autonomous child input does not match its immutable persisted scope"
+            )
+        authorization = delivery.authorizations.get_authorization(
+            persisted.authorization_id
+        )
+        epoch = delivery.checkpoints.get_epoch(persisted.execution_epoch_id)
+        if (
+            Path(context.repository_path).expanduser().resolve()
+            != Path(authorization.repository_path).expanduser().resolve()
+            or context.epoch_branch != epoch.epoch_branch
+            or Path(job.workspace).expanduser().resolve()
+            != Path(authorization.repository_path).expanduser().resolve()
+        ):
+            raise PermissionError(
+                "Autonomous child repository or epoch branch binding changed"
+            )
+        return persisted
+
+    def _validate_autonomous_child_sync(
+        self, job: AgentFactoryJobInput
+    ) -> ActivityResult:
+        if job.autonomous_context is None:
+            raise PermissionError("AgentFactory job has no autonomous context")
+        storage = self._storage(job)
+        try:
+            scope = AutonomousMissionActivityScope(
+                mission_id=job.autonomous_context.mission_id,
+                mission_identity=AutonomousMissionService(storage)
+                .get(job.autonomous_context.mission_id)
+                .identity,
+                mission_key=AutonomousMissionService(storage)
+                .get(job.autonomous_context.mission_id)
+                .mission_key,
+                project_id=job.project_id,
+                workspace=job.workspace,
+                database=job.database,
+                temporal_workflow_id=job.autonomous_context.child_workflow_id,
+                temporal_first_run_id=job.autonomous_context.child_workflow_id,
+            )
+            delivery = AutonomousCodingDeliveryService(
+                storage, self._autonomous_capabilities(scope)
+            )
+            persisted = self._assert_autonomous_job_binding(delivery, job)
+            authorization = delivery.authorize_job(
+                persisted.id,
+                command_id=f"{persisted.child_workflow_id}:authorize",
+            )
+            return ActivityResult(
+                True,
+                summary="Persisted autonomous mission authority validated",
+                artifacts=[f"authorization-decision:{authorization.decision_id}"],
+                metadata={
+                    "child_job_id": persisted.id,
+                    "authorization_id": authorization.authorization_id,
+                    "authorization_decision_id": authorization.decision_id,
+                    "authorization_decision_digest": authorization.decision_digest,
+                    "provider_id": authorization.provider_id,
+                    "role": authorization.role,
+                    "model": authorization.model,
+                },
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="validate_autonomous_child_job")
+    async def validate_autonomous_child_job(
+        self, job: AgentFactoryJobInput
+    ) -> ActivityResult:
+        try:
+            if (
+                job.autonomous_context is None
+                or activity.info().workflow_id
+                != job.autonomous_context.child_workflow_id
+            ):
+                raise PermissionError(
+                    "Temporal child Workflow id does not match autonomous scope"
+                )
+            return await asyncio.to_thread(
+                self._validate_autonomous_child_sync, job
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise self._autonomous_activity_error(exc) from exc
+
+    def _finalize_autonomous_child_sync(
+        self, job: AgentFactoryJobInput
+    ) -> ActivityResult:
+        if job.autonomous_context is None:
+            raise PermissionError("AgentFactory job has no autonomous context")
+        storage = self._storage(job)
+        try:
+            mission = AutonomousMissionService(storage).get(
+                job.autonomous_context.mission_id
+            )
+            scope = AutonomousMissionActivityScope(
+                mission_id=mission.id,
+                mission_identity=mission.identity,
+                mission_key=mission.mission_key,
+                project_id=mission.project_id,
+                workspace=job.workspace,
+                database=job.database,
+                temporal_workflow_id=job.autonomous_context.child_workflow_id,
+                temporal_first_run_id=job.autonomous_context.child_workflow_id,
+            )
+            delivery = AutonomousCodingDeliveryService(
+                storage, self._autonomous_capabilities(scope)
+            )
+            persisted = self._assert_autonomous_job_binding(delivery, job)
+            completion = delivery.complete_job(
+                persisted.id,
+                command_id=f"{persisted.child_workflow_id}:complete",
+            )
+            return ActivityResult(
+                True,
+                summary=(
+                    "Autonomous child validation, review, and integration "
+                    "evidence accepted without a per-item Founder gate"
+                ),
+                artifacts=[f"autonomous-completion:{completion.id}"],
+                metadata={
+                    "child_job_id": persisted.id,
+                    "completion_id": completion.id,
+                    "completion_digest": completion.completion_digest,
+                    "git_commit_sha": completion.git_commit_sha,
+                    "per_item_founder_gate": False,
+                },
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="finalize_autonomous_child_job")
+    async def finalize_autonomous_child_job(
+        self, job: AgentFactoryJobInput
+    ) -> ActivityResult:
+        try:
+            return await asyncio.to_thread(
+                self._finalize_autonomous_child_sync, job
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise self._autonomous_activity_error(exc) from exc
+
+    def _reconcile_autonomous_child_sync(
+        self, request: AutonomousChildReconciliationInput
+    ) -> AutonomousChildReconciliationResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            delivery = AutonomousCodingDeliveryService(
+                storage, self._autonomous_capabilities(request.scope)
+            )
+            job = delivery.get_job(request.child_job_id)
+            reconciliation = delivery.reconcile_job(
+                request.child_job_id,
+                expected_mission_version=request.expected_mission_version,
+                command_id=request.command_id,
+            )
+            completion = delivery.get_completion(reconciliation.completion_id)
+            progress = delivery.revisions.progress(request.scope.mission_id)
+            return AutonomousChildReconciliationResult(
+                mission_id=request.scope.mission_id,
+                mission_version=reconciliation.result_mission_version,
+                child_job_id=job.id,
+                completion_id=completion.id,
+                checkpoint_id=reconciliation.checkpoint_id,
+                stable_item_id=job.stable_item_id,
+                completed_items=int(progress["completed"]),
+                total_items=int(progress["total"]),
+                summary=(
+                    f"Accepted {job.stable_item_id} and committed mission checkpoint"
+                ),
+                occurred_at=reconciliation.created_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="reconcile_autonomous_child_job")
+    async def reconcile_autonomous_child_job(
+        self, request: AutonomousChildReconciliationInput
+    ) -> AutonomousChildReconciliationResult:
+        try:
+            return await asyncio.to_thread(
+                self._reconcile_autonomous_child_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise self._autonomous_activity_error(exc) from exc
+
+    def _complete_autonomous_mission_sync(
+        self, request: AutonomousMissionCompletionInput
+    ) -> AutonomousMissionCompletionResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            delivery = AutonomousCodingDeliveryService(
+                storage, self._autonomous_capabilities(request.scope)
+            )
+            mission = delivery.complete_mission(
+                request.scope.mission_id,
+                expected_mission_version=request.expected_mission_version,
+                command_id=request.command_id,
+            )
+            progress = delivery.revisions.progress(mission.id)
+            return AutonomousMissionCompletionResult(
+                mission_id=mission.id,
+                mission_version=mission.version,
+                phase=mission.phase.value,
+                disposition=mission.disposition.value,
+                completed_items=int(progress["completed"]),
+                total_items=int(progress["total"]),
+                summary="Autonomous mission completed its accepted active revision",
+                occurred_at=mission.updated_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="complete_autonomous_mission")
+    async def complete_autonomous_mission(
+        self, request: AutonomousMissionCompletionInput
+    ) -> AutonomousMissionCompletionResult:
+        try:
+            return await asyncio.to_thread(
+                self._complete_autonomous_mission_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise self._autonomous_activity_error(exc) from exc
+
     @activity.defn(name="validate_agentfactory_job")
     async def validate_job(self, job: AgentFactoryJobInput) -> ActivityResult:
         workspace = Path(job.workspace).expanduser().resolve()
@@ -651,6 +1161,7 @@ class AgentFactoryActivities:
         mode: str,
         job: AgentFactoryJobInput,
         stage_label: str,
+        provider_authorization: ProviderExecutionAuthorization | None = None,
     ) -> ProviderResult:
         cancel_event = threading.Event()
         execution = asyncio.create_task(
@@ -659,7 +1170,7 @@ class AgentFactoryActivities:
                 agent,
                 item,
                 context,
-                None,
+                provider_authorization,
                 mode=ExecutionMode(mode),
                 cancel_event=cancel_event,
             )
@@ -691,6 +1202,66 @@ class AgentFactoryActivities:
             except Exception:  # noqa: BLE001 - cleanup remains bounded
                 pass
             raise
+
+    def _autonomous_execution_agent(
+        self,
+        storage: SQLiteStorage,
+        job: AgentFactoryJobInput,
+        template: Agent,
+    ) -> tuple[Agent, ProviderExecutionAuthorization | None]:
+        context = job.autonomous_context
+        if context is None:
+            return template, None
+        row = storage.db.execute(
+            "SELECT * FROM autonomous_child_job_authorizations "
+            "WHERE child_job_id=?",
+            (context.child_job_id,),
+        ).fetchone()
+        if not row:
+            raise ApplicationError(
+                "Autonomous stage lacks persisted provider authority",
+                type="CONFIGURATION",
+                non_retryable=True,
+            )
+        authorizations = AutonomousAuthorizationService(storage)
+        decision = next(
+            (
+                value
+                for value in authorizations.decisions(context.mission_id)
+                if value.id == int(row["decision_id"])
+            ),
+            None,
+        )
+        if decision is None:
+            raise ApplicationError(
+                "Autonomous provider decision disappeared",
+                type="CONFIGURATION",
+                non_retryable=True,
+            )
+        provider_authorization = authorizations.provider_authorization(decision)
+        authorization = authorizations.get_authorization(
+            provider_authorization.authorization_id
+        )
+        execution_agent = Agent(
+            id=provider_authorization.agent_id,
+            name=f"Autonomous {template.name}",
+            role=str(row["role"]),
+            enabled=True,
+            provider=(
+                "deterministic"
+                if job.mode == ExecutionMode.SIMULATION.value
+                else provider_authorization.provider
+            ),
+            instructions=template.instructions,
+            permissions=list(authorization.allowed_permissions),
+            model=str(row["model"]),
+        )
+        return (
+            execution_agent,
+            None
+            if job.mode == ExecutionMode.SIMULATION.value
+            else provider_authorization,
+        )
 
     @activity.defn(name="execute_agentfactory_stage")
     async def execute_stage(self, request: StageActivityInput) -> ActivityResult:
@@ -734,7 +1305,10 @@ class AgentFactoryActivities:
             workspace = Path(job.workspace).expanduser().resolve()
             registry = AgentRegistry(workspace=workspace)
             runtime = AgentRuntime(workspace=workspace)
-            agent = self._stage_agent(storage, registry, request)
+            workflow_agent = self._stage_agent(storage, registry, request)
+            agent, provider_authorization = self._autonomous_execution_agent(
+                storage, job, workflow_agent
+            )
             task = storage.get_task(job.task_id)
             child = WorkItem(
                 id=task.id,
@@ -763,6 +1337,7 @@ class AgentFactoryActivities:
                 job.mode,
                 job,
                 stage_label,
+                provider_authorization,
             )
             if not provider_result.ok:
                 message = provider_result.error or "Agent provider failed"
@@ -805,9 +1380,20 @@ class AgentFactoryActivities:
             artifact_id = storage.add_artifact(
                 job.run_id,
                 stage_label,
-                agent.id,
+                workflow_agent.id,
                 provider_result.provider,
                 f"[execution_mode={job.mode}]\n{provider_result.content}",
+                producer={
+                    "agent_id": agent.id,
+                    "workflow_agent_id": workflow_agent.id,
+                    "provider": provider_result.provider,
+                    "model": agent.model_identity,
+                    "authorization_decision_id": (
+                        provider_authorization.decision_id
+                        if provider_authorization is not None
+                        else None
+                    ),
+                },
             )
             result = ActivityResult(
                 True,
@@ -818,9 +1404,15 @@ class AgentFactoryActivities:
                 artifacts=[f"artifact:{artifact_id}"],
                 metadata={
                     "agent": agent.id,
+                    "workflow_agent": workflow_agent.id,
                     "provider": provider_result.provider,
                     "verdict": verdict,
                     "stage": stage_label,
+                    "authorization_decision_id": (
+                        provider_authorization.decision_id
+                        if provider_authorization is not None
+                        else None
+                    ),
                 },
                 failure_class=failure_class,
             )
@@ -859,7 +1451,7 @@ class AgentFactoryActivities:
 
     @activity.defn(name="fail_agentfactory_job")
     async def fail_job(self, payload: dict[str, Any]) -> ActivityResult:
-        job = AgentFactoryJobInput(**payload["job"])
+        job = AgentFactoryJobInput.from_dict(payload["job"])
         storage = self._storage(job)
         try:
             row = storage.db.execute(

@@ -121,6 +121,66 @@ class ActivityResult:
 
 
 @dataclass
+class AutonomousChildJobContext:
+    """Persisted autonomous authority bound to one deterministic child attempt."""
+
+    child_job_id: int
+    mission_id: int
+    backlog_revision_id: int
+    backlog_revision_digest: str
+    execution_epoch_id: int
+    authorization_id: int
+    backlog_item_id: int
+    stable_item_id: str
+    item_digest: str
+    logical_attempt: int
+    child_workflow_id: str
+    repository_path: str
+    epoch_branch: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.child_job_id, "Autonomous child job id"),
+            (self.mission_id, "Mission id"),
+            (self.backlog_revision_id, "Backlog revision id"),
+            (self.execution_epoch_id, "Execution epoch id"),
+            (self.authorization_id, "Authorization id"),
+            (self.backlog_item_id, "Backlog item id"),
+            (self.logical_attempt, "Logical attempt"),
+        ):
+            _optional_id(value, label)
+        _sha256(self.backlog_revision_digest, "Backlog revision digest")
+        _sha256(self.item_digest, "Backlog item digest")
+        _bounded(
+            self.stable_item_id,
+            "Stable work item id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        _bounded(
+            self.child_workflow_id,
+            "Autonomous child Workflow id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        _bounded(
+            self.repository_path,
+            "Autonomous repository path",
+            AUTONOMOUS_PATH_LIMIT,
+        )
+        _bounded(
+            self.epoch_branch,
+            "Autonomous epoch branch",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AutonomousChildJobContext":
+        return cls(**value)
+
+
+@dataclass
 class AgentFactoryJobInput:
     job_id: str
     run_id: int
@@ -134,6 +194,20 @@ class AgentFactoryJobInput:
     llm_activity_timeout_seconds: int = 3600
     heartbeat_timeout_seconds: int = 60
     max_repair_iterations: int = 5
+    autonomous_context: AutonomousChildJobContext | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, value: dict[str, Any]) -> "AgentFactoryJobInput":
+        payload = dict(value)
+        context = payload.get("autonomous_context")
+        if isinstance(context, dict):
+            payload["autonomous_context"] = AutonomousChildJobContext.from_dict(
+                context
+            )
+        return cls(**payload)
 
 
 @dataclass
@@ -186,7 +260,11 @@ class AutonomousMissionCarryOver:
     proposal_pipeline_run_id: int | None = None
     proposal_revision_count: int = 0
     active_execution_epoch_id: int | None = None
+    backlog_approval_id: int | None = None
+    execution_authorization_id: int | None = None
     current_checkpoint_id: int | None = None
+    current_child_job_id: int | None = None
+    current_child_workflow_id: str | None = None
     current_work_item_stable_id: str | None = None
     current_role: str | None = None
     current_model: str | None = None
@@ -249,7 +327,17 @@ class AutonomousMissionCarryOver:
         if self.proposal_revision_count < 0:
             raise ValueError("Proposal revision count cannot be negative")
         _optional_id(self.active_execution_epoch_id, "Active execution epoch id")
+        _optional_id(self.backlog_approval_id, "Backlog approval id")
+        _optional_id(
+            self.execution_authorization_id,
+            "Execution authorization id",
+        )
         _optional_id(self.current_checkpoint_id, "Current checkpoint id")
+        _optional_id(self.current_child_job_id, "Current child job id")
+        _optional_bounded(
+            self.current_child_workflow_id,
+            "Current child Workflow id",
+        )
         _optional_bounded(
             self.current_work_item_stable_id, "Current work item stable id"
         )
@@ -296,6 +384,10 @@ class AutonomousMissionWorkflowInput:
     fast_activity_timeout_seconds: int = 120
     planning_activity_timeout_seconds: int = 3600
     heartbeat_timeout_seconds: int = 60
+    post_approval_execution_enabled: bool = True
+    autonomous_child_execution_mode: str = "live"
+    autonomous_child_workflow_definition_id: str = "delivery"
+    autonomous_child_max_repair_iterations: int = 5
     schema_version: int = AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
@@ -325,6 +417,19 @@ class AutonomousMissionWorkflowInput:
         if self.heartbeat_timeout_seconds >= self.planning_activity_timeout_seconds:
             raise ValueError(
                 "Heartbeat timeout must be shorter than planning activity timeout"
+            )
+        if self.autonomous_child_execution_mode not in {"simulation", "live"}:
+            raise ValueError(
+                "Autonomous child execution mode must be simulation or live"
+            )
+        _bounded(
+            self.autonomous_child_workflow_definition_id,
+            "Autonomous child workflow definition id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if not 0 <= int(self.autonomous_child_max_repair_iterations) <= 100:
+            raise ValueError(
+                "Autonomous child repair iterations must be between zero and 100"
             )
         if self.carry_over is not None:
             carry = self.carry_over
@@ -379,7 +484,11 @@ class AutonomousMissionWorkflowState:
     proposal_pipeline_run_id: int | None = None
     proposal_revision_count: int = 0
     active_execution_epoch_id: int | None = None
+    backlog_approval_id: int | None = None
+    execution_authorization_id: int | None = None
     current_checkpoint_id: int | None = None
+    current_child_job_id: int | None = None
+    current_child_workflow_id: str | None = None
     current_work_item_stable_id: str | None = None
     current_role: str | None = None
     current_model: str | None = None
@@ -430,7 +539,11 @@ class AutonomousMissionWorkflowState:
             proposal_pipeline_run_id=carry.proposal_pipeline_run_id,
             proposal_revision_count=carry.proposal_revision_count,
             active_execution_epoch_id=carry.active_execution_epoch_id,
+            backlog_approval_id=carry.backlog_approval_id,
+            execution_authorization_id=carry.execution_authorization_id,
             current_checkpoint_id=carry.current_checkpoint_id,
+            current_child_job_id=carry.current_child_job_id,
+            current_child_workflow_id=carry.current_child_workflow_id,
             current_work_item_stable_id=carry.current_work_item_stable_id,
             current_role=carry.current_role,
             current_model=carry.current_model,
@@ -512,7 +625,11 @@ class AutonomousMissionWorkflowState:
             proposal_pipeline_run_id=self.proposal_pipeline_run_id,
             proposal_revision_count=self.proposal_revision_count,
             active_execution_epoch_id=self.active_execution_epoch_id,
+            backlog_approval_id=self.backlog_approval_id,
+            execution_authorization_id=self.execution_authorization_id,
             current_checkpoint_id=self.current_checkpoint_id,
+            current_child_job_id=self.current_child_job_id,
+            current_child_workflow_id=self.current_child_workflow_id,
             current_work_item_stable_id=self.current_work_item_stable_id,
             current_role=self.current_role,
             current_model=self.current_model,
@@ -727,6 +844,248 @@ class AutonomousApprovalRevalidationResult:
             raise ValueError(
                 "Approved revalidation requires complete authority identifiers"
             )
+
+
+@dataclass(frozen=True)
+class AutonomousExecutionPreparationInput:
+    scope: AutonomousMissionActivityScope
+    expected_mission_version: int
+    approval_id: int
+    authorization_id: int
+    command_id: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.expected_mission_version, "Expected mission version")
+        _optional_id(self.approval_id, "Backlog approval id")
+        _optional_id(self.authorization_id, "Execution authorization id")
+        _bounded(self.command_id, "Environment command id", AUTONOMOUS_IDENTIFIER_LIMIT)
+
+
+@dataclass(frozen=True)
+class AutonomousExecutionPreparationResult:
+    mission_id: int
+    mission_version: int
+    phase: str
+    disposition: str
+    environment_status: str
+    summary: str
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.mission_version, "Mission version")
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        if self.environment_status not in AUTONOMOUS_ENVIRONMENT_STATUSES:
+            raise ValueError(
+                f"Unsupported environment status: {self.environment_status}"
+            )
+        _bounded(self.summary, "Environment summary", AUTONOMOUS_SUMMARY_LIMIT)
+        _bounded(
+            self.occurred_at,
+            "Environment occurrence timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousChildPreparationInput:
+    scope: AutonomousMissionActivityScope
+    expected_mission_version: int
+    execution_mode: str
+    workflow_definition_id: str
+    fast_activity_timeout_seconds: int
+    llm_activity_timeout_seconds: int
+    heartbeat_timeout_seconds: int
+    max_repair_iterations: int
+    command_id: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.expected_mission_version, "Expected mission version")
+        if self.execution_mode not in {"simulation", "live"}:
+            raise ValueError("Child execution mode must be simulation or live")
+        _bounded(
+            self.workflow_definition_id,
+            "Child workflow definition id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        for value, label in (
+            (self.fast_activity_timeout_seconds, "Fast activity timeout"),
+            (self.llm_activity_timeout_seconds, "LLM activity timeout"),
+            (self.heartbeat_timeout_seconds, "Heartbeat timeout"),
+        ):
+            if int(value) <= 0:
+                raise ValueError(f"{label} must be positive")
+        if self.heartbeat_timeout_seconds >= self.llm_activity_timeout_seconds:
+            raise ValueError("Heartbeat timeout must be shorter than LLM timeout")
+        if not 0 <= int(self.max_repair_iterations) <= 100:
+            raise ValueError("Repair iterations must be between zero and 100")
+        _bounded(
+            self.command_id,
+            "Child preparation command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousChildPreparationResult:
+    mission_id: int
+    mission_version: int
+    completed_items: int
+    total_items: int
+    all_complete: bool
+    blocked: bool
+    summary: str
+    occurred_at: str
+    child_job_id: int | None = None
+    child_workflow_id: str | None = None
+    stable_item_id: str | None = None
+    role: str | None = None
+    model: str | None = None
+    job: AgentFactoryJobInput | None = None
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.mission_version, "Mission version")
+        if self.completed_items < 0 or self.total_items < 0:
+            raise ValueError("Mission progress counters cannot be negative")
+        if self.completed_items > self.total_items:
+            raise ValueError("Completed item count cannot exceed total item count")
+        if self.all_complete and self.blocked:
+            raise ValueError("Child preparation cannot be complete and blocked")
+        _bounded(self.summary, "Child preparation summary", AUTONOMOUS_SUMMARY_LIMIT)
+        _bounded(
+            self.occurred_at,
+            "Child preparation timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        optional_ids = (
+            self.child_job_id,
+            self.child_workflow_id,
+            self.stable_item_id,
+            self.role,
+            self.model,
+            self.job,
+        )
+        if self.job is None:
+            if any(value is not None for value in optional_ids[:-1]):
+                raise ValueError("Non-runnable preparation cannot identify a child")
+        elif any(value is None for value in optional_ids[:-1]):
+            raise ValueError("Runnable preparation requires complete child identity")
+        if self.child_job_id is not None:
+            _optional_id(self.child_job_id, "Child job id")
+        for value, label in (
+            (self.child_workflow_id, "Child Workflow id"),
+            (self.stable_item_id, "Stable work item id"),
+            (self.role, "Current role"),
+            (self.model, "Current model"),
+        ):
+            _optional_bounded(value, label)
+
+
+@dataclass(frozen=True)
+class AutonomousChildReconciliationInput:
+    scope: AutonomousMissionActivityScope
+    child_job_id: int
+    expected_mission_version: int
+    command_id: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.child_job_id, "Child job id")
+        _optional_id(self.expected_mission_version, "Expected mission version")
+        _bounded(
+            self.command_id,
+            "Child reconciliation command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousChildReconciliationResult:
+    mission_id: int
+    mission_version: int
+    child_job_id: int
+    completion_id: int
+    checkpoint_id: int
+    stable_item_id: str
+    completed_items: int
+    total_items: int
+    summary: str
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.mission_version, "Mission version"),
+            (self.child_job_id, "Child job id"),
+            (self.completion_id, "Child completion id"),
+            (self.checkpoint_id, "Mission checkpoint id"),
+        ):
+            _optional_id(value, label)
+        _bounded(
+            self.stable_item_id,
+            "Stable work item id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.completed_items < 0 or self.total_items < 0:
+            raise ValueError("Mission progress counters cannot be negative")
+        if self.completed_items > self.total_items:
+            raise ValueError("Completed item count cannot exceed total item count")
+        _bounded(self.summary, "Reconciliation summary", AUTONOMOUS_SUMMARY_LIMIT)
+        _bounded(
+            self.occurred_at,
+            "Reconciliation timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousMissionCompletionInput:
+    scope: AutonomousMissionActivityScope
+    expected_mission_version: int
+    command_id: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.expected_mission_version, "Expected mission version")
+        _bounded(
+            self.command_id,
+            "Mission completion command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousMissionCompletionResult:
+    mission_id: int
+    mission_version: int
+    phase: str
+    disposition: str
+    completed_items: int
+    total_items: int
+    summary: str
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.mission_version, "Mission version")
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        if self.completed_items < 0 or self.completed_items != self.total_items:
+            raise ValueError("Completed mission requires its complete item count")
+        _bounded(self.summary, "Mission completion summary", AUTONOMOUS_SUMMARY_LIMIT)
+        _bounded(
+            self.occurred_at,
+            "Mission completion timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
 
 
 @dataclass

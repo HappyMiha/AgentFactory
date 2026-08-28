@@ -17,6 +17,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-AMM-014 post-approval environment transitions and deterministic child `AgentFactoryJobWorkflow` orchestration, with immutable mission-scoped job/authorization/completion/reconciliation records, typed local provider authority, dependency-ordered checkpoints, crash-safe replay, and no per-item Founder gate on the explicitly autonomous path.
 - AF-AMM-013 idempotent bounded pre-approval Temporal Activities, version-fenced analysis/generation transitions, append-only proposal regeneration lineage, a timer-free approval wait, and approval revalidation that ignores Signal claims and trusts only the persisted completion/revision/epoch/authorization chain.
 - Final implementation audit documenting 57/57 backlog coverage, durable-schema and authority checks, explicit non-goals, and the external GitHub billing blocker.
 - CI troubleshooting runbook documenting local parity checks, supported action pins, and GitHub jobs-not-started billing diagnostics.

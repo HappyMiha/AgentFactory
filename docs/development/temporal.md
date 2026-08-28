@@ -40,6 +40,8 @@ Other defaults are documented in the repository `.env.example`. Environment vari
 
 Autonomous Mission parents use the stable ID prefix `agentfactory-autonomous-mission` by default. A deployment may set `TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX` before its first mission starts, but must then keep that value stable so later clients attach to the same logical parents.
 
+After exact backlog approval, an execution-enabled Autonomous Mission parent advances the authorized environment phases and starts one dependency-ready `AgentFactoryJobWorkflow` child at a time. Child IDs are deterministic across replay and bind the mission/revision/epoch/item/logical-attempt scope. The parent does not schedule another item until the prior child has persisted accepted validation, review, and clean-Git integration evidence and the reconciliation Activity has committed its mission checkpoint. Standard jobs still create the normal Founder gate; only a child carrying the persisted autonomous context uses mission authority and skips that per-item gate.
+
 ## Start AgentFactory
 
 Start the Local Control Center in one PowerShell window:

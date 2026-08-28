@@ -102,7 +102,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Docker | Profile boundary | The image runs as a non-root user with persistent `/data`; external provider CLIs are intentionally not bundled and deployment profiles document supported topology paths. |
 | HTTP model APIs | Provider extension | DeepSeek, OpenRouter, Mistral, Groq, and similar services remain optional provider extensions; the guarded CLI/runtime boundary is the supported core contract. |
 | Local Control Center | Complete (R0.2) | Loopback dashboard, guarded operations, Founder authority, audit/settings, GitHub dry-run preview, Windows launch, and end-to-end qualification are complete. |
-| Autonomous Mission Mode | Durable pre-approval orchestration ready | Durable domain/authorization/planning/approval records, the atomic exact-backlog start, and the identifier-only `AutonomousMissionWorkflow` now run analysis/generation, preserve regenerated proposals, wait indefinitely for approval, and revalidate approval from SQLite; post-approval child scheduling and execution slices remain in progress. |
+| Autonomous Mission Mode | Post-approval child orchestration ready | The identifier-only parent now revalidates the exact backlog approval, advances the authorized environment phases, runs dependency-ready items through deterministic child `AgentFactoryJobWorkflow` IDs, accepts persisted validation/review/integration evidence, checkpoints every item, and completes the active revision without weakening standard per-job Founder gates. Later recovery, service, tool, and full coding-worker slices remain in progress. |
 
 ## How it works
 

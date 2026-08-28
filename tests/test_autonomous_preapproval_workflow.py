@@ -300,6 +300,7 @@ class AutonomousPreapprovalTemporalTests(
             workspace=str(self.repository),
             database=str(self.database),
             temporal_settings=self.settings,
+            post_approval_execution_enabled=False,
         )
 
     async def asyncTearDown(self):

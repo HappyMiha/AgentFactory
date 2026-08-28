@@ -112,6 +112,10 @@ def autonomous_mission_workflow_input(
     database: str,
     carry_over: AutonomousMissionCarryOver | None = None,
     temporal_settings: TemporalSettings | None = None,
+    post_approval_execution_enabled: bool = True,
+    autonomous_child_execution_mode: str = "live",
+    autonomous_child_workflow_definition_id: str = "delivery",
+    autonomous_child_max_repair_iterations: int = 5,
 ) -> AutonomousMissionWorkflowInput:
     """Build a compact Workflow input from the authoritative domain projection."""
 
@@ -130,6 +134,14 @@ def autonomous_mission_workflow_input(
         fast_activity_timeout_seconds=selected.fast_activity_timeout_seconds,
         planning_activity_timeout_seconds=selected.llm_activity_timeout_seconds,
         heartbeat_timeout_seconds=selected.heartbeat_timeout_seconds,
+        post_approval_execution_enabled=post_approval_execution_enabled,
+        autonomous_child_execution_mode=autonomous_child_execution_mode,
+        autonomous_child_workflow_definition_id=(
+            autonomous_child_workflow_definition_id
+        ),
+        autonomous_child_max_repair_iterations=(
+            autonomous_child_max_repair_iterations
+        ),
     )
 
 

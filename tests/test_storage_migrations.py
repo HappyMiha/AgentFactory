@@ -8,6 +8,57 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v65_database_upgrades_to_autonomous_child_delivery_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v65.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 66:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                66,
+            )
+            for table in (
+                "autonomous_child_jobs",
+                "autonomous_child_job_authorizations",
+                "autonomous_child_delivery_completions",
+                "autonomous_child_reconciliations",
+            ):
+                with self.subTest(table=table):
+                    self.assertIsNotNone(
+                        storage.db.execute(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table,),
+                        ).fetchone()
+                    )
+            storage.close()
+
+            reopened = SQLiteStorage(path)
+            self.assertEqual(
+                reopened.db.execute(
+                    "SELECT COUNT(*) FROM schema_migrations WHERE version=66"
+                ).fetchone()[0],
+                1,
+            )
+            reopened.close()
+
     def test_v64_database_upgrades_to_atomic_backlog_approval_authority(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v64.db"

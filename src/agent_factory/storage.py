@@ -5145,6 +5145,231 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'invalid autonomous mission phase transition'); END;
     """),
+    (66, """
+        CREATE TABLE autonomous_child_jobs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            backlog_revision_digest TEXT NOT NULL
+                CHECK(length(backlog_revision_digest)=64
+                      AND backlog_revision_digest NOT GLOB '*[^0-9a-f]*'),
+            execution_epoch_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_execution_epochs(id),
+            authorization_id INTEGER NOT NULL
+                REFERENCES autonomous_local_authorizations(id),
+            backlog_item_id INTEGER NOT NULL REFERENCES autonomous_backlog_items(id),
+            stable_item_id TEXT NOT NULL,
+            item_digest TEXT NOT NULL
+                CHECK(length(item_digest)=64
+                      AND item_digest NOT GLOB '*[^0-9a-f]*'),
+            logical_attempt INTEGER NOT NULL CHECK(logical_attempt>0),
+            task_id INTEGER NOT NULL UNIQUE REFERENCES work_items(id),
+            run_id INTEGER NOT NULL UNIQUE REFERENCES workflow_runs(id),
+            child_workflow_id TEXT NOT NULL UNIQUE,
+            workflow_definition_id TEXT NOT NULL,
+            execution_mode TEXT NOT NULL CHECK(execution_mode IN ('simulation','live')),
+            context_json TEXT NOT NULL,
+            context_digest TEXT NOT NULL UNIQUE
+                CHECK(length(context_digest)=64
+                      AND context_digest NOT GLOB '*[^0-9a-f]*'),
+            prepared_by TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL,
+            UNIQUE(mission_id,backlog_revision_id,execution_epoch_id,
+                   stable_item_id,logical_attempt)
+        );
+        CREATE INDEX idx_autonomous_child_jobs_mission
+            ON autonomous_child_jobs(mission_id,id);
+
+        CREATE TABLE autonomous_child_job_authorizations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            child_job_id INTEGER NOT NULL UNIQUE REFERENCES autonomous_child_jobs(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            authorization_id INTEGER NOT NULL
+                REFERENCES autonomous_local_authorizations(id),
+            decision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_authorization_decisions(id),
+            decision_digest TEXT NOT NULL UNIQUE
+                CHECK(length(decision_digest)=64
+                      AND decision_digest NOT GLOB '*[^0-9a-f]*'),
+            provider_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            model TEXT NOT NULL,
+            command_id TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE autonomous_child_delivery_completions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            child_job_id INTEGER NOT NULL UNIQUE REFERENCES autonomous_child_jobs(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            run_id INTEGER NOT NULL UNIQUE REFERENCES workflow_runs(id),
+            authorization_decision_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_authorization_decisions(id),
+            stage_evidence_json TEXT NOT NULL,
+            stage_evidence_digest TEXT NOT NULL
+                CHECK(length(stage_evidence_digest)=64
+                      AND stage_evidence_digest NOT GLOB '*[^0-9a-f]*'),
+            validation_evidence_json TEXT NOT NULL,
+            validation_evidence_digest TEXT NOT NULL
+                CHECK(length(validation_evidence_digest)=64
+                      AND validation_evidence_digest NOT GLOB '*[^0-9a-f]*'),
+            review_evidence_json TEXT NOT NULL,
+            review_evidence_digest TEXT NOT NULL
+                CHECK(length(review_evidence_digest)=64
+                      AND review_evidence_digest NOT GLOB '*[^0-9a-f]*'),
+            integration_evidence_json TEXT NOT NULL,
+            integration_evidence_digest TEXT NOT NULL
+                CHECK(length(integration_evidence_digest)=64
+                      AND integration_evidence_digest NOT GLOB '*[^0-9a-f]*'),
+            git_commit_sha TEXT NOT NULL,
+            completion_digest TEXT NOT NULL UNIQUE
+                CHECK(length(completion_digest)=64
+                      AND completion_digest NOT GLOB '*[^0-9a-f]*'),
+            command_id TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE autonomous_child_reconciliations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            child_job_id INTEGER NOT NULL UNIQUE REFERENCES autonomous_child_jobs(id),
+            completion_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_child_delivery_completions(id),
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            backlog_item_state_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_backlog_item_states(id),
+            checkpoint_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_checkpoints(id),
+            result_mission_version INTEGER NOT NULL CHECK(result_mission_version>0),
+            reconciliation_digest TEXT NOT NULL UNIQUE
+                CHECK(length(reconciliation_digest)=64
+                      AND reconciliation_digest NOT GLOB '*[^0-9a-f]*'),
+            command_id TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TRIGGER autonomous_child_jobs_no_update
+        BEFORE UPDATE ON autonomous_child_jobs
+        BEGIN SELECT RAISE(ABORT, 'autonomous child jobs are immutable'); END;
+        CREATE TRIGGER autonomous_child_jobs_no_delete
+        BEFORE DELETE ON autonomous_child_jobs
+        BEGIN SELECT RAISE(ABORT, 'autonomous child jobs are immutable'); END;
+        CREATE TRIGGER autonomous_child_job_authorizations_no_update
+        BEFORE UPDATE ON autonomous_child_job_authorizations
+        BEGIN SELECT RAISE(ABORT, 'autonomous child authorizations are immutable'); END;
+        CREATE TRIGGER autonomous_child_job_authorizations_no_delete
+        BEFORE DELETE ON autonomous_child_job_authorizations
+        BEGIN SELECT RAISE(ABORT, 'autonomous child authorizations are immutable'); END;
+        CREATE TRIGGER autonomous_child_completions_no_update
+        BEFORE UPDATE ON autonomous_child_delivery_completions
+        BEGIN SELECT RAISE(ABORT, 'autonomous child completions are immutable'); END;
+        CREATE TRIGGER autonomous_child_completions_no_delete
+        BEFORE DELETE ON autonomous_child_delivery_completions
+        BEGIN SELECT RAISE(ABORT, 'autonomous child completions are immutable'); END;
+        CREATE TRIGGER autonomous_child_reconciliations_no_update
+        BEFORE UPDATE ON autonomous_child_reconciliations
+        BEGIN SELECT RAISE(ABORT, 'autonomous child reconciliations are immutable'); END;
+        CREATE TRIGGER autonomous_child_reconciliations_no_delete
+        BEFORE DELETE ON autonomous_child_reconciliations
+        BEGIN SELECT RAISE(ABORT, 'autonomous child reconciliations are immutable'); END;
+
+        CREATE TRIGGER autonomous_child_job_scope_valid
+        BEFORE INSERT ON autonomous_child_jobs
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_backlog_revisions revision
+                ON revision.id=mission.active_backlog_revision_id
+              JOIN autonomous_mission_execution_epochs epoch
+                ON epoch.id=mission.active_execution_epoch_id
+              JOIN autonomous_local_authorizations authorization
+                ON authorization.id=NEW.authorization_id
+               AND authorization.mission_id=mission.id
+               AND authorization.backlog_revision_id=revision.id
+               AND authorization.execution_epoch_id=epoch.id
+              JOIN autonomous_backlog_items item
+                ON item.id=NEW.backlog_item_id
+               AND item.revision_id=revision.id
+               AND item.stable_id=NEW.stable_item_id
+               AND item.item_digest=NEW.item_digest
+               AND item.executable=1
+              JOIN workflow_runs run
+                ON run.id=NEW.run_id AND run.task_id=NEW.task_id
+             WHERE mission.id=NEW.mission_id
+               AND mission.phase='DEVELOPMENT'
+               AND mission.disposition='RUNNING'
+               AND revision.id=NEW.backlog_revision_id
+               AND revision.revision_digest=NEW.backlog_revision_digest
+               AND epoch.id=NEW.execution_epoch_id
+               AND NOT EXISTS (
+                   SELECT 1 FROM autonomous_authorization_revocations revoked
+                    WHERE revoked.authorization_id=authorization.id
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous child job scope is invalid'); END;
+
+        CREATE TRIGGER autonomous_child_authorization_scope_valid
+        BEFORE INSERT ON autonomous_child_job_authorizations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_child_jobs job
+              JOIN autonomous_authorization_decisions decision
+                ON decision.id=NEW.decision_id
+               AND decision.mission_id=job.mission_id
+               AND decision.outcome='ALLOW_AUTONOMOUS'
+               AND decision.authority_valid=1
+               AND decision.autonomous_authorization_id=job.authorization_id
+             WHERE job.id=NEW.child_job_id
+               AND job.mission_id=NEW.mission_id
+               AND job.authorization_id=NEW.authorization_id
+               AND decision.decision_digest=NEW.decision_digest
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous child authorization is invalid'); END;
+
+        CREATE TRIGGER autonomous_child_completion_scope_valid
+        BEFORE INSERT ON autonomous_child_delivery_completions
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_child_jobs job
+              JOIN autonomous_child_job_authorizations authorization
+                ON authorization.child_job_id=job.id
+               AND authorization.decision_id=NEW.authorization_decision_id
+             WHERE job.id=NEW.child_job_id
+               AND job.mission_id=NEW.mission_id
+               AND job.run_id=NEW.run_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous child completion scope is invalid'); END;
+
+        CREATE TRIGGER autonomous_child_reconciliation_scope_valid
+        BEFORE INSERT ON autonomous_child_reconciliations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_child_jobs job
+              JOIN autonomous_child_delivery_completions completion
+                ON completion.id=NEW.completion_id
+               AND completion.child_job_id=job.id
+              JOIN autonomous_backlog_item_states state
+                ON state.id=NEW.backlog_item_state_id
+               AND state.item_id=job.backlog_item_id
+               AND state.status='DONE'
+              JOIN autonomous_mission_checkpoints checkpoint
+                ON checkpoint.id=NEW.checkpoint_id
+               AND checkpoint.mission_id=job.mission_id
+               AND checkpoint.execution_epoch_id=job.execution_epoch_id
+               AND checkpoint.backlog_revision_id=job.backlog_revision_id
+             WHERE job.id=NEW.child_job_id
+               AND job.mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous child reconciliation is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
