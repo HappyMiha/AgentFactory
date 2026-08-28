@@ -8,6 +8,63 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v67_database_upgrades_to_epoch_handoff_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v67.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 68:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                68,
+            )
+            for table in (
+                "autonomous_epoch_handoff_requests",
+                "autonomous_epoch_handoff_preparations",
+                "autonomous_epoch_handoff_results",
+            ):
+                with self.subTest(table=table):
+                    self.assertIsNotNone(
+                        storage.db.execute(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table,),
+                        ).fetchone()
+                    )
+            result_columns = {
+                str(row["name"])
+                for row in storage.db.execute(
+                    "PRAGMA table_info(autonomous_epoch_handoff_results)"
+                )
+            }
+            self.assertIn("execution_authorization_id", result_columns)
+            storage.close()
+
+            reopened = SQLiteStorage(path)
+            self.assertEqual(
+                reopened.db.execute(
+                    "SELECT COUNT(*) FROM schema_migrations WHERE version=68"
+                ).fetchone()[0],
+                1,
+            )
+            reopened.close()
+
     def test_v66_database_upgrades_to_mission_control_fence(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v66.db"

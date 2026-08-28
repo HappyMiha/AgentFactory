@@ -407,11 +407,15 @@ class AutonomousCodingDeliveryService:
     def open_job(self, mission_id: int) -> AutonomousChildJob | None:
         row = self.storage.db.execute(
             """SELECT job.* FROM autonomous_child_jobs job
+               JOIN autonomous_missions mission ON mission.id=job.mission_id
                LEFT JOIN autonomous_child_reconciliations reconciliation
                  ON reconciliation.child_job_id=job.id
                LEFT JOIN autonomous_mission_retry_requests retry
                  ON retry.child_job_id=job.id
-              WHERE job.mission_id=? AND reconciliation.id IS NULL
+              WHERE job.mission_id=?
+                AND job.backlog_revision_id=mission.active_backlog_revision_id
+                AND job.execution_epoch_id=mission.active_execution_epoch_id
+                AND reconciliation.id IS NULL
                 AND retry.id IS NULL
               ORDER BY job.id LIMIT 1""",
             (mission_id,),
@@ -575,14 +579,15 @@ class AutonomousCodingDeliveryService:
         if not item_row:
             raise RuntimeError("Active backlog item disappeared")
         approval_row = self.storage.db.execute(
-            """SELECT completion.authorization_id
-                 FROM autonomous_backlog_approval_completions completion
-                 JOIN autonomous_backlog_approvals approval
-                   ON approval.id=completion.approval_id
-                WHERE approval.mission_id=?
-                  AND approval.revision_id=?
-                  AND approval.execution_epoch_id=?
-                ORDER BY approval.id DESC LIMIT 1""",
+            """SELECT authorization.id AS authorization_id
+                 FROM autonomous_local_authorizations authorization
+                 LEFT JOIN autonomous_authorization_revocations revoked
+                   ON revoked.authorization_id=authorization.id
+                WHERE authorization.mission_id=?
+                  AND authorization.backlog_revision_id=?
+                  AND authorization.execution_epoch_id=?
+                  AND revoked.id IS NULL
+                ORDER BY authorization.id DESC LIMIT 1""",
             (
                 mission_id,
                 revision.id,

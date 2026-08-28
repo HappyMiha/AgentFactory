@@ -44,6 +44,8 @@ After exact backlog approval, an execution-enabled Autonomous Mission parent adv
 
 Autonomous controls use typed `PAUSE`, `RESUME`, `STOP`, and `RETRY_CURRENT_TASK` Signals. Each Signal carries an idempotent command ID plus the expected mission version, active revision/epoch, current child, and fencing token; an Activity revalidates those claims against SQLite before changing state. Pause and stop retain the mission phase, let an already admitted atomic operation reach its boundary, and reject every later inference, command-class operation, installation, service action, next-item reservation, or worker tool turn. Resume requires the newest token and waits for releasing stop/retry leases. Retry retires the active strategy and creates exactly one higher logical attempt without replaying an accepted completion. `STOPPED` is a resumable disposition, not Temporal cancellation or mission failure.
 
+`restart_from_checkpoint` and `apply_backlog_revision` are distinct typed Signals. They are valid only after the mission owner has persisted the exact handoff command through `MissionCheckpointService` or `BacklogRevisionService`; the Signal is not authority. The Worker reloads that command, stops admission, waits for the active child and all operation leases to reach a safe boundary, appends one replacement epoch plus renewed execution authorization, resumes the fence, and carries the resulting revision/epoch/checkpoint identities into the parent. Duplicate delivery reuses the same immutable handoff result. Git branch/checkpoint materialization is intentionally delegated to AF-AMM-021, and full revision impact/restart planning remains AF-AMM-022.
+
 ## Start AgentFactory
 
 Start the Local Control Center in one PowerShell window:

@@ -19,6 +19,7 @@ from ...autonomous_mission import AutonomousMission
 from .models import (
     AgentFactoryJobInput,
     AutonomousBacklogApprovalNotice,
+    AutonomousEpochHandoffCommand,
     AutonomousMissionCarryOver,
     AutonomousMissionControlCommand,
     AutonomousMissionWorkflowInput,
@@ -204,6 +205,50 @@ async def signal_autonomous_mission_control(
             f"Unsupported Autonomous Mission control action: {command.action}"
         ) from exc
     await client.get_workflow_handle(workflow_id).signal(signal, command)
+
+
+async def signal_autonomous_epoch_handoff(
+    client: Client,
+    command: AutonomousEpochHandoffCommand,
+    settings: TemporalSettings | None = None,
+) -> None:
+    """Wake a handoff Activity that independently reloads owner authority."""
+
+    selected = settings or TemporalSettings.from_env()
+    workflow_id = workflow_id_for_autonomous_mission(
+        command.mission_id, selected.autonomous_workflow_id_prefix
+    )
+    signals = {
+        "RESTART_FROM_CHECKPOINT": "restart_from_checkpoint",
+        "APPLY_BACKLOG_REVISION": "apply_backlog_revision",
+    }
+    try:
+        signal = signals[command.action]
+    except KeyError as exc:
+        raise ValueError(
+            f"Unsupported Autonomous Mission epoch handoff: {command.action}"
+        ) from exc
+    await client.get_workflow_handle(workflow_id).signal(signal, command)
+
+
+async def signal_restart_from_checkpoint(
+    client: Client,
+    command: AutonomousEpochHandoffCommand,
+    settings: TemporalSettings | None = None,
+) -> None:
+    if command.action != "RESTART_FROM_CHECKPOINT":
+        raise ValueError("Checkpoint restart requires RESTART_FROM_CHECKPOINT")
+    await signal_autonomous_epoch_handoff(client, command, settings)
+
+
+async def signal_apply_backlog_revision(
+    client: Client,
+    command: AutonomousEpochHandoffCommand,
+    settings: TemporalSettings | None = None,
+) -> None:
+    if command.action != "APPLY_BACKLOG_REVISION":
+        raise ValueError("Revision handoff requires APPLY_BACKLOG_REVISION")
+    await signal_autonomous_epoch_handoff(client, command, settings)
 
 
 async def ensure_namespace(client: Client, namespace: str) -> None:

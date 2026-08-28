@@ -50,6 +50,10 @@ from ...local_model_scheduler import (
     LocalInferenceControlGuard,
     LocalInferenceFenceBinding,
 )
+from ...mission_checkpoints import (
+    EpochHandoffNotReadyError,
+    MissionCheckpointService,
+)
 from ...models import (
     Agent,
     Budget,
@@ -82,6 +86,10 @@ from .models import (
     AutonomousChildReconciliationResult,
     AutonomousExecutionPreparationInput,
     AutonomousExecutionPreparationResult,
+    AutonomousEpochHandoffCompletionInput,
+    AutonomousEpochHandoffCompletionResult,
+    AutonomousEpochHandoffPreparationInput,
+    AutonomousEpochHandoffPreparationResult,
     AutonomousMissionActivityScope,
     AutonomousMissionControlActivityInput,
     AutonomousMissionControlResult,
@@ -696,6 +704,123 @@ class AgentFactoryActivities:
             return await asyncio.to_thread(
                 self._apply_autonomous_control_sync, request
             )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+
+    def _prepare_autonomous_epoch_handoff_sync(
+        self, request: AutonomousEpochHandoffPreparationInput
+    ) -> AutonomousEpochHandoffPreparationResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            command = request.command
+            if command.mission_id != request.scope.mission_id:
+                raise PermissionError("Epoch handoff Signal mission identity is spoofed")
+            checkpoints = MissionCheckpointService(
+                storage, self._autonomous_capabilities(request.scope)
+            )
+            preparation = checkpoints.begin_epoch_handoff(
+                command.command_id,
+                mission_id=command.mission_id,
+                action=command.action,
+                expected_mission_version=command.expected_mission_version,
+                expected_fencing_token=command.expected_fencing_token,
+                expected_backlog_revision_id=command.expected_backlog_revision_id,
+                expected_execution_epoch_id=command.expected_execution_epoch_id,
+                expected_child_job_id=command.expected_child_job_id,
+                selected_checkpoint_id=command.selected_checkpoint_id,
+                selected_backlog_revision_id=command.selected_backlog_revision_id,
+            )
+            authoritative = checkpoints.get_epoch_handoff_request(command.command_id)
+            return AutonomousEpochHandoffPreparationResult(
+                mission_id=authoritative.mission_id,
+                command_id=authoritative.command_id,
+                action=authoritative.action.value,
+                stopped_mission_version=preparation.stopped_mission_version,
+                stopped_fencing_token=preparation.stopped_fencing_token,
+                source_execution_epoch_id=(
+                    authoritative.expected_execution_epoch_id
+                ),
+                selected_checkpoint_id=authoritative.selected_checkpoint_id,
+                selected_backlog_revision_id=(
+                    authoritative.selected_backlog_revision_id
+                ),
+                child_job_id=preparation.child_job_id,
+                duplicate=preparation.duplicate,
+                occurred_at=preparation.created_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="prepare_autonomous_epoch_handoff")
+    async def prepare_autonomous_epoch_handoff(
+        self, request: AutonomousEpochHandoffPreparationInput
+    ) -> AutonomousEpochHandoffPreparationResult:
+        try:
+            return await asyncio.to_thread(
+                self._prepare_autonomous_epoch_handoff_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+
+    def _complete_autonomous_epoch_handoff_sync(
+        self, request: AutonomousEpochHandoffCompletionInput
+    ) -> AutonomousEpochHandoffCompletionResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            checkpoints = MissionCheckpointService(
+                storage, self._autonomous_capabilities(request.scope)
+            )
+            authoritative = checkpoints.get_epoch_handoff_request(
+                request.command_id
+            )
+            if authoritative.mission_id != request.scope.mission_id:
+                raise PermissionError("Epoch handoff command belongs to another mission")
+            result = checkpoints.complete_epoch_handoff(request.command_id)
+            mission = missions.get(authoritative.mission_id)
+            revision = checkpoints._revision(
+                authoritative.mission_id,
+                result.selected_backlog_revision_id,
+            )
+            return AutonomousEpochHandoffCompletionResult(
+                mission_id=mission.id,
+                command_id=authoritative.command_id,
+                action=authoritative.action.value,
+                mission_version=result.result_mission_version,
+                phase=mission.phase.value,
+                disposition=mission.disposition.value,
+                fencing_token=result.result_fencing_token,
+                source_execution_epoch_id=result.source_execution_epoch_id,
+                result_execution_epoch_id=result.result_execution_epoch_id,
+                selected_checkpoint_id=result.selected_checkpoint_id,
+                selected_backlog_revision_id=result.selected_backlog_revision_id,
+                selected_backlog_revision_digest=str(revision["revision_digest"]),
+                execution_authorization_id=result.execution_authorization_id,
+                duplicate=result.duplicate,
+                occurred_at=result.created_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="complete_autonomous_epoch_handoff")
+    async def complete_autonomous_epoch_handoff(
+        self, request: AutonomousEpochHandoffCompletionInput
+    ) -> AutonomousEpochHandoffCompletionResult:
+        try:
+            return await asyncio.to_thread(
+                self._complete_autonomous_epoch_handoff_sync, request
+            )
+        except EpochHandoffNotReadyError as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="TRANSIENT", non_retryable=False
+            ) from exc
         except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
             raise ApplicationError(
                 str(exc)[:4000], type="CONFIGURATION", non_retryable=True
@@ -1555,6 +1680,23 @@ class AgentFactoryActivities:
         if context is None:
             return None
         while True:
+            handoff = storage.db.execute(
+                """SELECT 1
+                     FROM autonomous_epoch_handoff_preparations preparation
+                     JOIN autonomous_epoch_handoff_requests request
+                       ON request.id=preparation.request_id
+                    WHERE request.mission_id=?
+                      AND request.expected_child_job_id=?
+                      AND request.expected_execution_epoch_id=?
+                    LIMIT 1""",
+                (
+                    context.mission_id,
+                    context.child_job_id,
+                    context.execution_epoch_id,
+                ),
+            ).fetchone()
+            if handoff:
+                return 0
             retry = storage.db.execute(
                 """SELECT 1
                      FROM autonomous_mission_retry_requests retry
@@ -1602,6 +1744,17 @@ class AgentFactoryActivities:
                 admitted_fencing_token = await self._await_autonomous_stage_fence(
                     storage, request, stage_label
                 )
+                if admitted_fencing_token == 0:
+                    return ActivityResult(
+                        True,
+                        passed=False,
+                        summary=(
+                            "Current autonomous child reached its persisted "
+                            "epoch handoff boundary"
+                        ),
+                        metadata={"epoch_handoff_requested": True},
+                        failure_class="EPOCH_HANDOFF_REQUESTED",
+                    )
                 if admitted_fencing_token is None:
                     return ActivityResult(
                         True,
@@ -1710,6 +1863,17 @@ class AgentFactoryActivities:
                                 storage, request, stage_label
                             )
                         )
+                        if admitted_fencing_token == 0:
+                            return ActivityResult(
+                                True,
+                                passed=False,
+                                summary=(
+                                    "Current autonomous child reached its "
+                                    "persisted epoch handoff boundary"
+                                ),
+                                metadata={"epoch_handoff_requested": True},
+                                failure_class="EPOCH_HANDOFF_REQUESTED",
+                            )
                         if admitted_fencing_token is None:
                             return ActivityResult(
                                 True,

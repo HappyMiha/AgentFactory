@@ -44,6 +44,9 @@ AUTONOMOUS_PLANNING_ACTIONS = frozenset({"ANALYZE", "REGENERATE_BACKLOG"})
 AUTONOMOUS_CONTROL_ACTIONS = frozenset(
     {"PAUSE", "RESUME", "STOP", "RETRY_CURRENT_TASK"}
 )
+AUTONOMOUS_EPOCH_HANDOFF_ACTIONS = frozenset(
+    {"RESTART_FROM_CHECKPOINT", "APPLY_BACKLOG_REVISION"}
+)
 
 
 def _bounded(value: str, label: str, limit: int) -> str:
@@ -102,6 +105,7 @@ class WorkflowStatus(StrEnum):
     COMPLETED = "COMPLETED"
     NEEDS_ATTENTION = "NEEDS_ATTENTION"
     STOPPED = "STOPPED"
+    SUPERSEDED = "SUPERSEDED"
 
 
 @dataclass
@@ -283,6 +287,10 @@ class AutonomousMissionCarryOver:
     last_control_action: str | None = None
     pending_retry_child_job_id: int | None = None
     pending_retry_logical_attempt: int | None = None
+    pending_epoch_handoff_command_id: str | None = None
+    pending_epoch_handoff_action: str | None = None
+    last_epoch_handoff_command_id: str | None = None
+    last_epoch_handoff_action: str | None = None
     last_activity: str = "Mission workflow created"
     last_activity_at: str = ""
     schema_version: int = AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION
@@ -388,6 +396,23 @@ class AutonomousMissionCarryOver:
             raise ValueError(
                 "Pending retry child and logical attempt must be supplied together"
             )
+        for command_id, action, label in (
+            (
+                self.pending_epoch_handoff_command_id,
+                self.pending_epoch_handoff_action,
+                "Pending epoch handoff",
+            ),
+            (
+                self.last_epoch_handoff_command_id,
+                self.last_epoch_handoff_action,
+                "Last epoch handoff",
+            ),
+        ):
+            if (command_id is None) != (action is None):
+                raise ValueError(f"{label} command and action must be supplied together")
+            _optional_bounded(command_id, f"{label} command id")
+            if action is not None and action not in AUTONOMOUS_EPOCH_HANDOFF_ACTIONS:
+                raise ValueError(f"Unsupported {label.lower()} action: {action}")
         _bounded(self.last_activity, "Last activity", AUTONOMOUS_SUMMARY_LIMIT)
         if self.last_activity_at:
             _bounded(
@@ -537,6 +562,10 @@ class AutonomousMissionWorkflowState:
     last_control_action: str | None = None
     pending_retry_child_job_id: int | None = None
     pending_retry_logical_attempt: int | None = None
+    pending_epoch_handoff_command_id: str | None = None
+    pending_epoch_handoff_action: str | None = None
+    last_epoch_handoff_command_id: str | None = None
+    last_epoch_handoff_action: str | None = None
     last_activity: str = "Mission workflow created"
     last_activity_at: str = ""
     started_at: str = ""
@@ -597,6 +626,12 @@ class AutonomousMissionWorkflowState:
             last_control_action=carry.last_control_action,
             pending_retry_child_job_id=carry.pending_retry_child_job_id,
             pending_retry_logical_attempt=carry.pending_retry_logical_attempt,
+            pending_epoch_handoff_command_id=(
+                carry.pending_epoch_handoff_command_id
+            ),
+            pending_epoch_handoff_action=carry.pending_epoch_handoff_action,
+            last_epoch_handoff_command_id=carry.last_epoch_handoff_command_id,
+            last_epoch_handoff_action=carry.last_epoch_handoff_action,
             last_activity=carry.last_activity,
             last_activity_at=carry.last_activity_at or started_at,
             started_at=started_at,
@@ -688,6 +723,12 @@ class AutonomousMissionWorkflowState:
             last_control_action=self.last_control_action,
             pending_retry_child_job_id=self.pending_retry_child_job_id,
             pending_retry_logical_attempt=self.pending_retry_logical_attempt,
+            pending_epoch_handoff_command_id=(
+                self.pending_epoch_handoff_command_id
+            ),
+            pending_epoch_handoff_action=self.pending_epoch_handoff_action,
+            last_epoch_handoff_command_id=self.last_epoch_handoff_command_id,
+            last_epoch_handoff_action=self.last_epoch_handoff_action,
             last_activity=self.last_activity,
             last_activity_at=self.last_activity_at,
         )
@@ -851,6 +892,161 @@ class AutonomousMissionControlSnapshotResult:
         _bounded(
             self.occurred_at,
             "Mission control snapshot timestamp",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousEpochHandoffCommand:
+    """Identifier-only Signal claims revalidated against a persisted owner command."""
+
+    mission_id: int
+    command_id: str
+    action: str
+    expected_mission_version: int
+    expected_fencing_token: int
+    expected_backlog_revision_id: int
+    expected_execution_epoch_id: int
+    selected_checkpoint_id: int
+    selected_backlog_revision_id: int
+    expected_child_job_id: int | None = None
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.expected_mission_version, "Expected mission version"),
+            (self.expected_fencing_token, "Expected fencing token"),
+            (self.expected_backlog_revision_id, "Expected backlog revision id"),
+            (self.expected_execution_epoch_id, "Expected execution epoch id"),
+            (self.selected_checkpoint_id, "Selected checkpoint id"),
+            (self.selected_backlog_revision_id, "Selected backlog revision id"),
+        ):
+            _optional_id(value, label)
+        _optional_id(self.expected_child_job_id, "Expected child job id")
+        _bounded(
+            self.command_id,
+            "Epoch handoff command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.action not in AUTONOMOUS_EPOCH_HANDOFF_ACTIONS:
+            raise ValueError(f"Unsupported epoch handoff action: {self.action}")
+
+
+@dataclass(frozen=True)
+class AutonomousEpochHandoffPreparationInput:
+    scope: AutonomousMissionActivityScope
+    command: AutonomousEpochHandoffCommand
+
+
+@dataclass(frozen=True)
+class AutonomousEpochHandoffPreparationResult:
+    mission_id: int
+    command_id: str
+    action: str
+    stopped_mission_version: int
+    stopped_fencing_token: int
+    source_execution_epoch_id: int
+    selected_checkpoint_id: int
+    selected_backlog_revision_id: int
+    child_job_id: int | None
+    duplicate: bool
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.stopped_mission_version, "Stopped mission version"),
+            (self.stopped_fencing_token, "Stopped fencing token"),
+            (self.source_execution_epoch_id, "Source execution epoch id"),
+            (self.selected_checkpoint_id, "Selected checkpoint id"),
+            (self.selected_backlog_revision_id, "Selected backlog revision id"),
+        ):
+            _optional_id(value, label)
+        _optional_id(self.child_job_id, "Epoch handoff child job id")
+        _bounded(self.command_id, "Epoch handoff command id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        if self.action not in AUTONOMOUS_EPOCH_HANDOFF_ACTIONS:
+            raise ValueError(f"Unsupported epoch handoff action: {self.action}")
+        _bounded(self.occurred_at, "Epoch handoff timestamp", AUTONOMOUS_IDENTIFIER_LIMIT)
+
+
+@dataclass(frozen=True)
+class AutonomousEpochHandoffCompletionInput:
+    scope: AutonomousMissionActivityScope
+    command_id: str
+
+    def __post_init__(self) -> None:
+        _bounded(
+            self.command_id,
+            "Epoch handoff completion command id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousEpochHandoffCompletionResult:
+    mission_id: int
+    command_id: str
+    action: str
+    mission_version: int
+    phase: str
+    disposition: str
+    fencing_token: int
+    source_execution_epoch_id: int
+    result_execution_epoch_id: int
+    selected_checkpoint_id: int
+    selected_backlog_revision_id: int
+    selected_backlog_revision_digest: str
+    execution_authorization_id: int
+    duplicate: bool
+    occurred_at: str
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.mission_version, "Mission version"),
+            (self.fencing_token, "Fencing token"),
+            (self.source_execution_epoch_id, "Source execution epoch id"),
+            (self.result_execution_epoch_id, "Result execution epoch id"),
+            (self.selected_checkpoint_id, "Selected checkpoint id"),
+            (self.selected_backlog_revision_id, "Selected backlog revision id"),
+            (self.execution_authorization_id, "Execution authorization id"),
+        ):
+            _optional_id(value, label)
+        _bounded(self.command_id, "Epoch handoff command id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        if self.action not in AUTONOMOUS_EPOCH_HANDOFF_ACTIONS:
+            raise ValueError(f"Unsupported epoch handoff action: {self.action}")
+        _sha256(
+            self.selected_backlog_revision_digest,
+            "Selected backlog revision digest",
+        )
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        _bounded(self.occurred_at, "Epoch handoff timestamp", AUTONOMOUS_IDENTIFIER_LIMIT)
+
+
+@dataclass(frozen=True)
+class AutonomousChildEpochHandoffNotice:
+    mission_id: int
+    child_job_id: int
+    command_id: str
+    stopped_mission_version: int
+    stopped_fencing_token: int
+
+    def __post_init__(self) -> None:
+        for value, label in (
+            (self.mission_id, "Mission id"),
+            (self.child_job_id, "Child job id"),
+            (self.stopped_mission_version, "Stopped mission version"),
+            (self.stopped_fencing_token, "Stopped fencing token"),
+        ):
+            _optional_id(value, label)
+        _bounded(
+            self.command_id,
+            "Child epoch handoff command id",
             AUTONOMOUS_IDENTIFIER_LIMIT,
         )
 

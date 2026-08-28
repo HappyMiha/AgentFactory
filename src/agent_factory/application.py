@@ -30,6 +30,11 @@ from .mission_intake import (
     AutonomousMissionIntakeService,
     AutonomousSpecificationSource,
 )
+from .mission_checkpoints import (
+    EpochHandoffAction,
+    MissionCheckpointService,
+    MissionEpochHandoffRequest,
+)
 from .models import (
     Budget,
     ExecutionApproval,
@@ -601,6 +606,71 @@ class AgentFactoryService:
             expected_mission_version=expected_mission_version,
             reason=reason,
             approved_item_stable_id=approved_item_stable_id,
+            authentication_context=authentication_context,
+        )
+
+    def authorize_autonomous_checkpoint_restart(
+        self,
+        mission_id: int,
+        *,
+        selected_checkpoint_id: int,
+        selected_backlog_revision_id: int,
+        expected_mission_version: int,
+        expected_fencing_token: int,
+        expected_execution_epoch_id: int,
+        expected_child_job_id: int | None,
+        actor: str,
+        command_id: str,
+        reason: str,
+        epoch_branch: str,
+        authentication_context: dict[str, Any] | None = None,
+    ) -> MissionEpochHandoffRequest:
+        """Persist the owner command consumed by restart_from_checkpoint."""
+
+        return MissionCheckpointService(self.storage).authorize_epoch_handoff(
+            mission_id,
+            action=EpochHandoffAction.RESTART_FROM_CHECKPOINT,
+            selected_checkpoint_id=selected_checkpoint_id,
+            selected_backlog_revision_id=selected_backlog_revision_id,
+            expected_mission_version=expected_mission_version,
+            expected_fencing_token=expected_fencing_token,
+            expected_execution_epoch_id=expected_execution_epoch_id,
+            expected_child_job_id=expected_child_job_id,
+            actor=actor,
+            command_id=command_id,
+            reason=reason,
+            epoch_branch=epoch_branch,
+            authentication_context=authentication_context,
+        )
+
+    def authorize_autonomous_backlog_revision_handoff(
+        self,
+        revision_id: int,
+        *,
+        selected_checkpoint_id: int,
+        expected_mission_version: int,
+        expected_fencing_token: int,
+        expected_execution_epoch_id: int,
+        expected_child_job_id: int | None,
+        actor: str,
+        command_id: str,
+        reason: str,
+        epoch_branch: str,
+        authentication_context: dict[str, Any] | None = None,
+    ) -> MissionEpochHandoffRequest:
+        """Persist the owner command consumed by apply_backlog_revision."""
+
+        return BacklogRevisionService(self.storage).authorize_epoch_handoff(
+            revision_id,
+            selected_checkpoint_id=selected_checkpoint_id,
+            expected_mission_version=expected_mission_version,
+            expected_fencing_token=expected_fencing_token,
+            expected_execution_epoch_id=expected_execution_epoch_id,
+            expected_child_job_id=expected_child_job_id,
+            actor=actor,
+            command_id=command_id,
+            reason=reason,
+            epoch_branch=epoch_branch,
             authentication_context=authentication_context,
         )
 

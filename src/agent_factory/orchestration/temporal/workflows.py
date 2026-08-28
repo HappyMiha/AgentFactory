@@ -21,6 +21,12 @@ with workflow.unsafe.imports_passed_through():
         AutonomousChildReconciliationResult,
         AutonomousExecutionPreparationInput,
         AutonomousExecutionPreparationResult,
+        AutonomousEpochHandoffCommand,
+        AutonomousEpochHandoffCompletionInput,
+        AutonomousEpochHandoffCompletionResult,
+        AutonomousEpochHandoffPreparationInput,
+        AutonomousEpochHandoffPreparationResult,
+        AutonomousChildEpochHandoffNotice,
         AutonomousMissionActivityScope,
         AutonomousMissionControlActivityInput,
         AutonomousMissionControlCommand,
@@ -48,6 +54,10 @@ class _AutonomousRetryRequested(Exception):
     """Internal deterministic child safe-boundary control flow."""
 
 
+class _AutonomousEpochHandoffRequested(Exception):
+    """Internal deterministic child epoch-supersession boundary."""
+
+
 @workflow.defn(name="AgentFactoryJobWorkflow")
 class AgentFactoryJobWorkflow:
     """Deterministic orchestration for one existing AgentFactory workflow run."""
@@ -60,6 +70,7 @@ class AgentFactoryJobWorkflow:
         self._autonomous_job: AgentFactoryJobInput | None = None
         self._mission_control_token = 1
         self._retry_notice: AutonomousChildControlNotice | None = None
+        self._epoch_handoff_notice: AutonomousChildEpochHandoffNotice | None = None
 
     @workflow.query(name="get_status")
     def get_status(self) -> dict[str, Any]:
@@ -142,6 +153,28 @@ class AgentFactoryJobWorkflow:
                 "Retry requested; retiring this strategy at the next safe boundary"
             )
 
+    @workflow.signal(name="autonomous_epoch_handoff_requested")
+    async def autonomous_epoch_handoff_requested(
+        self, notice: AutonomousChildEpochHandoffNotice
+    ) -> None:
+        job = self._autonomous_job
+        context = job.autonomous_context if job is not None else None
+        if (
+            context is None
+            or notice.mission_id != context.mission_id
+            or notice.child_job_id != context.child_job_id
+            or notice.stopped_fencing_token < self._mission_control_token
+        ):
+            return
+        self._mission_control_token = notice.stopped_fencing_token
+        context.control_fencing_token = notice.stopped_fencing_token
+        self._epoch_handoff_notice = notice
+        self._paused = False
+        self.state.status = WorkflowStatus.SUPERSEDED
+        self.state.last_progress = (
+            "Epoch handoff requested; retiring at the next atomic safe boundary"
+        )
+
     async def _wait_until_runnable(self) -> None:
         if self._cancel_requested:
             raise asyncio.CancelledError
@@ -151,10 +184,13 @@ class AgentFactoryJobWorkflow:
                     not self._paused
                     or self._cancel_requested
                     or self._retry_notice is not None
+                    or self._epoch_handoff_notice is not None
                 )
             )
         if self._cancel_requested:
             raise asyncio.CancelledError
+        if self._epoch_handoff_notice is not None:
+            raise _AutonomousEpochHandoffRequested
         if self._retry_notice is not None:
             raise _AutonomousRetryRequested
         self.state.status = WorkflowStatus.RUNNING
@@ -178,9 +214,11 @@ class AgentFactoryJobWorkflow:
             retry_policy=fast_transient_policy(),
         )
         try:
-            return await self._active_activity
+            result = await self._active_activity
         finally:
             self._active_activity = None
+        await self._wait_until_runnable()
+        return result
 
     async def _stage_activity(
         self, request: StageActivityInput
@@ -199,9 +237,11 @@ class AgentFactoryJobWorkflow:
             cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
         )
         try:
-            return await self._active_activity
+            result = await self._active_activity
         finally:
             self._active_activity = None
+        await self._wait_until_runnable()
+        return result
 
     async def _persist_failure(
         self, job: AgentFactoryJobInput, summary: str, failure_class: str
@@ -284,6 +324,8 @@ class AgentFactoryJobWorkflow:
                             ),
                         )
                     )
+                    if result.failure_class == "EPOCH_HANDOFF_REQUESTED":
+                        raise _AutonomousEpochHandoffRequested
                     if result.failure_class == "RETRY_REQUESTED":
                         self.state.status = WorkflowStatus.RETRYING
                         self.state.phase = "retry_requested"
@@ -340,6 +382,16 @@ class AgentFactoryJobWorkflow:
             )
             self.state.last_progress = final.summary
             return self.state.to_dict()
+        except _AutonomousEpochHandoffRequested:
+            self.state.status = WorkflowStatus.SUPERSEDED
+            self.state.phase = "epoch_superseded"
+            self.state.last_progress = (
+                "Autonomous child stopped at an authorized epoch safe boundary"
+            )
+            await self._persist_failure(
+                job, self.state.last_progress, "EPOCH_HANDOFF"
+            )
+            return self.state.to_dict()
         except _AutonomousRetryRequested:
             self.state.status = WorkflowStatus.RETRYING
             self.state.phase = "retry_requested"
@@ -376,6 +428,11 @@ class AutonomousMissionWorkflow:
         self._control_handlers = 0
         self._seen_control_payloads: dict[
             str, AutonomousMissionControlCommand
+        ] = {}
+        self._handoff_handlers = 0
+        self._active_handoff_commands: set[str] = set()
+        self._seen_handoff_payloads: dict[
+            str, AutonomousEpochHandoffCommand
         ] = {}
 
     def _state(self) -> AutonomousMissionWorkflowState:
@@ -414,6 +471,12 @@ class AutonomousMissionWorkflow:
             "pending_retry_logical_attempt": (
                 state.pending_retry_logical_attempt
             ),
+            "pending_epoch_handoff_command_id": (
+                state.pending_epoch_handoff_command_id
+            ),
+            "pending_epoch_handoff_action": state.pending_epoch_handoff_action,
+            "last_epoch_handoff_command_id": state.last_epoch_handoff_command_id,
+            "last_epoch_handoff_action": state.last_epoch_handoff_action,
             "completed_items": state.completed_items,
             "total_items": state.total_items,
             "percent": percent,
@@ -559,6 +622,157 @@ class AutonomousMissionWorkflow:
             return
         await self._apply_control_command(command)
 
+    async def _apply_epoch_handoff_command(
+        self, command: AutonomousEpochHandoffCommand
+    ) -> None:
+        seen = self._seen_handoff_payloads.get(command.command_id)
+        state = self._state()
+        if seen == command and (
+            command.command_id in self._active_handoff_commands
+            or state.last_epoch_handoff_command_id == command.command_id
+        ):
+            return
+        if seen is None:
+            self._seen_handoff_payloads[command.command_id] = command
+        self._active_handoff_commands.add(command.command_id)
+        self._handoff_handlers += 1
+        try:
+            request = self._request
+            if request is None:
+                raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+            try:
+                prepared = await workflow.execute_activity(
+                    "prepare_autonomous_epoch_handoff",
+                    AutonomousEpochHandoffPreparationInput(
+                        scope=self._activity_scope(), command=command
+                    ),
+                    result_type=AutonomousEpochHandoffPreparationResult,
+                    start_to_close_timeout=timedelta(
+                        seconds=request.fast_activity_timeout_seconds
+                    ),
+                    retry_policy=fast_transient_policy(),
+                )
+            except ActivityError as exc:
+                self._touch(
+                    f"Epoch handoff command {command.command_id} rejected: {exc}"
+                )
+                return
+
+            state = self._state()
+            state.mission_version = prepared.stopped_mission_version
+            state.disposition = "STOPPED"
+            state.control_fencing_token = prepared.stopped_fencing_token
+            state.pending_epoch_handoff_command_id = prepared.command_id
+            state.pending_epoch_handoff_action = prepared.action
+            state.last_control_command_id = f"{prepared.command_id}:safe-boundary"
+            state.last_control_action = "STOP"
+            state.workflow_status = WorkflowStatus.STOPPED.value
+            self._touch(
+                "Epoch handoff persisted; waiting for the active child safe boundary"
+            )
+
+            child_handle = self._active_child
+            if (
+                child_handle is not None
+                and prepared.child_job_id is not None
+                and state.current_child_job_id == prepared.child_job_id
+            ):
+                try:
+                    await child_handle.signal(
+                        "autonomous_epoch_handoff_requested",
+                        AutonomousChildEpochHandoffNotice(
+                            mission_id=prepared.mission_id,
+                            child_job_id=prepared.child_job_id,
+                            command_id=prepared.command_id,
+                            stopped_mission_version=(
+                                prepared.stopped_mission_version
+                            ),
+                            stopped_fencing_token=(
+                                prepared.stopped_fencing_token
+                            ),
+                        ),
+                    )
+                except Exception:
+                    self._touch(
+                        "Epoch handoff persisted after the active child closed"
+                    )
+                await workflow.wait_condition(
+                    lambda: self._active_child is not child_handle
+                )
+
+            try:
+                completed = await workflow.execute_activity(
+                    "complete_autonomous_epoch_handoff",
+                    AutonomousEpochHandoffCompletionInput(
+                        scope=self._activity_scope(),
+                        command_id=prepared.command_id,
+                    ),
+                    result_type=AutonomousEpochHandoffCompletionResult,
+                    start_to_close_timeout=timedelta(
+                        seconds=request.fast_activity_timeout_seconds
+                    ),
+                    retry_policy=fast_transient_policy(),
+                )
+            except ActivityError as exc:
+                state.workflow_status = WorkflowStatus.NEEDS_ATTENTION.value
+                self._touch(
+                    f"Epoch handoff {command.command_id} awaits recovery: {exc}"
+                )
+                return
+
+            state.mission_version = completed.mission_version
+            state.phase = completed.phase
+            state.disposition = completed.disposition
+            state.control_fencing_token = completed.fencing_token
+            state.active_backlog_revision_id = (
+                completed.selected_backlog_revision_id
+            )
+            state.active_backlog_revision_digest = (
+                completed.selected_backlog_revision_digest
+            )
+            state.active_execution_epoch_id = completed.result_execution_epoch_id
+            state.current_checkpoint_id = completed.selected_checkpoint_id
+            state.execution_authorization_id = (
+                completed.execution_authorization_id
+            )
+            state.current_child_job_id = None
+            state.current_child_workflow_id = None
+            state.current_work_item_stable_id = None
+            state.current_role = None
+            state.current_model = None
+            state.pending_retry_child_job_id = None
+            state.pending_retry_logical_attempt = None
+            state.pending_epoch_handoff_command_id = None
+            state.pending_epoch_handoff_action = None
+            state.last_epoch_handoff_command_id = completed.command_id
+            state.last_epoch_handoff_action = completed.action
+            state.last_control_command_id = f"{completed.command_id}:resume"
+            state.last_control_action = "RESUME"
+            state.workflow_status = WorkflowStatus.RUNNING.value
+            self._touch(
+                f"Epoch handoff activated execution epoch "
+                f"{completed.result_execution_epoch_id}"
+            )
+        finally:
+            self._handoff_handlers -= 1
+            self._active_handoff_commands.discard(command.command_id)
+
+    @workflow.signal(name="restart_from_checkpoint")
+    async def restart_from_checkpoint(
+        self, command: AutonomousEpochHandoffCommand
+    ) -> None:
+        if command.action != "RESTART_FROM_CHECKPOINT":
+            return
+        await self._apply_epoch_handoff_command(command)
+
+    @workflow.signal(name="apply_backlog_revision")
+    async def apply_backlog_revision(
+        self, command: AutonomousEpochHandoffCommand
+    ) -> None:
+        if command.action != "APPLY_BACKLOG_REVISION":
+            return
+        await self._apply_epoch_handoff_command(command)
+
     def _activity_scope(self) -> AutonomousMissionActivityScope:
         request = self._request
         state = self._state()
@@ -609,10 +823,15 @@ class AutonomousMissionWorkflow:
 
     async def _wait_until_mission_runnable(self) -> None:
         state = self._state()
-        if self._control_handlers or state.disposition != "RUNNING":
+        if (
+            self._control_handlers
+            or self._handoff_handlers
+            or state.disposition != "RUNNING"
+        ):
             await workflow.wait_condition(
                 lambda: (
                     self._control_handlers == 0
+                    and self._handoff_handlers == 0
                     and self._state().disposition == "RUNNING"
                 )
             )
@@ -1003,6 +1222,11 @@ class AutonomousMissionWorkflow:
                         self.state.workflow_status = WorkflowStatus.RUNNING.value
                         self._touch(settled.summary)
                         continue
+                    if child_status == WorkflowStatus.SUPERSEDED.value:
+                        await workflow.wait_condition(
+                            lambda: self._handoff_handlers == 0
+                        )
+                        continue
                     if child_status != WorkflowStatus.COMPLETED.value:
                         self.state.workflow_status = (
                             WorkflowStatus.NEEDS_ATTENTION.value
@@ -1020,6 +1244,14 @@ class AutonomousMissionWorkflow:
                         prepared.child_job_id
                     )
                 except (ActivityError, ChildWorkflowError) as exc:
+                    if (
+                        self._handoff_handlers
+                        or self.state.pending_epoch_handoff_command_id is not None
+                    ):
+                        await workflow.wait_condition(
+                            lambda: self._handoff_handlers == 0
+                        )
+                        continue
                     self.state.workflow_status = (
                         WorkflowStatus.NEEDS_ATTENTION.value
                     )

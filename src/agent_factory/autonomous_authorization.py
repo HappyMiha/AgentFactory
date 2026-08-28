@@ -748,8 +748,16 @@ class AutonomousAuthorizationService:
                 ORDER BY version DESC LIMIT 1""",
             (mission_id, expected_backlog_revision_id),
         ).fetchone()
-        if not approved:
-            raise PermissionError("The exact active backlog revision was not approved")
+        revision_authority = self.storage.db.execute(
+            """SELECT id FROM autonomous_backlog_revision_authorities
+                WHERE mission_id=? AND revision_id=? AND outcome='APPLIED'
+                ORDER BY id DESC LIMIT 1""",
+            (mission_id, expected_backlog_revision_id),
+        ).fetchone()
+        if not approved and not revision_authority:
+            raise PermissionError(
+                "The exact active backlog revision has no durable human authority"
+            )
         material = self.storage.db.execute(
             """SELECT id FROM autonomous_backlog_revisions
                 WHERE mission_id=? AND origin='AGENT_MATERIAL'
@@ -848,6 +856,22 @@ class AutonomousAuthorizationService:
                 (mission_id, int(revision["revision_number"])),
             ).fetchone():
                 raise PermissionError("An unapproved agent material revision is pending")
+            current_approved = self.storage.db.execute(
+                """SELECT 1 FROM autonomous_mission_state_versions
+                    WHERE mission_id=? AND phase='APPROVED'
+                      AND active_backlog_revision_id=? LIMIT 1""",
+                (mission_id, expected_backlog_revision_id),
+            ).fetchone()
+            current_revision_authority = self.storage.db.execute(
+                """SELECT 1 FROM autonomous_backlog_revision_authorities
+                    WHERE mission_id=? AND revision_id=? AND outcome='APPLIED'
+                    LIMIT 1""",
+                (mission_id, expected_backlog_revision_id),
+            ).fetchone()
+            if not current_approved and not current_revision_authority:
+                raise PermissionError(
+                    "Backlog revision authority changed before authorization commit"
+                )
             cursor = self.storage.db.execute(
                 """INSERT INTO autonomous_local_authorizations(
                        identity,mission_id,backlog_revision_id,

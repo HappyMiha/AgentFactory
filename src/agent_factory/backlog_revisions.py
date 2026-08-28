@@ -1218,6 +1218,48 @@ class BacklogRevisionService:
             reason=reason,
         )
 
+    def authorize_epoch_handoff(
+        self,
+        revision_id: int,
+        *,
+        selected_checkpoint_id: int,
+        expected_mission_version: int,
+        expected_fencing_token: int,
+        expected_execution_epoch_id: int,
+        expected_child_job_id: int | None,
+        actor: str,
+        command_id: str,
+        reason: str,
+        epoch_branch: str,
+        authentication_context: dict[str, Any] | None = None,
+    ):
+        """Authorize handoff of an already-applied revision into a new epoch."""
+
+        revision = self.get_revision(revision_id)
+        mission = self.missions.get(revision.mission_id)
+        if mission.active_backlog_revision_id != revision.id:
+            raise PermissionError(
+                "A backlog-revision handoff requires the already-applied active revision"
+            )
+        self._base_revision_authority(mission.id, revision.id)
+        from .mission_checkpoints import EpochHandoffAction, MissionCheckpointService
+
+        return MissionCheckpointService(self.storage).authorize_epoch_handoff(
+            mission.id,
+            action=EpochHandoffAction.APPLY_BACKLOG_REVISION,
+            selected_checkpoint_id=selected_checkpoint_id,
+            selected_backlog_revision_id=revision.id,
+            expected_mission_version=expected_mission_version,
+            expected_fencing_token=expected_fencing_token,
+            expected_execution_epoch_id=expected_execution_epoch_id,
+            expected_child_job_id=expected_child_job_id,
+            actor=actor,
+            command_id=command_id,
+            reason=reason,
+            epoch_branch=epoch_branch,
+            authentication_context=authentication_context,
+        )
+
     def record_item_state(
         self,
         *,

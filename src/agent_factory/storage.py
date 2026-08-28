@@ -5621,6 +5621,265 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'mission retry settlement scope is invalid'); END;
     """),
+    (68, """
+        CREATE TABLE autonomous_epoch_handoff_requests(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            command_id TEXT NOT NULL UNIQUE,
+            action TEXT NOT NULL CHECK(action IN (
+                'RESTART_FROM_CHECKPOINT','APPLY_BACKLOG_REVISION'
+            )),
+            actor TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            expected_mission_version INTEGER NOT NULL
+                CHECK(expected_mission_version>0),
+            expected_fencing_token INTEGER NOT NULL
+                CHECK(expected_fencing_token>0),
+            expected_backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            expected_execution_epoch_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_execution_epochs(id),
+            expected_child_job_id INTEGER REFERENCES autonomous_child_jobs(id),
+            selected_checkpoint_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_checkpoints(id),
+            selected_backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            backlog_approval_id INTEGER
+                REFERENCES autonomous_backlog_approvals(id),
+            revision_authority_id INTEGER
+                REFERENCES autonomous_backlog_revision_authorities(id),
+            epoch_branch TEXT NOT NULL,
+            authentication_context_json TEXT NOT NULL,
+            authentication_context_digest TEXT NOT NULL
+                CHECK(length(authentication_context_digest)=64
+                      AND authentication_context_digest NOT GLOB '*[^0-9a-f]*'),
+            request_digest TEXT NOT NULL
+                CHECK(length(request_digest)=64
+                      AND request_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CHECK((backlog_approval_id IS NULL)<>
+                  (revision_authority_id IS NULL))
+        );
+        CREATE INDEX idx_autonomous_epoch_handoff_requests_mission
+            ON autonomous_epoch_handoff_requests(mission_id,id);
+
+        CREATE TABLE autonomous_epoch_handoff_preparations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            request_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_epoch_handoff_requests(id),
+            stop_control_command_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_control_commands(id),
+            source_mission_version INTEGER NOT NULL CHECK(source_mission_version>0),
+            source_fencing_token INTEGER NOT NULL CHECK(source_fencing_token>0),
+            stopped_mission_version INTEGER NOT NULL CHECK(stopped_mission_version>0),
+            stopped_fencing_token INTEGER NOT NULL CHECK(stopped_fencing_token>0),
+            child_job_id INTEGER REFERENCES autonomous_child_jobs(id),
+            preparation_digest TEXT NOT NULL
+                CHECK(length(preparation_digest)=64
+                      AND preparation_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE autonomous_epoch_handoff_results(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            request_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_epoch_handoff_requests(id),
+            preparation_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_epoch_handoff_preparations(id),
+            source_execution_epoch_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_execution_epochs(id),
+            result_execution_epoch_id INTEGER NOT NULL UNIQUE
+                REFERENCES autonomous_mission_execution_epochs(id),
+            selected_checkpoint_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_checkpoints(id),
+            selected_backlog_revision_id INTEGER NOT NULL
+                REFERENCES autonomous_backlog_revisions(id),
+            execution_authorization_id INTEGER NOT NULL
+                REFERENCES autonomous_local_authorizations(id),
+            result_mission_version INTEGER NOT NULL CHECK(result_mission_version>0),
+            result_fencing_token INTEGER NOT NULL CHECK(result_fencing_token>0),
+            result_digest TEXT NOT NULL
+                CHECK(length(result_digest)=64
+                      AND result_digest NOT GLOB '*[^0-9a-f]*'),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_autonomous_epoch_handoff_results_epoch
+            ON autonomous_epoch_handoff_results(result_execution_epoch_id);
+
+        CREATE TRIGGER autonomous_epoch_handoff_requests_no_update
+        BEFORE UPDATE ON autonomous_epoch_handoff_requests
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff requests are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_handoff_requests_no_delete
+        BEFORE DELETE ON autonomous_epoch_handoff_requests
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff requests are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_handoff_request_scope_valid
+        BEFORE INSERT ON autonomous_epoch_handoff_requests
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_mission_control_fences fence
+                ON fence.mission_id=mission.id
+              JOIN autonomous_mission_checkpoints checkpoint
+                ON checkpoint.id=NEW.selected_checkpoint_id
+              JOIN autonomous_backlog_revisions revision
+                ON revision.id=NEW.selected_backlog_revision_id
+             WHERE mission.id=NEW.mission_id
+               AND mission.mission_owner=NEW.actor
+               AND mission.version=NEW.expected_mission_version
+               AND mission.disposition='RUNNING'
+               AND mission.active_backlog_revision_id=
+                   NEW.expected_backlog_revision_id
+               AND mission.active_backlog_revision_id=
+                   NEW.selected_backlog_revision_id
+               AND mission.active_execution_epoch_id=
+                   NEW.expected_execution_epoch_id
+               AND fence.fencing_token=NEW.expected_fencing_token
+               AND fence.disposition='RUNNING'
+               AND checkpoint.mission_id=NEW.mission_id
+               AND revision.mission_id=NEW.mission_id
+               AND (
+                   (NEW.expected_child_job_id IS NULL AND NOT EXISTS (
+                       SELECT 1 FROM autonomous_child_jobs job
+                       LEFT JOIN autonomous_child_reconciliations reconciliation
+                         ON reconciliation.child_job_id=job.id
+                       LEFT JOIN autonomous_mission_retry_requests retry
+                         ON retry.child_job_id=job.id
+                       WHERE job.mission_id=NEW.mission_id
+                         AND job.backlog_revision_id=
+                             NEW.expected_backlog_revision_id
+                         AND job.execution_epoch_id=
+                             NEW.expected_execution_epoch_id
+                         AND reconciliation.id IS NULL AND retry.id IS NULL
+                   )) OR
+                   (NEW.expected_child_job_id IS NOT NULL AND EXISTS (
+                       SELECT 1 FROM autonomous_child_jobs job
+                       LEFT JOIN autonomous_child_reconciliations reconciliation
+                         ON reconciliation.child_job_id=job.id
+                       LEFT JOIN autonomous_mission_retry_requests retry
+                         ON retry.child_job_id=job.id
+                       WHERE job.id=NEW.expected_child_job_id
+                         AND job.mission_id=NEW.mission_id
+                         AND job.backlog_revision_id=
+                             NEW.expected_backlog_revision_id
+                         AND job.execution_epoch_id=
+                             NEW.expected_execution_epoch_id
+                         AND reconciliation.id IS NULL AND retry.id IS NULL
+                   ))
+               )
+               AND (
+                   (NEW.backlog_approval_id IS NOT NULL AND EXISTS (
+                       SELECT 1
+                         FROM autonomous_backlog_approvals approval
+                         JOIN autonomous_backlog_approval_completions completion
+                           ON completion.approval_id=approval.id
+                        WHERE approval.id=NEW.backlog_approval_id
+                          AND approval.mission_id=NEW.mission_id
+                          AND approval.revision_id=
+                              NEW.selected_backlog_revision_id
+                   )) OR
+                   (NEW.revision_authority_id IS NOT NULL AND EXISTS (
+                       SELECT 1
+                         FROM autonomous_backlog_revision_authorities authority
+                        WHERE authority.id=NEW.revision_authority_id
+                          AND authority.mission_id=NEW.mission_id
+                          AND authority.revision_id=
+                              NEW.selected_backlog_revision_id
+                          AND authority.outcome='APPLIED'
+                   ))
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff request scope is invalid'); END;
+
+        CREATE TRIGGER autonomous_epoch_handoff_preparations_no_update
+        BEFORE UPDATE ON autonomous_epoch_handoff_preparations
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff preparations are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_handoff_preparations_no_delete
+        BEFORE DELETE ON autonomous_epoch_handoff_preparations
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff preparations are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_handoff_preparation_scope_valid
+        BEFORE INSERT ON autonomous_epoch_handoff_preparations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_epoch_handoff_requests request
+              JOIN autonomous_mission_control_commands control
+                ON control.id=NEW.stop_control_command_id
+             WHERE request.id=NEW.request_id
+               AND control.mission_id=request.mission_id
+               AND control.action='STOP'
+               AND control.command_id=request.command_id || ':safe-boundary'
+               AND control.expected_mission_version=
+                   NEW.source_mission_version
+               AND control.expected_fencing_token=NEW.source_fencing_token
+               AND control.result_mission_version=
+                   NEW.stopped_mission_version
+               AND control.result_fencing_token=NEW.stopped_fencing_token
+               AND COALESCE(control.child_job_id,-1)=
+                   COALESCE(NEW.child_job_id,-1)
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff preparation scope is invalid'); END;
+
+        CREATE TRIGGER autonomous_epoch_handoff_results_no_update
+        BEFORE UPDATE ON autonomous_epoch_handoff_results
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff results are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_handoff_results_no_delete
+        BEFORE DELETE ON autonomous_epoch_handoff_results
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff results are immutable'); END;
+        CREATE TRIGGER autonomous_epoch_handoff_result_scope_valid
+        BEFORE INSERT ON autonomous_epoch_handoff_results
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_epoch_handoff_requests request
+              JOIN autonomous_epoch_handoff_preparations preparation
+                ON preparation.id=NEW.preparation_id
+              JOIN autonomous_mission_execution_epochs epoch
+                ON epoch.id=NEW.result_execution_epoch_id
+              JOIN autonomous_missions mission
+                ON mission.id=request.mission_id
+              JOIN autonomous_mission_control_fences fence
+                ON fence.mission_id=mission.id
+              JOIN autonomous_local_authorizations authorization
+                ON authorization.id=NEW.execution_authorization_id
+             WHERE request.id=NEW.request_id
+               AND preparation.request_id=request.id
+               AND NEW.source_execution_epoch_id=
+                   request.expected_execution_epoch_id
+               AND NEW.selected_checkpoint_id=request.selected_checkpoint_id
+               AND NEW.selected_backlog_revision_id=
+                   request.selected_backlog_revision_id
+               AND epoch.mission_id=request.mission_id
+               AND epoch.supersedes_epoch_id=
+                   request.expected_execution_epoch_id
+               AND epoch.base_checkpoint_id=request.selected_checkpoint_id
+               AND epoch.base_backlog_revision_id=
+                   request.selected_backlog_revision_id
+               AND epoch.origin=CASE request.action
+                   WHEN 'RESTART_FROM_CHECKPOINT' THEN 'CHECKPOINT_RESTART'
+                   ELSE 'BACKLOG_REVISION_RESTART' END
+               AND authorization.mission_id=request.mission_id
+               AND authorization.backlog_revision_id=
+                   request.selected_backlog_revision_id
+               AND authorization.execution_epoch_id=epoch.id
+               AND NOT EXISTS (
+                   SELECT 1 FROM autonomous_authorization_revocations revoked
+                    WHERE revoked.authorization_id=authorization.id
+               )
+               AND mission.active_execution_epoch_id=epoch.id
+               AND mission.active_backlog_revision_id=
+                   request.selected_backlog_revision_id
+               AND mission.current_checkpoint_id=request.selected_checkpoint_id
+               AND mission.disposition='RUNNING'
+               AND mission.version=NEW.result_mission_version
+               AND fence.execution_epoch_id=epoch.id
+               AND fence.backlog_revision_id=
+                   request.selected_backlog_revision_id
+               AND fence.disposition='RUNNING'
+               AND fence.fencing_token=NEW.result_fencing_token
+        )
+        BEGIN SELECT RAISE(ABORT, 'epoch handoff result scope is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

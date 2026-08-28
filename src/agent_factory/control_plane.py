@@ -645,10 +645,17 @@ class MissionControlFenceService:
                    ON reconciliation.child_job_id=job.id
                  LEFT JOIN autonomous_mission_retry_requests retry
                    ON retry.child_job_id=job.id
-                WHERE job.mission_id=? AND reconciliation.id IS NULL
+                WHERE job.mission_id=?
+                  AND job.backlog_revision_id=?
+                  AND job.execution_epoch_id=?
+                  AND reconciliation.id IS NULL
                   AND retry.id IS NULL
                 ORDER BY job.id LIMIT 1""",
-            (mission.id,),
+            (
+                mission.id,
+                mission.active_backlog_revision_id,
+                mission.active_execution_epoch_id,
+            ),
         ).fetchone()
         if active_child and command.child_job_id != int(active_child["id"]):
             raise PermissionError(

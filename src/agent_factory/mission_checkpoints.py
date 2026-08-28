@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from .autonomous_mission import (
     AutonomousMission,
@@ -19,6 +19,12 @@ from .autonomous_mission import (
     MissionPhase,
     MissionVersionConflictError,
 )
+from .control_plane import (
+    MissionControlAction,
+    MissionControlCommand,
+    MissionControlFenceService,
+)
+from .models import ProviderCapabilities
 from .storage import SQLiteStorage
 
 
@@ -56,8 +62,21 @@ class MissionCheckpointType(StrEnum):
     MANUAL = "MANUAL"
 
 
+class EpochHandoffAction(StrEnum):
+    RESTART_FROM_CHECKPOINT = "RESTART_FROM_CHECKPOINT"
+    APPLY_BACKLOG_REVISION = "APPLY_BACKLOG_REVISION"
+
+
 class CheckpointIntegrityError(RuntimeError):
     """Raised when durable checkpoint state no longer matches its digest or Git root."""
+
+
+class EpochHandoffCommandConflictError(ValueError):
+    """Raised when an epoch-handoff command identity is rebound."""
+
+
+class EpochHandoffNotReadyError(RuntimeError):
+    """Raised until admitted work has reached the persisted safe boundary."""
 
 
 @dataclass(frozen=True)
@@ -127,12 +146,76 @@ class MissionCheckpoint:
     restart_base_for_epoch_ids: tuple[int, ...]
 
 
+@dataclass(frozen=True)
+class MissionEpochHandoffRequest:
+    id: int
+    identity: str
+    mission_id: int
+    command_id: str
+    action: EpochHandoffAction
+    actor: str
+    reason: str
+    expected_mission_version: int
+    expected_fencing_token: int
+    expected_backlog_revision_id: int
+    expected_execution_epoch_id: int
+    expected_child_job_id: int | None
+    selected_checkpoint_id: int
+    selected_backlog_revision_id: int
+    backlog_approval_id: int | None
+    revision_authority_id: int | None
+    epoch_branch: str
+    authentication_context: dict[str, Any]
+    authentication_context_digest: str
+    request_digest: str
+    created_at: str
+
+
+@dataclass(frozen=True)
+class MissionEpochHandoffPreparation:
+    id: int
+    identity: str
+    request_id: int
+    stop_control_command_id: int
+    source_mission_version: int
+    source_fencing_token: int
+    stopped_mission_version: int
+    stopped_fencing_token: int
+    child_job_id: int | None
+    preparation_digest: str
+    created_at: str
+    duplicate: bool = False
+
+
+@dataclass(frozen=True)
+class MissionEpochHandoffResult:
+    id: int
+    identity: str
+    request_id: int
+    preparation_id: int
+    source_execution_epoch_id: int
+    result_execution_epoch_id: int
+    selected_checkpoint_id: int
+    selected_backlog_revision_id: int
+    execution_authorization_id: int
+    result_mission_version: int
+    result_fencing_token: int
+    result_digest: str
+    created_at: str
+    duplicate: bool = False
+
+
 class MissionCheckpointService:
     """Own epoch activation and content-addressed checkpoint history."""
 
-    def __init__(self, storage: SQLiteStorage):
+    def __init__(
+        self,
+        storage: SQLiteStorage,
+        provider_capabilities: Mapping[str, ProviderCapabilities] | None = None,
+    ):
         self.storage = storage
         self.missions = AutonomousMissionService(storage)
+        self.provider_capabilities = dict(provider_capabilities or {})
 
     @staticmethod
     def _json(value: Any) -> str:
@@ -665,6 +748,722 @@ class MissionCheckpointService:
     def active_epoch(self, mission_id: int) -> MissionExecutionEpoch | None:
         epoch_id = self.missions.get(mission_id).active_execution_epoch_id
         return self.get_epoch(epoch_id) if epoch_id is not None else None
+
+    def _active_child_id(
+        self, mission_id: int, revision_id: int, epoch_id: int
+    ) -> int | None:
+        row = self.storage.db.execute(
+            """SELECT job.id FROM autonomous_child_jobs job
+                 LEFT JOIN autonomous_child_reconciliations reconciliation
+                   ON reconciliation.child_job_id=job.id
+                 LEFT JOIN autonomous_mission_retry_requests retry
+                   ON retry.child_job_id=job.id
+                WHERE job.mission_id=? AND job.backlog_revision_id=?
+                  AND job.execution_epoch_id=?
+                  AND reconciliation.id IS NULL AND retry.id IS NULL
+                ORDER BY job.id LIMIT 1""",
+            (mission_id, revision_id, epoch_id),
+        ).fetchone()
+        return int(row["id"]) if row else None
+
+    @classmethod
+    def _handoff_request_document(
+        cls,
+        *,
+        mission_id: int,
+        command_id: str,
+        action: EpochHandoffAction,
+        actor: str,
+        reason: str,
+        expected_mission_version: int,
+        expected_fencing_token: int,
+        expected_backlog_revision_id: int,
+        expected_execution_epoch_id: int,
+        expected_child_job_id: int | None,
+        selected_checkpoint_id: int,
+        selected_backlog_revision_id: int,
+        backlog_approval_id: int | None,
+        revision_authority_id: int | None,
+        epoch_branch: str,
+        authentication_context: dict[str, Any],
+    ) -> dict[str, Any]:
+        return {
+            "type": "authorize_epoch_handoff",
+            "mission_id": mission_id,
+            "command_id": command_id,
+            "action": action.value,
+            "actor": actor,
+            "reason": reason,
+            "expected_mission_version": expected_mission_version,
+            "expected_fencing_token": expected_fencing_token,
+            "expected_backlog_revision_id": expected_backlog_revision_id,
+            "expected_execution_epoch_id": expected_execution_epoch_id,
+            "expected_child_job_id": expected_child_job_id,
+            "selected_checkpoint_id": selected_checkpoint_id,
+            "selected_backlog_revision_id": selected_backlog_revision_id,
+            "backlog_approval_id": backlog_approval_id,
+            "revision_authority_id": revision_authority_id,
+            "epoch_branch": epoch_branch,
+            "authentication_context": authentication_context,
+        }
+
+    def _handoff_request_from_row(self, row: Any) -> MissionEpochHandoffRequest:
+        authentication_context = json.loads(row["authentication_context_json"])
+        action = EpochHandoffAction(row["action"])
+        document = self._handoff_request_document(
+            mission_id=int(row["mission_id"]),
+            command_id=str(row["command_id"]),
+            action=action,
+            actor=str(row["actor"]),
+            reason=str(row["reason"]),
+            expected_mission_version=int(row["expected_mission_version"]),
+            expected_fencing_token=int(row["expected_fencing_token"]),
+            expected_backlog_revision_id=int(row["expected_backlog_revision_id"]),
+            expected_execution_epoch_id=int(row["expected_execution_epoch_id"]),
+            expected_child_job_id=self._optional_id(row["expected_child_job_id"]),
+            selected_checkpoint_id=int(row["selected_checkpoint_id"]),
+            selected_backlog_revision_id=int(row["selected_backlog_revision_id"]),
+            backlog_approval_id=self._optional_id(row["backlog_approval_id"]),
+            revision_authority_id=self._optional_id(row["revision_authority_id"]),
+            epoch_branch=str(row["epoch_branch"]),
+            authentication_context=authentication_context,
+        )
+        if self._digest(authentication_context) != row["authentication_context_digest"]:
+            raise RuntimeError("Epoch handoff authentication context is corrupt")
+        if self._digest(document) != row["request_digest"]:
+            raise RuntimeError("Epoch handoff request digest is corrupt")
+        return MissionEpochHandoffRequest(
+            id=int(row["id"]),
+            identity=str(row["identity"]),
+            mission_id=document["mission_id"],
+            command_id=document["command_id"],
+            action=action,
+            actor=document["actor"],
+            reason=document["reason"],
+            expected_mission_version=document["expected_mission_version"],
+            expected_fencing_token=document["expected_fencing_token"],
+            expected_backlog_revision_id=document["expected_backlog_revision_id"],
+            expected_execution_epoch_id=document["expected_execution_epoch_id"],
+            expected_child_job_id=document["expected_child_job_id"],
+            selected_checkpoint_id=document["selected_checkpoint_id"],
+            selected_backlog_revision_id=document["selected_backlog_revision_id"],
+            backlog_approval_id=document["backlog_approval_id"],
+            revision_authority_id=document["revision_authority_id"],
+            epoch_branch=document["epoch_branch"],
+            authentication_context=authentication_context,
+            authentication_context_digest=str(row["authentication_context_digest"]),
+            request_digest=str(row["request_digest"]),
+            created_at=str(row["created_at"]),
+        )
+
+    def get_epoch_handoff_request(
+        self, command_id: str
+    ) -> MissionEpochHandoffRequest:
+        row = self.storage.db.execute(
+            "SELECT * FROM autonomous_epoch_handoff_requests WHERE command_id=?",
+            (self._required(command_id, "Epoch handoff command id"),),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown epoch handoff command: {command_id}")
+        return self._handoff_request_from_row(row)
+
+    @staticmethod
+    def _request_signal_binding(request: MissionEpochHandoffRequest) -> tuple[Any, ...]:
+        return (
+            request.mission_id,
+            request.action.value,
+            request.expected_mission_version,
+            request.expected_fencing_token,
+            request.expected_backlog_revision_id,
+            request.expected_execution_epoch_id,
+            request.expected_child_job_id,
+            request.selected_checkpoint_id,
+            request.selected_backlog_revision_id,
+        )
+
+    def authorize_epoch_handoff(
+        self,
+        mission_id: int,
+        *,
+        action: EpochHandoffAction | str,
+        selected_checkpoint_id: int,
+        selected_backlog_revision_id: int,
+        expected_mission_version: int,
+        expected_fencing_token: int,
+        expected_execution_epoch_id: int,
+        expected_child_job_id: int | None,
+        actor: str,
+        command_id: str,
+        reason: str,
+        epoch_branch: str,
+        authentication_context: dict[str, Any] | None = None,
+    ) -> MissionEpochHandoffRequest:
+        """Persist owner authority before a Signal may request an epoch handoff."""
+
+        action = EpochHandoffAction(action)
+        actor = self._required(actor, "Epoch handoff actor")
+        command_id = self._required(command_id, "Epoch handoff command id")
+        reason = self._required(reason, "Epoch handoff reason")
+        epoch_branch = self._required(epoch_branch, "Epoch handoff branch")
+        auth_context = dict(
+            authentication_context
+            or {
+                "schema_version": 1,
+                "method": "mission-epoch-handoff-session",
+                "subject": actor,
+            }
+        )
+        if (
+            auth_context.get("subject") != actor
+            or not str(auth_context.get("method", "")).strip()
+        ):
+            raise PermissionError(
+                "Authentication context must bind the exact epoch handoff actor"
+            )
+        existing = self.storage.db.execute(
+            "SELECT * FROM autonomous_epoch_handoff_requests WHERE command_id=?",
+            (command_id,),
+        ).fetchone()
+        if existing:
+            replay = self._handoff_request_from_row(existing)
+            supplied = (
+                int(mission_id),
+                action.value,
+                int(expected_mission_version),
+                int(expected_fencing_token),
+                int(selected_backlog_revision_id),
+                int(expected_execution_epoch_id),
+                self._optional_id(expected_child_job_id),
+                int(selected_checkpoint_id),
+                int(selected_backlog_revision_id),
+            )
+            if (
+                supplied != self._request_signal_binding(replay)
+                or replay.actor != actor
+                or replay.reason != reason
+                or replay.epoch_branch != epoch_branch
+                or replay.authentication_context != auth_context
+            ):
+                raise EpochHandoffCommandConflictError(
+                    f"Epoch handoff command {command_id!r} is already bound"
+                )
+            return replay
+
+        mission = self.missions.get(int(mission_id))
+        fence = MissionControlFenceService(self.storage).current(mission.id)
+        if mission.mission_owner != actor:
+            raise PermissionError("Only the authenticated mission owner may hand off epochs")
+        if mission.version != int(expected_mission_version):
+            raise MissionVersionConflictError(
+                mission.id, int(expected_mission_version), mission.version
+            )
+        if (
+            mission.phase not in EXECUTION_PHASES
+            or mission.disposition is not MissionDisposition.RUNNING
+        ):
+            raise PermissionError("Epoch handoff requires a running execution phase")
+        if (
+            mission.active_backlog_revision_id != int(selected_backlog_revision_id)
+            or mission.active_execution_epoch_id != int(expected_execution_epoch_id)
+        ):
+            raise PermissionError("Epoch handoff scope is stale")
+        if fence.fencing_token != int(expected_fencing_token):
+            raise PermissionError("Epoch handoff fencing token is stale")
+        checkpoint = self.verify_checkpoint(int(selected_checkpoint_id))
+        if checkpoint.mission_id != mission.id:
+            raise PermissionError("Selected checkpoint belongs to another mission")
+        self._revision(mission.id, int(selected_backlog_revision_id))
+        from .backlog_revisions import BacklogRevisionService
+
+        backlog_approval_id, revision_authority_id = BacklogRevisionService(
+            self.storage
+        )._base_revision_authority(mission.id, int(selected_backlog_revision_id))
+        active_child_id = self._active_child_id(
+            mission.id,
+            int(selected_backlog_revision_id),
+            int(expected_execution_epoch_id),
+        )
+        if active_child_id != self._optional_id(expected_child_job_id):
+            raise PermissionError("Epoch handoff does not identify the active child")
+        authentication_context_digest = self._digest(auth_context)
+        document = self._handoff_request_document(
+            mission_id=mission.id,
+            command_id=command_id,
+            action=action,
+            actor=actor,
+            reason=reason,
+            expected_mission_version=int(expected_mission_version),
+            expected_fencing_token=int(expected_fencing_token),
+            expected_backlog_revision_id=int(selected_backlog_revision_id),
+            expected_execution_epoch_id=int(expected_execution_epoch_id),
+            expected_child_job_id=active_child_id,
+            selected_checkpoint_id=int(selected_checkpoint_id),
+            selected_backlog_revision_id=int(selected_backlog_revision_id),
+            backlog_approval_id=backlog_approval_id,
+            revision_authority_id=revision_authority_id,
+            epoch_branch=epoch_branch,
+            authentication_context=auth_context,
+        )
+        request_digest = self._digest(document)
+        with self.storage.db:
+            self.storage._begin_immediate()
+            existing = self.storage.db.execute(
+                "SELECT * FROM autonomous_epoch_handoff_requests WHERE command_id=?",
+                (command_id,),
+            ).fetchone()
+            if existing:
+                replay = self._handoff_request_from_row(existing)
+                if replay.request_digest != request_digest:
+                    raise EpochHandoffCommandConflictError(
+                        f"Epoch handoff command {command_id!r} is already bound"
+                    )
+                return replay
+            cursor = self.storage.db.execute(
+                """INSERT INTO autonomous_epoch_handoff_requests(
+                       identity,mission_id,command_id,action,actor,reason,
+                       expected_mission_version,expected_fencing_token,
+                       expected_backlog_revision_id,expected_execution_epoch_id,
+                       expected_child_job_id,selected_checkpoint_id,
+                       selected_backlog_revision_id,backlog_approval_id,
+                       revision_authority_id,epoch_branch,
+                       authentication_context_json,authentication_context_digest,
+                       request_digest
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("autonomous-epoch-handoff-request"),
+                    mission.id,
+                    command_id,
+                    action.value,
+                    actor,
+                    reason,
+                    expected_mission_version,
+                    expected_fencing_token,
+                    selected_backlog_revision_id,
+                    expected_execution_epoch_id,
+                    active_child_id,
+                    selected_checkpoint_id,
+                    selected_backlog_revision_id,
+                    backlog_approval_id,
+                    revision_authority_id,
+                    epoch_branch,
+                    self._json(auth_context),
+                    authentication_context_digest,
+                    request_digest,
+                ),
+            )
+            request_id = int(cursor.lastrowid)
+            self.storage._event(
+                "autonomous_mission.epoch_handoff_authorized",
+                "autonomous_epoch_handoff_request",
+                request_id,
+                {
+                    "mission_id": mission.id,
+                    "command_id": command_id,
+                    "action": action.value,
+                    "execution_epoch_id": expected_execution_epoch_id,
+                    "checkpoint_id": selected_checkpoint_id,
+                    "backlog_revision_id": selected_backlog_revision_id,
+                    "child_job_id": active_child_id,
+                    "actor": actor,
+                },
+            )
+        return self.get_epoch_handoff_request(command_id)
+
+    @classmethod
+    def _preparation_binding(cls, row: Any) -> dict[str, Any]:
+        return {
+            "request_id": int(row["request_id"]),
+            "stop_control_command_id": int(row["stop_control_command_id"]),
+            "source_mission_version": int(row["source_mission_version"]),
+            "source_fencing_token": int(row["source_fencing_token"]),
+            "stopped_mission_version": int(row["stopped_mission_version"]),
+            "stopped_fencing_token": int(row["stopped_fencing_token"]),
+            "child_job_id": cls._optional_id(row["child_job_id"]),
+            "created_at": str(row["created_at"]),
+        }
+
+    def _preparation_from_row(
+        self, row: Any, *, duplicate: bool = False
+    ) -> MissionEpochHandoffPreparation:
+        binding = self._preparation_binding(row)
+        if self._digest(binding) != row["preparation_digest"]:
+            raise RuntimeError("Epoch handoff preparation digest is corrupt")
+        return MissionEpochHandoffPreparation(
+            id=int(row["id"]),
+            identity=str(row["identity"]),
+            request_id=binding["request_id"],
+            stop_control_command_id=binding["stop_control_command_id"],
+            source_mission_version=binding["source_mission_version"],
+            source_fencing_token=binding["source_fencing_token"],
+            stopped_mission_version=binding["stopped_mission_version"],
+            stopped_fencing_token=binding["stopped_fencing_token"],
+            child_job_id=binding["child_job_id"],
+            preparation_digest=str(row["preparation_digest"]),
+            created_at=binding["created_at"],
+            duplicate=duplicate,
+        )
+
+    def _handoff_preparation(
+        self, request_id: int, *, duplicate: bool = False
+    ) -> MissionEpochHandoffPreparation | None:
+        row = self.storage.db.execute(
+            "SELECT * FROM autonomous_epoch_handoff_preparations WHERE request_id=?",
+            (request_id,),
+        ).fetchone()
+        return self._preparation_from_row(row, duplicate=duplicate) if row else None
+
+    def begin_epoch_handoff(
+        self,
+        command_id: str,
+        *,
+        mission_id: int,
+        action: EpochHandoffAction | str,
+        expected_mission_version: int,
+        expected_fencing_token: int,
+        expected_backlog_revision_id: int,
+        expected_execution_epoch_id: int,
+        expected_child_job_id: int | None,
+        selected_checkpoint_id: int,
+        selected_backlog_revision_id: int,
+    ) -> MissionEpochHandoffPreparation:
+        """Revalidate Signal claims, stop admission, and persist the boundary intent."""
+
+        request = self.get_epoch_handoff_request(command_id)
+        supplied = (
+            int(mission_id),
+            EpochHandoffAction(action).value,
+            int(expected_mission_version),
+            int(expected_fencing_token),
+            int(expected_backlog_revision_id),
+            int(expected_execution_epoch_id),
+            self._optional_id(expected_child_job_id),
+            int(selected_checkpoint_id),
+            int(selected_backlog_revision_id),
+        )
+        if supplied != self._request_signal_binding(request):
+            raise PermissionError(
+                "Epoch handoff Signal does not match the persisted owner command"
+            )
+        if replay := self._handoff_preparation(request.id, duplicate=True):
+            return replay
+        stopped = MissionControlFenceService(self.storage).apply(
+            MissionControlCommand(
+                mission_id=request.mission_id,
+                command_id=f"{request.command_id}:safe-boundary",
+                action=MissionControlAction.STOP,
+                actor=request.actor,
+                reason=f"Prepare authorized epoch handoff: {request.reason}",
+                expected_mission_version=request.expected_mission_version,
+                expected_fencing_token=request.expected_fencing_token,
+                expected_backlog_revision_id=request.expected_backlog_revision_id,
+                expected_execution_epoch_id=request.expected_execution_epoch_id,
+                child_job_id=request.expected_child_job_id,
+            )
+        )
+        created_at = self._timestamp()
+        binding = {
+            "request_id": request.id,
+            "stop_control_command_id": stopped.command_row_id,
+            "source_mission_version": request.expected_mission_version,
+            "source_fencing_token": request.expected_fencing_token,
+            "stopped_mission_version": stopped.mission_version,
+            "stopped_fencing_token": stopped.fencing_token,
+            "child_job_id": request.expected_child_job_id,
+            "created_at": created_at,
+        }
+        with self.storage.db:
+            self.storage._begin_immediate()
+            if replay := self._handoff_preparation(request.id, duplicate=True):
+                return replay
+            cursor = self.storage.db.execute(
+                """INSERT INTO autonomous_epoch_handoff_preparations(
+                       identity,request_id,stop_control_command_id,
+                       source_mission_version,source_fencing_token,
+                       stopped_mission_version,stopped_fencing_token,
+                       child_job_id,preparation_digest,created_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("autonomous-epoch-handoff-preparation"),
+                    request.id,
+                    stopped.command_row_id,
+                    request.expected_mission_version,
+                    request.expected_fencing_token,
+                    stopped.mission_version,
+                    stopped.fencing_token,
+                    request.expected_child_job_id,
+                    self._digest(binding),
+                    created_at,
+                ),
+            )
+            preparation_id = int(cursor.lastrowid)
+            self.storage._event(
+                "autonomous_mission.epoch_handoff_prepared",
+                "autonomous_epoch_handoff_preparation",
+                preparation_id,
+                {
+                    "mission_id": request.mission_id,
+                    "request_id": request.id,
+                    "command_id": request.command_id,
+                    "child_job_id": request.expected_child_job_id,
+                    "fencing_token": stopped.fencing_token,
+                },
+            )
+        preparation = self._handoff_preparation(request.id)
+        if preparation is None:
+            raise RuntimeError("Epoch handoff preparation was not persisted")
+        return preparation
+
+    @classmethod
+    def _result_binding(cls, row: Any) -> dict[str, Any]:
+        return {
+            "request_id": int(row["request_id"]),
+            "preparation_id": int(row["preparation_id"]),
+            "source_execution_epoch_id": int(row["source_execution_epoch_id"]),
+            "result_execution_epoch_id": int(row["result_execution_epoch_id"]),
+            "selected_checkpoint_id": int(row["selected_checkpoint_id"]),
+            "selected_backlog_revision_id": int(row["selected_backlog_revision_id"]),
+            "execution_authorization_id": int(row["execution_authorization_id"]),
+            "result_mission_version": int(row["result_mission_version"]),
+            "result_fencing_token": int(row["result_fencing_token"]),
+            "created_at": str(row["created_at"]),
+        }
+
+    def _result_from_row(
+        self, row: Any, *, duplicate: bool = False
+    ) -> MissionEpochHandoffResult:
+        binding = self._result_binding(row)
+        if self._digest(binding) != row["result_digest"]:
+            raise RuntimeError("Epoch handoff result digest is corrupt")
+        return MissionEpochHandoffResult(
+            id=int(row["id"]),
+            identity=str(row["identity"]),
+            request_id=binding["request_id"],
+            preparation_id=binding["preparation_id"],
+            source_execution_epoch_id=binding["source_execution_epoch_id"],
+            result_execution_epoch_id=binding["result_execution_epoch_id"],
+            selected_checkpoint_id=binding["selected_checkpoint_id"],
+            selected_backlog_revision_id=binding["selected_backlog_revision_id"],
+            execution_authorization_id=binding["execution_authorization_id"],
+            result_mission_version=binding["result_mission_version"],
+            result_fencing_token=binding["result_fencing_token"],
+            result_digest=str(row["result_digest"]),
+            created_at=binding["created_at"],
+            duplicate=duplicate,
+        )
+
+    def _handoff_result(
+        self, request_id: int, *, duplicate: bool = False
+    ) -> MissionEpochHandoffResult | None:
+        row = self.storage.db.execute(
+            "SELECT * FROM autonomous_epoch_handoff_results WHERE request_id=?",
+            (request_id,),
+        ).fetchone()
+        return self._result_from_row(row, duplicate=duplicate) if row else None
+
+    def complete_epoch_handoff(self, command_id: str) -> MissionEpochHandoffResult:
+        """Activate exactly one replacement epoch after all admitted work is safe."""
+
+        request = self.get_epoch_handoff_request(command_id)
+        if replay := self._handoff_result(request.id, duplicate=True):
+            return replay
+        preparation = self._handoff_preparation(request.id)
+        if preparation is None:
+            raise ValueError("Epoch handoff has not been prepared")
+        active_lease = self.storage.db.execute(
+            """SELECT operation_id,status FROM autonomous_mission_operation_leases
+                WHERE mission_id=? AND status IN ('ACTIVE','RELEASING')
+                ORDER BY id LIMIT 1""",
+            (request.mission_id,),
+        ).fetchone()
+        if active_lease:
+            raise EpochHandoffNotReadyError(
+                "Epoch handoff is waiting for admitted work to reach a safe boundary"
+            )
+        if request.expected_child_job_id is not None:
+            child = self.storage.db.execute(
+                """SELECT job.run_id,run.status FROM autonomous_child_jobs job
+                     JOIN workflow_runs run ON run.id=job.run_id
+                    WHERE job.id=? AND job.mission_id=?""",
+                (request.expected_child_job_id, request.mission_id),
+            ).fetchone()
+            if not child:
+                raise RuntimeError("Epoch handoff child evidence disappeared")
+            if child["status"] in {"running", "awaiting_approval"}:
+                self.storage.finish_run(
+                    int(child["run_id"]),
+                    "failed",
+                    event_payload={
+                        "failure_class": "EPOCH_HANDOFF",
+                        "summary": "Child retired at an authorized epoch safe boundary",
+                        "epoch_handoff_command_id": request.command_id,
+                    },
+                )
+
+        mission = self.missions.get(request.mission_id)
+        fence = MissionControlFenceService(self.storage).current(request.mission_id)
+        activation_command_id = f"{request.command_id}:activate-epoch"
+        activation_exists = self.storage.db.execute(
+            """SELECT 1 FROM autonomous_mission_commands
+                WHERE mission_id=? AND command_id=?
+                  AND command_type='create_execution_epoch'""",
+            (request.mission_id, activation_command_id),
+        ).fetchone()
+        if not activation_exists and (
+            mission.version != preparation.stopped_mission_version
+            or mission.disposition is not MissionDisposition.STOPPED
+            or mission.active_backlog_revision_id
+            != request.selected_backlog_revision_id
+            or mission.active_execution_epoch_id
+            != request.expected_execution_epoch_id
+            or fence.fencing_token != preparation.stopped_fencing_token
+        ):
+            raise PermissionError("Epoch handoff stopped scope changed before activation")
+        source_epoch = self.get_epoch(request.expected_execution_epoch_id)
+        temporal_suffix = hashlib.sha256(
+            request.command_id.encode("utf-8")
+        ).hexdigest()[:16]
+        temporal_workflow_id = (
+            f"{source_epoch.temporal_workflow_id}:epoch-"
+            f"{source_epoch.epoch_number + 1}:{temporal_suffix}"
+        )
+        temporal_run_id = (
+            f"{source_epoch.temporal_first_run_id}:epoch-"
+            f"{source_epoch.epoch_number + 1}:{temporal_suffix}"
+        )
+        epoch = self.create_epoch(
+            request.mission_id,
+            expected_mission_version=preparation.stopped_mission_version,
+            expected_backlog_revision_id=request.selected_backlog_revision_id,
+            expected_active_epoch_id=request.expected_execution_epoch_id,
+            actor=request.actor,
+            command_id=activation_command_id,
+            reason=request.reason,
+            epoch_branch=request.epoch_branch,
+            temporal_workflow_id=temporal_workflow_id,
+            temporal_run_id=temporal_run_id,
+            temporal_chain_metadata={
+                "epoch_handoff_command_id": request.command_id,
+                "epoch_handoff_action": request.action.value,
+                "selected_checkpoint_id": request.selected_checkpoint_id,
+                "source_execution_epoch_id": request.expected_execution_epoch_id,
+                "parent_temporal_workflow_id": source_epoch.temporal_workflow_id,
+                "parent_temporal_first_run_id": source_epoch.temporal_first_run_id,
+            },
+            origin=(
+                ExecutionEpochOrigin.CHECKPOINT_RESTART
+                if request.action is EpochHandoffAction.RESTART_FROM_CHECKPOINT
+                else ExecutionEpochOrigin.BACKLOG_REVISION_RESTART
+            ),
+            base_checkpoint_id=request.selected_checkpoint_id,
+        )
+        from .autonomous_authorization import AutonomousAuthorizationService
+
+        authorization = AutonomousAuthorizationService(
+            self.storage, self.provider_capabilities
+        ).grant_execution_authority(
+            request.mission_id,
+            expected_backlog_revision_id=request.selected_backlog_revision_id,
+            expected_execution_epoch_id=epoch.id,
+            actor=request.actor,
+            command_id=f"{request.command_id}:execution-authorization",
+            reason=f"Carry bounded execution authority across {request.action.value}",
+        )
+        reconciled_fence = MissionControlFenceService(self.storage).current(
+            request.mission_id
+        )
+        epoch_mission = self.missions.get(request.mission_id)
+        resume_command_id = f"{request.command_id}:resume"
+        resume_evidence = self.storage.db.execute(
+            """SELECT expected_mission_version,expected_fencing_token
+                 FROM autonomous_mission_control_commands
+                WHERE mission_id=? AND command_id=? AND action='RESUME'""",
+            (request.mission_id, resume_command_id),
+        ).fetchone()
+        resume_expected_version = (
+            int(resume_evidence["expected_mission_version"])
+            if resume_evidence
+            else epoch_mission.version
+        )
+        resume_expected_token = (
+            int(resume_evidence["expected_fencing_token"])
+            if resume_evidence
+            else reconciled_fence.fencing_token
+        )
+        resumed = MissionControlFenceService(self.storage).apply(
+            MissionControlCommand(
+                mission_id=request.mission_id,
+                command_id=resume_command_id,
+                action=MissionControlAction.RESUME,
+                actor=request.actor,
+                reason=f"Resume authorized epoch handoff: {request.reason}",
+                expected_mission_version=resume_expected_version,
+                expected_fencing_token=resume_expected_token,
+                expected_backlog_revision_id=request.selected_backlog_revision_id,
+                expected_execution_epoch_id=epoch.id,
+                child_job_id=None,
+            )
+        )
+        created_at = self._timestamp()
+        binding = {
+            "request_id": request.id,
+            "preparation_id": preparation.id,
+            "source_execution_epoch_id": request.expected_execution_epoch_id,
+            "result_execution_epoch_id": epoch.id,
+            "selected_checkpoint_id": request.selected_checkpoint_id,
+            "selected_backlog_revision_id": request.selected_backlog_revision_id,
+            "execution_authorization_id": authorization.id,
+            "result_mission_version": resumed.mission_version,
+            "result_fencing_token": resumed.fencing_token,
+            "created_at": created_at,
+        }
+        with self.storage.db:
+            self.storage._begin_immediate()
+            if replay := self._handoff_result(request.id, duplicate=True):
+                return replay
+            cursor = self.storage.db.execute(
+                """INSERT INTO autonomous_epoch_handoff_results(
+                       identity,request_id,preparation_id,
+                       source_execution_epoch_id,result_execution_epoch_id,
+                       selected_checkpoint_id,selected_backlog_revision_id,
+                       execution_authorization_id,result_mission_version,
+                       result_fencing_token,result_digest,created_at
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("autonomous-epoch-handoff-result"),
+                    request.id,
+                    preparation.id,
+                    request.expected_execution_epoch_id,
+                    epoch.id,
+                    request.selected_checkpoint_id,
+                    request.selected_backlog_revision_id,
+                    authorization.id,
+                    resumed.mission_version,
+                    resumed.fencing_token,
+                    self._digest(binding),
+                    created_at,
+                ),
+            )
+            result_id = int(cursor.lastrowid)
+            self.storage._event(
+                "autonomous_mission.epoch_handoff_completed",
+                "autonomous_epoch_handoff_result",
+                result_id,
+                {
+                    "mission_id": request.mission_id,
+                    "command_id": request.command_id,
+                    "action": request.action.value,
+                    "source_execution_epoch_id": request.expected_execution_epoch_id,
+                    "result_execution_epoch_id": epoch.id,
+                    "checkpoint_id": request.selected_checkpoint_id,
+                    "backlog_revision_id": request.selected_backlog_revision_id,
+                    "execution_authorization_id": authorization.id,
+                    "fencing_token": resumed.fencing_token,
+                },
+            )
+        result = self._handoff_result(request.id)
+        if result is None:
+            raise RuntimeError("Epoch handoff result was not persisted")
+        return result
 
     @classmethod
     def _manifest_reference(
