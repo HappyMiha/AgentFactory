@@ -131,7 +131,7 @@ Open <http://localhost:8080>. AgentFactory's run detail links to the selected Wo
 
 ## 13. Tests executed
 
-Syntax, patch hygiene, Compose rendering, targeted API tests, historical replay, forced three-run continue-as-new with Worker replacement, official Temporal SDK test-server tests, and the entire existing suite were exercised. Final complete-suite result: **391 tests run: 390 passed and 1 opt-in Docker test skipped by default**.
+Syntax, patch hygiene, Compose rendering, targeted API tests, historical replay, forced three-run continue-as-new with Worker replacement, operation-journal kill-point and recovery tests, official Temporal SDK test-server tests, and the entire existing suite were exercised. Final complete-suite result after AF-AMM-018: **401 tests run: 400 passed and 1 opt-in Docker test skipped by default**.
 
 ```powershell
 git diff --check

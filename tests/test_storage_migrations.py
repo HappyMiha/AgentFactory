@@ -8,6 +8,72 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v69_database_upgrades_to_mission_operation_recovery_ledger(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v69.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 70:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                70,
+            )
+            for table in (
+                "autonomous_mission_operations",
+                "autonomous_mission_operation_events",
+                "autonomous_mission_recoveries",
+                "autonomous_mission_recovery_decisions",
+            ):
+                with self.subTest(table=table):
+                    self.assertIsNotNone(
+                        storage.db.execute(
+                            "SELECT name FROM sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table,),
+                        ).fetchone()
+                    )
+            mutation_columns = {
+                str(row["name"])
+                for row in storage.db.execute(
+                    "PRAGMA table_info(workflow_mutations)"
+                )
+            }
+            self.assertTrue(
+                {
+                    "request_json",
+                    "reconciliation_policy",
+                    "result_digest",
+                    "evidence_digest",
+                    "updated_at",
+                }.issubset(mutation_columns)
+            )
+            storage.close()
+
+            reopened = SQLiteStorage(path)
+            self.assertEqual(
+                reopened.db.execute(
+                    "SELECT COUNT(*) FROM schema_migrations WHERE version=70"
+                ).fetchone()[0],
+                1,
+            )
+            reopened.close()
+
     def test_v68_database_upgrades_to_mission_temporal_run_chain(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v68.db"
@@ -32,7 +98,7 @@ class StorageMigrationTests(unittest.TestCase):
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],
-                69,
+                70,
             )
             self.assertIsNotNone(
                 storage.db.execute(
@@ -81,7 +147,7 @@ class StorageMigrationTests(unittest.TestCase):
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],
-                69,
+                70,
             )
             for table in (
                 "autonomous_epoch_handoff_requests",

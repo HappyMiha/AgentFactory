@@ -6011,9 +6011,349 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'mission Temporal run scope is invalid'); END;
     """),
+    (70, """
+        DROP TRIGGER workflow_mutation_scope_immutable;
+        ALTER TABLE workflow_mutations RENAME TO workflow_mutations_legacy;
+
+        CREATE TABLE workflow_mutations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            run_id INTEGER NOT NULL REFERENCES workflow_runs(id),
+            stage_id INTEGER NOT NULL REFERENCES workflow_stages(id),
+            operation TEXT NOT NULL CHECK(operation IN (
+                'provider_call','command','installation','service',
+                'model_lifecycle','worktree','git_integration','github',
+                'checkpoint','revision_transition','epoch_transition'
+            )),
+            idempotency_key TEXT NOT NULL,
+            request_json TEXT NOT NULL,
+            request_digest TEXT NOT NULL,
+            reconciliation_policy TEXT NOT NULL CHECK(reconciliation_policy IN (
+                'verify_then_retry','verify_only','idempotent_replay','manual'
+            )),
+            status TEXT NOT NULL DEFAULT 'reserved' CHECK(status IN (
+                'reserved','running','unknown','retry_ready','completed','failed',
+                'reconciled','needs_attention'
+            )),
+            result_json TEXT,
+            result_digest TEXT CHECK(
+                result_digest IS NULL OR
+                (length(result_digest)=64
+                 AND result_digest NOT GLOB '*[^0-9a-f]*')
+            ),
+            evidence_json TEXT NOT NULL DEFAULT '{}',
+            evidence_digest TEXT CHECK(
+                evidence_digest IS NULL OR
+                (length(evidence_digest)=64
+                 AND evidence_digest NOT GLOB '*[^0-9a-f]*')
+            ),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT,
+            UNIQUE(run_id,operation,idempotency_key)
+        );
+        INSERT INTO workflow_mutations(
+            id,identity,run_id,stage_id,operation,idempotency_key,
+            request_json,request_digest,reconciliation_policy,status,
+            result_json,result_digest,evidence_json,evidence_digest,
+            created_at,updated_at,completed_at
+        )
+        SELECT id,identity,run_id,stage_id,operation,idempotency_key,
+               '{}',request_digest,
+               CASE operation
+                   WHEN 'provider_call' THEN 'idempotent_replay'
+                   ELSE 'verify_then_retry'
+               END,
+               status,result_json,NULL,'{}',
+               '44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a',
+               created_at,COALESCE(completed_at,created_at),completed_at
+          FROM workflow_mutations_legacy;
+        DROP TABLE workflow_mutations_legacy;
+
+        CREATE TRIGGER workflow_mutation_scope_immutable
+        BEFORE UPDATE ON workflow_mutations
+        WHEN NEW.identity<>OLD.identity OR NEW.run_id<>OLD.run_id
+          OR NEW.stage_id<>OLD.stage_id OR NEW.operation<>OLD.operation
+          OR NEW.idempotency_key<>OLD.idempotency_key
+          OR NEW.request_json<>OLD.request_json
+          OR NEW.request_digest<>OLD.request_digest
+          OR NEW.reconciliation_policy<>OLD.reconciliation_policy
+          OR NEW.created_at<>OLD.created_at
+        BEGIN SELECT RAISE(ABORT, 'workflow mutation scope is immutable'); END;
+        CREATE TRIGGER workflow_mutation_valid_transition
+        BEFORE UPDATE OF status ON workflow_mutations
+        WHEN NEW.status<>OLD.status AND NOT (
+            (OLD.status='reserved' AND NEW.status IN (
+                'running','unknown','retry_ready','completed','failed',
+                'needs_attention')) OR
+            (OLD.status='running' AND NEW.status IN (
+                'unknown','completed','failed')) OR
+            (OLD.status='unknown' AND NEW.status IN (
+                'reconciled','retry_ready','needs_attention')) OR
+            (OLD.status='retry_ready' AND NEW.status IN (
+                'running','unknown','completed','failed','needs_attention'))
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid workflow mutation transition'); END;
+        CREATE TRIGGER workflow_mutation_result_immutable
+        BEFORE UPDATE ON workflow_mutations
+        WHEN NEW.status=OLD.status AND (
+            COALESCE(NEW.result_json,'')<>COALESCE(OLD.result_json,'') OR
+            COALESCE(NEW.result_digest,'')<>COALESCE(OLD.result_digest,'') OR
+            NEW.evidence_json<>OLD.evidence_json OR
+            COALESCE(NEW.evidence_digest,'')<>COALESCE(OLD.evidence_digest,'') OR
+            COALESCE(NEW.completed_at,'')<>COALESCE(OLD.completed_at,'')
+        )
+        BEGIN SELECT RAISE(ABORT, 'workflow mutation result is immutable'); END;
+        CREATE TRIGGER workflow_mutations_no_delete
+        BEFORE DELETE ON workflow_mutations
+        BEGIN SELECT RAISE(ABORT, 'workflow mutations are durable'); END;
+
+        CREATE TABLE autonomous_mission_operations(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            operation_key TEXT NOT NULL,
+            operation_class TEXT NOT NULL CHECK(operation_class IN (
+                'provider_call','command','installation','service',
+                'model_lifecycle','worktree','git_integration','github',
+                'checkpoint','revision_transition','epoch_transition'
+            )),
+            request_json TEXT NOT NULL,
+            request_digest TEXT NOT NULL CHECK(
+                length(request_digest)=64
+                AND request_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            reconciliation_policy TEXT NOT NULL CHECK(reconciliation_policy IN (
+                'verify_then_retry','verify_only','idempotent_replay','manual'
+            )),
+            mission_version INTEGER NOT NULL CHECK(mission_version>0),
+            backlog_revision_id INTEGER REFERENCES autonomous_backlog_revisions(id),
+            execution_epoch_id INTEGER
+                REFERENCES autonomous_mission_execution_epochs(id),
+            checkpoint_id INTEGER REFERENCES autonomous_mission_checkpoints(id),
+            child_job_id INTEGER REFERENCES autonomous_child_jobs(id),
+            stable_item_id TEXT,
+            control_fencing_token INTEGER NOT NULL CHECK(control_fencing_token>0),
+            actor TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id,operation_key),
+            CHECK(child_job_id IS NOT NULL OR stable_item_id IS NULL)
+        );
+        CREATE INDEX idx_autonomous_mission_operations_scope
+            ON autonomous_mission_operations(mission_id,execution_epoch_id,id);
+
+        CREATE TABLE autonomous_mission_operation_events(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            operation_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_operations(id),
+            sequence INTEGER NOT NULL CHECK(sequence>0),
+            event_key TEXT NOT NULL,
+            lifecycle TEXT NOT NULL CHECK(lifecycle IN (
+                'reserved','running','unknown','retry_ready','completed','failed',
+                'reconciled','needs_attention'
+            )),
+            result_json TEXT NOT NULL,
+            result_digest TEXT NOT NULL CHECK(
+                length(result_digest)=64
+                AND result_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            evidence_json TEXT NOT NULL,
+            evidence_digest TEXT NOT NULL CHECK(
+                length(evidence_digest)=64
+                AND evidence_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            decision TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(operation_id,sequence),
+            UNIQUE(operation_id,event_key)
+        );
+        CREATE INDEX idx_autonomous_operation_events_latest
+            ON autonomous_mission_operation_events(operation_id,sequence);
+
+        CREATE TRIGGER autonomous_mission_operation_scope_valid
+        BEFORE INSERT ON autonomous_mission_operations
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+             JOIN autonomous_mission_control_fences fence
+                ON fence.mission_id=mission.id
+             WHERE mission.id=NEW.mission_id
+               AND mission.disposition='RUNNING'
+               AND mission.version=NEW.mission_version
+               AND mission.active_backlog_revision_id IS NEW.backlog_revision_id
+               AND mission.active_execution_epoch_id IS NEW.execution_epoch_id
+               AND mission.current_checkpoint_id IS NEW.checkpoint_id
+               AND fence.disposition='RUNNING'
+               AND fence.fencing_token=NEW.control_fencing_token
+               AND (NEW.child_job_id IS NULL OR EXISTS (
+                   SELECT 1 FROM autonomous_child_jobs child
+                    WHERE child.id=NEW.child_job_id
+                      AND child.mission_id=NEW.mission_id
+                      AND child.backlog_revision_id=NEW.backlog_revision_id
+                      AND child.execution_epoch_id=NEW.execution_epoch_id
+                      AND child.stable_item_id=NEW.stable_item_id
+               ))
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission operation scope is stale'); END;
+        CREATE TRIGGER autonomous_mission_operations_no_update
+        BEFORE UPDATE ON autonomous_mission_operations
+        BEGIN SELECT RAISE(ABORT, 'mission operations are immutable'); END;
+        CREATE TRIGGER autonomous_mission_operations_no_delete
+        BEFORE DELETE ON autonomous_mission_operations
+        BEGIN SELECT RAISE(ABORT, 'mission operations are durable'); END;
+        CREATE TRIGGER autonomous_operation_event_sequence_valid
+        BEFORE INSERT ON autonomous_mission_operation_events
+        WHEN NEW.sequence<>(
+            SELECT COALESCE(MAX(sequence),0)+1
+              FROM autonomous_mission_operation_events
+             WHERE operation_id=NEW.operation_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission operation events must be append-only'); END;
+        CREATE TRIGGER autonomous_operation_event_initial_valid
+        BEFORE INSERT ON autonomous_mission_operation_events
+        WHEN NEW.sequence=1 AND NEW.lifecycle<>'reserved'
+        BEGIN SELECT RAISE(ABORT, 'mission operation must begin reserved'); END;
+        CREATE TRIGGER autonomous_operation_event_transition_valid
+        BEFORE INSERT ON autonomous_mission_operation_events
+        WHEN NEW.sequence>1 AND NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_operation_events previous
+             WHERE previous.operation_id=NEW.operation_id
+               AND previous.sequence=NEW.sequence-1
+               AND (
+                   (previous.lifecycle='reserved' AND NEW.lifecycle IN (
+                       'running','unknown','retry_ready','completed','failed',
+                       'needs_attention')) OR
+                   (previous.lifecycle='running' AND NEW.lifecycle IN (
+                       'unknown','completed','failed')) OR
+                   (previous.lifecycle='unknown' AND NEW.lifecycle IN (
+                       'reconciled','retry_ready','needs_attention')) OR
+                   (previous.lifecycle='retry_ready' AND NEW.lifecycle IN (
+                       'running','unknown','completed','failed','needs_attention'))
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'invalid mission operation lifecycle transition'); END;
+        CREATE TRIGGER autonomous_operation_events_no_update
+        BEFORE UPDATE ON autonomous_mission_operation_events
+        BEGIN SELECT RAISE(ABORT, 'mission operation events are immutable'); END;
+        CREATE TRIGGER autonomous_operation_events_no_delete
+        BEFORE DELETE ON autonomous_mission_operation_events
+        BEGIN SELECT RAISE(ABORT, 'mission operation events are durable'); END;
+
+        CREATE TABLE autonomous_mission_recoveries(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            recovery_key TEXT NOT NULL,
+            mission_version INTEGER NOT NULL CHECK(mission_version>0),
+            disposition TEXT NOT NULL CHECK(disposition IN (
+                'RESUME_SAFE','RECONCILE_REQUIRED','NEEDS_ATTENTION',
+                'PAUSED','STOPPED','COMPLETED'
+            )),
+            replay_safe INTEGER NOT NULL CHECK(replay_safe IN (0,1)),
+            snapshot_json TEXT NOT NULL,
+            snapshot_digest TEXT NOT NULL CHECK(
+                length(snapshot_digest)=64
+                AND snapshot_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            integrity_json TEXT NOT NULL,
+            integrity_digest TEXT NOT NULL CHECK(
+                length(integrity_digest)=64
+                AND integrity_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            actor TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id,recovery_key)
+        );
+        CREATE INDEX idx_autonomous_mission_recoveries_scope
+            ON autonomous_mission_recoveries(mission_id,id);
+
+        CREATE TABLE autonomous_mission_recovery_decisions(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            recovery_id INTEGER NOT NULL
+                REFERENCES autonomous_mission_recoveries(id),
+            sequence INTEGER NOT NULL CHECK(sequence>0),
+            decision_type TEXT NOT NULL CHECK(decision_type IN (
+                'STATE_RECONSTRUCTED','CHECKPOINT_VERIFIED',
+                'GIT_AUTHORITY_VERIFIED','MODEL_LEASE_RECONSTRUCTED',
+                'SERVICES_RECONSTRUCTED','OPERATION_MARKED_UNKNOWN',
+                'OPERATION_RETRY_READY','OPERATION_RECONCILED',
+                'OPERATION_BLOCKED','INTEGRITY_FAILED',
+                'RESUME_ALLOWED','RESUME_BLOCKED'
+            )),
+            operation_id INTEGER REFERENCES autonomous_mission_operations(id),
+            decision_json TEXT NOT NULL,
+            decision_digest TEXT NOT NULL CHECK(
+                length(decision_digest)=64
+                AND decision_digest NOT GLOB '*[^0-9a-f]*'
+            ),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(recovery_id,sequence)
+        );
+        CREATE TRIGGER autonomous_mission_recovery_scope_valid
+        BEFORE INSERT ON autonomous_mission_recoveries
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_missions mission
+             WHERE mission.id=NEW.mission_id
+               AND mission.version=NEW.mission_version
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission recovery scope changed concurrently'); END;
+        CREATE TRIGGER autonomous_mission_recoveries_no_update
+        BEFORE UPDATE ON autonomous_mission_recoveries
+        BEGIN SELECT RAISE(ABORT, 'mission recoveries are immutable'); END;
+        CREATE TRIGGER autonomous_mission_recoveries_no_delete
+        BEFORE DELETE ON autonomous_mission_recoveries
+        BEGIN SELECT RAISE(ABORT, 'mission recoveries are durable'); END;
+        CREATE TRIGGER autonomous_recovery_decision_sequence_valid
+        BEFORE INSERT ON autonomous_mission_recovery_decisions
+        WHEN NEW.sequence<>(
+            SELECT COALESCE(MAX(sequence),0)+1
+              FROM autonomous_mission_recovery_decisions
+             WHERE recovery_id=NEW.recovery_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'recovery decisions must be append-only'); END;
+        CREATE TRIGGER autonomous_recovery_decisions_no_update
+        BEFORE UPDATE ON autonomous_mission_recovery_decisions
+        BEGIN SELECT RAISE(ABORT, 'recovery decisions are immutable'); END;
+        CREATE TRIGGER autonomous_recovery_decisions_no_delete
+        BEFORE DELETE ON autonomous_mission_recovery_decisions
+        BEGIN SELECT RAISE(ABORT, 'recovery decisions are durable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
+
+WORKFLOW_MUTATION_OPERATIONS = frozenset(
+    {
+        "provider_call",
+        "command",
+        "installation",
+        "service",
+        "model_lifecycle",
+        "worktree",
+        "git_integration",
+        "github",
+        "checkpoint",
+        "revision_transition",
+        "epoch_transition",
+    }
+)
+WORKFLOW_MUTATION_RECONCILIATION_POLICIES = frozenset(
+    {"verify_then_retry", "verify_only", "idempotent_replay", "manual"}
+)
+WORKFLOW_MUTATION_LIFECYCLES = frozenset(
+    {
+        "reserved",
+        "running",
+        "unknown",
+        "retry_ready",
+        "completed",
+        "failed",
+        "reconciled",
+        "needs_attention",
+    }
+)
 
 
 class TaskNotRunnableError(RuntimeError):
@@ -8995,13 +9335,41 @@ class SQLiteStorage:
         operation: str,
         idempotency_key: str,
         request: dict[str, Any],
+        reconciliation_policy: str | None = None,
     ):
-        if operation not in {"provider_call", "worktree", "github"}:
+        operation = str(getattr(operation, "value", operation))
+        if operation not in WORKFLOW_MUTATION_OPERATIONS:
             raise ValueError(operation)
         if not idempotency_key.strip():
             raise ValueError("Mutation idempotency key is required")
-        request_json = json.dumps(request, sort_keys=True, separators=(",", ":"))
+        if reconciliation_policy is None:
+            reconciliation_policy = (
+                "idempotent_replay"
+                if operation == "provider_call"
+                else "verify_then_retry"
+            )
+        reconciliation_policy = str(
+            getattr(reconciliation_policy, "value", reconciliation_policy)
+        )
+        if reconciliation_policy not in WORKFLOW_MUTATION_RECONCILIATION_POLICIES:
+            raise ValueError(reconciliation_policy)
+        request_json = json.dumps(
+            request,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+        )
         request_digest = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+        legacy_request_json = json.dumps(
+            request,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        legacy_request_digest = hashlib.sha256(
+            legacy_request_json.encode("utf-8")
+        ).hexdigest()
+        empty_json = "{}"
+        empty_digest = hashlib.sha256(empty_json.encode("utf-8")).hexdigest()
         created = False
         with self.db:
             stage = self.db.execute(
@@ -9016,20 +9384,31 @@ class SQLiteStorage:
                 (run_id, operation, idempotency_key),
             ).fetchone()
             if existing:
-                if int(existing["stage_id"]) != int(stage["id"]) or existing["request_digest"] != request_digest:
+                if (
+                    int(existing["stage_id"]) != int(stage["id"])
+                    or existing["request_digest"]
+                    not in {request_digest, legacy_request_digest}
+                    or existing["reconciliation_policy"] != reconciliation_policy
+                ):
                     raise ValueError("Idempotency key was already bound to a different mutation")
                 return existing, created
             cur = self.db.execute(
                 """INSERT INTO workflow_mutations(
-                       identity,run_id,stage_id,operation,idempotency_key,request_digest
-                   ) VALUES(?,?,?,?,?,?)""",
+                       identity,run_id,stage_id,operation,idempotency_key,
+                       request_json,request_digest,reconciliation_policy,
+                       evidence_json,evidence_digest
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?)""",
                 (
                     self._identity("workflow-mutation"),
                     run_id,
                     stage["id"],
                     operation,
                     idempotency_key,
+                    request_json,
                     request_digest,
+                    reconciliation_policy,
+                    empty_json,
+                    empty_digest,
                 ),
             )
             mutation_id = int(cur.lastrowid)
@@ -9044,41 +9423,140 @@ class SQLiteStorage:
                     "operation": operation,
                     "idempotency_key": idempotency_key,
                     "request_digest": request_digest,
+                    "reconciliation_policy": reconciliation_policy,
                 },
             )
         return self.db.execute(
             "SELECT * FROM workflow_mutations WHERE id=?", (mutation_id,)
         ).fetchone(), created
 
-    def complete_workflow_mutation(
-        self, mutation_id: int, result: dict[str, Any]
+    def transition_workflow_mutation(
+        self,
+        mutation_id: int,
+        target: str,
+        *,
+        result: dict[str, Any] | None = None,
+        evidence: dict[str, Any] | None = None,
     ) -> bool:
-        result_json = json.dumps(result, sort_keys=True, separators=(",", ":"))
+        target = str(getattr(target, "value", target))
+        if target not in WORKFLOW_MUTATION_LIFECYCLES - {"reserved"}:
+            raise ValueError(target)
         with self.db:
             row = self.db.execute(
                 "SELECT * FROM workflow_mutations WHERE id=?", (mutation_id,)
             ).fetchone()
             if not row:
                 raise KeyError(f"Unknown workflow mutation: {mutation_id}")
-            if row["status"] == "completed":
-                if row["result_json"] != result_json:
-                    raise ValueError("Completed mutation result is immutable")
-                return False
-            if row["status"] != "reserved":
-                raise ValueError(f"Workflow mutation {mutation_id} is {row['status']}")
-            self.db.execute(
-                """UPDATE workflow_mutations
-                      SET status='completed',result_json=?,completed_at=CURRENT_TIMESTAMP
-                    WHERE id=? AND status='reserved'""",
-                (result_json, mutation_id),
+            result_json = (
+                json.dumps(
+                    result,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                )
+                if result is not None
+                else row["result_json"]
             )
+            result_digest = (
+                hashlib.sha256(str(result_json).encode("utf-8")).hexdigest()
+                if result_json is not None
+                else None
+            )
+            evidence_json = (
+                json.dumps(
+                    evidence,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                )
+                if evidence is not None
+                else str(row["evidence_json"])
+            )
+            evidence_digest = hashlib.sha256(
+                evidence_json.encode("utf-8")
+            ).hexdigest()
+            if row["status"] == target:
+                stored_result_digest = row["result_digest"]
+                if stored_result_digest is None and result_json is not None:
+                    stored_result_digest = result_digest
+                if (
+                    row["result_json"] != result_json
+                    or stored_result_digest != result_digest
+                    or row["evidence_json"] != evidence_json
+                    or row["evidence_digest"] != evidence_digest
+                ):
+                    raise ValueError("Workflow mutation lifecycle result is immutable")
+                return False
+            terminal = target in {
+                "completed",
+                "failed",
+                "reconciled",
+                "needs_attention",
+            }
+            updated = self.db.execute(
+                """UPDATE workflow_mutations
+                      SET status=?,result_json=?,result_digest=?,
+                          evidence_json=?,evidence_digest=?,
+                          updated_at=CURRENT_TIMESTAMP,
+                          completed_at=CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE NULL END
+                    WHERE id=? AND status=?""",
+                (
+                    target,
+                    result_json,
+                    result_digest,
+                    evidence_json,
+                    evidence_digest,
+                    terminal,
+                    mutation_id,
+                    row["status"],
+                ),
+            )
+            if updated.rowcount != 1:
+                raise ValueError(f"Workflow mutation {mutation_id} changed concurrently")
             self._event(
-                "workflow.mutation.completed",
+                f"workflow.mutation.{target}",
                 "workflow_mutation",
                 mutation_id,
-                {"run_id": row["run_id"], "operation": row["operation"]},
+                {
+                    "run_id": row["run_id"],
+                    "operation": row["operation"],
+                    "result_digest": result_digest,
+                    "evidence_digest": evidence_digest,
+                },
             )
         return True
+
+    def complete_workflow_mutation(
+        self,
+        mutation_id: int,
+        result: dict[str, Any],
+        evidence: dict[str, Any] | None = None,
+    ) -> bool:
+        row = self.db.execute(
+            "SELECT * FROM workflow_mutations WHERE id=?", (mutation_id,)
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown workflow mutation: {mutation_id}")
+        if row["status"] in {"completed", "reconciled"}:
+            result_json = json.dumps(
+                result,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+            )
+            try:
+                same_result = json.loads(str(row["result_json"])) == result
+            except (TypeError, json.JSONDecodeError):
+                same_result = False
+            if not same_result:
+                raise ValueError("Completed mutation result is immutable")
+            return False
+        return self.transition_workflow_mutation(
+            mutation_id,
+            "completed",
+            result=result,
+            evidence=evidence,
+        )
 
     def _transition_run(self, run_id: int, target: str, *, event_payload: dict[str, Any] | None = None) -> None:
         row = self.db.execute("SELECT status,task_id,workflow_id FROM workflow_runs WHERE id=?", (run_id,)).fetchone()

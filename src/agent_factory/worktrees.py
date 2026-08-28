@@ -12,6 +12,11 @@ from pathlib import Path
 from typing import Any
 
 from .config import config_path_for_workspace, load_yaml
+from .durable_workflow import (
+    MissionOperation,
+    OperationClass,
+    OperationObservation,
+)
 from .providers import SENSITIVE_ENV_MARKERS
 from .storage import SQLiteStorage
 
@@ -57,6 +62,251 @@ class _GitResult:
     returncode: int
     stdout: str
     stderr: str
+
+
+class GitOperationReconciler:
+    """Observe worktree and integration effects without changing Git state."""
+
+    SUPPORTED = frozenset(
+        {
+            OperationClass.WORKTREE,
+            OperationClass.GIT_INTEGRATION,
+            OperationClass.CHECKPOINT,
+        }
+    )
+
+    def __init__(self, *, git_executable: str | None = None):
+        executable = git_executable or shutil.which("git")
+        self.git_executable = str(Path(executable).resolve()) if executable else None
+
+    @staticmethod
+    def _request_path(request: dict[str, Any], *names: str) -> Path | None:
+        for name in names:
+            value = request.get(name)
+            if isinstance(value, str) and value.strip():
+                return Path(value).expanduser().resolve()
+        return None
+
+    def _git(
+        self,
+        repository: Path,
+        *arguments: str,
+        timeout: int = 15,
+    ) -> _GitResult:
+        if self.git_executable is None:
+            return _GitResult(127, "", "Git executable is unavailable")
+        try:
+            result = subprocess.run(
+                [self.git_executable, "-C", str(repository), *arguments],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=timeout,
+                env=WorktreeManager._environment(),
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return _GitResult(126, "", type(exc).__name__)
+        return _GitResult(
+            result.returncode,
+            result.stdout.strip(),
+            result.stderr.strip(),
+        )
+
+    @staticmethod
+    def _expected_sha(request: dict[str, Any]) -> str | None:
+        for name in ("commit_sha", "git_commit_sha", "head_sha", "base_sha"):
+            value = request.get(name)
+            if isinstance(value, str) and SHA_PATTERN.fullmatch(value.casefold()):
+                return value.casefold()
+        return None
+
+    @staticmethod
+    def _expected_branch(request: dict[str, Any]) -> str | None:
+        for name in ("branch", "git_branch", "epoch_branch"):
+            value = request.get(name)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    def _observe_worktree(self, operation: MissionOperation) -> OperationObservation:
+        request = operation.request
+        path = self._request_path(request, "worktree_path", "path")
+        if path is None:
+            return OperationObservation.indeterminate(
+                evidence={"field": "worktree_path"},
+                reason="Journaled worktree path is missing",
+            )
+        if not path.is_dir():
+            return OperationObservation.absent(
+                evidence={"worktree_path": str(path)},
+                reason="Journaled worktree directory does not exist",
+            )
+        head = self._git(path, "rev-parse", "HEAD")
+        branch = self._git(path, "symbolic-ref", "--quiet", "--short", "HEAD")
+        root = self._git(path, "rev-parse", "--show-toplevel")
+        dirty = self._git(path, "status", "--porcelain=v1", "--untracked-files=all")
+        if any(result.returncode for result in (head, branch, root, dirty)):
+            return OperationObservation.indeterminate(
+                evidence={
+                    "worktree_path": str(path),
+                    "git_returncodes": [
+                        head.returncode,
+                        branch.returncode,
+                        root.returncode,
+                        dirty.returncode,
+                    ],
+                },
+                reason="Worktree Git authority could not be read safely",
+            )
+        actual = {
+            "worktree_path": str(path),
+            "repository_path": str(Path(root.stdout).resolve()),
+            "head_sha": head.stdout.casefold(),
+            "branch": branch.stdout,
+            "dirty": bool(dirty.stdout),
+        }
+        expected_sha = self._expected_sha(request)
+        expected_branch = self._expected_branch(request)
+        if (
+            (expected_sha is not None and actual["head_sha"] != expected_sha)
+            or (expected_branch is not None and actual["branch"] != expected_branch)
+        ):
+            return OperationObservation.conflict(
+                actual,
+                evidence={"observer": "git-worktree"},
+                reason="Worktree exists but its branch or HEAD differs from intent",
+            )
+        return OperationObservation.present(
+            actual,
+            evidence={"observer": "git-worktree"},
+            reason="Worktree path, branch, and HEAD match journaled intent",
+        )
+
+    def _observe_integration(
+        self, operation: MissionOperation
+    ) -> OperationObservation:
+        return self._observe_integration_request(operation.request)
+
+    def _observe_integration_request(
+        self, request: dict[str, Any]
+    ) -> OperationObservation:
+        repository = self._request_path(
+            request,
+            "repository_path",
+            "repository",
+            "git_worktree_path",
+        )
+        commit_sha = self._expected_sha(request)
+        branch = self._expected_branch(request)
+        if repository is None or commit_sha is None or branch is None:
+            return OperationObservation.indeterminate(
+                evidence={
+                    "repository_supplied": repository is not None,
+                    "commit_supplied": commit_sha is not None,
+                    "branch_supplied": branch is not None,
+                },
+                reason="Git reconciliation requires repository, commit, and branch",
+            )
+        if not repository.is_dir():
+            return OperationObservation.indeterminate(
+                evidence={"repository_path": str(repository)},
+                reason="Journaled Git repository is unavailable",
+            )
+        valid_branch = self._git(repository, "check-ref-format", "--branch", branch)
+        if valid_branch.returncode:
+            return OperationObservation.indeterminate(
+                evidence={"branch": branch},
+                reason="Journaled Git branch is not a valid local branch name",
+            )
+        commit = self._git(
+            repository,
+            "rev-parse",
+            "--verify",
+            f"{commit_sha}^{{commit}}",
+        )
+        if commit.returncode:
+            return OperationObservation.absent(
+                evidence={
+                    "repository_path": str(repository),
+                    "commit_sha": commit_sha,
+                },
+                reason="Journaled commit does not exist in the repository",
+            )
+        branch_ref = f"refs/heads/{branch}"
+        branch_head = self._git(
+            repository,
+            "rev-parse",
+            "--verify",
+            f"{branch_ref}^{{commit}}",
+        )
+        if branch_head.returncode:
+            return OperationObservation.absent(
+                evidence={
+                    "repository_path": str(repository),
+                    "commit_sha": commit_sha,
+                    "branch": branch,
+                },
+                reason="Journaled branch does not exist",
+            )
+        ancestor = self._git(
+            repository,
+            "merge-base",
+            "--is-ancestor",
+            commit_sha,
+            branch_ref,
+        )
+        actual = {
+            "repository_path": str(repository),
+            "commit_sha": commit.stdout.casefold(),
+            "branch": branch,
+            "branch_head_sha": branch_head.stdout.casefold(),
+        }
+        if ancestor.returncode == 0:
+            return OperationObservation.present(
+                actual,
+                evidence={"observer": "git-ancestry"},
+                reason="Journaled commit is reachable from the authoritative branch",
+            )
+        if ancestor.returncode == 1:
+            return OperationObservation.conflict(
+                actual,
+                evidence={"observer": "git-ancestry"},
+                reason="Commit exists but is not integrated into the branch",
+            )
+        return OperationObservation.indeterminate(
+            evidence={
+                "observer": "git-ancestry",
+                "returncode": ancestor.returncode,
+            },
+            reason="Git ancestry could not be determined safely",
+        )
+
+    def observe_authority(
+        self,
+        *,
+        repository: Path,
+        commit_sha: str,
+        branch: str,
+    ) -> OperationObservation:
+        return self._observe_integration_request(
+            {
+                "repository_path": str(repository),
+                "commit_sha": commit_sha,
+                "branch": branch,
+            }
+        )
+
+    def observe(self, operation: MissionOperation) -> OperationObservation:
+        if operation.operation_class == OperationClass.WORKTREE:
+            return self._observe_worktree(operation)
+        if operation.operation_class in self.SUPPORTED:
+            return self._observe_integration(operation)
+        return OperationObservation.indeterminate(
+            evidence={"operation_class": operation.operation_class.value},
+            reason="No Git observer exists for this operation class",
+        )
 
 
 class WorktreeManager:
