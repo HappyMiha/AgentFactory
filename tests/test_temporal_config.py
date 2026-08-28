@@ -25,6 +25,19 @@ class TemporalConfigurationTests(unittest.TestCase):
             settings.autonomous_workflow_id_prefix,
             "agentfactory-autonomous-mission",
         )
+        self.assertEqual(settings.namespace_retention_days, 7)
+        self.assertTrue(settings.autonomous_continue_as_new_enabled)
+        self.assertEqual(
+            settings.autonomous_continue_as_new_event_threshold, 10_000
+        )
+        self.assertEqual(
+            settings.autonomous_continue_as_new_safe_boundary_threshold, 100
+        )
+        self.assertEqual(
+            settings.worker_build_id,
+            "agentfactory-0.1.0-temporal-sdk-1.31.0",
+        )
+        self.assertFalse(settings.worker_versioning_enabled)
         self.assertEqual(workflow_id_for_job("run-17"), "agentfactory-job-run-17")
 
     def test_invalid_boolean_and_heartbeat_window_fail_closed(self):
@@ -48,6 +61,16 @@ class TemporalConfigurationTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, "bounded identifier"):
                 TemporalSettings.from_env()
+        with self.assertRaisesRegex(ValueError, "between 1 and 365"):
+            TemporalSettings(namespace_retention_days=0).validate()
+        with self.assertRaisesRegex(ValueError, "between 10 and 50000"):
+            TemporalSettings(
+                autonomous_continue_as_new_event_threshold=9
+            ).validate()
+        with self.assertRaisesRegex(ValueError, "between 1 and 10000"):
+            TemporalSettings(
+                autonomous_continue_as_new_safe_boundary_threshold=0
+            ).validate()
 
     def test_retry_policies_are_category_specific(self):
         fast = fast_transient_policy()

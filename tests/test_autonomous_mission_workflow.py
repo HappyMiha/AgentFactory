@@ -55,6 +55,7 @@ class AutonomousMissionWorkflowContractTests(unittest.TestCase):
             environment_status="READY",
             last_activity="Checkpoint 29 committed",
             last_activity_at="2026-08-27T12:00:00+00:00",
+            schema_version=1,
         )
         request = AutonomousMissionWorkflowInput(
             mission_id=7,
@@ -67,6 +68,7 @@ class AutonomousMissionWorkflowContractTests(unittest.TestCase):
             workspace="C:/project",
             database="C:/project/.agent-factory/state.db",
             carry_over=carry,
+            schema_version=1,
         )
         serialized = json.dumps(request.to_dict(), sort_keys=True)
         self.assertLess(len(serialized), 4096)
@@ -133,6 +135,7 @@ class AutonomousMissionWorkflowContractTests(unittest.TestCase):
                 phase="DRAFT",
                 disposition="RUNNING",
                 last_activity="x" * (AUTONOMOUS_SUMMARY_LIMIT + 1),
+                schema_version=1,
             )
         with self.assertRaisesRegex(ValueError, "id and digest"):
             AutonomousMissionCarryOver(

@@ -3,8 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
+from typing import Any
 
-from temporalio.worker import Worker
+from temporalio.common import (
+    VersioningBehavior,
+    WorkerDeploymentVersion,
+)
+from temporalio.worker import Worker, WorkerDeploymentConfig
 
 from .activities import AgentFactoryActivities
 from .client import connect_temporal
@@ -23,6 +28,24 @@ REGISTERED_WORKFLOWS = (
 )
 
 
+def worker_versioning_options(settings: TemporalSettings) -> dict[str, Any]:
+    """Build an explicit pinned deployment contract for long-lived missions."""
+
+    settings.validate()
+    if settings.worker_versioning_enabled:
+        return {
+            "deployment_config": WorkerDeploymentConfig(
+                version=WorkerDeploymentVersion(
+                    deployment_name=settings.worker_deployment_name,
+                    build_id=settings.worker_build_id,
+                ),
+                use_worker_versioning=True,
+                default_versioning_behavior=VersioningBehavior.PINNED,
+            )
+        }
+    return {"build_id": settings.worker_build_id}
+
+
 async def run_worker(settings: TemporalSettings | None = None) -> None:
     selected = settings or TemporalSettings.from_env()
     client = await connect_temporal(selected, initialize_namespace=True)
@@ -32,6 +55,7 @@ async def run_worker(settings: TemporalSettings | None = None) -> None:
         task_queue=selected.task_queue,
         workflows=list(REGISTERED_WORKFLOWS),
         activities=[
+            activities.register_autonomous_temporal_run,
             activities.run_autonomous_planning,
             activities.revalidate_autonomous_approval,
             activities.read_autonomous_mission_control_fence,
@@ -58,12 +82,16 @@ async def run_worker(settings: TemporalSettings | None = None) -> None:
         graceful_shutdown_timeout=timedelta(
             seconds=selected.cancellation_grace_seconds
         ),
+        **worker_versioning_options(selected),
     )
     logging.getLogger(__name__).info(
-        "AgentFactory Temporal Worker connected address=%s namespace=%s task_queue=%s",
+        "AgentFactory Temporal Worker connected address=%s namespace=%s "
+        "task_queue=%s build_id=%s versioning=%s",
         selected.address,
         selected.namespace,
         selected.task_queue,
+        selected.worker_build_id,
+        selected.worker_versioning_enabled,
     )
     await worker.run()
 

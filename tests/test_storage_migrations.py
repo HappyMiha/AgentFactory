@@ -8,6 +8,55 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v68_database_upgrades_to_mission_temporal_run_chain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v68.db"
+            db = sqlite3.connect(path)
+            db.execute(
+                "CREATE TABLE schema_migrations("
+                "version INTEGER PRIMARY KEY, "
+                "applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+            )
+            for version, script in MIGRATIONS:
+                if version >= 69:
+                    break
+                db.executescript(script)
+                db.execute(
+                    "INSERT INTO schema_migrations(version) VALUES(?)", (version,)
+                )
+            db.commit()
+            db.close()
+
+            storage = SQLiteStorage(path)
+            self.assertEqual(
+                storage.db.execute(
+                    "SELECT MAX(version) FROM schema_migrations"
+                ).fetchone()[0],
+                69,
+            )
+            self.assertIsNotNone(
+                storage.db.execute(
+                    "SELECT name FROM sqlite_master "
+                    "WHERE type='table' "
+                    "AND name='autonomous_mission_temporal_runs'"
+                ).fetchone()
+            )
+            columns = {
+                str(row["name"])
+                for row in storage.db.execute(
+                    "PRAGMA table_info(autonomous_mission_temporal_runs)"
+                )
+            }
+            self.assertTrue(
+                {
+                    "first_run_id",
+                    "workflow_build_id",
+                    "rollover_reason",
+                    "run_digest",
+                }.issubset(columns)
+            )
+            storage.close()
+
     def test_v67_database_upgrades_to_epoch_handoff_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v67.db"
@@ -32,7 +81,7 @@ class StorageMigrationTests(unittest.TestCase):
                 storage.db.execute(
                     "SELECT MAX(version) FROM schema_migrations"
                 ).fetchone()[0],
-                68,
+                69,
             )
             for table in (
                 "autonomous_epoch_handoff_requests",

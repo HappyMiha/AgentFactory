@@ -102,7 +102,7 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 | Docker | Profile boundary | The image runs as a non-root user with persistent `/data`; external provider CLIs are intentionally not bundled and deployment profiles document supported topology paths. |
 | HTTP model APIs | Provider extension | DeepSeek, OpenRouter, Mistral, Groq, and similar services remain optional provider extensions; the guarded CLI/runtime boundary is the supported core contract. |
 | Local Control Center | Complete (R0.2) | Loopback dashboard, guarded operations, Founder authority, audit/settings, GitHub dry-run preview, Windows launch, and end-to-end qualification are complete. |
-| Autonomous Mission Mode | Mission-control-fenced orchestration ready | The identifier-only parent revalidates exact approval, runs dependency-ready deterministic children, checkpoints accepted items, persists idempotent pause/resume/stop/retry commands, and can hand an owner-authorized checkpoint or already-applied revision into exactly one replacement epoch. A fencing token blocks every new inference, command-class operation, next item, and multi-tool turn after pause/stop; active atomic work reaches a safe boundary before retry or epoch supersession. Git checkpoint materialization, revision impact/restart transactions, service recovery, and complete coding-worker slices remain in progress. |
+| Autonomous Mission Mode | Bounded long-lived orchestration ready | The identifier-only parent revalidates exact approval, runs dependency-ready deterministic children, checkpoints accepted items, persists fenced controls and epoch handoffs, and rolls history into an immutable, discoverable continue-as-new chain only at safe boundaries. Compact carry-over, replay-gated code changes, and pinned Worker build identities let a mission cross Worker releases without replaying accepted mutations. Git checkpoint materialization, revision impact/restart transactions, service recovery, and complete coding-worker slices remain in progress. |
 
 ## How it works
 
@@ -133,9 +133,9 @@ The Local Control Center can be installed and opened on Windows with `python -m 
 
 ## Durable workflows with Temporal
 
-Temporal can durably orchestrate AgentFactory delivery runs while the Worker remains on the Windows host with access to the existing local CLI and project environment. Start the loopback-only PostgreSQL-backed development stack with `.\infra\temporal\start.ps1`, enable it with `$env:TEMPORAL_ENABLED = "true"`, then run the Local Control Center and `agent-factory-temporal-worker` in separate PowerShell windows. Normal stops preserve Workflow history; only `reset.ps1` deletes the named database volume.
+Temporal can durably orchestrate AgentFactory delivery runs while the Worker remains on the Windows host with access to the existing local CLI and project environment. Start the loopback-only PostgreSQL-backed development stack with `.\infra\temporal\start.ps1`, enable it with `$env:TEMPORAL_ENABLED = "true"`, then run the Local Control Center and `agent-factory-temporal-worker` in separate PowerShell windows. Autonomous parents continue as new at configured safe boundaries; typed Search Attributes and memo identify every retained run, while the immutable SQLite run ledger remains authoritative after the default seven-day Temporal retention window. Normal stops preserve Workflow history; only `reset.ps1` deletes the named database volume.
 
-See [Temporal development](docs/development/temporal.md) for the complete setup, restart tests, configuration, status controls, and troubleshooting guide. The current architecture and migration boundaries are recorded in [the integration analysis](docs/architecture/temporal-integration-analysis.md).
+See [Temporal development](docs/development/temporal.md) for setup and troubleshooting, and [Temporal Worker versioning](docs/development/temporal-worker-versioning.md) for the required patch, replay, deployment, and rollback procedure. The current architecture and migration boundaries are recorded in [the integration analysis](docs/architecture/temporal-integration-analysis.md).
 
 ### Windows PowerShell
 

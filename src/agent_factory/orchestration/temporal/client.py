@@ -3,14 +3,19 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from typing import Any, Sequence
 
 from google.protobuf.duration_pb2 import Duration
 from temporalio.api.workflowservice.v1 import (
     DescribeNamespaceRequest,
     RegisterNamespaceRequest,
 )
-from temporalio.client import Client
+from temporalio.api.enums.v1 import IndexedValueType
+from temporalio.api.operatorservice.v1 import (
+    AddSearchAttributesRequest,
+    ListSearchAttributesRequest,
+)
+from temporalio.client import Client, WorkflowExecutionStatus
 from temporalio.common import WorkflowIDConflictPolicy, WorkflowIDReusePolicy
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
@@ -18,6 +23,13 @@ from temporalio.service import RPCError, RPCStatusCode
 from ...autonomous_mission import AutonomousMission
 from .models import (
     AgentFactoryJobInput,
+    AUTONOMOUS_CHAIN_SEQUENCE_SEARCH_ATTRIBUTE,
+    AUTONOMOUS_MISSION_DISPOSITION_SEARCH_ATTRIBUTE,
+    AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE,
+    AUTONOMOUS_MISSION_IDENTITY_SEARCH_ATTRIBUTE,
+    AUTONOMOUS_MISSION_KEY_SEARCH_ATTRIBUTE,
+    AUTONOMOUS_MISSION_PHASE_SEARCH_ATTRIBUTE,
+    AUTONOMOUS_PROJECT_ID_SEARCH_ATTRIBUTE,
     AutonomousBacklogApprovalNotice,
     AutonomousEpochHandoffCommand,
     AutonomousMissionCarryOver,
@@ -25,6 +37,8 @@ from .models import (
     AutonomousMissionWorkflowInput,
     AutonomousPlanningCommand,
     DemoWorkflowInput,
+    autonomous_mission_search_attributes,
+    autonomous_mission_visibility_memo,
 )
 from .settings import TemporalSettings
 
@@ -144,6 +158,17 @@ def autonomous_mission_workflow_input(
         autonomous_child_max_repair_iterations=(
             autonomous_child_max_repair_iterations
         ),
+        continue_as_new_enabled=(
+            selected.autonomous_continue_as_new_enabled
+        ),
+        continue_as_new_event_threshold=(
+            selected.autonomous_continue_as_new_event_threshold
+        ),
+        continue_as_new_safe_boundary_threshold=(
+            selected.autonomous_continue_as_new_safe_boundary_threshold
+        ),
+        worker_build_id=selected.worker_build_id,
+        worker_versioning_enabled=selected.worker_versioning_enabled,
     )
 
 
@@ -251,7 +276,34 @@ async def signal_apply_backlog_revision(
     await signal_autonomous_epoch_handoff(client, command, settings)
 
 
-async def ensure_namespace(client: Client, namespace: str) -> None:
+AUTONOMOUS_SEARCH_ATTRIBUTE_TYPES = {
+    AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_INT
+    ),
+    AUTONOMOUS_PROJECT_ID_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_INT
+    ),
+    AUTONOMOUS_CHAIN_SEQUENCE_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_INT
+    ),
+    AUTONOMOUS_MISSION_IDENTITY_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+    ),
+    AUTONOMOUS_MISSION_KEY_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+    ),
+    AUTONOMOUS_MISSION_PHASE_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+    ),
+    AUTONOMOUS_MISSION_DISPOSITION_SEARCH_ATTRIBUTE.name: (
+        IndexedValueType.INDEXED_VALUE_TYPE_KEYWORD
+    ),
+}
+
+
+async def ensure_namespace(
+    client: Client, namespace: str, retention_days: int = 7
+) -> None:
     try:
         await client.workflow_service.describe_namespace(
             DescribeNamespaceRequest(namespace=namespace)
@@ -265,12 +317,49 @@ async def ensure_namespace(client: Client, namespace: str) -> None:
             RegisterNamespaceRequest(
                 namespace=namespace,
                 description="AgentFactory local durable workflows",
-                workflow_execution_retention_period=Duration(seconds=7 * 24 * 60 * 60),
+                workflow_execution_retention_period=Duration(
+                    seconds=int(retention_days) * 24 * 60 * 60
+                ),
             )
         )
     except RPCError as exc:
         if exc.status != RPCStatusCode.ALREADY_EXISTS:
             raise
+
+
+async def ensure_autonomous_search_attributes(
+    client: Client, namespace: str
+) -> bool:
+    """Idempotently register the typed fields used for mission discovery."""
+
+    try:
+        listed = await client.operator_service.list_search_attributes(
+            ListSearchAttributesRequest(namespace=namespace)
+        )
+    except RPCError as exc:
+        # Temporal's lightweight time-skipping test server intentionally omits
+        # OperatorService. Memo-based visibility remains available there.
+        if exc.status == RPCStatusCode.UNIMPLEMENTED:
+            return False
+        raise
+    missing = {
+        name: value_type
+        for name, value_type in AUTONOMOUS_SEARCH_ATTRIBUTE_TYPES.items()
+        if name not in listed.custom_attributes
+    }
+    if not missing:
+        return True
+    try:
+        await client.operator_service.add_search_attributes(
+            AddSearchAttributesRequest(
+                namespace=namespace,
+                search_attributes=missing,
+            )
+        )
+    except RPCError as exc:
+        if exc.status != RPCStatusCode.ALREADY_EXISTS:
+            raise
+    return True
 
 
 async def connect_temporal(
@@ -284,7 +373,15 @@ async def connect_temporal(
         )
         if initialize_namespace:
             await asyncio.wait_for(
-                ensure_namespace(client, selected.namespace),
+                ensure_namespace(
+                    client,
+                    selected.namespace,
+                    selected.namespace_retention_days,
+                ),
+                timeout=selected.connect_timeout_seconds,
+            )
+            await asyncio.wait_for(
+                ensure_autonomous_search_attributes(client, selected.namespace),
                 timeout=selected.connect_timeout_seconds,
             )
         return client
@@ -336,6 +433,9 @@ async def start_autonomous_mission_workflow(
     workflow_id = workflow_id_for_autonomous_mission(
         request.mission_id, selected.autonomous_workflow_id_prefix
     )
+    custom_visibility_enabled = await ensure_autonomous_search_attributes(
+        client, client.namespace
+    )
     duplicate = False
     correlated_version = request.mission_version
     chain_sequence = request.chain_sequence
@@ -343,6 +443,27 @@ async def start_autonomous_mission_workflow(
         request.carry_over.previous_run_id if request.carry_over else None
     )
     try:
+        visibility_options: dict[str, Any] = {
+            "memo": autonomous_mission_visibility_memo(
+                mission_id=request.mission_id,
+                project_id=request.project_id,
+                mission_identity=request.mission_identity,
+                mission_key=request.mission_key,
+                chain_sequence=request.chain_sequence,
+            )
+        }
+        if custom_visibility_enabled:
+            visibility_options["search_attributes"] = (
+                autonomous_mission_search_attributes(
+                    mission_id=request.mission_id,
+                    project_id=request.project_id,
+                    mission_identity=request.mission_identity,
+                    mission_key=request.mission_key,
+                    chain_sequence=request.chain_sequence,
+                    phase=request.phase,
+                    disposition=request.disposition,
+                )
+            )
         handle = await client.start_workflow(
             "AutonomousMissionWorkflow",
             request,
@@ -353,8 +474,10 @@ async def start_autonomous_mission_workflow(
             static_summary=f"Autonomous Mission {request.mission_key}",
             static_details=(
                 f"Mission {request.mission_id}, project {request.project_id}, "
-                f"domain version {request.mission_version}"
+                f"identity {request.mission_identity}, logical Workflow "
+                f"{workflow_id}, domain version {request.mission_version}"
             ),
+            **visibility_options,
         )
         run_id = handle.first_execution_run_id
         if not run_id:
@@ -471,6 +594,127 @@ async def autonomous_mission_workflow_snapshot(
             }
         )
     return snapshot
+
+
+async def discover_autonomous_mission_workflow_runs(
+    client: Client,
+    mission_id: int,
+    *,
+    workflow_id: str | None = None,
+    retained_run_ids: Sequence[str] = (),
+) -> tuple[dict[str, Any], ...]:
+    """Discover retained runs, with domain-ledger IDs as a retention fallback."""
+
+    if int(mission_id) <= 0:
+        raise ValueError("Autonomous Mission ID must be positive")
+    custom_visibility_enabled = await ensure_autonomous_search_attributes(
+        client, client.namespace
+    )
+    executions = []
+    visibility_query = (
+        f"{AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE.name} = {int(mission_id)}"
+        if custom_visibility_enabled
+        else 'WorkflowType = "AutonomousMissionWorkflow"'
+    )
+    try:
+        async for execution in client.list_workflows(visibility_query):
+            attributes = execution.typed_search_attributes
+            memo = await execution.memo()
+            memo_identity = memo.get("agentfactory_autonomous_mission", {})
+            if not isinstance(memo_identity, dict):
+                memo_identity = {}
+            visible_mission_id = attributes.get(
+                AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE
+            )
+            if visible_mission_id is None:
+                visible_mission_id = memo_identity.get("mission_id")
+            if visible_mission_id != int(mission_id):
+                continue
+            handle = client.get_workflow_handle(
+                execution.id, run_id=execution.run_id
+            )
+            description = await handle.describe()
+            executions.append(
+                {
+                    "workflow_id": execution.id,
+                    "run_id": execution.run_id,
+                    "status": (
+                        execution.status.name
+                        if execution.status
+                        else "UNKNOWN"
+                    ),
+                    "mission_id": visible_mission_id,
+                    "mission_identity": attributes.get(
+                        AUTONOMOUS_MISSION_IDENTITY_SEARCH_ATTRIBUTE
+                    ) or memo_identity.get("mission_identity"),
+                    "mission_key": attributes.get(
+                        AUTONOMOUS_MISSION_KEY_SEARCH_ATTRIBUTE
+                    ) or memo_identity.get("mission_key"),
+                    "project_id": attributes.get(
+                        AUTONOMOUS_PROJECT_ID_SEARCH_ATTRIBUTE
+                    ) or memo_identity.get("project_id"),
+                    "chain_sequence": attributes.get(
+                        AUTONOMOUS_CHAIN_SEQUENCE_SEARCH_ATTRIBUTE
+                    ) or memo_identity.get("chain_sequence"),
+                    "phase": attributes.get(
+                        AUTONOMOUS_MISSION_PHASE_SEARCH_ATTRIBUTE
+                    ),
+                    "disposition": attributes.get(
+                        AUTONOMOUS_MISSION_DISPOSITION_SEARCH_ATTRIBUTE
+                    ),
+                    "history_length": execution.history_length,
+                    "static_summary": await description.static_summary(),
+                    "static_details": await description.static_details(),
+                }
+            )
+    except RPCError as exc:
+        if exc.status != RPCStatusCode.UNIMPLEMENTED or not retained_run_ids:
+            raise
+        executions.clear()
+        selected_workflow_id = workflow_id or workflow_id_for_autonomous_mission(
+            mission_id
+        )
+        for run_id in retained_run_ids:
+            normalized_run_id = str(run_id).strip()
+            if not normalized_run_id:
+                raise ValueError("Retained Temporal run IDs cannot be empty")
+            handle = client.get_workflow_handle(
+                selected_workflow_id, run_id=normalized_run_id
+            )
+            description = await handle.describe()
+            raw_info = description.raw_description.workflow_execution_info
+            memo = await description.memo()
+            memo_identity = memo.get("agentfactory_autonomous_mission", {})
+            if not isinstance(memo_identity, dict):
+                memo_identity = {}
+            if memo_identity.get("mission_id") != int(mission_id):
+                continue
+            executions.append(
+                {
+                    "workflow_id": selected_workflow_id,
+                    "run_id": normalized_run_id,
+                    "status": WorkflowExecutionStatus(raw_info.status).name,
+                    "mission_id": memo_identity.get("mission_id"),
+                    "mission_identity": memo_identity.get("mission_identity"),
+                    "mission_key": memo_identity.get("mission_key"),
+                    "project_id": memo_identity.get("project_id"),
+                    "chain_sequence": memo_identity.get("chain_sequence"),
+                    "phase": None,
+                    "disposition": None,
+                    "history_length": int(raw_info.history_length),
+                    "static_summary": await description.static_summary(),
+                    "static_details": await description.static_details(),
+                }
+            )
+    return tuple(
+        sorted(
+            executions,
+            key=lambda item: (
+                int(item["chain_sequence"] or 0),
+                str(item["run_id"]),
+            ),
+        )
+    )
 
 
 async def signal_workflow(client: Client, workflow_id: str, signal: str) -> None:

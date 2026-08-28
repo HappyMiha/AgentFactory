@@ -41,6 +41,14 @@ EXECUTION_PHASES = frozenset(
         MissionPhase.FINAL_VALIDATION,
     }
 )
+TEMPORAL_ROLLOVER_REASONS = frozenset(
+    {
+        "SAFE_BOUNDARY_THRESHOLD",
+        "HISTORY_EVENT_THRESHOLD",
+        "TEMPORAL_RECOMMENDATION",
+        "WORKER_DEPLOYMENT_CHANGED",
+    }
+)
 
 
 class ExecutionEpochOrigin(StrEnum):
@@ -92,6 +100,33 @@ class TemporalRunReference:
     metadata_digest: str
     command_id: str
     created_at: str
+
+
+@dataclass(frozen=True)
+class MissionTemporalRunReference:
+    id: int
+    identity: str
+    mission_id: int
+    sequence: int
+    workflow_id: str
+    run_id: str
+    previous_run_id: str | None
+    first_run_id: str
+    mission_version: int
+    phase: str
+    disposition: str
+    active_backlog_revision_id: int | None
+    active_execution_epoch_id: int | None
+    current_checkpoint_id: int | None
+    control_fencing_token: int
+    workflow_build_id: str
+    rollover_reason: str | None
+    previous_run_history_event_count: int
+    previous_run_safe_boundary_count: int
+    accepted_mutation_count: int
+    run_digest: str
+    registered_at: str
+    duplicate: bool = False
 
 
 @dataclass(frozen=True)
@@ -241,6 +276,264 @@ class MissionCheckpointService:
     @staticmethod
     def _timestamp() -> str:
         return datetime.now(timezone.utc).isoformat(timespec="microseconds")
+
+    @classmethod
+    def _mission_temporal_run_binding(cls, row: Any) -> dict[str, Any]:
+        return {
+            "mission_id": int(row["mission_id"]),
+            "sequence": int(row["sequence"]),
+            "workflow_id": str(row["workflow_id"]),
+            "run_id": str(row["run_id"]),
+            "previous_run_id": row["previous_run_id"],
+            "first_run_id": str(row["first_run_id"]),
+            "mission_version": int(row["mission_version"]),
+            "phase": str(row["phase"]),
+            "disposition": str(row["disposition"]),
+            "active_backlog_revision_id": cls._optional_id(
+                row["active_backlog_revision_id"]
+            ),
+            "active_execution_epoch_id": cls._optional_id(
+                row["active_execution_epoch_id"]
+            ),
+            "current_checkpoint_id": cls._optional_id(
+                row["current_checkpoint_id"]
+            ),
+            "control_fencing_token": int(row["control_fencing_token"]),
+            "workflow_build_id": str(row["workflow_build_id"]),
+            "rollover_reason": row["rollover_reason"],
+            "previous_run_history_event_count": int(
+                row["previous_run_history_event_count"]
+            ),
+            "previous_run_safe_boundary_count": int(
+                row["previous_run_safe_boundary_count"]
+            ),
+            "accepted_mutation_count": int(row["accepted_mutation_count"]),
+        }
+
+    def _mission_temporal_run_from_row(
+        self, row: Any, *, duplicate: bool = False
+    ) -> MissionTemporalRunReference:
+        binding = self._mission_temporal_run_binding(row)
+        if self._digest(binding) != str(row["run_digest"]):
+            raise RuntimeError("Mission Temporal run digest is corrupt")
+        return MissionTemporalRunReference(
+            id=int(row["id"]),
+            identity=str(row["identity"]),
+            **binding,
+            run_digest=str(row["run_digest"]),
+            registered_at=str(row["registered_at"]),
+            duplicate=duplicate,
+        )
+
+    def mission_temporal_runs(
+        self, mission_id: int
+    ) -> tuple[MissionTemporalRunReference, ...]:
+        rows = self.storage.db.execute(
+            """SELECT * FROM autonomous_mission_temporal_runs
+                WHERE mission_id=? ORDER BY sequence""",
+            (int(mission_id),),
+        ).fetchall()
+        return tuple(self._mission_temporal_run_from_row(row) for row in rows)
+
+    def register_mission_temporal_run(
+        self,
+        mission_id: int,
+        *,
+        mission_identity: str,
+        mission_key: str,
+        project_id: int,
+        sequence: int,
+        workflow_id: str,
+        run_id: str,
+        previous_run_id: str | None,
+        first_run_id: str,
+        mission_version: int,
+        phase: MissionPhase | str,
+        disposition: MissionDisposition | str,
+        active_backlog_revision_id: int | None,
+        active_execution_epoch_id: int | None,
+        current_checkpoint_id: int | None,
+        control_fencing_token: int,
+        workflow_build_id: str,
+        rollover_reason: str | None,
+        previous_run_history_event_count: int,
+        previous_run_safe_boundary_count: int,
+        accepted_mutation_count: int,
+    ) -> MissionTemporalRunReference:
+        """Append one immutable run after revalidating its exact domain scope."""
+
+        workflow_id = self._required(workflow_id, "Temporal workflow id")
+        run_id = self._required(run_id, "Temporal run id")
+        first_run_id = self._required(first_run_id, "Temporal first run id")
+        build_id = self._required(workflow_build_id, "Temporal Worker build id")
+        previous = (
+            self._required(previous_run_id, "Previous Temporal run id")
+            if previous_run_id is not None
+            else None
+        )
+        phase_value = MissionPhase(phase).value
+        disposition_value = MissionDisposition(disposition).value
+        sequence = int(sequence)
+        if sequence <= 0:
+            raise ValueError("Temporal run sequence must be positive")
+        if (sequence == 1) != (previous is None):
+            raise ValueError("Only the first Temporal run omits its predecessor")
+        if sequence == 1 and first_run_id != run_id:
+            raise ValueError("The first Temporal run must identify itself as first")
+        if rollover_reason is not None and (
+            rollover_reason not in TEMPORAL_ROLLOVER_REASONS
+        ):
+            raise ValueError("Unsupported Temporal rollover reason")
+        if sequence == 1 and rollover_reason is not None:
+            raise ValueError("The first Temporal run cannot have a rollover reason")
+        if sequence > 1 and rollover_reason is None:
+            raise ValueError("A continued Temporal run requires a rollover reason")
+        for value, label in (
+            (mission_version, "Mission version"),
+            (control_fencing_token, "Mission fencing token"),
+        ):
+            if int(value) <= 0:
+                raise ValueError(f"{label} must be positive")
+        for value, label in (
+            (
+                previous_run_history_event_count,
+                "Previous run history-event count",
+            ),
+            (
+                previous_run_safe_boundary_count,
+                "Previous run safe-boundary count",
+            ),
+            (accepted_mutation_count, "Accepted mutation count"),
+        ):
+            if int(value) < 0:
+                raise ValueError(f"{label} cannot be negative")
+        binding = {
+            "mission_id": int(mission_id),
+            "sequence": sequence,
+            "workflow_id": workflow_id,
+            "run_id": run_id,
+            "previous_run_id": previous,
+            "first_run_id": first_run_id,
+            "mission_version": int(mission_version),
+            "phase": phase_value,
+            "disposition": disposition_value,
+            "active_backlog_revision_id": self._optional_id(
+                active_backlog_revision_id
+            ),
+            "active_execution_epoch_id": self._optional_id(
+                active_execution_epoch_id
+            ),
+            "current_checkpoint_id": self._optional_id(current_checkpoint_id),
+            "control_fencing_token": int(control_fencing_token),
+            "workflow_build_id": build_id,
+            "rollover_reason": rollover_reason,
+            "previous_run_history_event_count": int(
+                previous_run_history_event_count
+            ),
+            "previous_run_safe_boundary_count": int(
+                previous_run_safe_boundary_count
+            ),
+            "accepted_mutation_count": int(accepted_mutation_count),
+        }
+        run_digest = self._digest(binding)
+        existing = self.storage.db.execute(
+            "SELECT * FROM autonomous_mission_temporal_runs WHERE run_id=?",
+            (run_id,),
+        ).fetchone()
+        if existing:
+            replay = self._mission_temporal_run_from_row(existing, duplicate=True)
+            if replay.run_digest != run_digest:
+                raise ValueError("Temporal run identity is already bound")
+            return replay
+
+        mission = self.missions.get(int(mission_id))
+        fence = MissionControlFenceService(self.storage).current(mission.id)
+        if (
+            mission.identity != self._required(mission_identity, "Mission identity")
+            or mission.mission_key != self._required(mission_key, "Mission key")
+            or mission.project_id != int(project_id)
+        ):
+            raise PermissionError("Temporal run mission identity is spoofed")
+        if (
+            mission.version != int(mission_version)
+            or mission.phase.value != phase_value
+            or mission.disposition.value != disposition_value
+            or mission.active_backlog_revision_id
+            != binding["active_backlog_revision_id"]
+            or mission.active_execution_epoch_id
+            != binding["active_execution_epoch_id"]
+            or mission.current_checkpoint_id != binding["current_checkpoint_id"]
+            or fence.fencing_token != int(control_fencing_token)
+        ):
+            raise PermissionError("Temporal run domain scope is stale")
+
+        with self.storage.db:
+            self.storage._begin_immediate()
+            existing = self.storage.db.execute(
+                "SELECT * FROM autonomous_mission_temporal_runs WHERE run_id=?",
+                (run_id,),
+            ).fetchone()
+            if existing:
+                replay = self._mission_temporal_run_from_row(existing, duplicate=True)
+                if replay.run_digest != run_digest:
+                    raise ValueError("Temporal run identity is already bound")
+                return replay
+            cursor = self.storage.db.execute(
+                """INSERT INTO autonomous_mission_temporal_runs(
+                       identity,mission_id,sequence,workflow_id,run_id,
+                       previous_run_id,first_run_id,mission_version,phase,
+                       disposition,active_backlog_revision_id,
+                       active_execution_epoch_id,current_checkpoint_id,
+                       control_fencing_token,workflow_build_id,rollover_reason,
+                       previous_run_history_event_count,
+                       previous_run_safe_boundary_count,accepted_mutation_count,
+                       run_digest
+                   ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    self.storage._identity("autonomous-mission-temporal-run"),
+                    binding["mission_id"],
+                    binding["sequence"],
+                    binding["workflow_id"],
+                    binding["run_id"],
+                    binding["previous_run_id"],
+                    binding["first_run_id"],
+                    binding["mission_version"],
+                    binding["phase"],
+                    binding["disposition"],
+                    binding["active_backlog_revision_id"],
+                    binding["active_execution_epoch_id"],
+                    binding["current_checkpoint_id"],
+                    binding["control_fencing_token"],
+                    binding["workflow_build_id"],
+                    binding["rollover_reason"],
+                    binding["previous_run_history_event_count"],
+                    binding["previous_run_safe_boundary_count"],
+                    binding["accepted_mutation_count"],
+                    run_digest,
+                ),
+            )
+            registration_id = int(cursor.lastrowid)
+            self.storage._event(
+                "autonomous_mission.temporal_run_registered",
+                "autonomous_mission_temporal_run",
+                registration_id,
+                {
+                    "mission_id": mission.id,
+                    "workflow_id": workflow_id,
+                    "run_id": run_id,
+                    "sequence": sequence,
+                    "previous_run_id": previous,
+                    "workflow_build_id": build_id,
+                    "rollover_reason": rollover_reason,
+                },
+            )
+        row = self.storage.db.execute(
+            "SELECT * FROM autonomous_mission_temporal_runs WHERE id=?",
+            (registration_id,),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("Mission Temporal run was not persisted")
+        return self._mission_temporal_run_from_row(row)
 
     @staticmethod
     def _sha256(value: str, label: str) -> str:

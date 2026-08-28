@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 import unittest
 import uuid
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 
@@ -207,7 +208,7 @@ class AutonomousPreapprovalActivityTests(
         first = self.activities._run_autonomous_planning_sync(first_request)
         replay = self.activities._run_autonomous_planning_sync(first_request)
 
-        self.assertEqual(replay, first)
+        self.assertEqual(replay, replace(first, duplicate=True))
         self.assertTrue(first.ready_for_approval)
         self.assertEqual(first.phase, MissionPhase.WAITING_FOR_BACKLOG_APPROVAL)
         self.assertEqual(first.proposal_revision_count, 1)
@@ -227,7 +228,7 @@ class AutonomousPreapprovalActivityTests(
             second_request
         )
 
-        self.assertEqual(second_replay, second)
+        self.assertEqual(second_replay, replace(second, duplicate=True))
         self.assertTrue(second.ready_for_approval)
         self.assertEqual(second.parent_revision_id, first.proposed_revision_id)
         self.assertEqual(second.proposal_revision_count, 2)

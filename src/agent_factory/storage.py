@@ -5880,6 +5880,137 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         )
         BEGIN SELECT RAISE(ABORT, 'epoch handoff result scope is invalid'); END;
     """),
+    (69, """
+        CREATE TABLE autonomous_mission_temporal_runs(
+            id INTEGER PRIMARY KEY,
+            identity TEXT NOT NULL UNIQUE,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            sequence INTEGER NOT NULL CHECK(sequence>0),
+            workflow_id TEXT NOT NULL,
+            run_id TEXT NOT NULL UNIQUE,
+            previous_run_id TEXT,
+            first_run_id TEXT NOT NULL,
+            mission_version INTEGER NOT NULL CHECK(mission_version>0),
+            phase TEXT NOT NULL CHECK(phase IN (
+                'DRAFT','SPECIFICATION_ANALYSIS','BACKLOG_GENERATION',
+                'WAITING_FOR_BACKLOG_APPROVAL','APPROVED',
+                'ENVIRONMENT_DISCOVERY','ENVIRONMENT_BOOTSTRAP','DEVELOPMENT',
+                'VALIDATION','INTEGRATION','FINAL_VALIDATION','COMPLETED'
+            )),
+            disposition TEXT NOT NULL CHECK(disposition IN (
+                'RUNNING','PAUSED','STOPPED','NEEDS_ATTENTION',
+                'NEEDS_HUMAN_ACTION','REPLANNING','RECOVERING','FAILED'
+            )),
+            active_backlog_revision_id INTEGER
+                REFERENCES autonomous_backlog_revisions(id),
+            active_execution_epoch_id INTEGER
+                REFERENCES autonomous_mission_execution_epochs(id),
+            current_checkpoint_id INTEGER
+                REFERENCES autonomous_mission_checkpoints(id),
+            control_fencing_token INTEGER NOT NULL CHECK(control_fencing_token>0),
+            workflow_build_id TEXT NOT NULL,
+            rollover_reason TEXT CHECK(rollover_reason IS NULL OR rollover_reason IN (
+                'SAFE_BOUNDARY_THRESHOLD','HISTORY_EVENT_THRESHOLD',
+                'TEMPORAL_RECOMMENDATION','WORKER_DEPLOYMENT_CHANGED'
+            )),
+            previous_run_history_event_count INTEGER NOT NULL DEFAULT 0
+                CHECK(previous_run_history_event_count>=0),
+            previous_run_safe_boundary_count INTEGER NOT NULL DEFAULT 0
+                CHECK(previous_run_safe_boundary_count>=0),
+            accepted_mutation_count INTEGER NOT NULL DEFAULT 0
+                CHECK(accepted_mutation_count>=0),
+            run_digest TEXT NOT NULL
+                CHECK(length(run_digest)=64
+                      AND run_digest NOT GLOB '*[^0-9a-f]*'),
+            registered_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(mission_id,sequence),
+            UNIQUE(mission_id,workflow_id,run_id),
+            CHECK(
+                (sequence=1 AND previous_run_id IS NULL
+                 AND first_run_id=run_id AND rollover_reason IS NULL) OR
+                (sequence>1 AND previous_run_id IS NOT NULL
+                 AND rollover_reason IS NOT NULL)
+            )
+        );
+        CREATE INDEX idx_autonomous_mission_temporal_runs_chain
+            ON autonomous_mission_temporal_runs(mission_id,sequence);
+        CREATE INDEX idx_autonomous_mission_temporal_runs_workflow
+            ON autonomous_mission_temporal_runs(workflow_id,sequence);
+
+        CREATE TRIGGER autonomous_mission_temporal_runs_no_update
+        BEFORE UPDATE ON autonomous_mission_temporal_runs
+        BEGIN SELECT RAISE(ABORT, 'mission Temporal runs are immutable'); END;
+        CREATE TRIGGER autonomous_mission_temporal_runs_no_delete
+        BEFORE DELETE ON autonomous_mission_temporal_runs
+        BEGIN SELECT RAISE(ABORT, 'mission Temporal runs are immutable'); END;
+        CREATE TRIGGER autonomous_mission_temporal_run_sequence_valid
+        BEFORE INSERT ON autonomous_mission_temporal_runs
+        WHEN NEW.sequence<>(
+            SELECT COALESCE(MAX(sequence),0)+1
+              FROM autonomous_mission_temporal_runs
+             WHERE mission_id=NEW.mission_id
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission Temporal run sequence must be append-only'); END;
+        CREATE TRIGGER autonomous_mission_temporal_run_chain_valid
+        BEFORE INSERT ON autonomous_mission_temporal_runs
+        WHEN NEW.sequence>1 AND NOT EXISTS (
+            SELECT 1 FROM autonomous_mission_temporal_runs previous
+             WHERE previous.mission_id=NEW.mission_id
+               AND previous.sequence=NEW.sequence-1
+               AND previous.run_id=NEW.previous_run_id
+               AND previous.workflow_id=NEW.workflow_id
+               AND previous.first_run_id=NEW.first_run_id
+               AND previous.accepted_mutation_count<=NEW.accepted_mutation_count
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission Temporal run chain is invalid'); END;
+        CREATE TRIGGER autonomous_mission_temporal_run_scope_valid
+        BEFORE INSERT ON autonomous_mission_temporal_runs
+        WHEN NOT EXISTS (
+            SELECT 1
+              FROM autonomous_missions mission
+              JOIN autonomous_mission_control_fences fence
+                ON fence.mission_id=mission.id
+             WHERE mission.id=NEW.mission_id
+               AND mission.version=NEW.mission_version
+               AND mission.phase=NEW.phase
+               AND mission.disposition=NEW.disposition
+               AND mission.active_backlog_revision_id
+                   IS NEW.active_backlog_revision_id
+               AND mission.active_execution_epoch_id
+                   IS NEW.active_execution_epoch_id
+               AND mission.current_checkpoint_id IS NEW.current_checkpoint_id
+               AND fence.mission_version=NEW.mission_version
+               AND fence.phase=NEW.phase
+               AND fence.disposition=NEW.disposition
+               AND fence.backlog_revision_id IS NEW.active_backlog_revision_id
+               AND fence.execution_epoch_id IS NEW.active_execution_epoch_id
+               AND fence.fencing_token=NEW.control_fencing_token
+               AND (
+                   NEW.active_backlog_revision_id IS NULL OR EXISTS (
+                       SELECT 1 FROM autonomous_backlog_revisions revision
+                        WHERE revision.id=NEW.active_backlog_revision_id
+                          AND revision.mission_id=NEW.mission_id
+                   )
+               )
+               AND (
+                   NEW.active_execution_epoch_id IS NULL OR EXISTS (
+                       SELECT 1 FROM autonomous_mission_execution_epochs epoch
+                        WHERE epoch.id=NEW.active_execution_epoch_id
+                          AND epoch.mission_id=NEW.mission_id
+                   )
+               )
+               AND (
+                   NEW.current_checkpoint_id IS NULL OR EXISTS (
+                       SELECT 1 FROM autonomous_mission_checkpoints checkpoint
+                        WHERE checkpoint.id=NEW.current_checkpoint_id
+                          AND checkpoint.mission_id=NEW.mission_id
+                          AND checkpoint.execution_epoch_id=
+                              NEW.active_execution_epoch_id
+                   )
+               )
+        )
+        BEGIN SELECT RAISE(ABORT, 'mission Temporal run scope is invalid'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

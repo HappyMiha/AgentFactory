@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any
 
@@ -42,10 +43,17 @@ with workflow.unsafe.imports_passed_through():
         AutonomousMissionWorkflowState,
         AutonomousRetrySettlementInput,
         AutonomousRetrySettlementResult,
+        AutonomousTemporalRunRegistrationInput,
+        AutonomousTemporalRunRegistrationResult,
         DemoWorkflowInput,
         StageActivityInput,
         WorkflowState,
         WorkflowStatus,
+        AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE,
+        AUTONOMOUS_ROLLOVER_PATCH_ID,
+        autonomous_mission_search_attributes,
+        autonomous_mission_visibility_memo,
+        autonomous_rollover_reason,
     )
     from .policies import fast_transient_policy, llm_policy, policy_for_provider
 
@@ -434,6 +442,7 @@ class AutonomousMissionWorkflow:
         self._seen_handoff_payloads: dict[
             str, AutonomousEpochHandoffCommand
         ] = {}
+        self._rollover_patch_enabled = False
 
     def _state(self) -> AutonomousMissionWorkflowState:
         if self.state is None:
@@ -455,6 +464,14 @@ class AutonomousMissionWorkflow:
         return {
             "mission_id": state.mission_id,
             "mission_version": state.mission_version,
+            "chain_sequence": state.chain_sequence,
+            "accepted_mutation_count": state.accepted_mutation_count,
+            "run_safe_boundary_count": state.run_safe_boundary_count,
+            "current_history_event_count": state.current_history_event_count,
+            "last_rollover_reason": state.last_rollover_reason,
+            "workflow_build_id": state.workflow_build_id,
+            "previous_worker_build_id": state.previous_worker_build_id,
+            "rollover_pending": state.rollover_pending,
             "active_backlog_revision_id": state.active_backlog_revision_id,
             "proposed_backlog_revision_id": state.proposed_backlog_revision_id,
             "proposal_verification_id": state.proposal_verification_id,
@@ -581,6 +598,7 @@ class AutonomousMissionWorkflow:
                     self._touch(
                         "Mission control persisted after the active child closed"
                     )
+            self._mark_safe_boundary(accepted_mutation=not result.duplicate)
         finally:
             self._control_handlers -= 1
 
@@ -753,6 +771,7 @@ class AutonomousMissionWorkflow:
                 f"Epoch handoff activated execution epoch "
                 f"{completed.result_execution_epoch_id}"
             )
+            self._mark_safe_boundary(accepted_mutation=not completed.duplicate)
         finally:
             self._handoff_handlers -= 1
             self._active_handoff_commands.discard(command.command_id)
@@ -793,6 +812,173 @@ class AutonomousMissionWorkflow:
         state = self._state()
         state.last_activity = summary[:512]
         state.last_activity_at = workflow.now().isoformat()
+
+    def _current_worker_build_id(self) -> str:
+        request = self._request
+        info = workflow.info()
+        deployment = info.get_current_deployment_version()
+        if deployment is not None and deployment.build_id.strip():
+            return deployment.build_id.strip()
+        current_build_id = info.get_current_build_id()
+        if current_build_id and current_build_id.strip():
+            return current_build_id.strip()
+        return (
+            request.worker_build_id
+            if request is not None
+            else "agentfactory-legacy-unversioned"
+        )
+
+    def _mark_safe_boundary(self, *, accepted_mutation: bool) -> None:
+        state = self._state()
+        if accepted_mutation:
+            state.run_safe_boundary_count += 1
+            state.accepted_mutation_count += 1
+        state.current_history_event_count = (
+            workflow.info().get_current_history_length()
+        )
+        state.rollover_pending = self._rollover_reason() is not None
+
+    def _rollover_reason(self) -> str | None:
+        request = self._request
+        state = self._state()
+        if (
+            request is None
+            or not request.continue_as_new_enabled
+            or not self._rollover_patch_enabled
+        ):
+            return None
+        info = workflow.info()
+        return autonomous_rollover_reason(
+            safe_boundary_count=state.run_safe_boundary_count,
+            history_event_count=info.get_current_history_length(),
+            safe_boundary_threshold=(
+                request.continue_as_new_safe_boundary_threshold
+            ),
+            history_event_threshold=request.continue_as_new_event_threshold,
+            temporal_recommended=info.is_continue_as_new_suggested(),
+            worker_deployment_changed=(
+                request.worker_versioning_enabled
+                and info.is_target_worker_deployment_version_changed()
+            ),
+        )
+
+    def _rollover_is_safe(self) -> bool:
+        state = self._state()
+        return bool(
+            self._active_child is None
+            and state.current_child_job_id is None
+            and state.current_child_workflow_id is None
+            and state.current_work_item_stable_id is None
+            and state.pending_retry_child_job_id is None
+            and state.pending_epoch_handoff_command_id is None
+            and self._control_handlers == 0
+            and self._handoff_handlers == 0
+            and not self._planning_commands
+            and not self._approval_notices
+            and workflow.all_handlers_finished()
+        )
+
+    async def _register_temporal_run_activity(
+        self,
+    ) -> AutonomousTemporalRunRegistrationResult:
+        request = self._request
+        state = self._state()
+        if request is None or state.temporal_first_run_id is None:
+            raise RuntimeError("Autonomous Mission Workflow input is unavailable")
+        carry = request.carry_over
+        return await workflow.execute_activity(
+            "register_autonomous_temporal_run",
+            AutonomousTemporalRunRegistrationInput(
+                scope=self._activity_scope(),
+                run_id=state.temporal_run_id,
+                chain_sequence=state.chain_sequence,
+                previous_run_id=state.previous_temporal_run_id,
+                first_run_id=state.temporal_first_run_id,
+                mission_version=state.mission_version,
+                phase=state.phase,
+                disposition=state.disposition,
+                active_backlog_revision_id=state.active_backlog_revision_id,
+                active_execution_epoch_id=state.active_execution_epoch_id,
+                current_checkpoint_id=state.current_checkpoint_id,
+                control_fencing_token=state.control_fencing_token,
+                workflow_build_id=(
+                    state.workflow_build_id or request.worker_build_id
+                ),
+                rollover_reason=(carry.rollover_reason if carry else None),
+                previous_run_history_event_count=(
+                    carry.previous_run_history_event_count if carry else 0
+                ),
+                previous_run_safe_boundary_count=(
+                    carry.previous_run_safe_boundary_count if carry else 0
+                ),
+                accepted_mutation_count=state.accepted_mutation_count,
+            ),
+            result_type=AutonomousTemporalRunRegistrationResult,
+            start_to_close_timeout=timedelta(
+                seconds=request.fast_activity_timeout_seconds
+            ),
+            retry_policy=fast_transient_policy(),
+        )
+
+    def _maybe_continue_as_new(self) -> None:
+        request = self._request
+        state = self._state()
+        reason = self._rollover_reason()
+        state.current_history_event_count = (
+            workflow.info().get_current_history_length()
+        )
+        state.rollover_pending = reason is not None
+        if request is None or reason is None or not self._rollover_is_safe():
+            return
+        build_id = state.workflow_build_id or request.worker_build_id
+        carry = state.to_carry_over(
+            rollover_reason=reason,
+            history_event_count=state.current_history_event_count,
+            worker_build_id=build_id,
+        )
+        next_request = replace(
+            request,
+            mission_version=state.mission_version,
+            phase=state.phase,
+            disposition=state.disposition,
+            carry_over=carry,
+            schema_version=carry.schema_version,
+        )
+        self._touch(
+            f"Continuing mission as run {carry.chain_sequence} at safe boundary"
+        )
+        visibility_options: dict[str, object] = {
+            "memo": autonomous_mission_visibility_memo(
+                mission_id=state.mission_id,
+                project_id=state.project_id,
+                mission_identity=state.mission_identity,
+                mission_key=state.mission_key,
+                chain_sequence=carry.chain_sequence,
+            )
+        }
+        if workflow.info().typed_search_attributes.get(
+            AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE
+        ) is not None:
+            visibility_options["search_attributes"] = (
+                autonomous_mission_search_attributes(
+                    mission_id=state.mission_id,
+                    project_id=state.project_id,
+                    mission_identity=state.mission_identity,
+                    mission_key=state.mission_key,
+                    chain_sequence=carry.chain_sequence,
+                    phase=state.phase,
+                    disposition=state.disposition,
+                )
+            )
+        workflow.continue_as_new(
+            next_request,
+            initial_versioning_behavior=(
+                workflow.ContinueAsNewVersioningBehavior.AUTO_UPGRADE
+                if request.worker_versioning_enabled
+                else None
+            ),
+            **visibility_options,
+        )
 
     async def _read_control_activity(
         self,
@@ -836,6 +1022,7 @@ class AutonomousMissionWorkflow:
                 )
             )
         state.workflow_status = WorkflowStatus.RUNNING.value
+        self._maybe_continue_as_new()
 
     async def _run_planning_activity(
         self, command: AutonomousPlanningCommand
@@ -1089,15 +1276,31 @@ class AutonomousMissionWorkflow:
     ) -> dict[str, Any]:
         info = workflow.info()
         self._request = request
+        self._rollover_patch_enabled = workflow.patched(
+            AUTONOMOUS_ROLLOVER_PATCH_ID
+        )
         self.state = AutonomousMissionWorkflowState.from_input(
             request,
             workflow_id=info.workflow_id,
             run_id=info.run_id,
             started_at=workflow.now().isoformat(),
         )
+        self.state.workflow_build_id = self._current_worker_build_id()
         self.state.workflow_status = WorkflowStatus.WAITING.value
         self._touch("Waiting for explicit bounded planning or persisted approval")
+        if request.continue_as_new_enabled and self._rollover_patch_enabled:
+            try:
+                registered = await self._register_temporal_run_activity()
+            except ActivityError as exc:
+                self.state.workflow_status = WorkflowStatus.NEEDS_ATTENTION.value
+                self._touch("Temporal run registration failed: " + str(exc))
+                await workflow.wait_condition(lambda: False)
+            self.state.workflow_build_id = registered.workflow_build_id
+            self._touch(
+                f"Registered logical mission run {registered.chain_sequence}"
+            )
         while True:
+            self._maybe_continue_as_new()
             if self.state.phase == "APPROVED":
                 if not request.post_approval_execution_enabled:
                     await workflow.wait_condition(lambda: False)
@@ -1132,6 +1335,7 @@ class AutonomousMissionWorkflow:
                 self.state.control_fencing_token = environment.fencing_token
                 self.state.environment_status = environment.environment_status
                 self._touch(environment.summary)
+                self._mark_safe_boundary(accepted_mutation=True)
                 continue
 
             if self.state.phase == "DEVELOPMENT":
@@ -1221,6 +1425,7 @@ class AutonomousMissionWorkflow:
                         self.state.current_model = None
                         self.state.workflow_status = WorkflowStatus.RUNNING.value
                         self._touch(settled.summary)
+                        self._mark_safe_boundary(accepted_mutation=True)
                         continue
                     if child_status == WorkflowStatus.SUPERSEDED.value:
                         await workflow.wait_condition(
@@ -1269,6 +1474,7 @@ class AutonomousMissionWorkflow:
                 self.state.current_model = None
                 self.state.workflow_status = WorkflowStatus.RUNNING.value
                 self._touch(reconciled.summary)
+                self._mark_safe_boundary(accepted_mutation=True)
                 continue
 
             if self.state.phase == "COMPLETED":
@@ -1276,8 +1482,15 @@ class AutonomousMissionWorkflow:
                 return self.state.to_dict()
 
             await workflow.wait_condition(
-                lambda: bool(self._planning_commands or self._approval_notices)
+                lambda: bool(
+                    self._planning_commands
+                    or self._approval_notices
+                    or self._state().rollover_pending
+                )
             )
+            self._maybe_continue_as_new()
+            if not self._planning_commands and not self._approval_notices:
+                continue
             if self._planning_commands:
                 command = self._planning_commands.pop(0)
                 await self._wait_until_mission_runnable()
@@ -1294,6 +1507,9 @@ class AutonomousMissionWorkflow:
                     )
                 else:
                     self._apply_planning_result(result)
+                    self._mark_safe_boundary(
+                        accepted_mutation=not result.duplicate
+                    )
                 continue
 
             notice = self._approval_notices.pop(0)
@@ -1306,6 +1522,9 @@ class AutonomousMissionWorkflow:
                 self._touch("Approval revalidation failed: " + str(exc))
             else:
                 self._apply_approval_result(approval)
+                self._mark_safe_boundary(
+                    accepted_mutation=approval.approved
+                )
 
 
 @workflow.defn(name="TemporalDemoWorkflow")

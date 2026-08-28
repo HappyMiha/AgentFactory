@@ -17,6 +17,7 @@ All notable changes to Agent Factory are documented here. The format follows [Ke
 
 ### Added
 
+- AF-AMM-017 safe-boundary continue-as-new with compact schema-v2 carry-over, configurable history thresholds, per-run Search Attributes and memo identity, immutable mission-wide Temporal run audit, seven-day retention policy, explicit patch/replay gates, and opt-in pinned Worker Deployment versioning.
 - AF-AMM-016 typed `restart_from_checkpoint` and `apply_backlog_revision` Signals backed by an immutable owner-authorized handoff ledger, safe-boundary child supersession, exactly-once epoch activation, carried checkpoint/revision state, renewed epoch-scoped execution authority, stale/spoofed command rejection, and replay-safe parent resumption.
 - AF-AMM-015 mission-wide `PAUSE`, `RESUME`, `STOP`, and `RETRY_CURRENT_TASK` Signals backed by a durable SQLite fencing token, per-operation admission leases, active-child propagation, safe-boundary stop/retry settlement, stale/duplicate command rejection, and per-inference/per-tool runtime checks.
 - AF-AMM-014 post-approval environment transitions and deterministic child `AgentFactoryJobWorkflow` orchestration, with immutable mission-scoped job/authorization/completion/reconciliation records, typed local provider authority, dependency-ordered checkpoints, crash-safe replay, and no per-item Founder gate on the explicitly autonomous path.

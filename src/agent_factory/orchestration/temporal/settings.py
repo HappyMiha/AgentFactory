@@ -35,6 +35,7 @@ class TemporalSettings:
     task_queue: str = "agentfactory-main"
     autonomous_workflow_id_prefix: str = "agentfactory-autonomous-mission"
     ui_url: str = "http://localhost:8080"
+    namespace_retention_days: int = 7
     connect_timeout_seconds: int = 10
     fast_activity_timeout_seconds: int = 120
     llm_activity_timeout_seconds: int = 3600
@@ -42,6 +43,12 @@ class TemporalSettings:
     heartbeat_interval_seconds: int = 10
     cancellation_grace_seconds: int = 15
     max_repair_iterations: int = 5
+    autonomous_continue_as_new_enabled: bool = False
+    autonomous_continue_as_new_event_threshold: int = 10_000
+    autonomous_continue_as_new_safe_boundary_threshold: int = 100
+    worker_build_id: str = "agentfactory-0.1.0-temporal-sdk-1.31.0"
+    worker_deployment_name: str = "agentfactory-autonomous"
+    worker_versioning_enabled: bool = False
 
     @classmethod
     def from_env(cls) -> "TemporalSettings":
@@ -55,6 +62,9 @@ class TemporalSettings:
                 "agentfactory-autonomous-mission",
             ).strip(),
             ui_url=os.getenv("TEMPORAL_UI_URL", "http://localhost:8080").strip().rstrip("/"),
+            namespace_retention_days=_positive_int(
+                "TEMPORAL_NAMESPACE_RETENTION_DAYS", 7
+            ),
             connect_timeout_seconds=_positive_int("TEMPORAL_CONNECT_TIMEOUT_SECONDS", 10),
             fast_activity_timeout_seconds=_positive_int(
                 "TEMPORAL_FAST_ACTIVITY_TIMEOUT_SECONDS", 120
@@ -74,6 +84,27 @@ class TemporalSettings:
             max_repair_iterations=_positive_int(
                 "AGENTFACTORY_MAX_REPAIR_ITERATIONS", 5
             ),
+            autonomous_continue_as_new_enabled=_boolean(
+                "TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_ENABLED", True
+            ),
+            autonomous_continue_as_new_event_threshold=_positive_int(
+                "TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_EVENT_THRESHOLD", 10_000
+            ),
+            autonomous_continue_as_new_safe_boundary_threshold=_positive_int(
+                "TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_SAFE_BOUNDARY_THRESHOLD",
+                100,
+            ),
+            worker_build_id=os.getenv(
+                "TEMPORAL_WORKER_BUILD_ID",
+                "agentfactory-0.1.0-temporal-sdk-1.31.0",
+            ).strip(),
+            worker_deployment_name=os.getenv(
+                "TEMPORAL_WORKER_DEPLOYMENT_NAME",
+                "agentfactory-autonomous",
+            ).strip(),
+            worker_versioning_enabled=_boolean(
+                "TEMPORAL_WORKER_VERSIONING_ENABLED", False
+            ),
         )
         settings.validate()
         return settings
@@ -88,6 +119,8 @@ class TemporalSettings:
                 self.autonomous_workflow_id_prefix,
             ),
             ("TEMPORAL_UI_URL", self.ui_url),
+            ("TEMPORAL_WORKER_BUILD_ID", self.worker_build_id),
+            ("TEMPORAL_WORKER_DEPLOYMENT_NAME", self.worker_deployment_name),
         ):
             if not value:
                 raise ValueError(f"{name} cannot be empty")
@@ -107,6 +140,30 @@ class TemporalSettings:
                 "TEMPORAL_HEARTBEAT_INTERVAL_SECONDS must be less than "
                 "TEMPORAL_HEARTBEAT_TIMEOUT_SECONDS"
             )
+        if not 1 <= self.namespace_retention_days <= 365:
+            raise ValueError(
+                "TEMPORAL_NAMESPACE_RETENTION_DAYS must be between 1 and 365"
+            )
+        if not 10 <= self.autonomous_continue_as_new_event_threshold <= 50_000:
+            raise ValueError(
+                "TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_EVENT_THRESHOLD must be "
+                "between 10 and 50000"
+            )
+        if not (
+            1
+            <= self.autonomous_continue_as_new_safe_boundary_threshold
+            <= 10_000
+        ):
+            raise ValueError(
+                "TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_SAFE_BOUNDARY_THRESHOLD "
+                "must be between 1 and 10000"
+            )
+        for name, value in (
+            ("TEMPORAL_WORKER_BUILD_ID", self.worker_build_id),
+            ("TEMPORAL_WORKER_DEPLOYMENT_NAME", self.worker_deployment_name),
+        ):
+            if len(value) > 255:
+                raise ValueError(f"{name} must not exceed 255 characters")
 
     def workflow_url(self, workflow_id: str) -> str:
         return (

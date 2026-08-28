@@ -17,7 +17,7 @@ Start from the repository root:
 .\infra\temporal\start.ps1
 ```
 
-The gRPC endpoint is `localhost:7233`, the UI is `http://localhost:8080`, and the idempotently-created namespace is `agentfactory`. Ports bind to `127.0.0.1`; PostgreSQL is not published to the host.
+The gRPC endpoint is `localhost:7233`, the UI is `http://localhost:8080`, and the idempotently-created namespace is `agentfactory`. Its default Workflow retention is seven days and can be changed with `TEMPORAL_NAMESPACE_RETENTION` before first creation. Ports bind to `127.0.0.1`; PostgreSQL is not published to the host.
 
 `stop.ps1` preserves `agentfactory-temporal-postgresql-data`. `reset.ps1` is the only routine that removes it and therefore requires confirmation or `-Force`.
 

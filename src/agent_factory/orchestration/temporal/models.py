@@ -4,11 +4,47 @@ from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any
 
+from temporalio.common import (
+    SearchAttributeKey,
+    SearchAttributePair,
+    TypedSearchAttributes,
+)
 
-AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION = 1
+AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION = 2
+AUTONOMOUS_MISSION_WORKFLOW_SUPPORTED_SCHEMA_VERSIONS = frozenset({1, 2})
 AUTONOMOUS_SUMMARY_LIMIT = 512
 AUTONOMOUS_IDENTIFIER_LIMIT = 256
 AUTONOMOUS_PATH_LIMIT = 2048
+AUTONOMOUS_ROLLOVER_PATCH_ID = "af-amm-017-safe-rollover-v1"
+AUTONOMOUS_ROLLOVER_REASONS = frozenset(
+    {
+        "SAFE_BOUNDARY_THRESHOLD",
+        "HISTORY_EVENT_THRESHOLD",
+        "TEMPORAL_RECOMMENDATION",
+        "WORKER_DEPLOYMENT_CHANGED",
+    }
+)
+AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE = SearchAttributeKey.for_int(
+    "AgentFactoryMissionId"
+)
+AUTONOMOUS_PROJECT_ID_SEARCH_ATTRIBUTE = SearchAttributeKey.for_int(
+    "AgentFactoryProjectId"
+)
+AUTONOMOUS_CHAIN_SEQUENCE_SEARCH_ATTRIBUTE = SearchAttributeKey.for_int(
+    "AgentFactoryChainSequence"
+)
+AUTONOMOUS_MISSION_IDENTITY_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
+    "AgentFactoryMissionIdentity"
+)
+AUTONOMOUS_MISSION_KEY_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
+    "AgentFactoryMissionKey"
+)
+AUTONOMOUS_MISSION_PHASE_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
+    "AgentFactoryMissionPhase"
+)
+AUTONOMOUS_MISSION_DISPOSITION_SEARCH_ATTRIBUTE = SearchAttributeKey.for_keyword(
+    "AgentFactoryMissionDisposition"
+)
 AUTONOMOUS_PHASES = frozenset(
     {
         "DRAFT",
@@ -47,6 +83,94 @@ AUTONOMOUS_CONTROL_ACTIONS = frozenset(
 AUTONOMOUS_EPOCH_HANDOFF_ACTIONS = frozenset(
     {"RESTART_FROM_CHECKPOINT", "APPLY_BACKLOG_REVISION"}
 )
+
+
+def autonomous_mission_search_attributes(
+    *,
+    mission_id: int,
+    project_id: int,
+    mission_identity: str,
+    mission_key: str,
+    chain_sequence: int,
+    phase: str,
+    disposition: str,
+) -> TypedSearchAttributes:
+    """Return stable typed visibility fields inherited by every chain run."""
+
+    return TypedSearchAttributes(
+        [
+            SearchAttributePair(
+                AUTONOMOUS_MISSION_ID_SEARCH_ATTRIBUTE, int(mission_id)
+            ),
+            SearchAttributePair(
+                AUTONOMOUS_PROJECT_ID_SEARCH_ATTRIBUTE, int(project_id)
+            ),
+            SearchAttributePair(
+                AUTONOMOUS_CHAIN_SEQUENCE_SEARCH_ATTRIBUTE,
+                int(chain_sequence),
+            ),
+            SearchAttributePair(
+                AUTONOMOUS_MISSION_IDENTITY_SEARCH_ATTRIBUTE,
+                str(mission_identity),
+            ),
+            SearchAttributePair(
+                AUTONOMOUS_MISSION_KEY_SEARCH_ATTRIBUTE, str(mission_key)
+            ),
+            SearchAttributePair(
+                AUTONOMOUS_MISSION_PHASE_SEARCH_ATTRIBUTE, str(phase)
+            ),
+            SearchAttributePair(
+                AUTONOMOUS_MISSION_DISPOSITION_SEARCH_ATTRIBUTE,
+                str(disposition),
+            ),
+        ]
+    )
+
+
+def autonomous_mission_visibility_memo(
+    *,
+    mission_id: int,
+    project_id: int,
+    mission_identity: str,
+    mission_key: str,
+    chain_sequence: int,
+) -> dict[str, dict[str, Any]]:
+    """Keep a small non-indexed identity fallback beside Search Attributes."""
+
+    return {
+        "agentfactory_autonomous_mission": {
+            "schema_version": AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION,
+            "mission_id": int(mission_id),
+            "project_id": int(project_id),
+            "mission_identity": str(mission_identity),
+            "mission_key": str(mission_key),
+            "chain_sequence": int(chain_sequence),
+        }
+    }
+
+
+def autonomous_rollover_reason(
+    *,
+    safe_boundary_count: int,
+    history_event_count: int,
+    safe_boundary_threshold: int,
+    history_event_threshold: int,
+    temporal_recommended: bool,
+    worker_deployment_changed: bool,
+) -> str | None:
+    """Choose one deterministic rollover reason at an already-safe boundary."""
+
+    if int(safe_boundary_count) <= 0:
+        return None
+    if worker_deployment_changed:
+        return "WORKER_DEPLOYMENT_CHANGED"
+    if temporal_recommended:
+        return "TEMPORAL_RECOMMENDATION"
+    if int(history_event_count) >= int(history_event_threshold):
+        return "HISTORY_EVENT_THRESHOLD"
+    if int(safe_boundary_count) >= int(safe_boundary_threshold):
+        return "SAFE_BOUNDARY_THRESHOLD"
+    return None
 
 
 def _bounded(value: str, label: str, limit: int) -> str:
@@ -277,10 +401,17 @@ class AutonomousMissionCarryOver:
     current_child_job_id: int | None = None
     current_child_workflow_id: str | None = None
     current_work_item_stable_id: str | None = None
+    # Schema v1 carried these display values. Schema v2 leaves them empty and
+    # reconstructs display state in the new run so only identities cross runs.
     current_role: str | None = None
     current_model: str | None = None
     completed_items: int = 0
     total_items: int = 0
+    accepted_mutation_count: int = 0
+    previous_run_safe_boundary_count: int = 0
+    previous_run_history_event_count: int = 0
+    rollover_reason: str | None = None
+    previous_worker_build_id: str | None = None
     environment_status: str = "NOT_STARTED"
     control_fencing_token: int = 1
     last_control_command_id: str | None = None
@@ -291,12 +422,14 @@ class AutonomousMissionCarryOver:
     pending_epoch_handoff_action: str | None = None
     last_epoch_handoff_command_id: str | None = None
     last_epoch_handoff_action: str | None = None
-    last_activity: str = "Mission workflow created"
+    last_activity: str = ""
     last_activity_at: str = ""
     schema_version: int = AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
-        if self.schema_version != AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION:
+        if self.schema_version not in (
+            AUTONOMOUS_MISSION_WORKFLOW_SUPPORTED_SCHEMA_VERSIONS
+        ):
             raise ValueError("Unsupported Autonomous Mission carry-over version")
         if int(self.mission_id) <= 0 or int(self.mission_version) <= 0:
             raise ValueError("Mission identity and version must be positive")
@@ -367,6 +500,29 @@ class AutonomousMissionCarryOver:
             raise ValueError("Mission progress counters cannot be negative")
         if self.completed_items > self.total_items:
             raise ValueError("Completed item count cannot exceed total item count")
+        for value, label in (
+            (self.accepted_mutation_count, "Accepted mutation count"),
+            (
+                self.previous_run_safe_boundary_count,
+                "Previous run safe-boundary count",
+            ),
+            (
+                self.previous_run_history_event_count,
+                "Previous run history-event count",
+            ),
+        ):
+            if int(value) < 0:
+                raise ValueError(f"{label} cannot be negative")
+        if self.rollover_reason is not None and (
+            self.rollover_reason not in AUTONOMOUS_ROLLOVER_REASONS
+        ):
+            raise ValueError(
+                f"Unsupported continue-as-new reason: {self.rollover_reason}"
+            )
+        _optional_bounded(
+            self.previous_worker_build_id,
+            "Previous Worker build id",
+        )
         if self.environment_status not in AUTONOMOUS_ENVIRONMENT_STATUSES:
             raise ValueError(
                 f"Unsupported environment status: {self.environment_status}"
@@ -413,7 +569,19 @@ class AutonomousMissionCarryOver:
             _optional_bounded(command_id, f"{label} command id")
             if action is not None and action not in AUTONOMOUS_EPOCH_HANDOFF_ACTIONS:
                 raise ValueError(f"Unsupported {label.lower()} action: {action}")
-        _bounded(self.last_activity, "Last activity", AUTONOMOUS_SUMMARY_LIMIT)
+        if self.schema_version >= 2 and any(
+            (
+                self.current_role is not None,
+                self.current_model is not None,
+                bool(self.last_activity),
+                bool(self.last_activity_at),
+            )
+        ):
+            raise ValueError(
+                "Carry-over schema v2 cannot contain display summaries or role/model data"
+            )
+        if self.last_activity:
+            _bounded(self.last_activity, "Last activity", AUTONOMOUS_SUMMARY_LIMIT)
         if self.last_activity_at:
             _bounded(
                 self.last_activity_at,
@@ -450,10 +618,17 @@ class AutonomousMissionWorkflowInput:
     autonomous_child_execution_mode: str = "live"
     autonomous_child_workflow_definition_id: str = "delivery"
     autonomous_child_max_repair_iterations: int = 5
+    continue_as_new_enabled: bool = False
+    continue_as_new_event_threshold: int = 10_000
+    continue_as_new_safe_boundary_threshold: int = 100
+    worker_build_id: str = "agentfactory-legacy-unversioned"
+    worker_versioning_enabled: bool = False
     schema_version: int = AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION
 
     def __post_init__(self) -> None:
-        if self.schema_version != AUTONOMOUS_MISSION_WORKFLOW_SCHEMA_VERSION:
+        if self.schema_version not in (
+            AUTONOMOUS_MISSION_WORKFLOW_SUPPORTED_SCHEMA_VERSIONS
+        ):
             raise ValueError("Unsupported Autonomous Mission Workflow input version")
         if int(self.mission_id) <= 0 or int(self.project_id) <= 0:
             raise ValueError("Mission and project identifiers must be positive")
@@ -493,6 +668,19 @@ class AutonomousMissionWorkflowInput:
             raise ValueError(
                 "Autonomous child repair iterations must be between zero and 100"
             )
+        if not 10 <= int(self.continue_as_new_event_threshold) <= 50_000:
+            raise ValueError(
+                "Continue-as-new event threshold must be between 10 and 50000"
+            )
+        if not 1 <= int(self.continue_as_new_safe_boundary_threshold) <= 10_000:
+            raise ValueError(
+                "Continue-as-new safe-boundary threshold must be between 1 and 10000"
+            )
+        _bounded(
+            self.worker_build_id,
+            "Temporal Worker build id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
         if self.carry_over is not None:
             carry = self.carry_over
             if (
@@ -500,6 +688,7 @@ class AutonomousMissionWorkflowInput:
                 or carry.mission_version != self.mission_version
                 or carry.phase != self.phase
                 or carry.disposition != self.disposition
+                or carry.schema_version != self.schema_version
             ):
                 raise ValueError(
                     "Carry-over must bind the exact mission version and control state"
@@ -556,6 +745,15 @@ class AutonomousMissionWorkflowState:
     current_model: str | None = None
     completed_items: int = 0
     total_items: int = 0
+    accepted_mutation_count: int = 0
+    run_safe_boundary_count: int = 0
+    previous_run_safe_boundary_count: int = 0
+    current_history_event_count: int = 0
+    previous_run_history_event_count: int = 0
+    last_rollover_reason: str | None = None
+    workflow_build_id: str | None = None
+    previous_worker_build_id: str | None = None
+    rollover_pending: bool = False
     environment_status: str = "NOT_STARTED"
     control_fencing_token: int = 1
     last_control_command_id: str | None = None
@@ -585,6 +783,7 @@ class AutonomousMissionWorkflowState:
             mission_version=request.mission_version,
             phase=request.phase,
             disposition=request.disposition,
+            schema_version=request.schema_version,
         )
         return cls(
             mission_id=request.mission_id,
@@ -616,10 +815,19 @@ class AutonomousMissionWorkflowState:
             current_child_job_id=carry.current_child_job_id,
             current_child_workflow_id=carry.current_child_workflow_id,
             current_work_item_stable_id=carry.current_work_item_stable_id,
-            current_role=carry.current_role,
-            current_model=carry.current_model,
+            current_role=(carry.current_role if carry.schema_version == 1 else None),
+            current_model=(carry.current_model if carry.schema_version == 1 else None),
             completed_items=carry.completed_items,
             total_items=carry.total_items,
+            accepted_mutation_count=carry.accepted_mutation_count,
+            previous_run_safe_boundary_count=(
+                carry.previous_run_safe_boundary_count
+            ),
+            previous_run_history_event_count=(
+                carry.previous_run_history_event_count
+            ),
+            last_rollover_reason=carry.rollover_reason,
+            previous_worker_build_id=carry.previous_worker_build_id,
             environment_status=carry.environment_status,
             control_fencing_token=carry.control_fencing_token,
             last_control_command_id=carry.last_control_command_id,
@@ -632,9 +840,18 @@ class AutonomousMissionWorkflowState:
             pending_epoch_handoff_action=carry.pending_epoch_handoff_action,
             last_epoch_handoff_command_id=carry.last_epoch_handoff_command_id,
             last_epoch_handoff_action=carry.last_epoch_handoff_action,
-            last_activity=carry.last_activity,
-            last_activity_at=carry.last_activity_at or started_at,
+            last_activity=(
+                carry.last_activity
+                if carry.schema_version == 1 and carry.last_activity
+                else "Mission workflow continued from durable identities"
+            ),
+            last_activity_at=(
+                carry.last_activity_at
+                if carry.schema_version == 1 and carry.last_activity_at
+                else started_at
+            ),
             started_at=started_at,
+            schema_version=request.schema_version,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -665,6 +882,7 @@ class AutonomousMissionWorkflowState:
             workspace="bounded-state",
             database="bounded-state",
             carry_over=self.to_carry_over(),
+            schema_version=self.schema_version,
         )
         _bounded(
             self.temporal_workflow_id,
@@ -689,8 +907,40 @@ class AutonomousMissionWorkflowState:
             _bounded(
                 self.started_at, "Workflow start timestamp", AUTONOMOUS_IDENTIFIER_LIMIT
             )
+        for value, label in (
+            (self.accepted_mutation_count, "Accepted mutation count"),
+            (self.run_safe_boundary_count, "Run safe-boundary count"),
+            (
+                self.previous_run_safe_boundary_count,
+                "Previous run safe-boundary count",
+            ),
+            (self.current_history_event_count, "Current history-event count"),
+            (
+                self.previous_run_history_event_count,
+                "Previous run history-event count",
+            ),
+        ):
+            if int(value) < 0:
+                raise ValueError(f"{label} cannot be negative")
+        if self.last_rollover_reason is not None and (
+            self.last_rollover_reason not in AUTONOMOUS_ROLLOVER_REASONS
+        ):
+            raise ValueError(
+                f"Unsupported continue-as-new reason: {self.last_rollover_reason}"
+            )
+        _optional_bounded(self.workflow_build_id, "Temporal Worker build id")
+        _optional_bounded(
+            self.previous_worker_build_id,
+            "Previous Temporal Worker build id",
+        )
 
-    def to_carry_over(self) -> AutonomousMissionCarryOver:
+    def to_carry_over(
+        self,
+        *,
+        rollover_reason: str | None = None,
+        history_event_count: int | None = None,
+        worker_build_id: str | None = None,
+    ) -> AutonomousMissionCarryOver:
         return AutonomousMissionCarryOver(
             mission_id=self.mission_id,
             mission_version=self.mission_version,
@@ -713,10 +963,19 @@ class AutonomousMissionWorkflowState:
             current_child_job_id=self.current_child_job_id,
             current_child_workflow_id=self.current_child_workflow_id,
             current_work_item_stable_id=self.current_work_item_stable_id,
-            current_role=self.current_role,
-            current_model=self.current_model,
+            current_role=None,
+            current_model=None,
             completed_items=self.completed_items,
             total_items=self.total_items,
+            accepted_mutation_count=self.accepted_mutation_count,
+            previous_run_safe_boundary_count=self.run_safe_boundary_count,
+            previous_run_history_event_count=(
+                self.current_history_event_count
+                if history_event_count is None
+                else int(history_event_count)
+            ),
+            rollover_reason=rollover_reason,
+            previous_worker_build_id=(worker_build_id or self.workflow_build_id),
             environment_status=self.environment_status,
             control_fencing_token=self.control_fencing_token,
             last_control_command_id=self.last_control_command_id,
@@ -729,8 +988,9 @@ class AutonomousMissionWorkflowState:
             pending_epoch_handoff_action=self.pending_epoch_handoff_action,
             last_epoch_handoff_command_id=self.last_epoch_handoff_command_id,
             last_epoch_handoff_action=self.last_epoch_handoff_action,
-            last_activity=self.last_activity,
-            last_activity_at=self.last_activity_at,
+            last_activity="",
+            last_activity_at="",
+            schema_version=self.schema_version,
         )
 
 
@@ -762,6 +1022,121 @@ class AutonomousMissionActivityScope:
         _bounded(
             self.temporal_first_run_id,
             "Temporal first run id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+
+
+@dataclass(frozen=True)
+class AutonomousTemporalRunRegistrationInput:
+    """Identifier-only evidence for one concrete run in a logical mission chain."""
+
+    scope: AutonomousMissionActivityScope
+    run_id: str
+    chain_sequence: int
+    previous_run_id: str | None
+    first_run_id: str
+    mission_version: int
+    phase: str
+    disposition: str
+    active_backlog_revision_id: int | None
+    active_execution_epoch_id: int | None
+    current_checkpoint_id: int | None
+    control_fencing_token: int
+    workflow_build_id: str
+    rollover_reason: str | None
+    previous_run_history_event_count: int
+    previous_run_safe_boundary_count: int
+    accepted_mutation_count: int
+
+    def __post_init__(self) -> None:
+        _bounded(self.run_id, "Temporal run id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        _bounded(
+            self.first_run_id,
+            "Temporal first run id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        _optional_bounded(
+            self.previous_run_id,
+            "Previous Temporal run id",
+        )
+        if int(self.chain_sequence) <= 0:
+            raise ValueError("Temporal chain sequence must be positive")
+        if (int(self.chain_sequence) == 1) != (self.previous_run_id is None):
+            raise ValueError(
+                "Only the first Temporal run omits its previous run identity"
+            )
+        if int(self.chain_sequence) == 1 and self.first_run_id != self.run_id:
+            raise ValueError("The first Temporal run must identify itself as first")
+        if int(self.mission_version) <= 0 or int(self.control_fencing_token) <= 0:
+            raise ValueError("Mission version and fencing token must be positive")
+        if self.phase not in AUTONOMOUS_PHASES:
+            raise ValueError(f"Unsupported Autonomous Mission phase: {self.phase}")
+        if self.disposition not in AUTONOMOUS_DISPOSITIONS:
+            raise ValueError(
+                f"Unsupported Autonomous Mission disposition: {self.disposition}"
+            )
+        for value, label in (
+            (self.active_backlog_revision_id, "Active backlog revision id"),
+            (self.active_execution_epoch_id, "Active execution epoch id"),
+            (self.current_checkpoint_id, "Current checkpoint id"),
+        ):
+            _optional_id(value, label)
+        _bounded(
+            self.workflow_build_id,
+            "Temporal Worker build id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        if self.rollover_reason is not None and (
+            self.rollover_reason not in AUTONOMOUS_ROLLOVER_REASONS
+        ):
+            raise ValueError(
+                f"Unsupported continue-as-new reason: {self.rollover_reason}"
+            )
+        if int(self.chain_sequence) == 1 and self.rollover_reason is not None:
+            raise ValueError("The first Temporal run cannot have a rollover reason")
+        if int(self.chain_sequence) > 1 and self.rollover_reason is None:
+            raise ValueError("A continued Temporal run requires a rollover reason")
+        for value, label in (
+            (
+                self.previous_run_history_event_count,
+                "Previous run history-event count",
+            ),
+            (
+                self.previous_run_safe_boundary_count,
+                "Previous run safe-boundary count",
+            ),
+            (self.accepted_mutation_count, "Accepted mutation count"),
+        ):
+            if int(value) < 0:
+                raise ValueError(f"{label} cannot be negative")
+
+
+@dataclass(frozen=True)
+class AutonomousTemporalRunRegistrationResult:
+    mission_id: int
+    registration_id: int
+    run_id: str
+    chain_sequence: int
+    workflow_build_id: str
+    run_digest: str
+    duplicate: bool
+    registered_at: str
+
+    def __post_init__(self) -> None:
+        _optional_id(self.mission_id, "Mission id")
+        _optional_id(self.registration_id, "Temporal run registration id")
+        _bounded(self.run_id, "Temporal run id", AUTONOMOUS_IDENTIFIER_LIMIT)
+        if int(self.chain_sequence) <= 0:
+            raise ValueError("Temporal chain sequence must be positive")
+        _bounded(
+            self.workflow_build_id,
+            "Temporal Worker build id",
+            AUTONOMOUS_IDENTIFIER_LIMIT,
+        )
+        _sha256(self.run_digest, "Temporal run digest")
+        _bounded(
+            self.registered_at,
+            "Temporal run registration timestamp",
             AUTONOMOUS_IDENTIFIER_LIMIT,
         )
 
@@ -1175,6 +1550,7 @@ class AutonomousPlanningActivityResult:
     ready_for_approval: bool
     summary: str
     occurred_at: str
+    duplicate: bool = False
 
     def __post_init__(self) -> None:
         for value, label in (

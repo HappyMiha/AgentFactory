@@ -68,6 +68,22 @@ $env:TEMPORAL_ENABLED = "true"
 
 The backend may start a Workflow before the Worker is running. Temporal keeps the Workflow task pending until a Worker polls `agentfactory-main`.
 
+## Autonomous history and Worker releases
+
+Autonomous Mission continue-as-new is enabled by default for environment-loaded settings. The parent evaluates rollover only after a persisted safe boundary and only when no child, mutation Activity, handler, retry, handoff, or queued planning/approval command is active. These settings control the boundary:
+
+```powershell
+$env:TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_ENABLED = "true"
+$env:TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_EVENT_THRESHOLD = "10000"
+$env:TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_SAFE_BOUNDARY_THRESHOLD = "100"
+```
+
+Temporal recommendation and an enabled Worker Deployment target change can also request rollover, but neither bypasses the safe-boundary check. Each new run carries schema-v2 identifiers and counters, registers immutable SQLite chain evidence, and republishes its memo and typed Search Attributes. OperatorService registration is automatic on the full server. The SDK time-skipping server has no OperatorService or list visibility API, so tests use the same memo plus retained SQLite run IDs for direct discovery.
+
+The Compose namespace defaults to seven-day retention (`TEMPORAL_NAMESPACE_RETENTION=7d` before first namespace creation); SDK-created namespaces use `TEMPORAL_NAMESPACE_RETENTION_DAYS=7`. Changing either variable does not modify an existing namespace. Temporal retention may remove closed Workflow history and visibility rows, but it does not remove AgentFactory's immutable `autonomous_mission_temporal_runs` ledger or domain audit events. Do not use Temporal visibility as the system of record for mission audit.
+
+Every Worker publishes `TEMPORAL_WORKER_BUILD_ID`. Worker Deployment routing is opt-in with `TEMPORAL_WORKER_VERSIONING_ENABLED=true` and the stable `TEMPORAL_WORKER_DEPLOYMENT_NAME=agentfactory-autonomous`. The code configures `PINNED` behavior and lets only a safe continued run request `AUTO_UPGRADE`. Before enabling it or replacing a build, follow [the Worker versioning and replay runbook](temporal-worker-versioning.md).
+
 Start a job through the existing UI or CLI:
 
 ```powershell

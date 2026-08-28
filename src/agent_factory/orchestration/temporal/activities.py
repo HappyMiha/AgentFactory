@@ -101,6 +101,8 @@ from .models import (
     AutonomousPlanningActivityResult,
     AutonomousRetrySettlementInput,
     AutonomousRetrySettlementResult,
+    AutonomousTemporalRunRegistrationInput,
+    AutonomousTemporalRunRegistrationResult,
     DemoWorkflowInput,
     StageActivityInput,
 )
@@ -250,6 +252,68 @@ class AgentFactoryActivities:
         }
         return RuntimePlanningInvoker(runtime), capabilities
 
+    def _register_autonomous_temporal_run_sync(
+        self, request: AutonomousTemporalRunRegistrationInput
+    ) -> AutonomousTemporalRunRegistrationResult:
+        storage = self._autonomous_storage(request.scope)
+        try:
+            missions = AutonomousMissionService(storage)
+            self._assert_autonomous_scope(request.scope, missions)
+            registered = MissionCheckpointService(storage).register_mission_temporal_run(
+                request.scope.mission_id,
+                mission_identity=request.scope.mission_identity,
+                mission_key=request.scope.mission_key,
+                project_id=request.scope.project_id,
+                sequence=request.chain_sequence,
+                workflow_id=request.scope.temporal_workflow_id,
+                run_id=request.run_id,
+                previous_run_id=request.previous_run_id,
+                first_run_id=request.first_run_id,
+                mission_version=request.mission_version,
+                phase=request.phase,
+                disposition=request.disposition,
+                active_backlog_revision_id=(
+                    request.active_backlog_revision_id
+                ),
+                active_execution_epoch_id=request.active_execution_epoch_id,
+                current_checkpoint_id=request.current_checkpoint_id,
+                control_fencing_token=request.control_fencing_token,
+                workflow_build_id=request.workflow_build_id,
+                rollover_reason=request.rollover_reason,
+                previous_run_history_event_count=(
+                    request.previous_run_history_event_count
+                ),
+                previous_run_safe_boundary_count=(
+                    request.previous_run_safe_boundary_count
+                ),
+                accepted_mutation_count=request.accepted_mutation_count,
+            )
+            return AutonomousTemporalRunRegistrationResult(
+                mission_id=registered.mission_id,
+                registration_id=registered.id,
+                run_id=registered.run_id,
+                chain_sequence=registered.sequence,
+                workflow_build_id=registered.workflow_build_id,
+                run_digest=registered.run_digest,
+                duplicate=registered.duplicate,
+                registered_at=registered.registered_at,
+            )
+        finally:
+            storage.close()
+
+    @activity.defn(name="register_autonomous_temporal_run")
+    async def register_autonomous_temporal_run(
+        self, request: AutonomousTemporalRunRegistrationInput
+    ) -> AutonomousTemporalRunRegistrationResult:
+        try:
+            return await asyncio.to_thread(
+                self._register_autonomous_temporal_run_sync, request
+            )
+        except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
+            raise ApplicationError(
+                str(exc)[:4000], type="CONFIGURATION", non_retryable=True
+            ) from exc
+
     def _autonomous_capabilities(
         self, scope: AutonomousMissionActivityScope
     ) -> dict[str, ProviderCapabilities]:
@@ -291,6 +355,8 @@ class AgentFactoryActivities:
         run: PlanningPipelineRun,
         report: ProposalReadinessReport,
         request: AutonomousPlanningActivityInput,
+        *,
+        duplicate: bool = False,
     ) -> AutonomousPlanningActivityResult:
         result_version = (
             report.mission_result_version
@@ -329,6 +395,7 @@ class AgentFactoryActivities:
             ready_for_approval=ready,
             summary=summary,
             occurred_at=report.created_at,
+            duplicate=duplicate,
         )
 
     def _run_autonomous_planning_sync(
@@ -386,7 +453,12 @@ class AgentFactoryActivities:
                         "Planning Activity command is already bound to another proposal"
                     )
                 return self._planning_activity_result(
-                    missions, revisions, run, report, request
+                    missions,
+                    revisions,
+                    run,
+                    report,
+                    request,
+                    duplicate=True,
                 )
 
             manifest = planning.get_manifest(command.manifest_id)

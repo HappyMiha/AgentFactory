@@ -4,7 +4,7 @@
 
 AgentFactory now has an optional Temporal-backed delivery path controlled by `TEMPORAL_ENABLED`. When enabled, the existing API/application start path creates the existing SQLite run, starts a stable `AgentFactoryJobWorkflow`, records the Temporal identity, and returns without waiting for all stages. A Windows-host Worker executes side effects as Activities and reuses the existing AgentFactory registry, runtime, reviewer router, workflow contracts, SQLite artifacts, approvals, and process supervisor.
 
-The integration includes a pinned local PostgreSQL/Temporal/UI Compose stack, idempotent namespace bootstrap, PowerShell lifecycle and health commands, centralized timeout/retry policies, structured Activity results, activity heartbeats, cancellation-aware process-tree cleanup, pause/resume/cancel Signals, status/progress/current-task Queries, a bounded repair loop, a deterministic demo Workflow, API/UI controls, and SDK plus real-Docker durability coverage.
+The integration includes a pinned local PostgreSQL/Temporal/UI Compose stack, idempotent namespace bootstrap, PowerShell lifecycle and health commands, centralized timeout/retry policies, structured Activity results, activity heartbeats, cancellation-aware process-tree cleanup, pause/resume/cancel Signals, status/progress/current-task Queries, a bounded repair loop, safe-boundary continue-as-new, mission-wide run visibility/audit, explicit Worker build/versioning policy, a deterministic demo Workflow, API/UI controls, and SDK plus real-Docker durability coverage.
 
 `TEMPORAL_ENABLED=false` preserves the pre-existing synchronous `WorkflowEngine` path. Enabling Temporal is strict: backend and Worker startup fail with an actionable diagnostic if the configured server is unavailable.
 
@@ -16,7 +16,7 @@ FastAPI or the CLI called `AgentFactoryService.run_workflow()`, which called `Wo
 
 The product/domain boundary remains AgentFactory: projects, work items/backlog, agents, policies, provider gates, evidence, artifacts, approvals, and SQLite. Temporal is the durable orchestration boundary: Workflow history, completed stage sequence, Activity scheduling/retry, timers, live orchestration state, Signals, cancellation, and recovery.
 
-`AgentFactoryJobWorkflow` contains deterministic orchestration only. The additive `AutonomousMissionWorkflow` is the stable, long-lived parent for an opt-in Autonomous Mission; its history contains identifiers and bounded summaries only. Before approval it waits without polling or side effects. After approval, when execution is enabled, it advances authorized environment phases, starts one deterministic dependency-ready child at a time, and waits for both the child result and its SQLite checkpoint reconciliation before scheduling the next item. Typed control Signals persist through an Activity into the mission-wide SQLite fence before the parent or active child changes query state. Every local inference and multi-tool worker turn reacquires the current token, while stop/retry leases converge at an explicit safe boundary. Owner-authorized checkpoint/revision handoff Signals independently reload their immutable command, supersede the active child only after that boundary, append exactly one replacement epoch, renew epoch-scoped authority, and carry the persisted result back into the same parent state. `AgentFactoryActivities` performs workspace/config reads, SQLite reads and writes, agent execution, review routing, artifact persistence, validation, standard final-gate creation, and autonomous evidence finalization. Long-running runtime calls execute in a host thread with Temporal heartbeats and a cancellation event. CLI processes are placed in their own process group; cancellation first requests graceful group termination and then uses bounded forceful tree cleanup.
+`AgentFactoryJobWorkflow` contains deterministic orchestration only. The additive `AutonomousMissionWorkflow` is the stable, long-lived parent for an opt-in Autonomous Mission; its history contains identifiers and bounded summaries only. Before approval it waits without polling or side effects. After approval, when execution is enabled, it advances authorized environment phases, starts one deterministic dependency-ready child at a time, and waits for both the child result and its SQLite checkpoint reconciliation before scheduling the next item. Typed control Signals persist through an Activity into the mission-wide SQLite fence before the parent or active child changes query state. Every local inference and multi-tool worker turn reacquires the current token, while stop/retry leases converge at an explicit safe boundary. Owner-authorized checkpoint/revision handoff Signals independently reload their immutable command, supersede the active child only after that boundary, append exactly one replacement epoch, renew epoch-scoped authority, and carry the persisted result back into the same parent state. After an accepted mutation reaches a safe boundary, configured history thresholds, Temporal recommendation, or a Worker Deployment target change may continue the parent as a new run. Schema-v2 carry-over omits display summaries and role/model data; every run republishes identity visibility and appends immutable build/chain evidence to SQLite before doing mission work. `AgentFactoryActivities` performs workspace/config reads, SQLite reads and writes, agent execution, review routing, artifact persistence, validation, standard final-gate creation, and autonomous evidence finalization. Long-running runtime calls execute in a host thread with Temporal heartbeats and a cancellation event. CLI processes are placed in their own process group; cancellation first requests graceful group termination and then uses bounded forceful tree cleanup.
 
 Standard-job stable IDs have the form `agentfactory-job-{jobId}`; the current application assigns `jobId=run-{runId}`. Autonomous parent IDs have the form `agentfactory-autonomous-mission-{missionId}`. Autonomous child IDs additionally bind mission, revision, execution epoch, stable item, and logical attempt. Duplicate preparation resolves the same immutable child job, duplicate control commands resolve their original immutable result, stale/out-of-order tokens fail closed, and provider/stage mutation reservations remain replay-safe. The current task queue is configurable and defaults to `agentfactory-main`.
 
@@ -46,13 +46,15 @@ Standard-job stable IDs have the form `agentfactory-job-{jobId}`; the current ap
 - `tests/test_temporal_api.py`
 - `tests/test_temporal_workflows.py`
 - `tests/test_temporal_docker_durability.py`
+- `tests/test_autonomous_history_rollover.py`
 - `docs/architecture/temporal-integration-analysis.md`
 - `docs/development/temporal.md`
+- `docs/development/temporal-worker-versioning.md`
 - `docs/implementation/temporal-integration-report.md`
 
 ## 5. Files modified
 
-- `.env.example`: Temporal feature flag, endpoint, namespace, queue, UI, timeouts, heartbeat, cancellation, and repair settings
+- `.env.example`: Temporal feature flag, endpoint, namespace/retention, queue, UI, history thresholds, Worker build/deployment, timeouts, heartbeat, cancellation, and repair settings
 - `.gitattributes`: LF enforcement for Linux container shell scripts
 - `Dockerfile`: installs declared runtime dependencies so the image includes the required Temporal SDK
 - `pyproject.toml`: pinned Temporal SDK, Worker entry point, and required web multipart dependency
@@ -74,9 +76,13 @@ Standard-job stable IDs have the form `agentfactory-job-{jobId}`; the current ap
 
 Official Python SDK `temporalio==1.31.0`.
 
+Workflow command changes use named patch markers. AF-AMM-017 is guarded by `af-amm-017-safe-rollover-v1`; schema v1 remains accepted for replay and schema v2 is emitted for new chains. A historical pre-patch Workflow history is replayed against the current definition in CI. Worker Deployment mode is opt-in, publishes one immutable build ID per release, defaults new Workflows to `PINNED`, and requests `AUTO_UPGRADE` only when continue-as-new has already reached a safe boundary.
+
 ## 8. PostgreSQL version
 
 `postgres:16.14-alpine3.24`. Workflow history is stored in the named volume `agentfactory-temporal-postgresql-data`.
+
+The namespace defaults to seven-day Temporal retention. Closed visibility/history is operational evidence within that window; the immutable SQLite `autonomous_mission_temporal_runs` table and mission audit events are the durable domain record beyond it.
 
 Temporal UI is pinned separately at `temporalio/ui:2.53.0`.
 
@@ -125,7 +131,7 @@ Open <http://localhost:8080>. AgentFactory's run detail links to the selected Wo
 
 ## 13. Tests executed
 
-Syntax, patch hygiene, Compose rendering, targeted API tests, official Temporal SDK test-server tests, and the entire existing suite were exercised. Final complete-suite result: **300 tests run: 299 passed and 1 opt-in Docker test skipped by default**.
+Syntax, patch hygiene, Compose rendering, targeted API tests, historical replay, forced three-run continue-as-new with Worker replacement, official Temporal SDK test-server tests, and the entire existing suite were exercised. Final complete-suite result: **391 tests run: 390 passed and 1 opt-in Docker test skipped by default**.
 
 ```powershell
 git diff --check
