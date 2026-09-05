@@ -1514,11 +1514,23 @@
         "cloud:AF-CLD-004",
         "core:AF-GC-005"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
+      "scopes": [
+        "cloud:docs/game-brief-intake.md",
+        "cloud:pyproject.toml",
+        "cloud:src/agentfactory_cloud/__init__.py",
+        "cloud:src/agentfactory_cloud/brief_web.py",
+        "cloud:src/agentfactory_cloud/game_briefs.py",
+        "cloud:src/agentfactory_cloud/static/brief.css",
+        "cloud:src/agentfactory_cloud/static/brief.html",
+        "cloud:src/agentfactory_cloud/static/brief.js",
+        "cloud:tests/test_game_brief_browser.py",
+        "cloud:tests/test_game_brief_web.py",
+        "cloud:tests/test_game_briefs.py"
+      ],
+      "updated_at": "2026-09-05T23:55:40+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -1543,7 +1555,8 @@
           "condition": "always",
           "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
         }
-      ]
+      ],
+      "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5"
     },
     "cloud:AF-CLD-008": {
       "dependencies": [
@@ -4661,6 +4674,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-CLD-004-15205ae4",
       "claim_id": "631b9166-5818-439f-b990-50cefbd01787"
+    },
+    {
+      "operation_id": "5664a959-acff-4719-bdd3-e09cdc969230",
+      "at": "2026-09-05T23:55:40+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-007",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
+      "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5"
     }
   ],
   "migration": {
