@@ -158,10 +158,11 @@
         "core:src/agent_factory/runtime.py",
         "core:src/agent_factory/workflow.py",
         "core:tests/test_autonomous_authorization.py",
-        "core:tests/test_model_binding.py"
+        "core:tests/test_model_binding.py",
+        "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-05T18:58:18+00:00",
-      "note": "Update the offline autonomous provider fixture for explicit model binding.",
+      "updated_at": "2026-09-05T19:11:04+00:00",
+      "note": "Update API model-selection fixture to the explicit allowlist contract.",
       "pr": null,
       "resources": [
         "core:provider-model",
@@ -3616,6 +3617,16 @@
       "note": "Unify local API authentication with browser sessions and server-owned identity.",
       "branch": "team/HappySnowman/core-af-gc-039-c0cad891",
       "claim_id": "ac1e8748-d118-4572-abe7-960f0816077d"
+    },
+    {
+      "operation_id": "bd612715-405b-44df-8e4f-c6c8d56c0fb5",
+      "at": "2026-09-05T19:11:04+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-006",
+      "worker": "HappyDucky02",
+      "note": "Update API model-selection fixture to the explicit allowlist contract.",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     }
   ]
 }
