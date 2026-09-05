@@ -1357,19 +1357,11 @@
       "dependencies": [
         "cloud:AF-CLD-001"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-CLD-002-adf89da0",
-      "scopes": [
-        "cloud:contracts/v1/domain.json",
-        "cloud:contracts/v1/scenarios.json",
-        "cloud:contracts/v1/transitions.json",
-        "cloud:docs/api-contract.md",
-        "cloud:docs/domain-model.md",
-        "cloud:scripts/validate_domain_contracts.py",
-        "cloud:tests/test_domain_contracts.py"
-      ],
-      "updated_at": "2026-09-05T21:41:58+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-05T21:49:07+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/5",
       "resources": [
@@ -1384,7 +1376,9 @@
         "cloud:AF-CLD-001"
       ],
       "claim_id": "319137a6-7e5e-4106-a759-e9f826d07b8d",
-      "review_head": "f62898225fbc464ca463a9256da79de5bb41958a"
+      "review_head": "f62898225fbc464ca463a9256da79de5bb41958a",
+      "completed_commit": "8a86fd38de30e648c0d87a6bf0ce7a87b0829b5d",
+      "reviewed_head": "f62898225fbc464ca463a9256da79de5bb41958a"
     },
     "cloud:AF-CLD-003": {
       "dependencies": [
@@ -4179,6 +4173,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "f6494bbd-fb7d-421f-b1b6-3db55ff1e667",
+      "at": "2026-09-05T21:49:07+00:00",
+      "action": "complete",
+      "task": "cloud:AF-CLD-002",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-002-adf89da0",
+      "claim_id": "319137a6-7e5e-4106-a759-e9f826d07b8d"
     }
   ],
   "migration": {
