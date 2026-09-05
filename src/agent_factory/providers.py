@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -176,6 +177,8 @@ class CLIProvider(Provider):
         executable: str,
         args: list[str],
         *,
+        model_namespace: str = "",
+        model_ids: list[str] | None = None,
         executable_candidates: list[str] | None = None,
         version_args: list[str] | None = None,
         prompt_transport: str = "stdin",
@@ -196,6 +199,8 @@ class CLIProvider(Provider):
         self.executable = executable
         self.executable_candidates = tuple(executable_candidates or [])
         self.args = tuple(args)
+        self.model_namespace = model_namespace
+        self.model_ids = tuple(model_ids or [])
         self.version_args = tuple(version_args or ["--version"])
         self.prompt_transport = prompt_transport
         self.prompt_file_args = tuple(prompt_file_args or ["--message-file"])
@@ -210,6 +215,27 @@ class CLIProvider(Provider):
         self.workspace = (workspace or Path.cwd()).resolve()
         self.supervisor = supervisor or ProcessSupervisor()
         self.capabilities = capabilities or ProviderCapabilities()
+
+    def model_request(self, requested: str) -> tuple[list[str], str | None]:
+        """Bind a canonical model ID to one reviewed argument, never shell text."""
+        if not self.model_ids:
+            if requested or "{model}" in self.args:
+                raise ValueError("Selected model has no qualified CLI binding for this provider")
+            # Legacy model-free tools may run, but cannot attest a model identity.
+            return list(self.args), None
+        if (
+            not isinstance(self.model_namespace, str)
+            or not re.fullmatch(r"[a-z][a-z0-9_-]*", self.model_namespace)
+            or self.args.count("{model}") != 1
+            or any(not isinstance(value, str) or not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}", value
+            ) for value in self.model_ids)
+        ):
+            raise ValueError("Invalid qualified model configuration")
+        allowed = {f"{self.model_namespace}:{value}": value for value in self.model_ids}
+        if not isinstance(requested, str) or requested not in allowed:
+            raise ValueError("Selected model is unknown or unsupported; choose a configured model")
+        return [allowed[requested] if arg == "{model}" else arg for arg in self.args], requested
 
     def _executable_paths(self) -> list[str]:
         """Resolve only configured launchers, preferring stable native binaries."""
@@ -409,15 +435,28 @@ class CLIProvider(Provider):
     ) -> ProviderResult:
         if error := self._approval_error(agent, item, approval):
             return ProviderResult(False, provider=self.name, error=error, metadata={"blocked": True})
+        try:
+            model_args, effective_model = self.model_request(agent.model)
+        except ValueError as exc:
+            return ProviderResult(False, provider=self.name, error=str(exc), metadata={
+                "blocked": True, "model_binding_error": True, "effective_model": None,
+            })
+        model_metadata = {
+            "requested_model": agent.model or None,
+            "effective_model": effective_model,
+            "model_identity_source": "qualified_request" if effective_model else "unknown",
+        }
         paths = self._executable_paths()
         if not paths:
-            return ProviderResult(False, provider=self.name, error="allowlisted executable not found")
+            return ProviderResult(False, provider=self.name, error="allowlisted executable not found",
+                                  metadata=model_metadata)
         try:
             prompt = self._prompt(agent, item, context)
         except ValueError as exc:
-            return ProviderResult(False, provider=self.name, error=str(exc), metadata={"blocked": True})
+            return ProviderResult(False, provider=self.name, error=str(exc),
+                                  metadata={**model_metadata, "blocked": True})
 
-        command_suffix = list(self.args)
+        command_suffix = list(model_args)
         stdin = None
         prompt_file: Path | None = None
         if self.prompt_transport == "stdin":
@@ -472,6 +511,7 @@ class CLIProvider(Provider):
                     error="all allowlisted launchers failed before process start",
                     metadata={
                         **self._approval_metadata(approval),
+                        **model_metadata,
                         "launcher_failures": launcher_failures,
                     },
                 )
@@ -534,8 +574,9 @@ class CLIProvider(Provider):
             elapsed = round(time.monotonic() - started, 3)
             metadata = {
                 **self._approval_metadata(approval),
+                **model_metadata,
                 "executable": Path(path).name,
-                "args": list(self.args),
+                "args": model_args,
                 "timeout_seconds": timeout,
                 "elapsed_seconds": elapsed,
                 "returncode": proc.returncode,
@@ -584,6 +625,7 @@ class CLIProvider(Provider):
                 error=f"provider process failed after start: {type(exc).__name__}",
                 metadata={
                     **self._approval_metadata(approval),
+                    **model_metadata,
                     "launcher_failures": launcher_failures,
                 },
             )
