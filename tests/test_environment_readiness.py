@@ -123,6 +123,18 @@ class EnvironmentReadinessTests(AutonomousChildFixture, unittest.TestCase):
         self.assertFalse(report['checks'][0]['ready'])
         self.assertNotIn('private diagnostic', json.dumps(report))
 
+    def test_upgrade_from_72_preserves_data_without_manufacturing_ready_evidence(self):
+        from contextlib import closing
+        import agent_factory.storage as module
+        path = self.workspace / 'before-readiness.db'
+        with patch.object(module, 'MIGRATIONS', tuple(m for m in module.MIGRATIONS if m[0] <= 72)):
+            with closing(module.SQLiteStorage(path)) as previous:
+                ident = previous.create_project('Preserved project', 'Before readiness reports')
+                self.assertIsNone(previous.db.execute("SELECT name FROM sqlite_master WHERE name='environment_readiness_reports'").fetchone())
+        with closing(module.SQLiteStorage(path)) as upgraded:
+            self.assertEqual(upgraded.db.execute('SELECT name FROM projects WHERE id=?', (ident,)).fetchone()[0], 'Preserved project')
+            self.assertEqual(upgraded.db.execute('SELECT COUNT(*) FROM environment_readiness_reports').fetchone()[0], 0)
+
     def test_reports_are_immutable(self):
         self.approve(); report = self.record_fixture_readiness(self.approved)
         for statement in ('UPDATE environment_readiness_reports SET report_json=report_json',

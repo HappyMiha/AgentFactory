@@ -90,6 +90,12 @@ class EnvironmentReadinessBrowserTests(unittest.TestCase):
         self.ready();self.report['checks']=[];self.check()
         self.assertIn('needs checks',self.page.locator('#environment-status').inner_text())
 
+    def test_mobile_readiness_cards_use_readable_full_width(self):
+        self.page.add_style_tag(path=str(STATIC/'styles.css'))
+        self.page.set_viewport_size({'width':390,'height':844})
+        self.assertFalse(self.page.evaluate('document.documentElement.scrollWidth > innerWidth'))
+        self.assertGreater(self.page.locator('#environment-checks article').bounding_box()['width'], 300)
+
     def test_missions_beyond_first_page_are_selectable(self):
         self.assertEqual(self.page.locator('#environment-mission option').count(),202)
         self.assertTrue(any('offset=200' in url for url in self.pages))
