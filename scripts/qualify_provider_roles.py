@@ -30,6 +30,24 @@ def bind_local_cli_endpoint():
     os.environ["OLLAMA_HOST"] = "http://127.0.0.1:11434"
 
 
+
+def validate_cli_json(content, expected, diagnostics):
+    """Keep malformed synthetic output a failure with bounded escaped evidence."""
+    reason = None
+    if len(content) > 1024:
+        reason = "JSON content exceeds 1024 characters"
+    else:
+        try:
+            if json.loads(content) != expected:
+                reason = "JSON object does not match the requested role contract"
+        except json.JSONDecodeError as error:
+            reason = f"Invalid JSON at line {error.lineno}, column {error.colno}"
+    if reason:
+        evidence = {**diagnostics, "synthetic_stdout_prefix": content[:192],
+                    "stdout_prefix_truncated": len(content) > 192}
+        raise ValueError(f"Configured CLI JSON contract failed for {expected['role']}: {reason}; bounded diagnostics: {json.dumps(evidence, ensure_ascii=True)}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-live", action="store_true", help="Authorize these synthetic local inference requests")
@@ -88,8 +106,7 @@ def main():
             )}
             if not result.ok:
                 raise ValueError(f"Configured CLI contract failed for {role}: {result.error}; bounded diagnostics: {json.dumps(diagnostics)}")
-            if len(result.content) > 1024 or json.loads(result.content) != expected:
-                raise ValueError(f"Configured CLI JSON contract failed for {role}; bounded diagnostics: {json.dumps(diagnostics)}")
+            validate_cli_json(result.content, expected, diagnostics)
             results.append({"role": role, "api_output_tokens": generated["eval_count"],
                             "cli_effective_model": result.metadata.get("effective_model"), "cli_diagnostics": diagnostics, "passed": True})
             print(json.dumps(results[-1]), flush=True)

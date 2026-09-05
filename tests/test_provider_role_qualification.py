@@ -156,3 +156,19 @@ class ProviderRoleQualificationTests(unittest.TestCase):
             self.assertGreater(result.metadata["stderr_retained_chars"], 0)
             self.assertGreater(result.metadata["stderr_ansi_sequences"], 0)
             self.assertNotIn("stderr", result.metadata)
+
+    def test_canary_json_failure_keeps_bounded_escaped_diagnostics(self):
+        spec = importlib.util.spec_from_file_location("role_canary_json", CATALOG.parents[3] / "scripts/qualify_provider_roles.py")
+        canary = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(canary)
+        expected = {"role": "Developer", "mode": "read_only", "writes": []}
+        canary.validate_cli_json(json.dumps(expected), expected, {})
+        for output in ("", "```json\n" + json.dumps(expected) + "\n```", "\x1b[31m" + "x" * 1200, '{}'):
+            with self.subTest(output_length=len(output)):
+                with self.assertRaisesRegex(ValueError, "CLI JSON contract failed") as error:
+                    canary.validate_cli_json(output, expected, {"stderr_retained_chars": 17})
+                evidence = json.loads(str(error.exception).split("bounded diagnostics: ", 1)[1])
+                self.assertEqual(evidence["synthetic_stdout_prefix"], output[:192])
+                self.assertEqual(evidence["stdout_prefix_truncated"], len(output) > 192)
+                self.assertEqual(evidence["stderr_retained_chars"], 17)
+                self.assertNotIn("\x1b", str(error.exception))

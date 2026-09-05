@@ -44,8 +44,9 @@ contract check through the local API (96 output tokens, 2048 context tokens,
 60-second socket timeout, 128 KiB response bound) and the configured CLI
 (60-second process timeout, 16384 combined stdout/stderr characters, with the
 JSON response separately limited to 1024 characters). Bounded numeric diagnostics
-report retained stream lengths and stderr ANSI-sequence count, never raw prompts
-or stderr. The CLI has no asserted hard
+report retained stream lengths and stderr ANSI-sequence count. JSON failures also
+include at most 192 characters of escaped synthetic stdout, with a truncation flag;
+they remain failures, including Markdown fences. No raw prompts or stderr are logged. The CLI has no asserted hard
 token cap. The script stops on the first failure and reports the installed model
 digest and profile digest; a changed model digest invalidates the result.
 
