@@ -74,11 +74,14 @@
     },
     "core:AF-GC-003": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
+      "scopes": [
+        "core:src/agent_factory/static/app.js",
+        "core:tests/test_dialog_confirmation.py"
+      ],
+      "updated_at": "2026-09-05T18:58:32+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -91,7 +94,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
     },
     "core:AF-GC-004": {
       "dependencies": [],
@@ -3546,6 +3550,16 @@
       "note": "Update the offline autonomous provider fixture for explicit model binding.",
       "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
       "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
+    },
+    {
+      "operation_id": "fcb38d11-5748-45f8-9fab-f46d42a7f215",
+      "at": "2026-09-05T18:58:32+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-003",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
+      "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
     }
   ]
 }
