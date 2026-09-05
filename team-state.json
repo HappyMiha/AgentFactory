@@ -1330,11 +1330,19 @@
       "dependencies": [
         "cloud:AF-CLD-001"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-CLD-002-adf89da0",
+      "scopes": [
+        "cloud:contracts/v1/domain.json",
+        "cloud:contracts/v1/scenarios.json",
+        "cloud:contracts/v1/transitions.json",
+        "cloud:docs/api-contract.md",
+        "cloud:docs/domain-model.md",
+        "cloud:scripts/validate_domain_contracts.py",
+        "cloud:tests/test_domain_contracts.py"
+      ],
+      "updated_at": "2026-09-05T21:06:17+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -1347,7 +1355,8 @@
       "optional": false,
       "source_dependencies": [
         "cloud:AF-CLD-001"
-      ]
+      ],
+      "claim_id": "319137a6-7e5e-4106-a759-e9f826d07b8d"
     },
     "cloud:AF-CLD-003": {
       "dependencies": [
@@ -3998,6 +4007,16 @@
       "note": "All three workers verified both readers; new claims now use agent branches.",
       "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
+    },
+    {
+      "operation_id": "6a43f18b-4530-422e-85be-f9b654da3bd4",
+      "at": "2026-09-05T21:06:17+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-002",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-002-adf89da0",
+      "claim_id": "319137a6-7e5e-4106-a759-e9f826d07b8d"
     }
   ],
   "migration": {
