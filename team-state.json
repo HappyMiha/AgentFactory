@@ -3426,11 +3426,11 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T20:27:05+00:00",
+      "updated_at": "2026-09-05T20:32:02+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/6",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c",
-      "review_head": "65ce77cd2fdb00daa5f55acc04a4079c52198fdc"
+      "review_head": "849451a3072aeb81f0eaf103caae9b30e57bdad7"
     },
     "cloud:AF-TEAM-001": {
       "status": "planned",
@@ -3899,6 +3899,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
       "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
+    },
+    {
+      "operation_id": "b3c0b997-6a54-4395-b15e-37b290849de5",
+      "at": "2026-09-05T20:32:02+00:00",
+      "action": "review",
+      "task": "core:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
+      "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
     }
   ]
 }
