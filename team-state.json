@@ -1325,8 +1325,8 @@
         "core:src/agent_factory/providers.py",
         "core:tests/test_provider_role_qualification.py"
       ],
-      "updated_at": "2026-09-05T22:23:28+00:00",
-      "note": "Canary JSON diagnostics and merged stage-identity integration checked; live qualification remains pending",
+      "updated_at": "2026-09-05T22:39:29+00:00",
+      "note": "Strict Ollama JSON mode after real canary fence failure; exact integration checks pass; live requalification pending",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/9",
       "resources": [
         "core:provider-model",
@@ -1345,7 +1345,7 @@
         "core:AF-GC-006"
       ],
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8",
-      "review_head": "12e0f296fb1cc72f1ac71171c430dbf057abd2aa"
+      "review_head": "1f2d8b4287395ece89f12717546df83cf1e875ce"
     },
     "cloud:AF-CLD-001": {
       "dependencies": [],
@@ -4446,6 +4446,16 @@
       "note": "Consumer contract proposal; 65 selected tests and 18 synthetic operation results pass; real Core engine qualification remains separate",
       "branch": "agent/HappyHahahaker/AF-CLD-005-807782aa",
       "claim_id": "b95b842f-f559-4217-96f0-97a79748b551"
+    },
+    {
+      "operation_id": "9305fa13-46f1-47b5-9039-2fd56e2593e0",
+      "at": "2026-09-05T22:39:29+00:00",
+      "action": "review",
+      "task": "core:AF-GC-042",
+      "worker": "HappyHahahaker",
+      "note": "Strict Ollama JSON mode after real canary fence failure; exact integration checks pass; live requalification pending",
+      "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
+      "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
     }
   ],
   "migration": {
