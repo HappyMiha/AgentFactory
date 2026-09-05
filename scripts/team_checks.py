@@ -214,10 +214,14 @@ def run_checks(root: Path, base: str = "origin/main", selected: list[str] | None
         record = {"command": argv, "returncode": result.returncode,
                   "stdout": result.stdout[-32000:], "stderr": result.stderr[-32000:]}
         results.append(record)
+        count = re.search(r"Ran (\d+) tests? in", result.stderr + result.stdout) if unittest else None
+        # Python 3.12+ exits with 5 for an empty suite; 3.11 exits with 0.
+        # Both must produce the same actionable failure, never an attestation.
+        if count and int(count[1]) == 0 and result.returncode in {0, 5}:
+            raise CheckError("Unittest ran no tests; this is not a passing test profile")
         if result.returncode:
             raise CheckError(f"Check failed: {argv!r}\n{result.stdout}\n{result.stderr}")
         if unittest:
-            count = re.search(r"Ran (\d+) tests? in", result.stderr + result.stdout)
             if not count or int(count[1]) == 0:
                 raise CheckError("Unittest ran no tests; this is not a passing test profile")
             record["tests_run"] = int(count[1])
