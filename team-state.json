@@ -1375,16 +1375,11 @@
       "dependencies": [
         "cloud:AF-CLD-001"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-003-847239d1",
-      "scopes": [
-        "cloud:docs/upstream-capability-map.json",
-        "cloud:docs/upstream-capability-map.md",
-        "cloud:scripts/validate_upstream_map.py",
-        "cloud:tests/test_upstream_map.py"
-      ],
-      "updated_at": "2026-09-05T21:22:52+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-05T21:42:29+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/4",
       "resources": [
@@ -1399,7 +1394,9 @@
         "cloud:AF-CLD-001"
       ],
       "claim_id": "f76a2bf1-11ac-4653-9dd5-bf9367f77486",
-      "review_head": "a201dc743ee571b24d8485c6945581d26b974678"
+      "review_head": "a201dc743ee571b24d8485c6945581d26b974678",
+      "completed_commit": "946784d2920773344497842b4587cd9d25caa34d",
+      "reviewed_head": "a201dc743ee571b24d8485c6945581d26b974678"
     },
     "cloud:AF-CLD-004": {
       "dependencies": [
@@ -4127,6 +4124,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-002-adf89da0",
       "claim_id": "319137a6-7e5e-4106-a759-e9f826d07b8d"
+    },
+    {
+      "operation_id": "9542cc9b-0b78-4d23-990f-d537d266d1fb",
+      "at": "2026-09-05T21:42:29+00:00",
+      "action": "complete",
+      "task": "cloud:AF-CLD-003",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-003-847239d1",
+      "claim_id": "f76a2bf1-11ac-4653-9dd5-bf9367f77486"
     }
   ],
   "migration": {
