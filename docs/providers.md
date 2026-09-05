@@ -21,7 +21,7 @@ Running `agent-factory providers status` is read-only. A healthy executable does
 
 Every enabled CLI provider uses:
 
-- an allowlisted executable and fixed argument vector;
+- an allowlisted executable and reviewed argument vector;
 - `shell=false`;
 - a reviewed prompt transport;
 - an agent-role allowlist;
@@ -33,6 +33,51 @@ Every enabled CLI provider uses:
 - persisted attempt metadata and artifact digest.
 
 Provider output is untrusted and cannot grant final approval.
+
+## Select a model that the adapter can launch
+
+An agent's model must match a reviewed provider binding. For example, select
+`openai:gpt-6-astra` for Codex or `local:qwen2.5-coder:14b` for Ollama. The adapter
+passes the native ID as one argument. Unknown models, missing selections, and
+values containing shell commands are rejected before the process starts.
+
+Provider configuration uses a namespace, an allowlist of native model IDs, and
+exactly one whole `{model}` argument:
+
+```json
+{
+  "model_namespace": "local",
+  "model_ids": ["qwen2.5-coder:7b", "qwen2.5-coder:14b"],
+  "args": ["run", "{model}", "--think=false", "--nowordwrap"]
+}
+```
+
+These fields are part of the provider entry in the workspace's `config/providers.json`.
+Use canonical IDs, not aliases such as `latest` or a name that the provider silently
+redirects. Review a binding against the installed CLI version and account or local
+model inventory before enabling real work. An allowlist entry does not prove that
+a model is installed, accessible, or qualified for a task. The adapter reports
+provider errors instead of silently choosing another model in live mode.
+
+The shipped Codex, Claude, and Ollama entries have explicit bindings. Gemini,
+Antigravity, and Firecrawl selections remain blocked until a reviewed binding is
+configured for their installed version; OpenClaw remains health-only. Existing
+workspace configuration is not overwritten: update it to adopt the new binding.
+Legacy tools with no selected model may still run, but have no model identity and
+cannot supply evidence for a live independent model review.
+
+Successful process attempts record `requested_model`, `effective_model`, and the
+resolved arguments, without the prompt. `model_identity_source=qualified_request`
+means the identity comes from the reviewed request sent to the CLI. It is not an
+attestation from the provider's server; server-side model attestation remains part
+of provider qualification. Invalid free text is not copied into error metadata.
+
+Changing the selected model or its provider configuration invalidates the existing
+execution approval snapshot. Request and approve a new execution before retrying.
+Autonomous authority remains bound to its approved role/model manifest. Live review
+uses the identity saved with the produced artifact, so later agent setting changes
+cannot make a model eligible to review its own earlier work. Simulation continues
+to use synthetic identities and does not prove model independence.
 
 ## Execution location and capabilities
 
@@ -77,7 +122,7 @@ agent-factory providers status
 The shipped command contract is:
 
 ```text
-codex exec --sandbox read-only --skip-git-repo-check --color never -
+codex exec --model <native-model-id> --sandbox read-only --skip-git-repo-check --color never -
 ```
 
 The prompt travels over standard input. Windows native candidates are checked before a potentially blocked execution alias, preventing a common `WinError 5` launcher failure.

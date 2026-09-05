@@ -82,6 +82,7 @@ class WorkflowEngine:
                         candidate_ids=list(reviewer_pool),
                         subjects=subjects,
                         required_role=placeholder.role,
+                        model_resolver=(self.runtime.effective_model if mode is ExecutionMode.LIVE else None),
                     )
                     context[f"{stage['id']}:review_assignment"] = json.dumps(
                         {
@@ -135,6 +136,13 @@ class WorkflowEngine:
                     agent.id,
                     result.provider,
                     labeled_content,
+                    producer={
+                        "agent_id": agent.id,
+                        "provider": result.provider,
+                        "requested_model": result.metadata.get("requested_model"),
+                        "effective_model": result.metadata.get("effective_model"),
+                        "model_identity_source": result.metadata.get("model_identity_source"),
+                    },
                 )
                 produced[stage["id"]] = ReviewSubject(
                     stage=stage["id"], artifact_id=artifact_id, producer=agent
