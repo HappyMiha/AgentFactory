@@ -3427,10 +3427,19 @@
       "reviewed_head": "849451a3072aeb81f0eaf103caae9b30e57bdad7"
     },
     "cloud:AF-TEAM-001": {
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
+      "scopes": [
+        "cloud:.github/workflows/team-policy.yml",
+        "cloud:AGENTS.md",
+        "cloud:docs/team-migration.md",
+        "cloud:docs/team-workflow.md",
+        "cloud:scripts/team.py",
+        "cloud:scripts/team_checks.py",
+        "cloud:tests/test_team_checks.py",
+        "cloud:tests/test_team_coordination.py"
+      ],
       "dependencies": [
         "core:AF-TEAM-001"
       ],
@@ -3442,8 +3451,10 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T20:03:53+00:00",
-      "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
+      "updated_at": "2026-09-05T20:35:02+00:00",
+      "note": "",
+      "pr": null,
+      "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f"
     },
     "core:AF-TEAM-002": {
       "status": "done",
@@ -3923,6 +3934,16 @@
       "note": "Dual readers merged after Linux/Windows independent reviews; live registry remains v1 pending Cloud and three ACKs.",
       "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
+    },
+    {
+      "operation_id": "7504ff5d-4091-475f-8846-3202e6ca623e",
+      "at": "2026-09-05T20:35:02+00:00",
+      "action": "claim",
+      "task": "cloud:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
+      "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f"
     }
   ]
 }
