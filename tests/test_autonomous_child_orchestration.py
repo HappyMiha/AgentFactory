@@ -45,7 +45,7 @@ from tests.test_autonomous_planning_pipeline import GoldenPlanningInvoker
 
 
 class AutonomousChildFixture(AutonomousPreapprovalFixture):
-    def approve_fixture(self):
+    def approve_fixture(self, *, readiness=True):
         invoker = GoldenPlanningInvoker()
         activities = AgentFactoryActivities(
             autonomous_planning_invoker=invoker,
@@ -81,7 +81,21 @@ class AutonomousChildFixture(AutonomousPreapprovalFixture):
                 "session_id": "autonomous-child-fixture",
             },
         )
+        if readiness:
+            self.record_fixture_readiness(approved)
         return approved
+
+    def record_fixture_readiness(self, approved):
+        # Explicit synthetic model evidence for orchestration tests only. Actual
+        # Git/Python/workspace probes still run; this does not qualify a real model.
+        from agent_factory.environment_readiness import EnvironmentReadiness, Observation
+        readiness = EnvironmentReadiness(self.storage)
+        _, requirements = readiness.context(approved.approval.id)
+        def fixture_model(requirement):
+            return Observation(True, True, True, 'live', 'Synthetic test model observation',
+                               'Fixture only', requirement['model'], requirement['provider_ids'][0])
+        readiness.probes = {key: fixture_model for key in requirements if key.startswith('model:')}
+        return readiness.assess(approved.approval.id)
 
     def _planning_request(self, command):
         from agent_factory.orchestration.temporal.models import (
@@ -403,6 +417,10 @@ class AutonomousChildTemporalTests(
             ],
         )
 
+    async def test_missing_qualification_waits_for_explicit_recheck_then_resumes(self):
+        self.defer_environment_readiness = True
+        await self.test_parent_completes_two_dependent_children_once_and_checkpoints_each()
+
     async def test_parent_completes_two_dependent_children_once_and_checkpoints_each(self):
         async with self.worker():
             started = await start_autonomous_mission_workflow(
@@ -445,6 +463,11 @@ class AutonomousChildTemporalTests(
                     "session_id": "temporal-child-session",
                 },
             )
+            if getattr(self, 'defer_environment_readiness', False):
+                from agent_factory.environment_readiness import EnvironmentReadiness
+                EnvironmentReadiness(self.storage).assess(approved.approval.id)
+            else:
+                self.record_fixture_readiness(approved)
             await signal_autonomous_backlog_approved(
                 self.environment.client,
                 self.mission.id,
@@ -454,6 +477,19 @@ class AutonomousChildTemporalTests(
                 ),
                 self.settings,
             )
+            if getattr(self, 'defer_environment_readiness', False):
+                for _ in range(200):
+                    environment = await handle.query('get_environment_status', result_type=dict)
+                    if environment['environment_status'] == 'UNKNOWN':
+                        break
+                    await asyncio.sleep(0.025)
+                else:
+                    self.fail('Missing model qualification did not block environment entry')
+                self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM autonomous_child_jobs').fetchone()[0], 0)
+                await self.environment.sleep(31)
+                self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM environment_readiness_reports').fetchone()[0], 1)
+                self.record_fixture_readiness(approved)
+                await self.environment.sleep(31)
             result = await asyncio.wait_for(handle.result(), timeout=60)
 
         self.assertEqual(result["workflow_status"], "COMPLETED")

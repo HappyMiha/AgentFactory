@@ -40,7 +40,7 @@ function renderMonitor(data) {
   const ready = data.status === "ready";
   const summary = $("monitor-summary");
   summary.classList.remove("loading-block");
-  summary.innerHTML = `<span class="monitor-state ${ready ? "ready" : "degraded"}">${ready ? "READY" : "DEGRADED"}</span><strong>${ready ? "System is ready for work" : "Resolve readiness blockers before starting"}</strong>`;
+  summary.innerHTML = `<span class="monitor-state ${ready ? "ready" : "degraded"}">${ready ? "READY" : "DEGRADED"}</span><strong>${ready ? "Control plane is healthy; check the selected development route" : "Resolve control-plane health issues"}</strong>`;
   $("monitor-checked").textContent = `Checked ${new Date(data.checked_at).toLocaleTimeString()}`;
   const checks = [
     ["Database", data.database.ok ? "OK" : "Failed", data.database.ok ? "ready" : "degraded"],
@@ -51,7 +51,48 @@ function renderMonitor(data) {
     ["Runtime", `${data.runtime.active_sessions} sessions · ${data.runtime.queued_tasks} queued`, "info"],
   ];
   $("monitor-checks").innerHTML = checks.map(([label, value, status]) => `<article class="monitor-card ${status}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
-  $("monitor-blockers").innerHTML = data.blockers.length ? `<strong>Blockers</strong><ul>${data.blockers.map((item) => `<li>${escapeHtml(item.replaceAll("_", " "))}</li>`).join("")}</ul>` : `<span>No blockers detected. The local control plane can accept work.</span>`;
+  $("monitor-blockers").innerHTML = data.blockers.length ? `<strong>Blockers</strong><ul>${data.blockers.map((item) => `<li>${escapeHtml(item.replaceAll("_", " "))}</li>`).join("")}</ul>` : `<span>No blockers detected. Development requires current checks for its approved route.</span>`;
+}
+
+// This panel is separate from background health polling: no probe starts on a timer.
+let environmentGeneration = 0;
+async function loadEnvironmentMissions() {
+  const select = $("environment-mission");
+  const items = [];
+  for (let offset = 0; ; offset += 200) {
+    const page = await fetchJson(`/api/environment/missions?offset=${offset}&limit=200`);
+    items.push(...page.items);
+    if (!page.items.length || items.length >= page.total) break;
+  }
+  const selected = select.value;
+  select.replaceChildren(new Option("Choose a mission", ""), ...items.map(item => new Option(item.name, String(item.id))));
+  select.value = selected;
+  $("environment-check").disabled = !select.value;
+}
+async function loadEnvironmentReport(refresh = false) {
+  const mission = $("environment-mission").value;
+  const generation = ++environmentGeneration;
+  $("environment-checks").replaceChildren();
+  if (!mission) { $("environment-status").textContent = "Choose an approved mission."; $("environment-check").disabled = true; return; }
+  $("environment-check").disabled = true;
+  $("environment-status").textContent = refresh ? "Checking the selected route…" : "Loading current evidence…";
+  try {
+    const result = await fetchJson(`/api/autonomous-missions/${encodeURIComponent(mission)}/environment${refresh ? "/check" : ""}`, refresh ? {method: "POST"} : {});
+    if (generation !== environmentGeneration) return;
+    const current = result.status === "ready" && result.mode === "live" && Date.parse(result.checked_at) <= Date.now() && Date.parse(result.expires_at) > Date.now() && Array.isArray(result.checks) && result.checks.length > 0 && result.checks.every(check => check.ready === true && check.mode === "live");
+    $("environment-status").textContent = `${current ? "Selected route ready" : "Selected route needs checks"}. ${result.next_action || "Run current checks."}${result.expires_at ? ` Valid until ${new Date(result.expires_at).toLocaleTimeString()}.` : ""}`;
+    $("environment-checks").innerHTML = (result.checks || []).map(check => `<article class="monitor-card ${current && check.ready ? "ready" : "degraded"}"><strong>${escapeHtml(check.key)}</strong><p>Installed: ${check.installed === true ? "yes" : "not verified"} · Authenticated: ${check.key.startsWith("model:") ? (check.authenticated === true ? "yes" : "not verified") : "not required by this probe"} · Qualified: ${check.qualified === true ? "yes" : "not verified"} · Mode: ${escapeHtml(check.mode)}</p><p>${escapeHtml(check.detail)} ${check.ready ? "" : escapeHtml(check.next_action)}</p></article>`).join("");
+    if (current) setTimeout(() => {
+      if (generation === environmentGeneration) {
+        $("environment-status").textContent = "Environment evidence expired. Rerun actual-state checks.";
+        $("environment-checks").querySelectorAll(".ready").forEach(card => { card.classList.remove("ready"); card.classList.add("degraded"); });
+      }
+    }, Math.max(0, Date.parse(result.expires_at) - Date.now()));
+  } catch (error) {
+    if (generation === environmentGeneration) $("environment-status").textContent = "Checks unavailable. Retry; no readiness is established.";
+  } finally {
+    if (generation === environmentGeneration) $("environment-check").disabled = !$("environment-mission").value;
+  }
 }
 
 const agentEditors = new Map();
@@ -578,6 +619,9 @@ async function refresh() {
 
 $("execution-list").addEventListener("click", (event) => { const action = event.target.closest("[data-execution-action]"); if (!action) return; const type = action.dataset.executionAction; const request = type === "release-lease" ? ["/api/executions/leases/release", { assignment_id: Number(action.dataset.assignment), fencing_token: Number(action.dataset.fence) }, "Release execution lease"] : type === "stop-session" ? [`/api/executions/sessions/${action.dataset.id}/stop`, {}, `Stop runtime session #${action.dataset.id}`] : [`/api/executions/runs/${action.dataset.id}/cancel`, {}, `Cancel workflow run #${action.dataset.id}`]; guardedCommand(request[0], request[1], request[2]).then(() => refresh()).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 
+$("environment-panel").addEventListener("toggle", () => { if ($("environment-panel").open) loadEnvironmentMissions().catch(() => { $("environment-status").textContent = "Approved missions unavailable. Retry."; }); });
+$("environment-mission").addEventListener("change", () => loadEnvironmentReport());
+$("environment-check").addEventListener("click", () => loadEnvironmentReport(true));
 $("refresh").addEventListener("click", refresh);
 $("work-filters").addEventListener("submit", (event) => { event.preventDefault(); loadWork().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("backlog-import-form").addEventListener("submit", (event) => { handleBacklogImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });

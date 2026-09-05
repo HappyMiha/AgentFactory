@@ -1,4 +1,5 @@
 import asyncio
+import json
 import subprocess
 import tempfile
 import unittest
@@ -84,7 +85,11 @@ class AutonomousPreapprovalFixture:
         (self.repository / "README.md").write_text(
             "# Temporal pre-approval mission\n", encoding="utf-8"
         )
-        run_git(self.repository, "add", "README.md")
+        (self.repository / "agentfactory.environment.json").write_text(json.dumps({
+            "schema_version": 1, "profile": "autonomous-local-default",
+            "tools": ["git", "python"], "services": []
+        }))
+        run_git(self.repository, "add", "README.md", "agentfactory.environment.json")
         run_git(self.repository, "commit", "-m", "initial")
         self.base_commit = run_git(self.repository, "rev-parse", "HEAD")
         self.database = self.workspace / "state.db"

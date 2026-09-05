@@ -623,6 +623,7 @@ class AutonomousMissionControlTemporalTests(
                 "session_id": "mission-control-temporal",
             },
         )
+        self.record_fixture_readiness(approved)
         await signal_autonomous_backlog_approved(
             self.environment.client,
             self.mission.id,

@@ -3,7 +3,7 @@
 import sqlite3
 import json
 import hashlib
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, closing
 from datetime import datetime, timezone
 from collections.abc import AsyncIterator
 from dataclasses import asdict
@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
 
 from .application import (
@@ -231,7 +232,7 @@ def _require_confirmation(command: ConfirmedCommand, header: str | None) -> None
         raise ValueError("Explicit confirmation is required")
 
 
-def create_app(workspace: Path, database: Path) -> FastAPI:
+def create_app(workspace: Path, database: Path, *, environment_probes=None) -> FastAPI:
     workspace = workspace.expanduser().resolve()
     database = database.expanduser().resolve()
     temporal_settings = TemporalSettings.from_env()
@@ -433,6 +434,40 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     @app.get("/api/executions", response_model=dict[str, list[dict[str, Any]]])
     async def executions(service: Service) -> dict[str, list[dict[str, Any]]]:
         return service.active_executions()
+
+    @app.get("/api/environment/missions", response_model=dict)
+    def environment_missions(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=200)):
+        with closing(SQLiteStorage(database)) as storage:
+            rows = storage.db.execute("SELECT id,name FROM autonomous_missions "
+                "WHERE active_execution_epoch_id IS NOT NULL ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset)).fetchall()
+            total = storage.db.execute("SELECT COUNT(*) FROM autonomous_missions WHERE active_execution_epoch_id IS NOT NULL").fetchone()[0]
+            return {"items": [dict(row) for row in rows], "offset": offset, "limit": limit, "total": total}
+
+    def environment_report(mission_id: int, storage: SQLiteStorage, *, refresh: bool):
+        row = storage.db.execute(
+            "SELECT approval.id FROM autonomous_backlog_approvals approval "
+            "JOIN autonomous_missions mission ON mission.id=approval.mission_id "
+            "WHERE mission.id=? AND approval.execution_epoch_id=mission.active_execution_epoch_id "
+            "ORDER BY approval.id DESC LIMIT 1", (mission_id,)
+        ).fetchone()
+        if not row:
+            return {"status": "blocked", "mode": "unknown", "checks": [],
+                    "next_action": "Approve an explicit environment profile with the selected plan first."}
+        readiness = EnvironmentReadiness(storage, probes=environment_probes)
+        try:
+            return readiness.assess(row['id']) if refresh else readiness.current(row['id'])
+        except EnvironmentNotReady as error:
+            return {"status": "blocked", "mode": "unknown", "checks": [], "next_action": str(error)}
+
+    @app.get("/api/autonomous-missions/{mission_id}/environment", response_model=dict)
+    def read_environment(mission_id: int):
+        with closing(SQLiteStorage(database)) as storage:
+            return environment_report(mission_id, storage, refresh=False)
+
+    @app.post("/api/autonomous-missions/{mission_id}/environment/check", response_model=dict)
+    def check_environment(mission_id: int):
+        with closing(SQLiteStorage(database)) as storage:
+            return environment_report(mission_id, storage, refresh=True)
 
     @app.get("/api/monitor", response_model=MonitorResponse)
     async def monitor(service: Service) -> MonitorResponse:

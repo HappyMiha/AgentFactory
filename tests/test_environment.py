@@ -8,7 +8,7 @@ from agent_factory.environment import as_json, checks
 class EnvironmentTests(unittest.TestCase):
     def test_python_uses_running_interpreter(self):
         results = {item.component: item for item in checks()}
-        self.assertEqual(results["Python"].status, "ready")
+        self.assertEqual(results["Python"].status, "installed")
         self.assertEqual(results["Python"].detail, sys.executable)
         self.assertEqual(results["Python"].requirement, "required")
 
