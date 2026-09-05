@@ -3427,19 +3427,10 @@
       "reviewed_head": "849451a3072aeb81f0eaf103caae9b30e57bdad7"
     },
     "cloud:AF-TEAM-001": {
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
-      "scopes": [
-        "cloud:.github/workflows/team-policy.yml",
-        "cloud:AGENTS.md",
-        "cloud:docs/team-migration.md",
-        "cloud:docs/team-workflow.md",
-        "cloud:scripts/team.py",
-        "cloud:scripts/team_checks.py",
-        "cloud:tests/test_team_checks.py",
-        "cloud:tests/test_team_coordination.py"
-      ],
+      "scopes": [],
       "dependencies": [
         "core:AF-TEAM-001"
       ],
@@ -3451,11 +3442,13 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T20:38:52+00:00",
-      "note": "",
+      "updated_at": "2026-09-05T21:00:23+00:00",
+      "note": "Matching Cloud readers merged after both independent reviews; collect three own pair ACKs before v2 activation.",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/3",
       "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f",
-      "review_head": "92d281db889c38a9aaf50ca5faf028a9e67d49e4"
+      "review_head": "92d281db889c38a9aaf50ca5faf028a9e67d49e4",
+      "completed_commit": "99b7c9c5942b28165d53ca1ff7240f1cbeff6e5b",
+      "reviewed_head": "92d281db889c38a9aaf50ca5faf028a9e67d49e4"
     },
     "core:AF-TEAM-002": {
       "status": "done",
@@ -3953,6 +3946,16 @@
       "task": "cloud:AF-TEAM-001",
       "worker": "HappyDucky02",
       "note": "",
+      "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
+      "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f"
+    },
+    {
+      "operation_id": "4bd03986-7a9b-4a21-81c5-8c84e0bffc24",
+      "at": "2026-09-05T21:00:23+00:00",
+      "action": "complete",
+      "task": "cloud:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "Matching Cloud readers merged after both independent reviews; collect three own pair ACKs before v2 activation.",
       "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
       "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f"
     }
