@@ -95,15 +95,11 @@
     },
     "core:AF-GC-004": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
-      "scopes": [
-        "core:docs/agent-provider-editing.md",
-        "core:src/agent_factory/static/app.js",
-        "core:tests/test_agent_drafts.py"
-      ],
-      "updated_at": "2026-09-05T22:26:10+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-05T22:34:33+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/8",
       "resources": [
@@ -118,7 +114,9 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad",
-      "review_head": "aa412a31ec3adf53a92bafc21f67a6af247b9858"
+      "review_head": "aa412a31ec3adf53a92bafc21f67a6af247b9858",
+      "completed_commit": "497cf38d952344bb8a8756f39fec713431fe9047",
+      "reviewed_head": "aa412a31ec3adf53a92bafc21f67a6af247b9858"
     },
     "core:AF-GC-005": {
       "dependencies": [],
@@ -4427,6 +4425,16 @@
       "note": "Coordinator agreed consumer interface proposal and synthetic manifests; executable engine interfaces remain Core owned",
       "branch": "agent/HappyHahahaker/AF-CLD-005-807782aa",
       "claim_id": "b95b842f-f559-4217-96f0-97a79748b551"
+    },
+    {
+      "operation_id": "0c995eb6-e1d6-40e4-8a64-b21f05108223",
+      "at": "2026-09-05T22:34:33+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-004",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
+      "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad"
     }
   ],
   "migration": {
