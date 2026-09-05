@@ -70,14 +70,11 @@
     },
     "core:AF-GC-003": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
-      "scopes": [
-        "core:src/agent_factory/static/app.js",
-        "core:tests/test_dialog_confirmation.py"
-      ],
-      "updated_at": "2026-09-05T20:27:28+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-05T20:32:25+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/2",
       "resources": [
@@ -92,7 +89,9 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6",
-      "review_head": "c98c2b026edc46571d473bb9523f8fbd2f56f9ef"
+      "review_head": "c98c2b026edc46571d473bb9523f8fbd2f56f9ef",
+      "completed_commit": "f1a78c154d4e127620143a059f3dbb6d3033ef07",
+      "reviewed_head": "c98c2b026edc46571d473bb9523f8fbd2f56f9ef"
     },
     "core:AF-GC-004": {
       "dependencies": [],
@@ -3909,6 +3908,16 @@
       "note": "",
       "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
+    },
+    {
+      "operation_id": "f1fc5089-3bc8-4a74-a69a-1b1a6b3999ae",
+      "at": "2026-09-05T20:32:25+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-003",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
+      "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
     }
   ]
 }
