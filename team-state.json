@@ -3454,7 +3454,7 @@
       "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
     },
     "core:AF-TEAM-002": {
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/core-af-team-002-fce8a1b0",
       "scopes": [
@@ -3475,10 +3475,11 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Make Python CI matrix manual-only at owner request",
-      "updated_at": "2026-09-05T20:05:43+00:00",
+      "updated_at": "2026-09-05T20:08:13+00:00",
       "note": "",
-      "pr": null,
-      "claim_id": "14f21494-861c-4cd6-9d7a-7c0fb103db60"
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/5",
+      "claim_id": "14f21494-861c-4cd6-9d7a-7c0fb103db60",
+      "review_head": "7c258ba5cad1cc5ce1bd3bc636bca5df8b28557e"
     }
   },
   "events": [
@@ -3796,6 +3797,16 @@
       "operation_id": "c81af5c6-5b96-4f97-8c9c-0b29a330b366",
       "at": "2026-09-05T20:05:43+00:00",
       "action": "claim",
+      "task": "core:AF-TEAM-002",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/core-af-team-002-fce8a1b0",
+      "claim_id": "14f21494-861c-4cd6-9d7a-7c0fb103db60"
+    },
+    {
+      "operation_id": "4c8da60a-289a-40f4-a404-f9c976c821ef",
+      "at": "2026-09-05T20:08:13+00:00",
+      "action": "review",
       "task": "core:AF-TEAM-002",
       "worker": "HappyDucky02",
       "note": "",
