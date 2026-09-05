@@ -27,6 +27,8 @@ REPOSITORIES = {"core": "HappyMiha/AgentFactory", "cloud": "HappyMiha/AgentFacto
 ACTIVE = {"claimed", "review"}
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 KEY = re.compile(r"^(core|cloud):(AF-[A-Z]+-[0-9]+|TEAM-SETUP)$")
+MIGRATION_TASKS = {repo: f"{repo}:AF-TEAM-001" for repo in REPOSITORIES}
+MIGRATION_FILES = ("scripts/team.py", ".github/workflows/team-policy.yml")
 
 
 class TeamError(RuntimeError):
@@ -58,8 +60,8 @@ def worker_names(state: dict[str, Any]) -> set[str]:
 
 
 def validate_state(state: dict[str, Any]) -> None:
-    if state.get("version") != 1 or not isinstance(state.get("tasks"), dict):
-        raise TeamError("Registry must have version 1 and a tasks object.")
+    if state.get("version") not in {1, 2} or not isinstance(state.get("tasks"), dict):
+        raise TeamError("Registry needs a supported version (1 or 2) and a tasks object; update both clones.")
     if not isinstance(state.get("events", []), list):
         raise TeamError("Registry events must be a list.")
     for key, task in state["tasks"].items():
@@ -71,7 +73,9 @@ def validate_state(state: dict[str, Any]) -> None:
         if task["status"] in ACTIVE:
             if task.get("owner") not in worker_names(state) or not task.get("scopes"):
                 raise TeamError(f"Active task {key} needs a registered owner and path scopes.")
-            validate_branch(task.get("branch") or "", task["owner"], key.split(":", 1)[0])
+            validate_branch(task.get("branch") or "", task["owner"], key.split(":", 1)[0], key)
+            if state["version"] == 1 and task["branch"].startswith("agent/"):
+                raise TeamError("Agent branches require the coordinated version 2 cutover.")
     visiting: set[str] = set()
     visited: set[str] = set()
     def visit(key: str) -> None:
@@ -144,6 +148,7 @@ class Registry:
                 if any(event.get("operation_id") == operation for event in state.get("events", [])):
                     return state  # The previous push succeeded but its response was lost.
                 mutation(state)
+                validate_state(state)
                 stamp = now()
                 state["tasks"][key]["updated_at"] = stamp
                 state["tasks"][key]["note"] = note
@@ -222,21 +227,28 @@ def check_locks(state: dict[str, Any], key: str, scopes: list[str]) -> None:
             raise TeamError(f"A shared resource is held by {other_key}.")
 
 
-def branch_for(key: str, worker: str) -> str:
+def branch_for(key: str, worker: str, version: int = 1) -> str:
+    if version == 2:
+        return f"agent/{worker}/{key.split(':', 1)[1]}"
     return f"team/{worker}/{key.replace(':', '-').lower()}"
 
 
-def validate_branch(branch: str, worker: str, repo: str | None = None) -> None:
+def validate_branch(branch: str, worker: str, repo: str | None = None, key: str | None = None) -> None:
     prefix = f"team/{worker}/" + (repo + "-" if repo else "")
-    if not branch.startswith(prefix) or run(["git", "check-ref-format", "--branch", branch], check=False).returncode:
-        raise TeamError(f"Branch must be a valid {prefix}... branch.")
+    task_id = re.escape(key.split(":", 1)[1]) if key else r"AF-[A-Z]+-[0-9]+"
+    agent = re.fullmatch(r"agent/" + re.escape(worker) + "/" + task_id + r"-[0-9a-f]{8}", branch)
+    if (not branch.startswith(prefix) and not agent) or run(["git", "check-ref-format", "--branch", branch], check=False).returncode:
+        raise TeamError(f"Branch must be a valid {prefix}... or agent/{worker}/TASK-ID-xxxxxxxx branch.")
 
 
 def claim(registry: Registry, key: str, worker: str, scopes: list[str], branch: str, note: str = "") -> dict[str, Any]:
-    validate_branch(branch, worker, key.split(":", 1)[0])
+    validate_branch(branch, worker, key.split(":", 1)[0], key)
     claim_id = str(uuid.uuid4())
     def mutate(state: dict[str, Any]) -> None:
         task = task_for(state, key, worker)
+        expected = "agent/" if state["version"] == 2 else "team/"
+        if not branch.startswith(expected):
+            raise TeamError(f"New claims require {expected} branches under registry version {state['version']}; refresh and retry.")
         if task["status"] != "planned" or task.get("owner"):
             raise TeamError("Task is not available. Claims never expire automatically; its owner must release it.")
         dependencies_done(state, task)
@@ -340,6 +352,85 @@ def clean(cwd: Path) -> None:
         raise TeamError("Working tree must be clean, including untracked files.")
 
 
+def migration_pins(state: dict[str, Any]) -> dict[str, str]:
+    pins = {}
+    for repo, key in MIGRATION_TASKS.items():
+        task = state["tasks"].get(key, {})
+        commit = task.get("completed_commit", "")
+        if task.get("status") != "done" or not re.fullmatch(r"[0-9a-f]{40,64}", commit):
+            raise TeamError(f"Migration requires reviewed and completed {key} first.")
+        pins[repo] = commit
+    return pins
+
+
+def reader_proof(root: Path, repo: str, commit: str) -> dict[str, str]:
+    """Prove the clean owning checkout includes the reviewed reader and CI parser."""
+    clean(root)
+    if repository(root, None) != repo:
+        raise TeamError("Migration proof uses the wrong repository.")
+    git("fetch", "--quiet", "origin", "refs/heads/main:refs/remotes/origin/main", cwd=root)
+    for ref in ("HEAD", "origin/main"):
+        if run(["git", "merge-base", "--is-ancestor", commit, ref], root, check=False).returncode:
+            raise TeamError(f"Update {repo} checkout from main before acknowledging migration.")
+    proof = {}
+    for path in MIGRATION_FILES:
+        approved = git("rev-parse", f"{commit}:{path}", cwd=root)
+        if git("rev-parse", f"HEAD:{path}", cwd=root) != approved:
+            raise TeamError(f"{repo} reader or CI parser differs from its reviewed migration: {path}.")
+        proof[path] = approved
+    return proof
+
+
+def acknowledge_migration(registry: Registry, cwd: Path, peer: Path, worker: str) -> dict[str, Any]:
+    state = registry.read()
+    pins = migration_pins(state)
+    own_repo = repository(cwd, None)
+    other_repo = "cloud" if own_repo == "core" else "core"
+    roots = {own_repo: cwd, other_repo: peer}
+    for root in roots.values():
+        if git("config", "--local", "--get", "team.worker", cwd=root) != worker:
+            raise TeamError("Both local clones must belong to the acknowledging worker.")
+    proofs = {repo: reader_proof(root, repo, pins[repo]) for repo, root in roots.items()}
+    def mutate(current: dict[str, Any]) -> None:
+        task_for(current, MIGRATION_TASKS["core"], worker)
+        if migration_pins(current) != pins:
+            raise TeamError("Migration pins changed during verification; verify both clones again.")
+        current.setdefault("migration", {}).setdefault("acknowledgements", {})[worker] = {
+            "pins": pins, "readers": proofs, "at": now()}
+    return registry.change("migration-ack", MIGRATION_TASKS["core"], worker,
+                           "Verified both local repository readers and CI parsers at reviewed migration commits.", mutate)
+
+
+def activate_migration(registry: Registry, worker: str) -> dict[str, Any]:
+    def mutate(state: dict[str, Any]) -> None:
+        if worker != "HappyDucky02":
+            raise TeamError("Only the agreed integration coordinator can activate migration.")
+        task_for(state, MIGRATION_TASKS["core"], worker)
+        pins = migration_pins(state)
+        acks = state.get("migration", {}).get("acknowledgements", {})
+        expected_workers = {"HappyDucky02", "HappySnowman", "HappyHahahaker"}
+        if worker_names(state) != expected_workers:
+            raise TeamError("Migration requires exactly the three agreed workers.")
+        for name in expected_workers:
+            ack = acks.get(name, {})
+            if ack.get("pins") != pins or set(ack.get("readers", {})) != set(REPOSITORIES):
+                raise TeamError(f"Missing or stale two-repository migration acknowledgement: {name}.")
+            for repo in REPOSITORIES:
+                if set(ack["readers"][repo]) != set(MIGRATION_FILES) or any(
+                    not re.fullmatch(r"[0-9a-f]{40,64}", blob) for blob in ack["readers"][repo].values()
+                ):
+                    raise TeamError(f"Invalid reader proof from {name}.")
+        if any(acks[name]["readers"] != acks[worker]["readers"] for name in expected_workers):
+            raise TeamError("The three nodes must agree on the exact reader blobs.")
+        # Old clients reject version 2 at every fetch, including after a lost push race.
+        # Existing branches/tokens are unchanged; only new claims change namespace.
+        state["version"] = 2
+        state["migration"]["activated_at"] = now()
+        state["migration"]["authority"] = "core:team-state"
+    return registry.change("migration-activate", MIGRATION_TASKS["core"], worker,
+                           "All three workers verified both readers; new claims now use agent branches.", mutate)
+
+
 def push_line(text: str, branch: str, head: str) -> str:
     lines = [line.split() for line in text.splitlines() if line.strip()]
     if len(lines) != 1 or len(lines[0]) != 4:
@@ -416,6 +507,9 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("status", help="Show all tasks and their current owners")
     commands.add_parser("ready", help="Show unclaimed tasks whose internal dependencies are done")
+    command = commands.add_parser("migration-ack", help="Verify both updated local clones and record this worker's cutover acknowledgement")
+    command.add_argument("--peer-repo", type=Path, required=True, help="Local path to the other repository's updated owning clone")
+    commands.add_parser("migration-activate", help="Coordinator activates version 2 only after both migration PRs and all three acknowledgements")
     for name in ("claim", "start", "rescope", "heartbeat", "block", "release", "review", "complete"):
         command = commands.add_parser(name, help={"claim":"Claim a task atomically and save its token in local Git config", "start":"Claim and create a branch from freshly fetched main", "rescope":"Atomically replace this claim's scopes after conflict checks", "heartbeat":"Record activity; claims never expire automatically", "block":"Mark blocked and release path/resource locks, keeping ownership", "release":"Owner returns a claimed/blocked task to planned", "review":"Register an open PR and its exact head commit", "complete":"Mark done only after the reviewed PR head is merged into main"}[name])
         command.add_argument("key", help="core:AF-GC-001 or cloud:AF-CLD-001")
@@ -424,7 +518,7 @@ def parser() -> argparse.ArgumentParser:
         if name in {"claim", "start", "rescope"}:
             command.add_argument("--scope", action="append", default=[], help="Repeatable core:path or cloud:path; catalog required_scopes are added")
         if name in {"claim", "start"}:
-            command.add_argument("--branch", help="Owned team/WORKER/REPO-... branch; unique default if omitted")
+            command.add_argument("--branch", help="Owned branch matching the live registry version; unique default if omitted")
         else:
             command.add_argument("--claim-id", help="Expected claim generation; default local team.claimId config")
         if name in {"review", "complete"}:
@@ -447,6 +541,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command in {"status", "ready"}:
             state = registry.read()
+            print(f"Registry version {state['version']}; sole claim authority: Core team-state; Bus is transport only.")
             ordering = lambda pair: (pair[1].get("milestone", ""), pair[1].get("priority", "P2"),
                 -sum(pair[0] in child.get("dependencies", []) for child in state["tasks"].values()), pair[0])
             for key, task in sorted(state["tasks"].items(), key=ordering):
@@ -459,7 +554,15 @@ def main(argv: list[str] | None = None) -> int:
                         continue
                 print(f"{key:20} {task['status']:8} {task.get('owner') or '-':12} {task.get('branch') or '-'} {task.get('claim_id') or ''}")
             return 0
-        worker = current_worker(cwd, args.worker)
+        worker = current_worker(cwd, getattr(args, "worker", None))
+        if args.command == "migration-ack":
+            acknowledge_migration(registry, cwd, args.peer_repo.resolve(), worker)
+            print(f"Recorded two-repository migration acknowledgement for {worker}.")
+            return 0
+        if args.command == "migration-activate":
+            activate_migration(registry, worker)
+            print("Registry version 2 active. Preserve existing claims; new branches use agent/WORKER/TASK-ID-xxxxxxxx.")
+            return 0
         if args.command == "configure":
             if worker not in worker_names(registry.read()):
                 raise TeamError("Worker is not registered.")
@@ -485,7 +588,7 @@ def main(argv: list[str] | None = None) -> int:
         if len(args.note) > 160 or any(ord(char) < 32 for char in args.note):
             raise TeamError("Public note must be one line of at most 160 characters.")
         if args.command in {"claim", "start"}:
-            branch = args.branch or (branch_for(args.key, worker) + "-" + uuid.uuid4().hex[:8])
+            branch = args.branch or (branch_for(args.key, worker, registry.read()["version"]) + "-" + uuid.uuid4().hex[:8])
             # Verify local config can be used before publishing a remote claim.
             git("rev-parse", "--git-dir", cwd=cwd)
             if args.command == "start":
