@@ -1206,12 +1206,20 @@
     },
     "core:AF-GC-039": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "team/HappySnowman/core-af-gc-039-c0cad891",
+      "scopes": [
+        "core:SECURITY.md",
+        "core:docs/local-api-auth.md",
+        "core:src/agent_factory/local_auth.py",
+        "core:src/agent_factory/static/index.html",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_control_plane_web.py",
+        "core:tests/test_local_api_auth.py"
+      ],
+      "updated_at": "2026-09-05T19:10:27+00:00",
+      "note": "Unify local API authentication with browser sessions and server-owned identity.",
       "pr": null,
       "resources": [
         "core:http-api",
@@ -1225,7 +1233,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "ac1e8748-d118-4572-abe7-960f0816077d"
     },
     "core:AF-GC-040": {
       "dependencies": [
@@ -3597,6 +3606,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
       "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3"
+    },
+    {
+      "operation_id": "14ba62c2-057e-4853-b695-e711e0987053",
+      "at": "2026-09-05T19:10:27+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-039",
+      "worker": "HappySnowman",
+      "note": "Unify local API authentication with browser sessions and server-owned identity.",
+      "branch": "team/HappySnowman/core-af-gc-039-c0cad891",
+      "claim_id": "ac1e8748-d118-4572-abe7-960f0816077d"
     }
   ]
 }
