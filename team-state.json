@@ -45,11 +45,24 @@
     },
     "core:AF-GC-002": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "scopes": [
+        "core:docs/environment-readiness.md",
+        "core:src/agent_factory/coding_delivery.py",
+        "core:src/agent_factory/environment.py",
+        "core:src/agent_factory/environment_readiness.py",
+        "core:src/agent_factory/orchestration/temporal/activities.py",
+        "core:src/agent_factory/static/app.js",
+        "core:src/agent_factory/storage.py",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_autonomous_coding_delivery.py",
+        "core:tests/test_environment.py",
+        "core:tests/test_environment_readiness.py",
+        "core:tests/test_monitor_web.py"
+      ],
+      "updated_at": "2026-09-05T23:03:10+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -66,7 +79,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
     },
     "core:AF-GC-003": {
       "dependencies": [],
@@ -4490,6 +4504,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-039-253cea04",
       "claim_id": "19e5cf2d-7a5a-4643-9e07-abb385d03d56"
+    },
+    {
+      "operation_id": "fdfb7f88-db49-463e-a629-fd1c61728cef",
+      "at": "2026-09-05T23:03:10+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
     }
   ],
   "migration": {
