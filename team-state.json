@@ -140,11 +140,18 @@
     },
     "core:AF-GC-006": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "scopes": [
+        "core:docs/providers.md",
+        "core:src/agent_factory/application.py",
+        "core:src/agent_factory/defaults/providers.json",
+        "core:src/agent_factory/providers.py",
+        "core:src/agent_factory/runtime.py",
+        "core:tests/test_model_binding.py"
+      ],
+      "updated_at": "2026-09-05T18:50:21+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -160,7 +167,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     },
     "core:AF-GC-007": {
       "dependencies": [
@@ -3485,6 +3493,16 @@
       "note": "Reproduce and repair portable CI, provider fixtures, and cancellation checks.",
       "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
       "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+    },
+    {
+      "operation_id": "43b98a43-a907-4343-a812-a4c73c1f3b2d",
+      "at": "2026-09-05T18:50:21+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-006",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     }
   ]
 }
