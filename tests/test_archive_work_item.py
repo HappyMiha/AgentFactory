@@ -19,7 +19,7 @@ class ArchiveWorkItemTests(unittest.TestCase):
             project = service.create_project("Archive")
             item = service.create_work_item(project_id=project.project_id, title="Old", description="Old", kind="epic", acceptance_criteria=["Recorded"])
             storage.close()
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 response = client.post(f"/api/work-items/{item.id}/archive", json={"confirmed": True, "reason": "Superseded"}, headers={"X-Agent-Factory-Confirm": "true"})
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(client.get("/api/work-items?limit=200").json()["total"], 0)
@@ -38,7 +38,7 @@ class ArchiveWorkItemTests(unittest.TestCase):
             parent = service.create_work_item(project_id=project.project_id, title="Parent", description="Parent", kind="epic", acceptance_criteria=["Recorded"])
             service.create_work_item(project_id=project.project_id, title="Child", description="Child", dependencies=[parent.id], acceptance_criteria=["Recorded"])
             storage.close()
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 response = client.post(f"/api/work-items/{parent.id}/archive", json={"confirmed": True}, headers={"X-Agent-Factory-Confirm": "true"})
             self.assertEqual(response.status_code, 400)
             self.assertIn("dependent", response.json()["error"]["message"])

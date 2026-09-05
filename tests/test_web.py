@@ -143,7 +143,7 @@ class WebHostTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             database = workspace / ".agent-factory" / "state.db"
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 health = client.get("/api/health")
                 self.assertEqual(health.status_code, 200)
                 self.assertEqual(health.json()["status"], "ready")
@@ -186,7 +186,7 @@ class WebHostTests(unittest.TestCase):
             workspace = Path(tmp)
             database = workspace / ".agent-factory" / "state.db"
             project_id, task_id, run_id = seed(workspace, database)
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 projects = client.get("/api/projects", params={"offset": 0, "limit": 1})
                 self.assertEqual(projects.status_code, 200)
                 self.assertEqual(projects.json()["total"], 1)
@@ -236,7 +236,7 @@ class WebHostTests(unittest.TestCase):
             workspace = Path(tmp)
             database = workspace / ".agent-factory" / "state.db"
             _, task_id, _ = seed(workspace, database)
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 paths = [
                     "/api/projects",
                     "/api/work-items",
@@ -252,7 +252,8 @@ class WebHostTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             with TestClient(
-                create_app(workspace, workspace / ".agent-factory" / "state.db")
+                create_app(workspace, workspace / ".agent-factory" / "state.db"),
+                base_url="http://localhost",
             ) as client:
                 paths = client.get("/api/openapi.json").json()["paths"]
                 self.assertIn("/api/projects", paths)
@@ -295,7 +296,7 @@ class WebHostTests(unittest.TestCase):
             storage.db.execute("UPDATE work_items SET kind='epic' WHERE id=?", (item.id,))
             storage.db.commit()
             storage.close()
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 response = client.post(f"/api/work-items/{item.id}/runs", json={"workflow_id": "delivery", "mode": "simulation", "confirmed": True}, headers={"X-Agent-Factory-Confirm": "true"})
             self.assertEqual(response.status_code, 409)
             self.assertIn("kind:epic", response.json()["error"]["message"])
@@ -306,7 +307,7 @@ class WebHostTests(unittest.TestCase):
             database = workspace / ".agent-factory" / "state.db"
             _, task_id, run_id = seed(workspace, database)
             headers = {"X-Agent-Factory-Confirm": "true"}
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 packets = client.get("/api/founder-decisions").json()
                 self.assertEqual(len(packets), 1)
                 packet = packets[0]
@@ -450,7 +451,7 @@ class WebHostTests(unittest.TestCase):
                 }
             ]
             headers = {"X-Agent-Factory-Confirm": "true"}
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 settings = client.get("/api/settings").json()
                 by_key = {item["key"]: item for item in settings["runtime_settings"]}
                 self.assertEqual(by_key["dashboard_refresh_seconds"]["value"], 5)
@@ -556,7 +557,7 @@ class WebHostTests(unittest.TestCase):
             database = workspace / ".agent-factory" / "state.db"
             _, _, run_id = seed(workspace, database)
             headers = {"X-Agent-Factory-Confirm": "true"}
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 agents = client.get("/api/agents", params={"limit": 200}).json()
                 guardian = next(
                     item for item in agents["items"] if item["id"] == "policy-guardian"
@@ -662,7 +663,7 @@ class WebHostTests(unittest.TestCase):
             )
             storage.close()
             headers = {"X-Agent-Factory-Confirm": "true"}
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 rejected = client.post(
                     f"/api/work-items/{item.id}/claim",
                     json={"confirmed": False, "agent_id": "coding-worker-codex"},
@@ -721,7 +722,8 @@ class WebHostTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             with TestClient(
-                create_app(workspace, workspace / ".agent-factory" / "state.db")
+                create_app(workspace, workspace / ".agent-factory" / "state.db"),
+                base_url="http://localhost",
             ) as client:
                 page = client.get("/")
                 self.assertEqual(page.status_code, 200)

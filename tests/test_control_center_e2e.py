@@ -41,7 +41,7 @@ class LocalControlCenterEndToEndTests(unittest.TestCase):
             )
             database = workspace / ".agent-factory" / "state.db"
             headers = {"X-Agent-Factory-Confirm": "true"}
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 imported = client.post(
                     "/api/backlog/import",
                     headers=headers,

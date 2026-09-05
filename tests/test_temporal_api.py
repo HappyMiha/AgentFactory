@@ -55,7 +55,7 @@ class TemporalApiTests(unittest.TestCase):
                 patch("agent_factory.web.start_job_workflow", started),
                 patch("agent_factory.web.signal_workflow", signalled),
                 patch("agent_factory.web.workflow_snapshot", snapshot),
-                TestClient(create_app(workspace, database)) as client,
+                TestClient(create_app(workspace, database), base_url="http://localhost") as client,
             ):
                 response = client.post(
                     f"/api/work-items/{item.id}/runs",

@@ -18,7 +18,7 @@ class ArchiveAllWorkItemsTests(unittest.TestCase):
             for index in range(3):
                 service.create_work_item(project_id=project.project_id, title=f"Item {index}", description="item", kind="epic", acceptance_criteria=["recorded"])
             storage.close()
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 response = client.post("/api/work-items/archive-all", json={"confirmed": True}, headers={"X-Agent-Factory-Confirm": "true"})
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["count"], 3)
@@ -32,7 +32,7 @@ class ArchiveAllWorkItemsTests(unittest.TestCase):
             item = service.create_work_item(project_id=project.project_id, title="Item", description="item", acceptance_criteria=["recorded"])
             claim = service.claim_work_item(item.id, "coding-worker-codex")
             storage.db.execute("UPDATE leases SET expires_at='2000-01-01T00:00:00+00:00' WHERE assignment_id=?", (claim.assignment_id,)); storage.db.commit(); storage.close()
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 response = client.post("/api/work-items/archive-all", json={"confirmed": True}, headers={"X-Agent-Factory-Confirm": "true"})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["count"], 1)
