@@ -24,14 +24,13 @@
       "scopes": [
         "core:.github/workflows/ci.yml",
         "core:docs/ci-validation.md",
-        "core:pyproject.toml",
         "core:scripts/team_checks.py",
         "core:tests/test_monitor_web.py",
         "core:tests/test_team_checks.py",
         "core:tests/test_temporal_workflows.py"
       ],
-      "updated_at": "2026-09-05T18:50:02+00:00",
-      "note": "Reproduce and repair portable CI, provider fixtures, and cancellation checks.",
+      "updated_at": "2026-09-05T18:55:23+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "core:ci-portability"
@@ -3516,6 +3515,16 @@
       "note": "Bind model execution and preserve effective identity for independent review.",
       "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
       "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
+    },
+    {
+      "operation_id": "92842892-fe2e-4b7a-acc9-68c019b9396a",
+      "at": "2026-09-05T18:55:23+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-001",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
     }
   ]
 }
