@@ -204,6 +204,21 @@ class AgentDraftTests(unittest.TestCase):
         self.assertEqual(self.model.input_value(), 'newest-server-version')
         self.assertFalse(self.page.locator('[data-agent-conflict]').is_visible())
 
+    def test_six_second_responses_still_update_with_five_second_polling(self):
+        self.agent['model'] = 'slow-server-v2'
+        self.page.evaluate('''() => {
+          const realFetch = fetchJson;
+          fetchJson = async (url, options) => {
+            const result = await realFetch(url, options);
+            if (url === '/api/agents?limit=200') await new Promise((resolve) => setTimeout(resolve, 6000));
+            return result;
+          };
+          window.editorRefreshTimer = setInterval(refresh, 5000);
+        }''')
+        self.page.wait_for_function("document.querySelector('.agent-model').value === 'slow-server-v2'", timeout=14000)
+        self.assertTrue(self.page.locator('#refresh').is_enabled())
+        self.assertEqual(self.posts, [])
+
 
 if __name__ == '__main__':
     unittest.main()

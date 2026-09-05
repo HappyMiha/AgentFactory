@@ -46,6 +46,9 @@ functions and intercepted HTTP responses. One test waits through three actual
 five-second refresh cycles and verifies field identity, provider selection,
 model text, focus, caret and changing status. Other cases cover conflict choices,
 Save/Cancel, a server change during confirmation, failed saves, missing agents or
-providers, untouched forms and out-of-order refresh responses. The existing dialog
+providers, untouched forms, out-of-order refresh responses and slow six-second
+responses under the standard five-second poll.
+Only a newer completed snapshot or a save barrier supersedes an older response;
+a newer pending request cannot starve live updates. The existing dialog
 and specification-preview suites remain regression checks. These tests do not
 invoke an AI provider or certify a generated game.

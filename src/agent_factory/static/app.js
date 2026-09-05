@@ -422,14 +422,14 @@ async function handleAgentAction(target) {
     try {
       const result = await guardedCommand(`/api/agents/${encodeURIComponent(agentId)}/provider`, { provider, model }, `Replace ${agentId} provider with ${provider} / ${model || `provider:${provider}`}; prior approval snapshots will not be reused`, async () => {
         const latest = await fetchJson('/api/agents?limit=200');
-        state.refreshGeneration = (state.refreshGeneration || 0) + 1;
+        state.completedRefreshGeneration = state.refreshGeneration = (state.refreshGeneration || 0) + 1;
         const current = latest.items.find((agent) => agent.id === agentId);
         if (!current) { editor.missing = true; return false; }
         editor.server = current;
         return sameIdentity(expected, agentIdentity(current));
       });
       if (result) {
-        state.refreshGeneration = (state.refreshGeneration || 0) + 1;
+        state.completedRefreshGeneration = state.refreshGeneration = (state.refreshGeneration || 0) + 1;
         editor.server = result.agent;
         editor.base = agentIdentity(result.agent);
         setEditorIdentity(card, editor.base);
@@ -560,16 +560,20 @@ async function refresh() {
       loadAudit(),
       loadSettings()
     ]);
-    if (generation !== state.refreshGeneration) return;
+    // A newer pending poll must not starve this completed snapshot. Only a
+    // completed newer snapshot or a save barrier can supersede it.
+    if (generation <= (state.completedRefreshGeneration || 0)) return;
+    state.completedRefreshGeneration = generation;
     renderDashboard(dashboard); renderMonitor(monitor); renderExecutions(executions); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
     $("updated").textContent = `Updated ${state.lastSuccess.toLocaleTimeString()}`; if (!$("notice").textContent.startsWith("Completed:")) $("notice").hidden = true;
   } catch (error) {
-    if (generation !== state.refreshGeneration) return;
+    if (generation < (state.completedRefreshGeneration || 0)) return;
+    state.completedRefreshGeneration = generation;
     $("connection-dot").className = "offline"; $("connection-text").textContent = "Service disconnected";
     $("notice").hidden = false; $("notice").textContent = state.lastSuccess ? "Live refresh failed. Showing the last successful local snapshot." : "Dashboard data is unavailable. Check the local service and retry.";
     if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list","audit-list","settings-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
-  } finally { if (generation === state.refreshGeneration) $("refresh").disabled = false; }
+  } finally { $("refresh").disabled = false; }
 }
 
 $("execution-list").addEventListener("click", (event) => { const action = event.target.closest("[data-execution-action]"); if (!action) return; const type = action.dataset.executionAction; const request = type === "release-lease" ? ["/api/executions/leases/release", { assignment_id: Number(action.dataset.assignment), fencing_token: Number(action.dataset.fence) }, "Release execution lease"] : type === "stop-session" ? [`/api/executions/sessions/${action.dataset.id}/stop`, {}, `Stop runtime session #${action.dataset.id}`] : [`/api/executions/runs/${action.dataset.id}/cancel`, {}, `Cancel workflow run #${action.dataset.id}`]; guardedCommand(request[0], request[1], request[2]).then(() => refresh()).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
