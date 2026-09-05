@@ -3427,7 +3427,7 @@
       "reviewed_head": "849451a3072aeb81f0eaf103caae9b30e57bdad7"
     },
     "cloud:AF-TEAM-001": {
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
       "scopes": [
@@ -3451,10 +3451,11 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T20:35:02+00:00",
+      "updated_at": "2026-09-05T20:38:52+00:00",
       "note": "",
-      "pr": null,
-      "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f"
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/3",
+      "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f",
+      "review_head": "92d281db889c38a9aaf50ca5faf028a9e67d49e4"
     },
     "core:AF-TEAM-002": {
       "status": "done",
@@ -3939,6 +3940,16 @@
       "operation_id": "7504ff5d-4091-475f-8846-3202e6ca623e",
       "at": "2026-09-05T20:35:02+00:00",
       "action": "claim",
+      "task": "cloud:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/cloud-af-team-001-0f7adea3",
+      "claim_id": "5beede18-43be-4ca6-a6c1-ba38f093f63f"
+    },
+    {
+      "operation_id": "496c9cbd-e25e-41c6-b05b-39e579ea881c",
+      "at": "2026-09-05T20:38:52+00:00",
+      "action": "review",
       "task": "cloud:AF-TEAM-001",
       "worker": "HappyDucky02",
       "note": "",
