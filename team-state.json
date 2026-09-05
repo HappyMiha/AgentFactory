@@ -140,24 +140,12 @@
     },
     "core:AF-GC-006": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
-      "scopes": [
-        "core:docs/providers.md",
-        "core:src/agent_factory/application.py",
-        "core:src/agent_factory/defaults/providers.json",
-        "core:src/agent_factory/orchestration/temporal/activities.py",
-        "core:src/agent_factory/providers.py",
-        "core:src/agent_factory/reviewers.py",
-        "core:src/agent_factory/runtime.py",
-        "core:src/agent_factory/workflow.py",
-        "core:tests/test_autonomous_authorization.py",
-        "core:tests/test_model_binding.py",
-        "core:tests/test_web.py"
-      ],
-      "updated_at": "2026-09-05T20:18:38+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-05T20:24:39+00:00",
+      "note": "Model binding merged after independent worker review, 79 selected tests and active CI checks; matrix manual-only.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/4",
       "resources": [
         "core:provider-model",
@@ -174,7 +162,9 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6",
-      "review_head": "411cc5a0645a051022db742ce4f3fcde5cb32940"
+      "review_head": "411cc5a0645a051022db742ce4f3fcde5cb32940",
+      "completed_commit": "4a50bcc3ca4ea3c72027d1a163f4eb0a7142835e",
+      "reviewed_head": "411cc5a0645a051022db742ce4f3fcde5cb32940"
     },
     "core:AF-GC-007": {
       "dependencies": [
@@ -3878,6 +3868,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
       "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
+    },
+    {
+      "operation_id": "8003cbec-48cd-46a7-adec-8b9af7217492",
+      "at": "2026-09-05T20:24:39+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-006",
+      "worker": "HappyDucky02",
+      "note": "Model binding merged after independent worker review, 79 selected tests and active CI checks; matrix manual-only.",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     }
   ]
 }
