@@ -134,11 +134,11 @@
       ],
       "model_namespace": "local",
       "model_ids": ["qwen2.5-coder:7b", "qwen2.5-coder:14b"],
-      "args": ["run", "{model}", "--think=false", "--nowordwrap"],
+      "args": ["run", "{model}", "--think=false", "--nowordwrap", "--format=json"],
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,
-      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Proxy Reviewer", "Validation Reviewer"],
+      "allowed_roles": ["Policy Reviewer", "Delivery Planner", "Implementation Worker", "Proxy Reviewer", "Validation Reviewer", "mission_analyst", "product_requirements_analyst", "software_architect", "backlog_planner", "backlog_reviewer", "Environment Bootstrap", "Developer"],
       "max_timeout": 180,
       "max_output_chars": 100000
     },

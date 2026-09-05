@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
+import re
 from typing import Any
 
 
@@ -31,6 +32,11 @@ class ProviderCapabilities:
     model_listing: bool = False
     model_switching: bool = False
     model_load_release: bool = False
+    # None retains the provider-neutral contract for programmatically supplied
+    # adapters. Configured CLI profiles always declare an explicit role set.
+    profile_roles: tuple[str, ...] | None = None
+    profile_models: tuple[str, ...] = ()
+    profile_execution_enabled: bool = False
 
     @staticmethod
     def _flag(document: dict[str, Any], key: str) -> bool:
@@ -51,7 +57,24 @@ class ProviderCapabilities:
         document = value.get("capabilities", {})
         if not isinstance(document, dict):
             raise TypeError("Provider capabilities must be an object")
+        profile_roles = None
+        profile_models = ()
+        if value.get("type") in {"cli", "health_only_cli"} or "allowed_roles" in value:
+            roles = value.get("allowed_roles", [])
+            if not isinstance(roles, list) or any(not isinstance(role, str) or not role.strip() for role in roles):
+                raise TypeError("Provider allowed_roles must be a list of nonempty role IDs")
+            profile_roles = tuple(roles)
+            namespace = value.get("model_namespace", "")
+            models = value.get("model_ids", [])
+            args = value.get("args", [])
+            if (isinstance(namespace, str) and re.fullmatch(r"[a-z][a-z0-9_-]*", namespace)
+                    and isinstance(models, list) and isinstance(args, list) and all(isinstance(arg, str) for arg in args) and args.count("{model}") == 1
+                    and all(isinstance(model, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}", model) for model in models)):
+                profile_models = tuple(f"{namespace}:{model}" for model in models)
         result = cls(
+            profile_roles=profile_roles,
+            profile_models=profile_models,
+            profile_execution_enabled=value.get("type") != "health_only_cli" and value.get("enabled", True) is True and value.get("allow_execution") is True,
             execution_location=location,
             location_declared=declared,
             text_generation=cls._flag(document, "text_generation"),
@@ -75,6 +98,20 @@ class ProviderCapabilities:
             and self.text_generation
         )
 
+    def role_model_error(self, role: str, model: str) -> str | None:
+        """Check configured compatibility, not live model quality or tool rights."""
+        if self.profile_roles is None:
+            return None  # A programmatic adapter owns its separate role contract.
+        if not self.profile_execution_enabled or not self.text_generation:
+            return "Provider profile does not enable text inference"
+        if role not in self.profile_roles:
+            alternatives = ", ".join(self.profile_roles) or "none"
+            return f"Provider profile does not allow role {role!r}; configured roles: {alternatives}"
+        if model not in self.profile_models:
+            alternatives = ", ".join(self.profile_models) or "none"
+            return f"Provider profile does not bind model {model!r}; configured models: {alternatives}"
+        return None
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "execution_location": self.execution_location.value,
@@ -86,6 +123,9 @@ class ProviderCapabilities:
             "model_switching": self.model_switching,
             "model_load_release": self.model_load_release,
             "autonomous_local_eligible": self.autonomous_local_eligible,
+            "profile_roles": list(self.profile_roles) if self.profile_roles is not None else None,
+            "profile_models": list(self.profile_models),
+            "profile_execution_enabled": self.profile_execution_enabled,
         }
 
 

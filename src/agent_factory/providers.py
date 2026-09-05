@@ -319,6 +319,9 @@ class CLIProvider(Provider):
             return "provider execution disabled by configuration"
         if self.allowed_roles and agent.role not in self.allowed_roles:
             return f"agent role {agent.role!r} is not allowlisted for provider {self.name}"
+        compatibility_error = self.capabilities.role_model_error(agent.role, agent.model)
+        if compatibility_error:
+            return compatibility_error
         if approval is None:
             return "operator provider-execution approval required"
         expected = (self.name, agent.id, item.id)
@@ -584,6 +587,9 @@ class CLIProvider(Provider):
                 "output_limit_chars": self.max_output_chars,
                 "retained_output_chars": captured["retained_chars"],
                 "observed_output_chars": captured["observed_chars"],
+                "stdout_retained_chars": len(stdout),
+                "stderr_retained_chars": len(stderr),
+                "stderr_ansi_sequences": len(re.findall(r"\x1b\[[0-?]*[ -/]*[@-~]", stderr)),
                 "capture_complete": capture_complete,
                 "process_group_contained": True,
                 "launcher_failures": launcher_failures,
