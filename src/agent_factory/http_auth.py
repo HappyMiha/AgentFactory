@@ -144,3 +144,61 @@ class LocalAccess:
         if cookie:
             with self.lock:
                 self.sessions.pop(self.key(cookie), None)
+
+
+class LocalHTTPBoundary:
+    """Authorize before routing without changing response or dependency lifetime."""
+
+    def __init__(self, app, *, access: LocalAccess):
+        self.app = app
+        self.access = access
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        from starlette.datastructures import MutableHeaders
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+
+        request = Request(scope)
+
+        async def protected_send(message):
+            if message["type"] == "http.response.start":
+                headers = MutableHeaders(scope=message)
+                headers["Cache-Control"] = "no-store"
+                headers["Referrer-Policy"] = "no-referrer"
+                headers["X-Content-Type-Options"] = "nosniff"
+                headers["X-Frame-Options"] = "DENY"
+            await send(message)
+
+        async def deny(status, code):
+            response = JSONResponse({"error": {"code": code}}, status_code=status)
+            await response(scope, receive, protected_send)
+
+        if (len(request.headers.getlist("host")) != 1
+                or len(request.headers.getlist("origin")) > 1
+                or len(request.headers.getlist("authorization")) > 1
+                or not trusted_origin(scope.get("scheme", "http"),
+                                      request.headers.get("host", ""), request.headers.get("origin"))):
+            await deny(403, "local_origin_required")
+            return
+        try:
+            policy = self.access.policy()
+        except ValueError:
+            await deny(503, "local_access_unavailable")
+            return
+        principal = self.access.authenticate(policy, request.headers.get("authorization"), request.cookies.get(COOKIE))
+        request.state.local_policy = policy
+        request.state.local_principal = principal
+        path = scope["path"]
+        if path == "/api" or path.startswith("/api/"):
+            if principal is None:
+                await deny(401, "authentication_required")
+                return
+            if required_scope(path, scope["method"]) not in principal.scopes:
+                await deny(403, "scope_required")
+                return
+        # Direct ASGI forwarding adds neither a streaming response nor background
+        # task boundaries around the endpoint's yield dependencies.
+        await self.app(scope, receive, protected_send)

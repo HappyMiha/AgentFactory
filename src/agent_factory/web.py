@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .http_auth import COOKIE, LocalAccess, required_scope, trusted_origin
+from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
 
 from .application import (
     AgentFactoryService,
@@ -260,32 +260,7 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         return JSONResponse(status_code=status, content={"error": {"code": code}},
                             headers={"Cache-Control": "no-store"})
 
-    @app.middleware("http")
-    async def local_http_boundary(request: Request, call_next):
-        if (len(request.headers.getlist("host")) != 1
-                or len(request.headers.getlist("origin")) > 1
-                or len(request.headers.getlist("authorization")) > 1) or not trusted_origin(
-            request.url.scheme, request.headers.get("host", ""), request.headers.get("origin")
-        ):
-            return access_error(403, "local_origin_required")
-        try:
-            policy = access.policy()
-        except ValueError:
-            return access_error(503, "local_access_unavailable")
-        principal = access.authenticate(policy, request.headers.get("authorization"), request.cookies.get(COOKIE))
-        request.state.local_policy = policy
-        request.state.local_principal = principal
-        if request.url.path == "/api" or request.url.path.startswith("/api/"):
-            if principal is None:
-                return access_error(401, "authentication_required")
-            if required_scope(request.url.path, request.method) not in principal.scopes:
-                return access_error(403, "scope_required")
-        response = await call_next(request)
-        response.headers["Cache-Control"] = "no-store"
-        response.headers["Referrer-Policy"] = "no-referrer"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        return response
+    app.add_middleware(LocalHTTPBoundary, access=access)
 
     @app.get("/auth/session", include_in_schema=False)
     async def session_status(request: Request):
