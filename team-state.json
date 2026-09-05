@@ -3349,18 +3349,31 @@
     },
     "core:TEAM-SETUP": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "team/HappyDucky02/core-team-setup",
+      "scopes": [
+        "core:.githooks/pre-push",
+        "core:.github/PULL_REQUEST_TEMPLATE.md",
+        "core:.github/workflows/team-policy.yml",
+        "core:AGENTS.md",
+        "core:CONTRIBUTING.md",
+        "core:README.md",
+        "core:docs/team-workflow.md",
+        "core:scripts/team.py",
+        "core:scripts/team_checks.py",
+        "core:tests/test_team_checks.py",
+        "core:tests/test_team_coordination.py"
+      ],
+      "updated_at": "2026-09-05T18:01:43+00:00",
+      "note": "Install reviewed three-PC coordination tooling; no product features.",
       "pr": null,
       "resources": [],
       "required_scopes": [],
       "priority": "P0",
       "milestone": "m0",
-      "maintenance": true
+      "maintenance": true,
+      "claim_id": "0d8a28ba-2343-4077-8896-5cab0875e8f6"
     },
     "cloud:TEAM-SETUP": {
       "dependencies": [],
@@ -3378,5 +3391,16 @@
       "maintenance": true
     }
   },
-  "events": []
+  "events": [
+    {
+      "operation_id": "38df5b4c-06e5-4947-8d1f-572cea409a96",
+      "at": "2026-09-05T18:01:43+00:00",
+      "action": "claim",
+      "task": "core:TEAM-SETUP",
+      "worker": "HappyDucky02",
+      "note": "Install reviewed three-PC coordination tooling; no product features.",
+      "branch": "team/HappyDucky02/core-team-setup",
+      "claim_id": "0d8a28ba-2343-4077-8896-5cab0875e8f6"
+    }
+  ]
 }
