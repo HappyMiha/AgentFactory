@@ -151,10 +151,11 @@
         "core:src/agent_factory/reviewers.py",
         "core:src/agent_factory/runtime.py",
         "core:src/agent_factory/workflow.py",
+        "core:tests/test_autonomous_authorization.py",
         "core:tests/test_model_binding.py"
       ],
-      "updated_at": "2026-09-05T18:52:08+00:00",
-      "note": "Bind model execution and preserve effective identity for independent review.",
+      "updated_at": "2026-09-05T18:58:18+00:00",
+      "note": "Update the offline autonomous provider fixture for explicit model binding.",
       "pr": null,
       "resources": [
         "core:provider-model",
@@ -3535,6 +3536,16 @@
       "note": "Targeted regressions, clean wheel, and Docker smoke pass; full suite running.",
       "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
       "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+    },
+    {
+      "operation_id": "16dd62c2-6a6b-4bd2-a635-34c2b8d858c9",
+      "at": "2026-09-05T18:58:18+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-006",
+      "worker": "HappyDucky02",
+      "note": "Update the offline autonomous provider fixture for explicit model binding.",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     }
   ]
 }
