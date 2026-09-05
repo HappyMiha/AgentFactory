@@ -18,18 +18,11 @@
   "tasks": {
     "core:AF-GC-001": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappySnowman",
       "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
-      "scopes": [
-        "core:.github/workflows/ci.yml",
-        "core:docs/ci-validation.md",
-        "core:scripts/team_checks.py",
-        "core:tests/test_monitor_web.py",
-        "core:tests/test_team_checks.py",
-        "core:tests/test_temporal_workflows.py"
-      ],
-      "updated_at": "2026-09-05T19:59:51+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-05T20:01:31+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/3",
       "resources": [
@@ -46,7 +39,9 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376",
-      "review_head": "180582adfd5e0bda8e6432059c82f7f80518ca04"
+      "review_head": "180582adfd5e0bda8e6432059c82f7f80518ca04",
+      "completed_commit": "b1b477916c479e59fbf579259526350910efec1d",
+      "reviewed_head": "180582adfd5e0bda8e6432059c82f7f80518ca04"
     },
     "core:AF-GC-002": {
       "dependencies": [],
@@ -3676,6 +3671,16 @@
       "operation_id": "a894c6ee-16ef-4077-8826-05788000d8a5",
       "at": "2026-09-05T19:59:51+00:00",
       "action": "heartbeat",
+      "task": "core:AF-GC-001",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+    },
+    {
+      "operation_id": "19f4a642-7620-40ce-b08f-a862047a75de",
+      "at": "2026-09-05T20:01:31+00:00",
+      "action": "complete",
       "task": "core:AF-GC-001",
       "worker": "HappySnowman",
       "note": "",
