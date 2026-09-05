@@ -3452,6 +3452,28 @@
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
       "updated_at": "2026-09-05T20:03:53+00:00",
       "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
+    },
+    "core:AF-TEAM-002": {
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "dependencies": [
+        "core:AF-GC-001"
+      ],
+      "resources": [
+        "core:ci-portability"
+      ],
+      "required_scopes": [
+        "core:.github/workflows/ci.yml",
+        "core:docs/ci-validation.md"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "maintenance": true,
+      "title": "Make Python CI matrix manual-only at owner request",
+      "updated_at": "2026-09-05T20:05:32+00:00",
+      "note": "Owner requested disabling automatic Python matrix; preserve build and coordination checks."
     }
   },
   "events": [
@@ -3752,6 +3774,16 @@
       "task": "cloud:AF-TEAM-001",
       "worker": "HappyDucky02",
       "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history.",
+      "branch": null,
+      "claim_id": null
+    },
+    {
+      "operation_id": "f542496e-6f61-47a7-ac73-b5ba4039b643",
+      "at": "2026-09-05T20:05:32+00:00",
+      "action": "register-maintenance",
+      "task": "core:AF-TEAM-002",
+      "worker": "HappyDucky02",
+      "note": "Owner requested disabling automatic Python matrix; preserve build and coordination checks.",
       "branch": null,
       "claim_id": null
     }
