@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -1750,6 +1750,10 @@ class AgentFactoryService:
                 raise ValueError(
                     f"Provider {provider} is incompatible with role {current.role}"
                 )
+        if provider != "deterministic":
+            AgentRuntime(workspace=self.workspace).effective_model(
+                replace(current, provider=provider, model=model)
+            )
         agent = self.registry.replace_provider(agent_id, provider, model)
         self.storage.event(
             "agent.provider.replaced",

@@ -19,7 +19,9 @@
         "%USERPROFILE%\\.codex\\.sandbox-bin\\codex.exe",
         "codex.exe"
       ],
-      "args": ["exec", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "-"],
+      "model_namespace": "openai",
+      "model_ids": ["gpt-5.6-sol", "gpt-6-astra"],
+      "args": ["exec", "--model", "{model}", "--sandbox", "read-only", "--skip-git-repo-check", "--color", "never", "-"],
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,
@@ -46,7 +48,9 @@
         "%APPDATA%\\npm\\claude.cmd",
         "claude.exe"
       ],
-      "args": ["-p", "--output-format", "text", "--permission-mode", "plan", "--disable-slash-commands"],
+      "model_namespace": "anthropic",
+      "model_ids": ["sonnet-5"],
+      "args": ["-p", "--model", "{model}", "--output-format", "text", "--permission-mode", "plan", "--disable-slash-commands"],
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,
@@ -128,7 +132,9 @@
         "%LOCALAPPDATA%\\Programs\\Ollama\\ollama.exe",
         "ollama.exe"
       ],
-      "args": ["run", "qwen2.5-coder:7b", "--think=false", "--nowordwrap"],
+      "model_namespace": "local",
+      "model_ids": ["qwen2.5-coder:7b", "qwen2.5-coder:14b"],
+      "args": ["run", "{model}", "--think=false", "--nowordwrap"],
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,

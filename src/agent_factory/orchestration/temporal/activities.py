@@ -1617,6 +1617,10 @@ class AgentFactoryActivities:
             candidate_ids=list(reviewer_pool),
             subjects=subjects,
             required_role=placeholder.role,
+            model_resolver=(
+                AgentRuntime(workspace=Path(request.job.workspace)).effective_model
+                if request.job.mode == ExecutionMode.LIVE.value else None
+            ),
         )
 
     @staticmethod
@@ -2022,7 +2026,10 @@ class AgentFactoryActivities:
                     "agent_id": agent.id,
                     "workflow_agent_id": workflow_agent.id,
                     "provider": provider_result.provider,
-                    "model": agent.model_identity,
+                    "model": provider_result.metadata.get("effective_model"),
+                    "requested_model": provider_result.metadata.get("requested_model"),
+                    "effective_model": provider_result.metadata.get("effective_model"),
+                    "model_identity_source": provider_result.metadata.get("model_identity_source"),
                     "authorization_decision_id": (
                         provider_authorization.decision_id
                         if provider_authorization is not None

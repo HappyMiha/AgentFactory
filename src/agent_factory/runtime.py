@@ -52,6 +52,8 @@ class AgentRuntime:
                 cfg["id"],
                 cfg["executable"],
                 cfg.get("args", []),
+                model_namespace=cfg.get("model_namespace", ""),
+                model_ids=cfg.get("model_ids", []),
                 executable_candidates=cfg.get("executable_candidates"),
                 version_args=cfg.get("version_args"),
                 prompt_transport=cfg.get("prompt_transport", "stdin"),
@@ -81,6 +83,15 @@ class AgentRuntime:
     def health(self) -> list[dict]:
         return [provider.health() for provider in self.providers.values()]
 
+    def effective_model(self, agent: Agent) -> str:
+        provider = self.providers.get(agent.provider)
+        if not isinstance(provider, CLIProvider):
+            raise ValueError("Provider has no qualified CLI model identity")
+        _args, identity = provider.model_request(agent.model)
+        if identity is None:
+            raise ValueError("Provider model identity is unknown")
+        return identity
+
     def run(
         self,
         agent: Agent,
@@ -99,6 +110,7 @@ class AgentRuntime:
         if allow_fallback:
             order.append("deterministic")
         errors: list[str] = []
+        failure_metadata: dict[str, Any] = {}
         for name in dict.fromkeys(order):
             provider = self.providers.get(name)
             if not provider:
@@ -119,4 +131,5 @@ class AgentRuntime:
                 result.metadata["fallback_errors"] = errors
                 return result
             errors.append(f"{name}: {result.error}")
-        return ProviderResult(False, provider="none", error="; ".join(errors))
+            failure_metadata = result.metadata
+        return ProviderResult(False, provider="none", error="; ".join(errors), metadata=failure_metadata)
