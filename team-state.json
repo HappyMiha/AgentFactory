@@ -1316,15 +1316,11 @@
     },
     "cloud:AF-CLD-001": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
-      "scopes": [
-        "cloud:README.md",
-        "cloud:docs/core-cloud-boundary.md",
-        "cloud:docs/product-description.md"
-      ],
-      "updated_at": "2026-09-05T19:13:40+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-05T20:09:26+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/2",
       "resources": [
@@ -1337,7 +1333,9 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3",
-      "review_head": "b6aa311bc7b733e69eef255c40b3193467d0f11f"
+      "review_head": "b6aa311bc7b733e69eef255c40b3193467d0f11f",
+      "completed_commit": "d71c62c02d77bc74a73dae22daff55ebf434cb77",
+      "reviewed_head": "b6aa311bc7b733e69eef255c40b3193467d0f11f"
     },
     "cloud:AF-CLD-002": {
       "dependencies": [
@@ -3812,6 +3810,16 @@
       "note": "",
       "branch": "team/HappyDucky02/core-af-team-002-fce8a1b0",
       "claim_id": "14f21494-861c-4cd6-9d7a-7c0fb103db60"
+    },
+    {
+      "operation_id": "a01b4f21-dc3b-4c38-ad5b-8d32fb05419a",
+      "at": "2026-09-05T20:09:26+00:00",
+      "action": "complete",
+      "task": "cloud:AF-CLD-001",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
+      "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3"
     }
   ]
 }
