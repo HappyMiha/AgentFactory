@@ -276,7 +276,14 @@ class AutonomousHistoryRolloverTemporalTests(
                 except RPCError:
                     pass
                 else:
-                    if predicate(status):
+                    # The registration row becomes visible before the Workflow
+                    # consumes its activity result. WAITING is also the initial
+                    # state, so wait for registration to be applied before
+                    # inspecting the worker identity carried over on replay.
+                    registered = status["last_activity"] == (
+                        f"Registered logical mission run {chain_sequence}"
+                    )
+                    if registered and predicate(status):
                         return status
             await asyncio.sleep(0.025)
         self.fail("Timed out waiting for the continued mission Workflow")

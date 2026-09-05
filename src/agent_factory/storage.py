@@ -6457,6 +6457,44 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON autonomous_epoch_worktree_events
         BEGIN SELECT RAISE(ABORT, 'epoch worktree events are durable'); END;
     """),
+    (72, """
+        CREATE TABLE autonomous_child_stage_assignments(
+            id INTEGER PRIMARY KEY,
+            child_job_id INTEGER NOT NULL REFERENCES autonomous_child_jobs(id),
+            stage_key TEXT NOT NULL CHECK(length(stage_key) BETWEEN 1 AND 200),
+            decision_id INTEGER NOT NULL REFERENCES autonomous_authorization_decisions(id),
+            agent_json TEXT NOT NULL CHECK(json_valid(agent_json)),
+            effective_model TEXT NOT NULL CHECK(length(effective_model)>0),
+            binding_digest TEXT NOT NULL CHECK(length(binding_digest)=64),
+            created_at TEXT NOT NULL,
+            UNIQUE(child_job_id,stage_key)
+        );
+        CREATE TRIGGER autonomous_child_stage_assignment_scope_valid
+        BEFORE INSERT ON autonomous_child_stage_assignments
+        WHEN NOT EXISTS (
+            SELECT 1 FROM autonomous_child_jobs job
+            JOIN autonomous_authorization_decisions decision ON decision.id=NEW.decision_id
+              AND decision.mission_id=job.mission_id
+              AND decision.autonomous_authorization_id=job.authorization_id
+              AND decision.outcome='ALLOW_AUTONOMOUS' AND decision.authority_valid=1
+            JOIN autonomous_child_job_authorizations child ON child.child_job_id=job.id
+            WHERE job.id=NEW.child_job_id AND job.execution_mode='live'
+              AND json_extract(decision.request_json,'$.task_id')=job.task_id
+              AND json_extract(decision.request_json,'$.agent_id')=json_extract(NEW.agent_json,'$.id')
+              AND json_extract(decision.request_json,'$.role')=json_extract(NEW.agent_json,'$.role')
+              AND json_extract(decision.request_json,'$.model')=json_extract(NEW.agent_json,'$.model')
+              AND json_extract(decision.request_json,'$.provider_id')=json_extract(NEW.agent_json,'$.provider')
+              AND json_extract(decision.request_json,'$.permissions')=json_extract(NEW.agent_json,'$.permissions')
+        )
+        BEGIN SELECT RAISE(ABORT, 'autonomous stage assignment scope is invalid'); END;
+        CREATE TRIGGER autonomous_child_stage_assignments_no_update
+        BEFORE UPDATE ON autonomous_child_stage_assignments
+        BEGIN SELECT RAISE(ABORT, 'autonomous stage assignments are immutable'); END;
+        CREATE TRIGGER autonomous_child_stage_assignments_no_delete
+        BEFORE DELETE ON autonomous_child_stage_assignments
+        BEGIN SELECT RAISE(ABORT, 'autonomous stage assignments are durable'); END;
+    """),
+
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
