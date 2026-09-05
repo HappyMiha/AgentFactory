@@ -1,14 +1,20 @@
-# Agent Factory
+# AgentFactory Core
 
 **Coordinate specialist AI agents as one traceable, human-controlled delivery system.**
 
-Agent Factory turns a work item into a sequential, reviewable chain of specialist artifacts across interchangeable AI providers. Agents can plan, propose implementations, validate, and issue evidence-backed verdicts. Every real provider execution and external mutation remains bounded, recorded, and subject to explicit human approval.
+AgentFactory Core is an open-source foundation for teams of AI agents. It turns a work item into a reviewable sequence of planning, coding, checks, and evidence across interchangeable providers. It records permissions, budgets, versions, and results so a person can understand and control the work.
 
 The factory is project-neutral. Bring your own repository, requirements, roles, workflows, acceptance criteria, and provider accounts.
 
 > **Alpha:** the deterministic simulation, guarded single-provider execution, local orchestration state, and dry-run GitHub planning are usable today. Full unattended multi-stage live execution, native HTTP providers, and a hosted control plane are not yet complete.
 
-> **Active product direction (5 September 2026): game creation for ages 12+.** Read the [Ukrainian product audit](docs/product-audit-2026-09-05.uk.md), [prioritized game-creator backlog](docs/game-creator-backlog.uk.md), and [importable schema-v2 manifest](examples/game-creator-backlog.json). The next acceptance target is a real Godot game with guided AI/setup and a play–feedback–revision loop; local/hybrid AI and Unity follow as qualified milestones. These are planned outcomes, not capabilities delivered by the current operator dashboard. Existing platform and Autonomous Mission IDs remain stable engineering references.
+> **Planning update — 5 September 2026:** there are two projects. This repository remains the public, Apache-2.0 **Core**. [AgentFactory Cloud](https://github.com/HappyMiha/AgentFactory-Cloud) is a separate commercial product plan for creating, playing, remixing, and publishing games. Its planning repository is private. No Cloud application or game pipeline is claimed as delivered by this update.
+
+Start with the simple English [Core and Cloud description](docs/core-cloud-boundaries.md), [roadmap](docs/core-cloud-roadmap.md), [backlog ownership](docs/core-cloud-backlog.md), and [audit summary](docs/product-audit-2026-09-05.md). The Cloud repository holds its [product description](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/product-description.md), [roadmap](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/roadmap.md), and [67-task backlog](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/backlog.md).
+
+The first product proof is a small Godot 2D game: idea → build → Play → feedback → version 2 → restore and source export, plus a private remix of an owned or licensed sample. The intended 12+ journey needs qualified age, account, privacy, and guardian controls before a minor pilot. More engines, local/hybrid models, public sharing, and commerce have separate gates.
+
+The existing [42-task AF-GC manifest](examples/game-creator-backlog.json), [detailed Ukrainian backlog](docs/game-creator-backlog.uk.md), and older AF/AF-AMM IDs remain stable upstream references. A backlog entry or component test is not proof of the full creator journey.
 
 ## Why Agent Factory
 
@@ -61,7 +67,9 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 - **Local-first state.** Work items, runs, artifacts, attempts, gates, and audit events live in a versioned SQLite database.
 - **Offline demonstration.** The deterministic provider exercises the entire orchestration path without accounts, network access, or token spend.
 
-## What is implemented
+## Component inventory
+
+The status labels below describe earlier component delivery records. They do not certify an end-to-end live coding route, a supported game engine, a beginner-friendly creator interface, or a secure hosted service. Use the [current audit](docs/product-audit-2026-09-05.md) and the phase-specific acceptance gates when deciding what a product may claim.
 
 Для швидкого старту користувача дивіться [україномовну інструкцію](docs/user-guide-uk.md) або готовий [PDF user guide](output/pdf/agent-factory-user-guide-uk.pdf).
 
