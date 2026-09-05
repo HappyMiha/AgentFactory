@@ -3452,13 +3452,10 @@
       "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
     },
     "core:AF-TEAM-002": {
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/core-af-team-002-fce8a1b0",
-      "scopes": [
-        "core:.github/workflows/ci.yml",
-        "core:docs/ci-validation.md"
-      ],
+      "scopes": [],
       "dependencies": [
         "core:AF-GC-001"
       ],
@@ -3473,11 +3470,13 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Make Python CI matrix manual-only at owner request",
-      "updated_at": "2026-09-05T20:08:13+00:00",
-      "note": "",
+      "updated_at": "2026-09-05T20:10:17+00:00",
+      "note": "Manual-only Python matrix merged after peer review; build and coordination checks remain automatic.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/5",
       "claim_id": "14f21494-861c-4cd6-9d7a-7c0fb103db60",
-      "review_head": "7c258ba5cad1cc5ce1bd3bc636bca5df8b28557e"
+      "review_head": "7c258ba5cad1cc5ce1bd3bc636bca5df8b28557e",
+      "completed_commit": "db69157942a3246c079aee27a5111b1b7c5cd2c9",
+      "reviewed_head": "7c258ba5cad1cc5ce1bd3bc636bca5df8b28557e"
     }
   },
   "events": [
@@ -3820,6 +3819,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
       "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3"
+    },
+    {
+      "operation_id": "0278bad1-b328-4458-884e-762d5f353dc3",
+      "at": "2026-09-05T20:10:17+00:00",
+      "action": "complete",
+      "task": "core:AF-TEAM-002",
+      "worker": "HappyDucky02",
+      "note": "Manual-only Python matrix merged after peer review; build and coordination checks remain automatic.",
+      "branch": "team/HappyDucky02/core-af-team-002-fce8a1b0",
+      "claim_id": "14f21494-861c-4cd6-9d7a-7c0fb103db60"
     }
   ]
 }
