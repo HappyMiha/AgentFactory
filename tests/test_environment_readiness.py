@@ -65,6 +65,23 @@ class EnvironmentReadinessTests(AutonomousChildFixture, unittest.TestCase):
         self.assertEqual(EnvironmentReadiness(self.storage).require_ready(self.ident)['id'], report['id'])
         self.assertEqual(self.enter().phase.value, 'DEVELOPMENT')
 
+    def test_other_plan_evidence_is_rejected_even_with_a_valid_checksum(self):
+        from agent_factory.environment_readiness import digest
+        self.approve()
+        report = self.record_fixture_readiness(self.approved)
+        report.pop('id')
+        report['binding']['revision_id'] += 1
+        report['binding']['revision_digest'] = 'f' * 64
+        # Simulate a trusted producer storing an otherwise valid receipt for the
+        # wrong plan. Immutability/checksums alone must not authorize its use.
+        with self.storage.db:
+            self.storage.db.execute('INSERT INTO environment_readiness_reports '
+                '(approval_id,report_json,report_digest,created_at) VALUES(?,?,?,?)',
+                (self.ident, json.dumps(report), digest(report), report['checked_at']))
+        with self.assertRaisesRegex(EnvironmentNotReady, 'different plan'):
+            self.enter()
+        self.assertEqual(self.missions.get(self.mission.id).phase.value, 'APPROVED')
+
     def test_expired_and_future_reports_deny_entry(self):
         self.approve(); report = self.record_fixture_readiness(self.approved)
         checked = datetime.fromisoformat(report['checked_at'])
