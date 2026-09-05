@@ -3418,7 +3418,7 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T21:01:25+00:00",
+      "updated_at": "2026-09-05T21:04:37+00:00",
       "note": "Verified both local repository readers and CI parsers at reviewed migration commits.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/6",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c",
@@ -3978,6 +3978,16 @@
       "note": "Verified both local repository readers and CI parsers at reviewed migration commits.",
       "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
+    },
+    {
+      "operation_id": "19994a63-60ea-4c80-8a38-9af6094a2670",
+      "at": "2026-09-05T21:04:37+00:00",
+      "action": "migration-ack",
+      "task": "core:AF-TEAM-001",
+      "worker": "HappyHahahaker",
+      "note": "Verified both local repository readers and CI parsers at reviewed migration commits.",
+      "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
+      "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
     }
   ],
   "migration": {
@@ -4015,6 +4025,23 @@
           }
         },
         "at": "2026-09-05T21:01:25+00:00"
+      },
+      "HappyHahahaker": {
+        "pins": {
+          "core": "d097ac0b04445183c647012a0c92a9d6348135b6",
+          "cloud": "99b7c9c5942b28165d53ca1ff7240f1cbeff6e5b"
+        },
+        "readers": {
+          "core": {
+            "scripts/team.py": "db71a346398947419fb0331ed53a301de3440a28",
+            ".github/workflows/team-policy.yml": "89bcce9e784dd83bb2c1396d68fbc23bdb4447c6"
+          },
+          "cloud": {
+            "scripts/team.py": "db71a346398947419fb0331ed53a301de3440a28",
+            ".github/workflows/team-policy.yml": "89bcce9e784dd83bb2c1396d68fbc23bdb4447c6"
+          }
+        },
+        "at": "2026-09-05T21:04:37+00:00"
       }
     }
   }
