@@ -147,12 +147,15 @@
         "core:docs/providers.md",
         "core:src/agent_factory/application.py",
         "core:src/agent_factory/defaults/providers.json",
+        "core:src/agent_factory/orchestration/temporal/activities.py",
         "core:src/agent_factory/providers.py",
+        "core:src/agent_factory/reviewers.py",
         "core:src/agent_factory/runtime.py",
+        "core:src/agent_factory/workflow.py",
         "core:tests/test_model_binding.py"
       ],
-      "updated_at": "2026-09-05T18:50:21+00:00",
-      "note": "",
+      "updated_at": "2026-09-05T18:52:08+00:00",
+      "note": "Bind model execution and preserve effective identity for independent review.",
       "pr": null,
       "resources": [
         "core:provider-model",
@@ -3501,6 +3504,16 @@
       "task": "core:AF-GC-006",
       "worker": "HappyDucky02",
       "note": "",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
+    },
+    {
+      "operation_id": "74ada9c7-25ed-4bf9-8d9e-eca7eec48487",
+      "at": "2026-09-05T18:52:08+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-006",
+      "worker": "HappyDucky02",
+      "note": "Bind model execution and preserve effective identity for independent review.",
       "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
       "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     }
