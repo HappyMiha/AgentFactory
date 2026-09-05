@@ -18,12 +18,20 @@
   "tasks": {
     "core:AF-GC-001": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "scopes": [
+        "core:.github/workflows/ci.yml",
+        "core:docs/ci-validation.md",
+        "core:pyproject.toml",
+        "core:scripts/team_checks.py",
+        "core:tests/test_monitor_web.py",
+        "core:tests/test_team_checks.py",
+        "core:tests/test_temporal_workflows.py"
+      ],
+      "updated_at": "2026-09-05T18:50:02+00:00",
+      "note": "Reproduce and repair portable CI, provider fixtures, and cancellation checks.",
       "pr": null,
       "resources": [
         "core:ci-portability"
@@ -37,7 +45,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
     },
     "core:AF-GC-002": {
       "dependencies": [],
@@ -3466,6 +3475,16 @@
       "note": "Merged verified Cloud setup PR; no game or hosting task implemented.",
       "branch": "team/HappyDucky02/cloud-team-setup",
       "claim_id": "529b0108-2e69-47b7-8891-c4762686f7b3"
+    },
+    {
+      "operation_id": "f1177d3b-c9e6-42ac-a598-5c0fb5f9c2a1",
+      "at": "2026-09-05T18:50:02+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-001",
+      "worker": "HappySnowman",
+      "note": "Reproduce and repair portable CI, provider fixtures, and cancellation checks.",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
     }
   ]
 }
