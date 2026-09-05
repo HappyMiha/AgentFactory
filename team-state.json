@@ -1268,11 +1268,12 @@
         "core:docs/coding-delivery-loop.md",
         "core:src/agent_factory/coding_delivery.py",
         "core:src/agent_factory/orchestration/temporal/activities.py",
+        "core:src/agent_factory/reviewers.py",
         "core:src/agent_factory/storage.py",
         "core:tests/test_autonomous_child_orchestration.py",
         "core:tests/test_autonomous_stage_identity.py"
       ],
-      "updated_at": "2026-09-05T21:27:43+00:00",
+      "updated_at": "2026-09-05T21:43:24+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4149,6 +4150,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
       "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad"
+    },
+    {
+      "operation_id": "55726da5-a33a-480f-9944-4619a13bcef8",
+      "at": "2026-09-05T21:43:24+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-041",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-041-63adf2c5",
+      "claim_id": "2de39237-b8d8-45fc-9f14-72e8ee3b62a6"
     }
   ],
   "migration": {
