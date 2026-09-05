@@ -218,7 +218,7 @@ async function showRun(runId) {
 }
 
 let confirmationPending = false;
-let commandPending = false;
+const pendingCommands = new Set();
 
 function confirmCommand(summary) {
   if (confirmationPending) return Promise.resolve(false);
@@ -259,20 +259,22 @@ function confirmCommand(summary) {
 }
 
 async function guardedCommand(url, payload, summary) {
-  if (commandPending) return null;
-  commandPending = true;
+  const body = JSON.stringify({ ...payload, confirmed: true });
+  const commandKey = JSON.stringify([url, body]);
+  if (pendingCommands.has(commandKey)) return null;
+  pendingCommands.add(commandKey);
   try {
     if (!await confirmCommand(summary)) return null;
     const result = await fetchJson(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Agent-Factory-Confirm": "true" },
-      body: JSON.stringify({ ...payload, confirmed: true })
+      body
     });
     $("notice").hidden = false;
     $("notice").textContent = `Completed: ${summary}`;
     return result;
   } finally {
-    commandPending = false;
+    pendingCommands.delete(commandKey);
   }
 }
 

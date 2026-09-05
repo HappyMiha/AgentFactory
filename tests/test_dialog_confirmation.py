@@ -120,6 +120,42 @@ class DialogConfirmationTests(unittest.TestCase):
         self.page.keyboard.press('Escape')
         self.finish()
 
+    def assert_independent_command_remains_available(self, url, payload):
+        self.page.unroute('http://fixture.test/mutation')
+        held = []
+        completed = []
+
+        def intercept(route):
+            if route.request.post_data_json.get('id') == 7:
+                held.append(route)
+                self.page.evaluate('window.fixtureRequestHeld = true')
+            else:
+                completed.append(route.request.post_data_json)
+                route.fulfill(json={'ok': True})
+
+        self.page.route('http://fixture.test/**', intercept)
+        self.open_dialog()
+        self.page.click('#confirm-action')
+        self.page.wait_for_function("!document.getElementById('confirm-dialog').open")
+        self.page.wait_for_function('window.fixtureRequestHeld === true')
+        self.assertEqual(len(held), 1)
+        self.page.evaluate("""([url, payload]) => {
+            window.independent = guardedCommand(url, payload, 'Stop independent execution');
+        }""", [url, payload])
+        self.assertTrue(self.page.evaluate("document.getElementById('confirm-dialog').open"))
+        self.page.click('#confirm-action')
+        self.assertEqual(self.page.evaluate('() => window.independent'), {'ok': True})
+        self.assertEqual(completed, [{**payload, 'confirmed': True}])
+        self.assertEqual(self.page.evaluate('results.length'), 0)
+        held[0].fulfill(json={'ok': True})
+        self.finish()
+
+    def test_pending_request_does_not_block_independent_cancel(self):
+        self.assert_independent_command_remains_available('/api/executions/runs/99/cancel', {'reason': 'stop'})
+
+    def test_pending_request_does_not_block_other_payload_at_same_endpoint(self):
+        self.assert_independent_command_remains_available('/mutation', {'id': 8})
+
     def test_failed_request_releases_command(self):
         self.page.unroute('http://fixture.test/mutation')
         self.page.route('http://fixture.test/mutation', lambda route: route.fulfill(status=500, json={}))
