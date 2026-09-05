@@ -1318,11 +1318,15 @@
     },
     "cloud:AF-CLD-001": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
+      "scopes": [
+        "cloud:README.md",
+        "cloud:docs/core-cloud-boundary.md",
+        "cloud:docs/product-description.md"
+      ],
+      "updated_at": "2026-09-05T19:05:27+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -1333,7 +1337,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3"
     },
     "cloud:AF-CLD-002": {
       "dependencies": [
@@ -3582,6 +3587,16 @@
       "note": "",
       "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
       "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+    },
+    {
+      "operation_id": "dbc2eddf-cd44-4718-8b57-741bca5f7536",
+      "at": "2026-09-05T19:05:27+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-001",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
+      "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3"
     }
   ]
 }
