@@ -3414,6 +3414,25 @@
       "review_head": "03565cac43cfac4477e4ccfba0560a1ff0548a37",
       "completed_commit": "c2ff4349affe3151a178337466530c23193fb251",
       "reviewed_head": "03565cac43cfac4477e4ccfba0560a1ff0548a37"
+    },
+    "core:AF-TEAM-001": {
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "dependencies": [
+        "core:AF-GC-001"
+      ],
+      "resources": [
+        "core:team-tooling"
+      ],
+      "required_scopes": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "maintenance": true,
+      "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
+      "updated_at": "2026-09-05T20:03:49+00:00",
+      "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
     }
   },
   "events": [
@@ -3696,6 +3715,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
       "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
+    },
+    {
+      "operation_id": "4e79ee5a-0217-451d-bb80-3ad08ee39c2d",
+      "at": "2026-09-05T20:03:49+00:00",
+      "action": "register-maintenance",
+      "task": "core:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history.",
+      "branch": null,
+      "claim_id": null
     }
   ]
 }
