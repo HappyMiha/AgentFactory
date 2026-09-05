@@ -56,3 +56,21 @@ acknowledgement are contract smoke evidence only. They do not prove all five
 planning artifact schemas, actual environment bootstrap, independent review,
 full mission completion or product quality. Retain those separate acceptance
 gates. A failure or absent live result must not be reported as qualification.
+
+## Strict Ollama output format
+
+The real canary at `12e0f29` passed the first role but returned fenced JSON for
+product_requirements_analyst. Production planning's `_parse_response` requires
+strict JSON and rejects fences, duplicate keys and non-finite numbers. The canary
+therefore keeps rejecting fenced output. The shipped Ollama CLI profile now uses
+`--format=json`, so output is constrained by Ollama rather than repaired by text
+stripping. This applies to all roles using that profile: their responses are JSON
+text; it does not change arbitrary CLI providers or grant tools. Installed Ollama
+versions must support the flag, and unsupported versions fail explicitly.
+
+The [upstream CLI implementation](https://github.com/ollama/ollama/blob/main/cmd/cmd.go)
+passes the format flag to the generation/chat request; Ollama documents
+[structured outputs](https://docs.ollama.com/capabilities/structured-outputs).
+The API canary already used JSON mode. Profile-format changes require a new exact
+profile digest and live canary; the earlier output-cap and JSON-fence failures
+remain failures. JSON syntax alone still does not qualify full planning schemas.

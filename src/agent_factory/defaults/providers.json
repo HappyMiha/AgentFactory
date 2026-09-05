@@ -134,7 +134,7 @@
       ],
       "model_namespace": "local",
       "model_ids": ["qwen2.5-coder:7b", "qwen2.5-coder:14b"],
-      "args": ["run", "{model}", "--think=false", "--nowordwrap"],
+      "args": ["run", "{model}", "--think=false", "--nowordwrap", "--format=json"],
       "version_args": ["--version"],
       "prompt_transport": "stdin",
       "allow_execution": true,

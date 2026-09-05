@@ -172,3 +172,16 @@ class ProviderRoleQualificationTests(unittest.TestCase):
                 self.assertEqual(evidence["stdout_prefix_truncated"], len(output) > 192)
                 self.assertEqual(evidence["stderr_retained_chars"], 17)
                 self.assertNotIn("\x1b", str(error.exception))
+
+    def test_ollama_qualified_command_enforces_json_and_parser_stays_strict(self):
+        provider = CLIProvider("ollama", "unused", self.ollama["args"], allow_execution=True,
+                               model_namespace="local", model_ids=self.ollama["model_ids"])
+        command, effective = provider.model_request(self.model)
+        self.assertEqual(effective, self.model)
+        self.assertEqual(command.count("--format=json"), 1)
+        from agent_factory.autonomous_planning_pipeline import AutonomousPlanningPipelineService, PlanningRoleOutputError
+        parser = object.__new__(AutonomousPlanningPipelineService)
+        response = json.dumps({"output": {}, "evidence": {}})
+        self.assertEqual(parser._parse_response(response), {"output": {}, "evidence": {}})
+        with self.assertRaises(PlanningRoleOutputError):
+            parser._parse_response("```json\n" + response + "\n```")
