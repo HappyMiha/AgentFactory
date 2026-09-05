@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -901,6 +901,84 @@ class AutonomousCodingDeliveryService:
             (record_id,),
         ).fetchone()
         return self._authorization_from_row(row)
+
+    def stage_assignment(self, child_job_id: int, stage_key: str) -> dict[str, Any] | None:
+        row = self.storage.db.execute(
+            "SELECT * FROM autonomous_child_stage_assignments WHERE child_job_id=? AND stage_key=?",
+            (child_job_id, stage_key),
+        ).fetchone()
+        if row is None:
+            return None
+        return {**dict(row), "agent": json.loads(row["agent_json"])}
+
+    def authorize_stage(
+        self, child_job_id: int, stage_key: str, template: Agent, *, effective_model: str,
+    ):
+        """Freeze one stage assignment; revalidate parent authority on every attempt.
+
+        The child implementation decision is not authority to impersonate a
+        reviewer or policy role. Each requested stage must independently match
+        the exact approved local provider/role/model/permission envelope.
+        """
+        stage_key = self._required(stage_key, "Stage key")
+        effective_model = self._required(effective_model, "Qualified effective model")
+        job = self.get_job(child_job_id)
+        if job.execution_mode != "live":
+            raise PermissionError("Stage provider assignments require a live child")
+        if not self.storage.db.execute(
+            "SELECT 1 FROM autonomous_child_job_authorizations WHERE child_job_id=?", (job.id,)
+        ).fetchone():
+            raise PermissionError("Stage lacks the persisted child authorization")
+        authorization = self.authorizations.get_authorization(job.authorization_id)
+        if not template.enabled or not template.id or not template.role:
+            raise PermissionError("Stage needs an enabled, explicitly assigned agent and role")
+        permissions = sorted(set(template.permissions))
+        if ("execute_provider" not in permissions
+                or not set(permissions) <= set(authorization.allowed_permissions)):
+            raise PermissionError("Stage permissions exceed or omit its approved inference scope")
+        expected_model = authorization.role_model_manifest.get("role_models", {}).get(template.role)
+        if expected_model != template.model or template.provider not in authorization.provider_ids:
+            raise PermissionError("Stage provider/role/model has no exact approved assignment; operator decision required")
+        agent = replace(template, permissions=permissions)
+        document = asdict(agent)
+        binding = {"agent": document, "effective_model": effective_model}
+        digest = self._digest(binding)
+        previous = self.stage_assignment(job.id, stage_key)
+        if previous is not None and previous["binding_digest"] != digest:
+            raise PermissionError("Persisted stage assignment changed; explicit new attempt and authority required")
+        decision = self.authorizations.resolve(AutonomousAuthorizationRequest(
+            mission_id=job.mission_id, operation=AuthorizationOperation.LOCAL_INFERENCE,
+            provider_id=agent.provider, agent_id=agent.id, task_id=job.task_id,
+            role=agent.role, model=agent.model,
+            backlog_revision_id=job.backlog_revision_id,
+            backlog_revision_digest=job.backlog_revision_digest,
+            execution_epoch_id=job.execution_epoch_id,
+            repository_path=authorization.repository_path, epoch_branch=authorization.epoch_branch,
+            tool_profile=authorization.tool_profile, permissions=tuple(permissions),
+            authorization_id=authorization.id,
+        ))
+        if decision.outcome is not AuthorizationOutcome.ALLOW_AUTONOMOUS:
+            raise PermissionError("Stage authority denied; operator decision required: " + decision.reason)
+        with self.storage.db:
+            self.storage._begin_immediate()
+            previous = self.stage_assignment(job.id, stage_key)
+            if previous is not None:
+                if previous["binding_digest"] != digest:
+                    raise PermissionError("Concurrent stage assignment changed; no substitution permitted")
+            else:
+                self.storage.db.execute(
+                    """INSERT INTO autonomous_child_stage_assignments(
+                        child_job_id,stage_key,decision_id,agent_json,effective_model,binding_digest,created_at
+                    ) VALUES(?,?,?,?,?,?,?)""",
+                    (job.id, stage_key, decision.id, self._json(document), effective_model,
+                     digest, self._timestamp()),
+                )
+                self.storage._event("autonomous_child.stage_assigned", "autonomous_child_job", job.id,
+                    {"stage_key": stage_key, "agent_id": agent.id, "role": agent.role,
+                     "provider": agent.provider, "requested_model": agent.model,
+                     "effective_model": effective_model, "decision_id": decision.id,
+                     "binding_digest": digest})
+        return agent, self.authorizations.provider_authorization(decision)
 
     @staticmethod
     def _authorization_from_row(row: Any) -> AutonomousChildAuthorization:
