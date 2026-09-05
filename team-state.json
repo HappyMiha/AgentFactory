@@ -3414,10 +3414,17 @@
       "reviewed_head": "03565cac43cfac4477e4ccfba0560a1ff0548a37"
     },
     "core:AF-TEAM-001": {
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
+      "scopes": [
+        "core:.github/workflows/team-policy.yml",
+        "core:AGENTS.md",
+        "core:docs/team-migration.md",
+        "core:docs/team-workflow.md",
+        "core:scripts/team.py",
+        "core:tests/test_team_coordination.py"
+      ],
       "dependencies": [
         "core:AF-GC-001"
       ],
@@ -3429,8 +3436,10 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T20:03:49+00:00",
-      "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
+      "updated_at": "2026-09-05T20:17:39+00:00",
+      "note": "",
+      "pr": null,
+      "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
     },
     "cloud:AF-TEAM-001": {
       "status": "planned",
@@ -3839,6 +3848,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
       "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
+    },
+    {
+      "operation_id": "56cd9000-a173-4405-b7ed-4afb59e82653",
+      "at": "2026-09-05T20:17:39+00:00",
+      "action": "claim",
+      "task": "core:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
+      "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
     }
   ]
 }
