@@ -320,11 +320,14 @@ class AutonomousCodingDeliveryTests(AutonomousChildFixture, unittest.TestCase):
             Agent(
                 id="configured-worker",
                 name="Configured worker",
-                role="Implementation Worker",
+                role="Developer",
                 enabled=True,
-                provider="remote",
+                provider="local",
+                model="local-coder",
+                permissions=["execute_provider"],
                 instructions="Implement the item",
             ),
+            stage_key="implementation", effective_model="local-coder",
         )
         self.assertEqual(live_agent.provider, "local")
         self.assertEqual(live_authority.authorization_id, live.authorization_id)
