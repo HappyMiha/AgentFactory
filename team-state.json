@@ -29,8 +29,8 @@
         "core:tests/test_team_checks.py",
         "core:tests/test_temporal_workflows.py"
       ],
-      "updated_at": "2026-09-05T18:55:23+00:00",
-      "note": "",
+      "updated_at": "2026-09-05T18:57:40+00:00",
+      "note": "Targeted regressions, clean wheel, and Docker smoke pass; full suite running.",
       "pr": null,
       "resources": [
         "core:ci-portability"
@@ -3523,6 +3523,16 @@
       "task": "core:AF-GC-001",
       "worker": "HappySnowman",
       "note": "",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+    },
+    {
+      "operation_id": "026891ff-56d4-4bb6-964f-0b6be1e0a0d8",
+      "at": "2026-09-05T18:57:40+00:00",
+      "action": "heartbeat",
+      "task": "core:AF-GC-001",
+      "worker": "HappySnowman",
+      "note": "Targeted regressions, clean wheel, and Docker smoke pass; full suite running.",
       "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
       "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
     }
