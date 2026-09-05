@@ -95,7 +95,7 @@
     },
     "core:AF-GC-004": {
       "dependencies": [],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
       "scopes": [
@@ -103,9 +103,9 @@
         "core:src/agent_factory/static/app.js",
         "core:tests/test_agent_drafts.py"
       ],
-      "updated_at": "2026-09-05T21:42:46+00:00",
+      "updated_at": "2026-09-05T21:56:12+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/8",
       "resources": [
         "core:operator-ui"
       ],
@@ -117,7 +117,8 @@
       "milestone": "m0",
       "optional": false,
       "source_dependencies": [],
-      "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad"
+      "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad",
+      "review_head": "e5d8b7e5f44cf2acd8b68f1fd35d18a4ecf1b173"
     },
     "core:AF-GC-005": {
       "dependencies": [],
@@ -4194,6 +4195,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "6c65c4be-c676-4dec-be8d-6b8f752a22e8",
+      "at": "2026-09-05T21:56:12+00:00",
+      "action": "review",
+      "task": "core:AF-GC-004",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
+      "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad"
     }
   ],
   "migration": {
