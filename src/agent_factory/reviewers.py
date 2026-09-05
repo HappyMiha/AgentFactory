@@ -84,6 +84,21 @@ class ReviewerRouter:
                 f"No independent reviewer is eligible for stage {stage}; {details}"
             )
 
+        existing = self.storage.db.execute(
+            "SELECT * FROM reviewer_assignments WHERE run_id=? AND stage=?", (run_id, stage)
+        ).fetchone()
+        if existing is not None:
+            frozen = next((agent for agent in eligible
+                           if agent.id == existing["reviewer_agent_id"]
+                           and agent.provider == existing["reviewer_provider"]
+                           and agent.model_identity == existing["reviewer_model"]), None)
+            if (frozen is None
+                    or json.loads(existing["reviewed_artifact_ids"]) != [subject.artifact_id for subject in subjects]
+                    or json.loads(existing["reviewed_stages"]) != [subject.stage for subject in subjects]
+                    or set(json.loads(existing["excluded_models"])) != excluded_models):
+                raise RuntimeError("Persisted reviewer assignment changed; explicit new review attempt required")
+            return frozen
+
         history = self.storage.reviewer_usage(stage, [agent.id for agent in eligible])
         last = self.storage.latest_reviewer_assignment(stage)
         pool_index = {agent_id: index for index, agent_id in enumerate(candidate_ids)}
