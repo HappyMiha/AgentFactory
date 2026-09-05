@@ -145,7 +145,7 @@
     },
     "core:AF-GC-006": {
       "dependencies": [],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
       "scopes": [
@@ -161,9 +161,9 @@
         "core:tests/test_model_binding.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-05T19:11:04+00:00",
-      "note": "Update API model-selection fixture to the explicit allowlist contract.",
-      "pr": null,
+      "updated_at": "2026-09-05T19:19:41+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/4",
       "resources": [
         "core:provider-model",
         "core:application-services"
@@ -178,7 +178,8 @@
       "milestone": "m0",
       "optional": false,
       "source_dependencies": [],
-      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6",
+      "review_head": "a2ec8d9f875124fd580469cff48bd9bef5b8f6f8"
     },
     "core:AF-GC-007": {
       "dependencies": [
@@ -3640,6 +3641,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/cloud-af-cld-001-dfbe6156",
       "claim_id": "f41ab4c3-f9b7-4499-be7f-bc63e1f551c3"
+    },
+    {
+      "operation_id": "57e1f6ac-6675-4b86-b8bf-d28f333ceee1",
+      "at": "2026-09-05T19:19:41+00:00",
+      "action": "review",
+      "task": "core:AF-GC-006",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
+      "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
     }
   ]
 }
