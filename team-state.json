@@ -1210,6 +1210,7 @@
         "core:docs/human-control-plane.md",
         "core:docs/local-api-access.md",
         "core:src/agent_factory/http_auth.py",
+        "core:src/agent_factory/static/index.html",
         "core:src/agent_factory/static/login.html",
         "core:src/agent_factory/web.py",
         "core:tests/test_archive_all_work_items.py",
@@ -1224,7 +1225,7 @@
         "core:tests/test_temporal_api.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-05T22:07:13+00:00",
+      "updated_at": "2026-09-05T22:14:43+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4326,6 +4327,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
       "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
+    },
+    {
+      "operation_id": "1b75529d-0aea-4b72-bb7f-58aaee0c6340",
+      "at": "2026-09-05T22:14:43+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-039",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-039-253cea04",
+      "claim_id": "19e5cf2d-7a5a-4643-9e07-abb385d03d56"
     }
   ],
   "migration": {
