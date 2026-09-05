@@ -1465,11 +1465,18 @@
       "dependencies": [
         "cloud:AF-CLD-002"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
+      "scopes": [
+        "cloud:contracts/v1/evidence-policy.json",
+        "cloud:contracts/v1/evidence-scenarios.json",
+        "cloud:docs/evidence-gates.md",
+        "cloud:docs/release-review-template.md",
+        "cloud:scripts/validate_evidence_gates.py",
+        "cloud:tests/test_evidence_gates.py"
+      ],
+      "updated_at": "2026-09-05T21:58:30+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -1482,7 +1489,8 @@
       "optional": false,
       "source_dependencies": [
         "cloud:AF-CLD-002"
-      ]
+      ],
+      "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
     },
     "cloud:AF-CLD-007": {
       "dependencies": [
@@ -4227,6 +4235,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "61d397f0-7652-4fb0-9650-73ba8f2d89ee",
+      "at": "2026-09-05T21:58:30+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-006",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
+      "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
     }
   ],
   "migration": {
