@@ -4,6 +4,23 @@ Task: `core:AF-GC-001`. The CI matrix runs Python 3.11 and 3.12 on
 Ubuntu, Windows and macOS. A clean checkout needs Git and Python, not a
 personal AI CLI installation or provider credentials.
 
+## Automatic and manual runs
+
+At the owner's request (`core:AF-TEAM-002`), the six Python matrix jobs run only
+when someone explicitly starts the **CI** workflow with **Run workflow** in
+GitHub Actions. They are skipped on pull requests and pushes to `main`.
+Wheel and Docker checks still run automatically. The separate required
+coordination policy and team tooling checks remain active, as do local
+pre-push checks. This changes scheduling; it does not repair or hide old failures.
+
+To request the matrix for a specific branch, use **Actions > CI > Run workflow**
+and select that branch, or run `gh workflow run ci.yml --ref BRANCH`.
+The manual run also includes wheel and Docker checks. Record its actual head
+commit when using the result as evidence; a branch name can move afterward.
+An automatic green run does not mean the six-platform Python matrix passed.
+
+## Local checks
+
 Install and run the same checks locally with the Python environment you selected:
 
 ```sh
@@ -39,8 +56,9 @@ is a test failure, not a reason to silently skip the tests.
 The workflow uploads `tests-<os>-python-<version>` artifacts even when tests
 fail. Each contains verbose unittest output, including executed test count and
 skip reasons, and the installed dependency versions. Test pipelines preserve
-the Python exit status. Inspect all six matrix results for the PR's exact head,
-plus the separate wheel and Docker jobs, before calling CI green.
+the Python exit status. For a manual matrix run, inspect all six results for
+the exact head, plus the separate wheel and Docker jobs, before claiming full
+matrix validation. Historical failures remain visible in GitHub.
 
 ## Packaging and Docker
 
