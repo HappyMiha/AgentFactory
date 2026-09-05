@@ -1297,11 +1297,19 @@
       "dependencies": [
         "core:AF-GC-006"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
+      "scopes": [
+        "core:docs/provider-role-qualification.md",
+        "core:src/agent_factory/autonomous_authorization.py",
+        "core:src/agent_factory/autonomous_planning.py",
+        "core:src/agent_factory/defaults/providers.json",
+        "core:src/agent_factory/models.py",
+        "core:src/agent_factory/providers.py",
+        "core:tests/test_provider_role_qualification.py"
+      ],
+      "updated_at": "2026-09-05T21:46:27+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -1319,7 +1327,8 @@
       "optional": false,
       "source_dependencies": [
         "core:AF-GC-006"
-      ]
+      ],
+      "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
     },
     "cloud:AF-CLD-001": {
       "dependencies": [],
@@ -4160,6 +4169,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-041-63adf2c5",
       "claim_id": "2de39237-b8d8-45fc-9f14-72e8ee3b62a6"
+    },
+    {
+      "operation_id": "eae688ea-ce83-4ee2-b350-77fa29bcf702",
+      "at": "2026-09-05T21:46:27+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-042",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
+      "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
     }
   ],
   "migration": {
