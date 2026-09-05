@@ -1485,7 +1485,7 @@
       "dependencies": [
         "cloud:AF-CLD-002"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
       "scopes": [
@@ -1496,9 +1496,9 @@
         "cloud:scripts/validate_evidence_gates.py",
         "cloud:tests/test_evidence_gates.py"
       ],
-      "updated_at": "2026-09-05T21:58:30+00:00",
+      "updated_at": "2026-09-05T22:13:53+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/6",
       "resources": [
         "shared:evidence-contract"
       ],
@@ -1510,7 +1510,8 @@
       "source_dependencies": [
         "cloud:AF-CLD-002"
       ],
-      "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
+      "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192",
+      "review_head": "6f103d43eea9687f7056106105a0dba29a4f9ac4"
     },
     "cloud:AF-CLD-007": {
       "dependencies": [
@@ -4315,6 +4316,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "25e454b6-aa91-466f-88fc-f0c796a99b4c",
+      "at": "2026-09-05T22:13:53+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-006",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
+      "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
     }
   ],
   "migration": {
