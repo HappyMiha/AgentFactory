@@ -17,7 +17,8 @@ jobs:
   test:
     name: Python ${{ matrix.python-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 12
+    # Windows migration tests can exceed 12 minutes on hosted runners.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
