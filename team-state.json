@@ -1464,8 +1464,8 @@
         "cloud:scripts/validate_engine_target_pack.py",
         "cloud:tests/test_engine_target_pack.py"
       ],
-      "updated_at": "2026-09-05T22:38:38+00:00",
-      "note": "Consumer contract proposal; 65 selected tests and 18 synthetic operation results pass; real Core engine qualification remains separate",
+      "updated_at": "2026-09-05T23:11:59+00:00",
+      "note": "Merged accepted Cloud006 evidence policy; 88 exact selected contract tests pass; consumer proposal only",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/7",
       "resources": [
         "shared:engine-contract",
@@ -1480,7 +1480,7 @@
         "cloud:AF-CLD-002"
       ],
       "claim_id": "b95b842f-f559-4217-96f0-97a79748b551",
-      "review_head": "a8ebc03f7dbb1745de469a1caf33583d0c8abdbe"
+      "review_head": "3793db52a2e6bc150a096236d8794da89b25536d"
     },
     "cloud:AF-CLD-006": {
       "dependencies": [
@@ -4542,6 +4542,16 @@
       "note": "PR9 merged; 120 integration tests and seven-role local smoke recorded separately from product acceptance",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "41da4df5-fb3d-412c-84a8-69137bd627f6",
+      "at": "2026-09-05T23:11:59+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-005",
+      "worker": "HappyHahahaker",
+      "note": "Merged accepted Cloud006 evidence policy; 88 exact selected contract tests pass; consumer proposal only",
+      "branch": "agent/HappyHahahaker/AF-CLD-005-807782aa",
+      "claim_id": "b95b842f-f559-4217-96f0-97a79748b551"
     }
   ],
   "migration": {
