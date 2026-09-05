@@ -57,12 +57,13 @@
         "core:src/agent_factory/static/app.js",
         "core:src/agent_factory/storage.py",
         "core:src/agent_factory/web.py",
-        "core:tests/test_autonomous_coding_delivery.py",
+        "core:tests/test_autonomous_child_orchestration.py",
+        "core:tests/test_autonomous_preapproval_workflow.py",
         "core:tests/test_environment.py",
         "core:tests/test_environment_readiness.py",
         "core:tests/test_monitor_web.py"
       ],
-      "updated_at": "2026-09-05T23:03:10+00:00",
+      "updated_at": "2026-09-05T23:06:40+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4524,6 +4525,16 @@
       "note": "Seven-role live API/CLI smoke passed on prior source head; main merge preserves canary files and passes exact integration checks",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "1c0e21a6-0cec-436f-ac28-cd464de99d07",
+      "at": "2026-09-05T23:06:40+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
     }
   ],
   "migration": {
