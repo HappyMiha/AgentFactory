@@ -467,6 +467,14 @@ class AutonomousAuthorizationService:
             raise PermissionError("Only the authenticated mission owner may grant authority")
         return actor
 
+    def assert_role_model_profiles(self, provider_ids: tuple[str, ...], role_models: Mapping[str, str]) -> None:
+        """Reject a manifest with no compatible configured route before approval."""
+        for role, model in role_models.items():
+            errors = [self._capability(provider).role_model_error(role, model) for provider in provider_ids]
+            if not errors or all(error is not None for error in errors):
+                detail = "; ".join(error for error in errors if error is not None)
+                raise PermissionError(f"No configured provider supports role {role!r}: {detail}")
+
     def _assert_local_providers(self, provider_ids: tuple[str, ...]) -> None:
         ineligible = [
             provider_id
@@ -773,6 +781,7 @@ class AutonomousAuthorizationService:
         manifest = self._role_manifest(mission)
         if not manifest["role_models"]:
             raise ValueError("Autonomous authority requires explicit role/model bindings")
+        self.assert_role_model_profiles(provider_ids, manifest["role_models"])
         manifest_digest = self._digest(manifest)
         repository_path = self._path(
             mission.configuration.repository_path or "", "Mission repository path"
@@ -1457,6 +1466,18 @@ class AutonomousAuthorizationService:
         evidence: dict[str, Any],
     ) -> AuthorizationDecision:
         provider_ids = (request.provider_id,) if request.provider_id else ()
+        if request.provider_id and request.operation in {
+            AuthorizationOperation.LOCAL_INFERENCE, AuthorizationOperation.PLANNING_INFERENCE,
+        }:
+            compatibility_error = self._capability(request.provider_id).role_model_error(request.role, request.model)
+            if compatibility_error:
+                self._add_check(evidence, "provider_role_model_compatible", False)
+                return self._record_decision(
+                    request, outcome=AuthorizationOutcome.DENY,
+                    reason=compatibility_error, authority_valid=False,
+                    autonomous_authorization_id=None, planning_authorization_id=None,
+                    provider_ids=provider_ids, evidence=evidence,
+                )
         if request.provider_id and not self._capability(
             request.provider_id
         ).autonomous_local_eligible:
@@ -1754,6 +1775,18 @@ class AutonomousAuthorizationService:
         evidence: dict[str, Any],
     ) -> AuthorizationDecision:
         provider_ids = (request.provider_id,) if request.provider_id else ()
+        if request.provider_id and request.operation in {
+            AuthorizationOperation.LOCAL_INFERENCE, AuthorizationOperation.PLANNING_INFERENCE,
+        }:
+            compatibility_error = self._capability(request.provider_id).role_model_error(request.role, request.model)
+            if compatibility_error:
+                self._add_check(evidence, "provider_role_model_compatible", False)
+                return self._record_decision(
+                    request, outcome=AuthorizationOutcome.DENY,
+                    reason=compatibility_error, authority_valid=False,
+                    autonomous_authorization_id=None, planning_authorization_id=None,
+                    provider_ids=provider_ids, evidence=evidence,
+                )
         if request.provider_id and not self._capability(
             request.provider_id
         ).autonomous_local_eligible:
