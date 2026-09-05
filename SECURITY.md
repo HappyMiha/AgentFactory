@@ -64,3 +64,12 @@ The implemented controls include:
 ## Out of scope
 
 Reports about model quality, hallucination, provider availability, provider billing, or an upstream CLI without an Agent Factory boundary bypass should be sent to that provider. A model response that is merely incorrect is not itself a security vulnerability.
+
+## Local HTTP access
+
+All local API routes share the [operator access policy](docs/local-api-access.md).
+Configured bearer credentials and short-lived HttpOnly browser sessions carry
+server-bound identity and scopes; Host/Origin checks and domain confirmation
+remain required. Logout, expiry, restart and credential/policy rotation invalidate
+sessions. An empty initial credential means documented local-open mode, not
+authenticated multi-user access. This loopback service is not a public deployment.

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Local access — Agent Factory</title>
+<style>body{font:17px system-ui,sans-serif;background:#f5f7fa;color:#172235;margin:0}main{max-width:32rem;margin:12vh auto;padding:2rem;background:white;border-radius:1rem}label,input,button{display:block}input{box-sizing:border-box;width:100%;padding:.8rem;margin:.5rem 0 1rem;font:inherit}button,a{font:inherit}button{padding:.7rem 1rem;margin:1rem 0;cursor:pointer}p{line-height:1.6}:focus-visible{outline:3px solid #326bcd;outline-offset:3px}[hidden]{display:none!important}</style></head>
+<body><main><h1>Local access</h1><p id="status" role="status">Checking access…</p>
+<form id="login" hidden><label for="token">Operator access token</label><input id="token" type="password" autocomplete="off" required maxlength="2048"><button id="submit" type="submit">Sign in</button><p>The token is sent only to this local service. It is not saved in browser storage.</p></form>
+<div id="signed-in" hidden><a href="/">Open control center</a><button id="sign-out" type="button">Sign out</button><p>Signing out ends this browser session. Running work keeps its existing controls and permissions.</p></div>
+<a href="/login">Check access again</a></main>
+<script>
+const status = document.querySelector('#status');
+const form = document.querySelector('#login');
+const signedIn = document.querySelector('#signed-in');
+async function refreshAccess() {
+ try {
+  const response = await fetch('/auth/session', {cache:'no-store'});
+  if (!response.ok) throw new Error();
+  const state = await response.json();
+  form.hidden = state.authenticated;
+  signedIn.hidden = !state.authenticated;
+  document.querySelector('#sign-out').hidden = !state.authentication_required;
+  status.textContent = state.authenticated ? (state.authentication_required ? `Signed in as ${state.actor}.` : 'This service uses local open access. Keep it restricted to this computer.') : 'Sign in with the access token configured by the local operator.';
+ } catch (_) { status.textContent = 'Local access is unavailable. Check the service configuration and try again.'; form.hidden=true; signedIn.hidden=true; }
+}
+form.addEventListener('submit', async event => {
+ event.preventDefault();
+ const input=document.querySelector('#token');
+ const button=document.querySelector('#submit');
+ const token=input.value; input.value=''; button.disabled=true;
+ try {
+  const response=await fetch('/auth/session',{method:'POST',headers:{'Content-Type':'application/json','X-Agent-Factory-Session':'true'},body:JSON.stringify({token}),cache:'no-store'});
+  if (!response.ok) { status.textContent='Sign-in failed. Check the token and try again.'; input.focus(); return; }
+  location.assign('/');
+ } catch (_) { status.textContent='The service could not be reached. Try again.'; }
+ finally { button.disabled=false; }
+});
+document.querySelector('#sign-out').addEventListener('click',async () => {
+ try {
+  const response=await fetch('/auth/session',{method:'DELETE',headers:{'X-Agent-Factory-Session':'true'},cache:'no-store'});
+  if (!response.ok) throw new Error();
+  await refreshAccess();
+ } catch (_) { status.textContent='Sign-out could not be confirmed. Try again.'; }
+});
+refreshAccess();
+</script></body></html>

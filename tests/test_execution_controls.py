@@ -18,7 +18,7 @@ class ExecutionControlTests(unittest.TestCase):
             item = service.create_work_item(project_id=project.project_id, title="Run", description="Run", acceptance_criteria=["works"])
             claim = service.claim_work_item(item.id, "coding-worker-codex")
             storage.close()
-            with TestClient(create_app(workspace, database)) as client:
+            with TestClient(create_app(workspace, database), base_url="http://localhost") as client:
                 snapshot = client.get("/api/executions").json()
                 self.assertEqual(len(snapshot["leases"]), 1)
                 response = client.post("/api/executions/leases/release", json={"confirmed": True, "assignment_id": claim.assignment_id, "fencing_token": claim.fencing_token}, headers={"X-Agent-Factory-Confirm": "true"})

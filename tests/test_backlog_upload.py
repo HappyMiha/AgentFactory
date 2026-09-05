@@ -14,7 +14,7 @@ class BacklogUploadTests(unittest.TestCase):
     def test_uploaded_markdown_is_decomposed_and_saved_as_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 response = client.post(
                     "/api/backlog/analyze-upload",
                     files={"upload": ("game.md", b"# Windows game\n## Core loop\n### Movement\n### Scoring\n## Release\n")},
@@ -34,7 +34,7 @@ class BacklogUploadTests(unittest.TestCase):
     def test_ui_specification_field_name_is_accepted(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 response = client.post(
                     "/api/backlog/analyze-upload",
                     files={"specification": ("brief.json", b'{"schema_version": 1, "items": [{"stable_id": "epic:one", "kind": "epic", "title": "One", "description": "One", "acceptance_criteria": ["Works"]}]}')},
@@ -46,7 +46,7 @@ class BacklogUploadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             body = b'{"items": [{"stable_id": "E1", "kind": "epic", "title": "Game", "description": "Game", "acceptance_criteria": ["Works"]}, {"stable_id": "T1", "kind": "task", "title": "Move", "description": "Move", "parent_id": "E1", "acceptance_criteria": ["Moves"]}]}'
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 response = client.post("/api/backlog/analyze-upload", files={"specification": ("export.json", body)})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["counts"]["task"], 1)
@@ -54,7 +54,7 @@ class BacklogUploadTests(unittest.TestCase):
     def test_plain_text_upload_is_accepted_as_generic_document(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 response = client.post("/api/backlog/analyze-upload", files={"specification": ("brief.txt", b"# Game\n## Controls\n")})
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["source_type"], "txt")
@@ -63,7 +63,7 @@ class BacklogUploadTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
             body = b'{"backlog": [{"type": "feature", "name": "Doom", "tasks": [{"id": "T-1", "title": "Movement"}, {"id": "T-2", "title": "Scoring"}]}]}'
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 response = client.post("/api/backlog/analyze-upload", files={"specification": ("export.json", body)})
             self.assertEqual(response.status_code, 200)
             payload = response.json()
@@ -76,7 +76,7 @@ class BacklogUploadTests(unittest.TestCase):
             with self.subTest(brief=brief), tempfile.TemporaryDirectory() as tmp:
                 workspace = Path(tmp)
                 raw = brief.encode("utf-8")
-                with TestClient(create_app(workspace, workspace / "state.db")) as client:
+                with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                     result = client.post("/api/backlog/analyze-upload", files={"upload": ("brief.txt", raw)})
                 self.assertEqual(result.status_code, 200)
                 payload = result.json()
@@ -113,7 +113,7 @@ class BacklogUploadTests(unittest.TestCase):
         raw = output.getvalue()
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 result = client.post("/api/backlog/analyze-upload", files={"upload": ("game.pdf", raw)})
             self.assertEqual(result.status_code, 200)
             payload = result.json()
@@ -126,7 +126,7 @@ class BacklogUploadTests(unittest.TestCase):
         raw = b"%PDF-this-is-not-a-valid-document"
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 result = client.post("/api/backlog/analyze-upload", files={"upload": ("bad.pdf", raw)})
             self.assertEqual(result.status_code, 400)
             originals = list((workspace / ".agent-factory/uploads").glob("*.original"))
@@ -137,7 +137,7 @@ class BacklogUploadTests(unittest.TestCase):
     def test_edited_preview_validates_and_imports_without_overwriting_source(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
-            with TestClient(create_app(workspace, workspace / "state.db")) as client:
+            with TestClient(create_app(workspace, workspace / "state.db"), base_url="http://localhost") as client:
                 payload = client.post("/api/backlog/analyze-upload", files={"upload": ("brief.txt", b"A cat collects coins and has three lives.")}).json()
                 manifest = workspace / payload["source_path"]
                 before = manifest.read_bytes()

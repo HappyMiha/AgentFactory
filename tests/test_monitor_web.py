@@ -35,7 +35,7 @@ class MonitorWebTests(unittest.TestCase):
         (self.config / "providers.json").write_text(
             json.dumps({"providers": self.providers}), encoding="utf-8"
         )
-        with TestClient(create_app(self.workspace, self.database)) as client:
+        with TestClient(create_app(self.workspace, self.database), base_url="http://localhost") as client:
             response = client.get("/api/monitor")
         self.assertEqual(response.status_code, 200)
         return response.json()

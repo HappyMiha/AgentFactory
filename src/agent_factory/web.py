@@ -1,7 +1,6 @@
 """Loopback-only FastAPI host for the Local Control Center."""
 
 import sqlite3
-import os
 import json
 import hashlib
 from contextlib import asynccontextmanager
@@ -11,11 +10,13 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Annotated, Any, Generic, Literal, TypeVar
 
-from fastapi import Depends, FastAPI, File, Header, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+
+from .http_auth import COOKIE, LocalAccess, required_scope, trusted_origin
 
 from .application import (
     AgentFactoryService,
@@ -198,7 +199,7 @@ class RunDetail(BaseModel):
     approval: ApprovalView | None
     stopped_reason: str
 
-class ControlActionCommand(BaseModel):
+class ControlActionCommand(ConfirmedCommand):
     tenant_id: str
     actor: str
     role: str
@@ -252,6 +253,85 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         lifespan=lifespan,
     )
     static_directory = Path(__file__).resolve().parent / "static"
+    access = LocalAccess()
+    app.state.local_access = access
+
+    def access_error(status: int, code: str) -> JSONResponse:
+        return JSONResponse(status_code=status, content={"error": {"code": code}},
+                            headers={"Cache-Control": "no-store"})
+
+    @app.middleware("http")
+    async def local_http_boundary(request: Request, call_next):
+        if (len(request.headers.getlist("host")) != 1
+                or len(request.headers.getlist("origin")) > 1
+                or len(request.headers.getlist("authorization")) > 1) or not trusted_origin(
+            request.url.scheme, request.headers.get("host", ""), request.headers.get("origin")
+        ):
+            return access_error(403, "local_origin_required")
+        try:
+            policy = access.policy()
+        except ValueError:
+            return access_error(503, "local_access_unavailable")
+        principal = access.authenticate(policy, request.headers.get("authorization"), request.cookies.get(COOKIE))
+        request.state.local_policy = policy
+        request.state.local_principal = principal
+        if request.url.path == "/api" or request.url.path.startswith("/api/"):
+            if principal is None:
+                return access_error(401, "authentication_required")
+            if required_scope(request.url.path, request.method) not in principal.scopes:
+                return access_error(403, "scope_required")
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        return response
+
+    @app.get("/auth/session", include_in_schema=False)
+    async def session_status(request: Request):
+        principal = request.state.local_principal
+        return {"authentication_required": bool(request.state.local_policy.token),
+                "authenticated": principal is not None,
+                "actor": principal.actor if principal else None}
+
+    @app.post("/auth/session", include_in_schema=False)
+    async def session_login(request: Request):
+        if request.headers.get("X-Agent-Factory-Session") != "true":
+            return access_error(403, "session_intent_required")
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > 4096:
+                return access_error(400, "invalid_session_request")
+        try:
+            document = json.loads(body)
+            candidate = document["token"]
+            if set(document) != {"token"} or not isinstance(candidate, str):
+                raise ValueError()
+        except (ValueError, KeyError, TypeError):
+            return access_error(400, "invalid_session_request")
+        cookie = access.login(request.state.local_policy, candidate)
+        if cookie is None:
+            return access_error(401, "authentication_required")
+        access.logout(request.cookies.get(COOKIE))
+        response = JSONResponse({"authenticated": True})
+        response.set_cookie(COOKIE, cookie, max_age=request.state.local_policy.ttl,
+                            httponly=True, samesite="strict", secure=request.url.scheme == "https", path="/")
+        return response
+
+    @app.delete("/auth/session", include_in_schema=False)
+    async def session_logout(request: Request):
+        if request.headers.get("X-Agent-Factory-Session") != "true":
+            return access_error(403, "session_intent_required")
+        access.logout(request.cookies.get(COOKIE))
+        response = JSONResponse({"authenticated": False})
+        response.delete_cookie(COOKIE, path="/", httponly=True, samesite="strict")
+        return response
+
+    @app.get("/login", include_in_schema=False)
+    async def login_shell():
+        return FileResponse(static_directory / "login.html")
+
     app.mount("/assets", StaticFiles(directory=static_directory), name="assets")
     async def service_dependency() -> AsyncIterator[AgentFactoryService]:
         storage = SQLiteStorage(database)
@@ -261,12 +341,6 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             storage.close()
 
     Service = Annotated[AgentFactoryService, Depends(service_dependency)]
-
-    def require_api_auth(authorization: str | None = Header(default=None)) -> None:
-        expected = os.getenv("AGENT_FACTORY_API_TOKEN", "").strip()
-        if expected and authorization != f"Bearer {expected}":
-            from fastapi import HTTPException
-            raise HTTPException(status_code=401, detail="Bearer authentication required")
 
     @app.exception_handler(KeyError)
     async def not_found(_request: Request, exc: KeyError) -> JSONResponse:
@@ -813,10 +887,13 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
     async def founder_decide(
         gate_id: int,
         command: FounderDecisionCommand,
+        request: Request,
         service: Service,
         confirmation: Confirmation = None,
     ) -> FounderDecisionReceipt:
         _require_confirmation(command, confirmation)
+        if command.actor != request.state.local_principal.actor:
+            raise HTTPException(403, "Authenticated actor does not match the decision actor")
         return service.founder_decide(
             gate_id, command.decision, command.note, command.actor
         )
@@ -894,7 +971,10 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         ]
 
     @app.get("/api/control/actions", response_model=list[dict[str, Any]])
-    async def control_actions(tenant_id: str, _: None = Depends(require_api_auth)) -> list[dict[str, Any]]:
+    async def control_actions(tenant_id: str, request: Request) -> list[dict[str, Any]]:
+        principal = request.state.local_principal
+        if "*" not in principal.tenants and tenant_id not in principal.tenants:
+            raise HTTPException(403, "Tenant scope required")
         storage = SQLiteStorage(database)
         try:
             return HumanControlPlaneService(storage).list_actions(tenant_id)
@@ -902,15 +982,20 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             storage.close()
 
     @app.post("/api/control/actions", response_model=dict[str, Any], status_code=201)
-    async def control_action(command: ControlActionCommand, _: None = Depends(require_api_auth)) -> dict[str, Any]:
+    async def control_action(command: ControlActionCommand, request: Request, confirmation: Confirmation = None) -> dict[str, Any]:
+        _require_confirmation(command, confirmation)
+        principal = request.state.local_principal
+        if (command.actor != principal.actor or command.role != principal.role
+                or ("*" not in principal.tenants and command.tenant_id not in principal.tenants)):
+            raise HTTPException(403, "Authenticated action scope does not match")
         storage = SQLiteStorage(database)
         try:
-            return HumanControlPlaneService(storage).act(**command.model_dump())
+            return HumanControlPlaneService(storage).act(**command.model_dump(exclude={"confirmed"}))
         finally:
             storage.close()
 
     @app.get("/", include_in_schema=False)
-    async def dashboard_shell() -> FileResponse:
-        return FileResponse(static_directory / "index.html")
+    async def dashboard_shell(request: Request) -> FileResponse:
+        return FileResponse(static_directory / ("index.html" if request.state.local_principal else "login.html"))
 
     return app
