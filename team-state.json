@@ -1202,12 +1202,30 @@
     },
     "core:AF-GC-039": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-05T19:11:45+00:00",
-      "note": "No code changed; released while performing owner-requested node and Agent Bus bootstrap.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-039-253cea04",
+      "scopes": [
+        "core:SECURITY.md",
+        "core:docs/human-control-plane.md",
+        "core:docs/local-api-access.md",
+        "core:src/agent_factory/http_auth.py",
+        "core:src/agent_factory/static/login.html",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_archive_all_work_items.py",
+        "core:tests/test_archive_work_item.py",
+        "core:tests/test_backlog_upload.py",
+        "core:tests/test_control_center_e2e.py",
+        "core:tests/test_control_plane_web.py",
+        "core:tests/test_execution_controls.py",
+        "core:tests/test_http_auth.py",
+        "core:tests/test_http_auth_browser.py",
+        "core:tests/test_monitor_web.py",
+        "core:tests/test_temporal_api.py",
+        "core:tests/test_web.py"
+      ],
+      "updated_at": "2026-09-05T22:07:13+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "core:http-api",
@@ -1222,7 +1240,7 @@
       "milestone": "m0",
       "optional": false,
       "source_dependencies": [],
-      "claim_id": "ac1e8748-d118-4572-abe7-960f0816077d"
+      "claim_id": "19e5cf2d-7a5a-4643-9e07-abb385d03d56"
     },
     "core:AF-GC-040": {
       "dependencies": [
@@ -4277,6 +4295,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-041-63adf2c5",
       "claim_id": "2de39237-b8d8-45fc-9f14-72e8ee3b62a6"
+    },
+    {
+      "operation_id": "89eb552f-e301-48a3-9de7-7428518ba982",
+      "at": "2026-09-05T22:07:13+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-039",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-039-253cea04",
+      "claim_id": "19e5cf2d-7a5a-4643-9e07-abb385d03d56"
     }
   ],
   "migration": {
