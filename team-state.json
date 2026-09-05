@@ -29,7 +29,7 @@
         "core:tests/test_team_checks.py",
         "core:tests/test_temporal_workflows.py"
       ],
-      "updated_at": "2026-09-05T19:20:51+00:00",
+      "updated_at": "2026-09-05T19:22:25+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/3",
       "resources": [
@@ -46,7 +46,7 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376",
-      "review_head": "da2aad1dd9ef4a0e31da0bc52b6722f6481c6f36"
+      "review_head": "180582adfd5e0bda8e6432059c82f7f80518ca04"
     },
     "core:AF-GC-002": {
       "dependencies": [],
@@ -3656,6 +3656,16 @@
       "operation_id": "1e9a911a-575a-4b41-ab59-2f273c44e3ad",
       "at": "2026-09-05T19:20:51+00:00",
       "action": "heartbeat",
+      "task": "core:AF-GC-001",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+    },
+    {
+      "operation_id": "7a4ccad1-2559-4aee-9f45-76167031ed7f",
+      "at": "2026-09-05T19:22:25+00:00",
+      "action": "review",
       "task": "core:AF-GC-001",
       "worker": "HappySnowman",
       "note": "",
