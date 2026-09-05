@@ -1304,6 +1304,7 @@
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "scopes": [
         "core:docs/provider-role-qualification.md",
+        "core:scripts/qualify_provider_roles.py",
         "core:src/agent_factory/autonomous_authorization.py",
         "core:src/agent_factory/autonomous_backlog_approval.py",
         "core:src/agent_factory/autonomous_planning.py",
@@ -1312,7 +1313,7 @@
         "core:src/agent_factory/providers.py",
         "core:tests/test_provider_role_qualification.py"
       ],
-      "updated_at": "2026-09-05T21:50:04+00:00",
+      "updated_at": "2026-09-05T21:56:29+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4216,6 +4217,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-041-63adf2c5",
       "claim_id": "2de39237-b8d8-45fc-9f14-72e8ee3b62a6"
+    },
+    {
+      "operation_id": "c64b5e9a-2d96-4b51-bf52-6c345124925c",
+      "at": "2026-09-05T21:56:29+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-042",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
+      "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
     }
   ],
   "migration": {
