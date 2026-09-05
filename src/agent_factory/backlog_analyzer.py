@@ -116,7 +116,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
             source_name,
             proposal.items,
             proposal.schema_version,
-            proposal.source_metadata,
+            {**proposal.source_metadata, "original_text": text},
             proposal.extension_schema,
             proposal.planning_contract,
             proposal.extensions,
@@ -138,7 +138,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
                 source_name,
                 proposal.items,
                 proposal.schema_version,
-                proposal.source_metadata,
+                {**proposal.source_metadata, "original_text": text},
                 proposal.extension_schema,
                 proposal.planning_contract,
                 proposal.extensions,
@@ -157,38 +157,56 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
             source_name,
             proposal.items,
             proposal.schema_version,
-            proposal.source_metadata,
+            {**proposal.source_metadata, "original_text": text},
             proposal.extension_schema,
             proposal.planning_contract,
             proposal.extensions,
         )
 
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    headings = [(len(match.group(1)), match.group(2).strip()) for line in lines if (match := re.match(r"^(#{1,6})\s+(.+)$", line))]
-    if not headings:
-        bullets = [re.sub(r"^[-*+]\s+", "", line) for line in lines if re.match(r"^[-*+]\s+", line)]
-        headings = [(1, Path(source_name).stem or "Technical specification")]
-        headings += [(2, bullet) for bullet in bullets]
+    if not text.strip():
+        raise ValueError("Uploaded specification did not contain analyzable text")
+    # Keep section bodies verbatim. Headings alone are not the requirements.
+    sections: list[tuple[int, str, list[str]]] = []
+    for line in text.splitlines():
+        heading = re.match(r"^(#{1,6})\s+(.+)$", line.strip())
+        if heading:
+            sections.append((len(heading.group(1)), heading.group(2).strip(), []))
+        else:
+            if not sections and not line.strip():
+                continue
+            if not sections:
+                sections.append((1, Path(source_name).stem or "Specification", []))
+            sections[-1][2].append(line)
     items: list[ProposedItem] = []
     parents: dict[int, str] = {}
-    for index, (level, title) in enumerate(headings, 1):
-        kind = "epic" if level <= 1 else ("story" if level == 2 else "task")
+    for index, (level, title, body) in enumerate(sections, 1):
+        description = "\n".join(body).strip() or title
+        kind = "epic" if level == 1 else ("story" if level == 2 else "task")
         stable_id = f"uploaded:{_slug(source_name, 'spec')}:{index:03d}:{_slug(title, 'item')}"
-        parent = next((parents[parent_level] for parent_level in range(level - 1, 0, -1) if parent_level in parents), None)
+        parent = next((parents[n] for n in range(level - 1, 0, -1) if n in parents), None)
         items.append(ProposedItem(
-            stable_id=stable_id,
-            kind=kind,
-            title=title,
-            description=f"Derived from uploaded specification section: {title}.",
+            stable_id=stable_id, kind=kind, title=title, description=description,
             parent_id=parent,
-            acceptance_criteria=(f"Implement and validate the requirements described in '{title}'.",),
+            acceptance_criteria=(f"Verify the source requirement: {description}",),
             labels=("uploaded", "needs-review") + (("subtask",) if level >= 3 else ()),
-            source_references=(source_name,),
+            source_references=(f"uploaded://{source_name}#sha256={digest}",),
+            review_notes=("Deterministic import; review scope and acceptance criteria before confirming. No AI analysis was run.",),
         ))
         parents[level] = stable_id
         for old_level in list(parents):
             if old_level > level:
                 del parents[old_level]
-    if not items:
-        raise ValueError("Uploaded specification did not contain analyzable text")
-    return BacklogProposal("uploaded://" + source_name, digest, source_name, tuple(items))
+    # A plain paragraph or a leaf section needs an executable proposal, not an
+    # empty filename epic. Preserve its full text instead of inventing mechanics.
+    parent_ids = {item.parent_id for item in items}
+    for item in tuple(items):
+        if not item.executable and (item.stable_id not in parent_ids or item.description != item.title):
+            items.append(ProposedItem(
+                stable_id=item.stable_id + ":implement", kind="task",
+                title=f"Implement: {item.title}", description=item.description,
+                parent_id=item.stable_id, acceptance_criteria=item.acceptance_criteria,
+                labels=("uploaded", "needs-review"),
+                source_references=item.source_references, review_notes=item.review_notes,
+            ))
+    return BacklogProposal("uploaded://" + source_name, digest, source_name, tuple(items),
+                           source_metadata={"original_text": text})
