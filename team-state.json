@@ -95,11 +95,15 @@
     },
     "core:AF-GC-004": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
+      "scopes": [
+        "core:docs/agent-provider-editing.md",
+        "core:src/agent_factory/static/app.js",
+        "core:tests/test_agent_drafts.py"
+      ],
+      "updated_at": "2026-09-05T21:42:46+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -112,7 +116,8 @@
       "priority": "P1",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad"
     },
     "core:AF-GC-005": {
       "dependencies": [],
@@ -4134,6 +4139,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-CLD-003-847239d1",
       "claim_id": "f76a2bf1-11ac-4653-9dd5-bf9367f77486"
+    },
+    {
+      "operation_id": "ebf65aef-0583-4bc6-b901-2c5d264da8b9",
+      "at": "2026-09-05T21:42:46+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-004",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-004-fcab88d6",
+      "claim_id": "c1f158f5-59c1-4e37-82ba-fe65aa18b9ad"
     }
   ],
   "migration": {
