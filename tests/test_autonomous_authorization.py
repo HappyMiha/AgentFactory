@@ -147,10 +147,10 @@ class AutonomousAuthorizationTests(unittest.TestCase):
     def _configuration(self) -> AutonomousMissionConfiguration:
         return AutonomousMissionConfiguration(
             repository_path=str(self.repository),
-            default_model="qwen-coder",
+            default_model="local:qwen-coder",
             role_models={
-                "Developer": "qwen-coder",
-                "Planner": "qwen-planner",
+                "Developer": "local:qwen-coder",
+                "Planner": "local:qwen-planner",
             },
             local_provider_ids=("local-provider",),
         )
@@ -237,7 +237,7 @@ class AutonomousAuthorizationTests(unittest.TestCase):
             "agent_id": "developer-1",
             "task_id": 101,
             "role": "Developer",
-            "model": "qwen-coder",
+            "model": "local:qwen-coder",
             "backlog_revision_id": self.revision.id,
             "backlog_revision_digest": self.revision.revision_digest,
             "execution_epoch_id": self.epoch.id,
@@ -276,7 +276,7 @@ class AutonomousAuthorizationTests(unittest.TestCase):
         self.assertEqual(self.authorization.provider_ids, ("local-provider",))
         self.assertEqual(
             self.authorization.role_model_manifest["role_models"]["Developer"],
-            "qwen-coder",
+            "local:qwen-coder",
         )
         self.assertEqual(self.authorization.epoch_branch, self.epoch_branch)
 
@@ -429,7 +429,7 @@ class AutonomousAuthorizationTests(unittest.TestCase):
             planning_mission.id,
             planning_request_id="plan-request-1",
             requested_action=PlanningAction.ANALYZE,
-            role_models={"Planner": "qwen-planner"},
+            role_models={"Planner": "local:qwen-planner"},
             actor="Founder",
             command_id="grant-planning-request-1",
             reason="Analyze this specification with local models",
@@ -442,7 +442,7 @@ class AutonomousAuthorizationTests(unittest.TestCase):
             agent_id="planner-1",
             task_id=201,
             role="Planner",
-            model="qwen-planner",
+            model="local:qwen-planner",
             repository_path=str(self.repository),
             tool_profile="autonomous-local-planning-read-only-v1",
             permissions=("read_project", "execute_provider"),
@@ -495,7 +495,9 @@ class AutonomousAuthorizationTests(unittest.TestCase):
         provider = CLIProvider(
             "local-provider",
             sys.executable,
-            ["-c", "print(input())"],
+            ["-c", "print(input())", "{model}"],
+            model_namespace="local",
+            model_ids=["qwen-coder"],
             allow_execution=True,
             workspace=self.repository,
             capabilities=self.capabilities["local-provider"],
@@ -507,7 +509,7 @@ class AutonomousAuthorizationTests(unittest.TestCase):
             enabled=True,
             provider="local-provider",
             instructions="Return a bounded artifact",
-            model="qwen-coder",
+            model="local:qwen-coder",
         )
         item = WorkItem(
             title="Authorized task",
@@ -526,7 +528,9 @@ class AutonomousAuthorizationTests(unittest.TestCase):
         remote = CLIProvider(
             "local-provider",
             sys.executable,
-            ["-c", "print(input())"],
+            ["-c", "print(input())", "{model}"],
+            model_namespace="local",
+            model_ids=["qwen-coder"],
             allow_execution=True,
             workspace=self.repository,
             capabilities=self.capabilities["remote-provider"],
@@ -559,7 +563,7 @@ class AutonomousAuthorizationTests(unittest.TestCase):
             planning_mission.id,
             planning_request_id="immutable-plan",
             requested_action=PlanningAction.ANALYZE,
-            role_models={"Planner": "qwen-planner"},
+            role_models={"Planner": "local:qwen-planner"},
             actor="Founder",
             command_id="grant-immutable-plan",
             reason="Test immutable planning evidence",

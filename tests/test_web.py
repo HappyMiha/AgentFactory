@@ -607,13 +607,20 @@ class WebHostTests(unittest.TestCase):
                 self.assertEqual(incompatible.status_code, 400)
                 self.assertIn("incompatible", incompatible.json()["error"]["message"])
 
+                unsupported = client.post(
+                    "/api/agents/policy-guardian/provider", headers=headers,
+                    json={"confirmed": True, "provider": "codex", "model": "openai:unknown"},
+                )
+                self.assertEqual(unsupported.status_code, 400)
+                self.assertIn("unknown or unsupported", unsupported.json()["error"]["message"])
+
                 replaced = client.post(
                     "/api/agents/policy-guardian/provider",
                     headers=headers,
                     json={
                         "confirmed": True,
                         "provider": "codex",
-                        "model": "openai:independent-reviewer",
+                        "model": "openai:gpt-6-astra",
                     },
                 )
                 self.assertEqual(replaced.status_code, 200, replaced.text)
@@ -624,7 +631,7 @@ class WebHostTests(unittest.TestCase):
                     if item["id"] == "policy-guardian"
                 )
                 self.assertFalse(persisted["enabled"])
-                self.assertEqual(persisted["model"], "openai:independent-reviewer")
+                self.assertEqual(persisted["model"], "openai:gpt-6-astra")
                 event_names = {
                     item["event_type"]
                     for item in client.get("/api/events?limit=200").json()["items"]

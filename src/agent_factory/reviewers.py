@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, replace
+from typing import Callable
 
 from .models import Agent
 from .registry import AgentRegistry
@@ -31,18 +33,40 @@ class ReviewerRouter:
         candidate_ids: list[str],
         subjects: list[ReviewSubject],
         required_role: str,
+        model_resolver: Callable[[Agent], str] | None = None,
     ) -> Agent:
         if not candidate_ids:
             raise ValueError(f"Review stage {stage} has an empty reviewer pool")
         if not subjects:
             raise ValueError(f"Review stage {stage} has no reviewed artifacts")
 
+        if model_resolver is not None:
+            frozen_subjects = []
+            for subject in subjects:
+                row = self.storage.db.execute(
+                    "SELECT producer_json FROM artifacts WHERE id=? AND run_id=?",
+                    (subject.artifact_id, run_id),
+                ).fetchone()
+                evidence = json.loads(row["producer_json"] or "{}") if row else {}
+                identity = evidence.get("effective_model")
+                if not identity or evidence.get("model_identity_source") != "qualified_request":
+                    raise RuntimeError("Reviewed artifact has no effective model identity")
+                frozen_subjects.append(replace(subject, producer=replace(
+                    subject.producer, id=evidence.get("agent_id", subject.producer.id), model=identity
+                )))
+            subjects = frozen_subjects
         excluded_models = {subject.producer.model_identity.casefold() for subject in subjects}
         producer_ids = {subject.producer.id for subject in subjects}
         eligible: list[Agent] = []
         excluded: dict[str, str] = {}
         for agent_id in dict.fromkeys(candidate_ids):
             agent = self.registry.get(agent_id)
+            if model_resolver is not None:
+                try:
+                    agent = replace(agent, model=model_resolver(agent))
+                except ValueError:
+                    excluded[agent.id] = "model has no qualified execution binding"
+                    continue
             if not agent.enabled:
                 excluded[agent.id] = "disabled"
             elif agent.role != required_role:
