@@ -217,23 +217,65 @@ async function showRun(runId) {
   } catch (error) { $("run-detail").innerHTML = empty(error.message); }
 }
 
+let confirmationPending = false;
+const pendingCommands = new Set();
+
 function confirmCommand(summary) {
+  if (confirmationPending) return Promise.resolve(false);
   const dialog = $("confirm-dialog");
+  const initiator = document.activeElement;
+  const form = dialog.querySelector("form");
+  confirmationPending = true;
+  dialog.returnValue = "";
   $("confirm-summary").textContent = summary;
-  dialog.showModal();
-  return new Promise((resolve) => dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), { once: true }));
+  return new Promise((resolve, reject) => {
+    let explicitlyConfirmed = false;
+    const onSubmit = (event) => {
+      explicitlyConfirmed = event.submitter === $("confirm-action");
+    };
+    const onCancel = () => { explicitlyConfirmed = false; };
+    const cleanup = () => {
+      form.removeEventListener("submit", onSubmit);
+      dialog.removeEventListener("cancel", onCancel);
+      dialog.removeEventListener("close", onClose);
+      confirmationPending = false;
+      if (initiator?.isConnected) initiator.focus();
+    };
+    const onClose = () => {
+      const confirmed = explicitlyConfirmed && dialog.returnValue === "confirm";
+      cleanup();
+      resolve(confirmed);
+    };
+    form.addEventListener("submit", onSubmit);
+    dialog.addEventListener("cancel", onCancel);
+    dialog.addEventListener("close", onClose);
+    try {
+      dialog.showModal();
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
 }
 
 async function guardedCommand(url, payload, summary) {
-  if (!await confirmCommand(summary)) return null;
-  const result = await fetchJson(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Agent-Factory-Confirm": "true" },
-    body: JSON.stringify({ ...payload, confirmed: true })
-  });
-  $("notice").hidden = false;
-  $("notice").textContent = `Completed: ${summary}`;
-  return result;
+  const body = JSON.stringify({ ...payload, confirmed: true });
+  const commandKey = JSON.stringify([url, body]);
+  if (pendingCommands.has(commandKey)) return null;
+  pendingCommands.add(commandKey);
+  try {
+    if (!await confirmCommand(summary)) return null;
+    const result = await fetchJson(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Agent-Factory-Confirm": "true" },
+      body
+    });
+    $("notice").hidden = false;
+    $("notice").textContent = `Completed: ${summary}`;
+    return result;
+  } finally {
+    pendingCommands.delete(commandKey);
+  }
 }
 
 async function handleWorkAction(target) {
