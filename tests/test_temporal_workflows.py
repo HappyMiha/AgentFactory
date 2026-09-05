@@ -1,4 +1,6 @@
 import asyncio
+import csv
+import os
 import subprocess
 import sys
 import tempfile
@@ -6,6 +8,7 @@ import unittest
 import uuid
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from temporalio.client import WorkflowFailureError
 from temporalio.exceptions import CancelledError
@@ -25,6 +28,54 @@ from agent_factory.orchestration.temporal.workflows import (
     TemporalDemoWorkflow,
 )
 from agent_factory.storage import SQLiteStorage
+
+
+def process_is_running(process_id: int) -> bool:
+    """Probe only the recorded child PID; fail if the OS probe itself fails."""
+    if os.name == "nt":
+        result = subprocess.run(
+            ["tasklist.exe", "/FI", f"PID eq {process_id}", "/FO", "CSV", "/NH"],
+            capture_output=True, text=True, check=True, timeout=5,
+        )
+        return any(len(row) > 1 and row[1] == str(process_id)
+                   for row in csv.reader(result.stdout.splitlines()))
+    try:
+        os.kill(process_id, 0)
+    except ProcessLookupError:
+        return False
+    return True
+
+
+class ProcessProbeTests(unittest.TestCase):
+    def test_detects_live_and_reaped_child_on_current_os(self):
+        child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        try:
+            self.assertTrue(process_is_running(child.pid))
+        finally:
+            child.terminate()
+            child.wait(timeout=5)
+        self.assertFalse(process_is_running(child.pid))
+
+    def test_posix_probe_never_invokes_windows_tools(self):
+        with patch.object(os, "name", "posix"), patch.object(os, "kill") as kill:
+            with patch.object(subprocess, "run") as run:
+                self.assertTrue(process_is_running(123))
+                kill.assert_called_once_with(123, 0)
+                run.assert_not_called()
+                kill.side_effect = ProcessLookupError
+                self.assertFalse(process_is_running(123))
+                kill.side_effect = PermissionError
+                with self.assertRaises(PermissionError):
+                    process_is_running(123)
+
+    def test_windows_probe_matches_exact_pid_and_does_not_hide_errors(self):
+        with patch.object(os, "name", "nt"), patch.object(subprocess, "run") as run:
+            run.return_value.stdout = '"python.exe","1234","Console","1","1,000 K"\n'
+            self.assertFalse(process_is_running(123))
+            self.assertTrue(process_is_running(1234))
+            run.side_effect = subprocess.CalledProcessError(1, "tasklist.exe")
+            with self.assertRaises(subprocess.CalledProcessError):
+                process_is_running(1234)
 
 
 @activity.defn
@@ -229,14 +280,13 @@ class TemporalWorkflowTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(WorkflowFailureError) as failure:
                 await handle.result()
             self.assertIsInstance(failure.exception.cause, CancelledError)
-            await asyncio.sleep(0.5)
-        tasklist = subprocess.run(
-            ["tasklist.exe", "/FI", f"PID eq {process_id}", "/NH"],
-            capture_output=True,
-            text=True,
-            check=False,
-        ).stdout
-        self.assertNotIn(str(process_id), tasklist)
+            deadline = asyncio.get_running_loop().time() + 5
+            while process_is_running(process_id):
+                self.assertLess(
+                    asyncio.get_running_loop().time(), deadline,
+                    "cancelled subprocess is still running",
+                )
+                await asyncio.sleep(0.05)
 
     async def test_worker_restart_preserves_completed_activity_history(self):
         workflow_id = f"worker-restart-{uuid.uuid4().hex}"

@@ -6,6 +6,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 
 SOURCE = Path(__file__).resolve().parents[1] / "scripts/team_checks.py"
@@ -135,6 +136,32 @@ class TeamChecksTests(unittest.TestCase):
         self.commit()
         with self.assertRaisesRegex(checks.CheckError, "All selected tests were skipped"):
             checks.run_checks(self.root, selected=["test_skipped"])
+        self.assertFalse(checks.attestation_path(self.root).exists())
+
+    def test_empty_suite_exit_codes_never_produce_attestation(self):
+        self.write("tests/test_empty.py", "# No tests\n")
+        self.commit()
+        real_command = checks.command
+
+        for exit_code in (0, 5):
+            with self.subTest(exit_code=exit_code):
+                def empty_suite(root, argv, *, env=None):
+                    if "unittest" in argv:
+                        return subprocess.CompletedProcess(
+                            argv, exit_code, "", "Ran 0 tests in 0.000s\nNO TESTS RAN\n"
+                        )
+                    return real_command(root, argv, env=env)
+
+                with mock.patch.object(checks, "command", side_effect=empty_suite):
+                    with self.assertRaisesRegex(checks.CheckError, "no tests"):
+                        checks.run_checks(self.root, selected=["test_empty"])
+                self.assertFalse(checks.attestation_path(self.root).exists())
+
+    def test_unittest_import_failure_preserves_diagnostic(self):
+        self.write("tests/test_broken.py", "raise RuntimeError('fixture import failed')\n")
+        self.commit()
+        with self.assertRaisesRegex(checks.CheckError, "fixture import failed"):
+            checks.run_checks(self.root, selected=["test_broken"])
         self.assertFalse(checks.attestation_path(self.root).exists())
 
     def test_test_mutation_prevents_attestation(self):
