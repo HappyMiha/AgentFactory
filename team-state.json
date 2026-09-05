@@ -64,13 +64,14 @@
         "core:tests/test_autonomous_epoch_handoff.py",
         "core:tests/test_autonomous_mission_control.py",
         "core:tests/test_autonomous_preapproval_workflow.py",
+        "core:tests/test_autonomous_stage_identity.py",
         "core:tests/test_environment.py",
         "core:tests/test_environment_readiness.py",
         "core:tests/test_environment_readiness_browser.py",
         "core:tests/test_monitor_web.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-05T23:28:58+00:00",
+      "updated_at": "2026-09-05T23:33:45+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4613,6 +4614,16 @@
     {
       "operation_id": "d32aeaa4-9816-4b90-b928-a9ad592409a6",
       "at": "2026-09-05T23:28:58+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
+    },
+    {
+      "operation_id": "3051e9b7-738d-4fd8-881f-cacd7e080b9a",
+      "at": "2026-09-05T23:33:45+00:00",
       "action": "rescope",
       "task": "core:AF-GC-002",
       "worker": "HappySnowman",
