@@ -3433,6 +3433,25 @@
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
       "updated_at": "2026-09-05T20:03:49+00:00",
       "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
+    },
+    "cloud:AF-TEAM-001": {
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "dependencies": [
+        "core:AF-TEAM-001"
+      ],
+      "resources": [
+        "cloud:team-tooling"
+      ],
+      "required_scopes": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "maintenance": true,
+      "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
+      "updated_at": "2026-09-05T20:03:53+00:00",
+      "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history."
     }
   },
   "events": [
@@ -3721,6 +3740,16 @@
       "at": "2026-09-05T20:03:49+00:00",
       "action": "register-maintenance",
       "task": "core:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history.",
+      "branch": null,
+      "claim_id": null
+    },
+    {
+      "operation_id": "80c8e9e4-8302-47a4-a6a7-b3c9b95cf98b",
+      "at": "2026-09-05T20:03:53+00:00",
+      "action": "register-maintenance",
+      "task": "cloud:AF-TEAM-001",
       "worker": "HappyDucky02",
       "note": "Owner-authorized three-PC migration; preserve product IDs, existing claims and history.",
       "branch": null,
