@@ -1429,7 +1429,7 @@
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-003"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-004-15205ae4",
       "scopes": [
@@ -1441,9 +1441,9 @@
         "cloud:prototypes/creator-operator/style.css",
         "cloud:tests/test_creator_flows.py"
       ],
-      "updated_at": "2026-09-05T22:25:03+00:00",
+      "updated_at": "2026-09-05T22:40:08+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/8",
       "resources": [
         "shared:creator-ux",
         "shared:minor-access"
@@ -1457,7 +1457,8 @@
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-003"
       ],
-      "claim_id": "631b9166-5818-439f-b990-50cefbd01787"
+      "claim_id": "631b9166-5818-439f-b990-50cefbd01787",
+      "review_head": "f70c10d0421e73ff39e51e31a141c694b4506737"
     },
     "cloud:AF-CLD-005": {
       "dependencies": [
@@ -4456,6 +4457,16 @@
       "note": "Strict Ollama JSON mode after real canary fence failure; exact integration checks pass; live requalification pending",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
+    },
+    {
+      "operation_id": "80107ac7-1276-4bdd-9ea8-485a36d3a4af",
+      "at": "2026-09-05T22:40:08+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-004",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-004-15205ae4",
+      "claim_id": "631b9166-5818-439f-b990-50cefbd01787"
     }
   ],
   "migration": {
