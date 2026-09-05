@@ -1611,10 +1611,22 @@ class AgentFactoryActivities:
                 )
             )
         placeholder = registry.get(str(stage["agent"]))
+        candidates = list(reviewer_pool)
+        if request.job.autonomous_context is not None and request.job.mode == ExecutionMode.LIVE.value:
+            binding = AutonomousCodingDeliveryService(storage).stage_assignment(
+                request.job.autonomous_context.child_job_id, self._stage_label(request)
+            )
+            if binding is not None:
+                frozen_id = binding["agent"]["id"]
+                if frozen_id not in candidates:
+                    raise PermissionError("Persisted stage reviewer is no longer in the approved pool")
+                # Recheck independence against the actual producer artifacts without
+                # rotating to another identity on replay or worker replacement.
+                candidates = [frozen_id]
         return ReviewerRouter(storage, registry).select(
             run_id=request.job.run_id,
             stage=self._stage_label(request),
-            candidate_ids=list(reviewer_pool),
+            candidate_ids=candidates,
             subjects=subjects,
             required_role=placeholder.role,
             model_resolver=(
@@ -1691,10 +1703,18 @@ class AgentFactoryActivities:
         storage: SQLiteStorage,
         job: AgentFactoryJobInput,
         template: Agent,
+        *, stage_key: str | None = None, effective_model: str | None = None,
     ) -> tuple[Agent, ProviderExecutionAuthorization | None]:
         context = job.autonomous_context
         if context is None:
             return template, None
+        if job.mode == ExecutionMode.LIVE.value:
+            if not stage_key or not effective_model:
+                raise PermissionError("Live stage needs its own key and qualified model identity")
+            delivery = AutonomousCodingDeliveryService(storage, self.autonomous_provider_capabilities)
+            self._assert_autonomous_job_binding(delivery, job)
+            return delivery.authorize_stage(context.child_job_id, stage_key, template,
+                                            effective_model=effective_model)
         row = storage.db.execute(
             "SELECT * FROM autonomous_child_job_authorizations "
             "WHERE child_job_id=?",
@@ -1875,12 +1895,25 @@ class AgentFactoryActivities:
             workspace = Path(job.workspace).expanduser().resolve()
             registry = AgentRegistry(workspace=workspace)
             runtime = AgentRuntime(workspace=workspace)
-            workflow_agent = self._stage_agent(storage, registry, request)
-            agent, provider_authorization = self._autonomous_execution_agent(
-                storage, job, workflow_agent
-            )
-            if stage.get("reviewer_pool") and job.mode == ExecutionMode.LIVE.value:
-                runtime.validate_review_binding(workflow_agent, agent)
+            try:
+                workflow_agent = self._stage_agent(storage, registry, request)
+                live_child = job.autonomous_context is not None and job.mode == ExecutionMode.LIVE.value
+                # Reviewer selection resolves aliases to their effective identity;
+                # authorization still checks the original, explicitly approved request.
+                template = registry.get(workflow_agent.id) if live_child else workflow_agent
+                qualified_model = runtime.effective_model(template) if live_child else None
+                agent, provider_authorization = self._autonomous_execution_agent(
+                    storage, job, template, stage_key=stage_label, effective_model=qualified_model
+                )
+                if stage.get("reviewer_pool") and job.mode == ExecutionMode.LIVE.value:
+                    runtime.validate_review_binding(workflow_agent, agent)
+            except (PermissionError, ValueError, RuntimeError) as exc:
+                if job.autonomous_context is None or job.mode != ExecutionMode.LIVE.value:
+                    raise
+                # The parent already waits in NEEDS_ATTENTION on a nonretryable
+                # child failure. Never retry a missing reviewer as paid inference.
+                raise ApplicationError("Autonomous stage needs an operator decision: " + str(exc),
+                                       type="CONFIGURATION", non_retryable=True) from exc
             task = storage.get_task(job.task_id)
             child = WorkItem(
                 id=task.id,
@@ -2027,6 +2060,8 @@ class AgentFactoryActivities:
                 producer={
                     "agent_id": agent.id,
                     "workflow_agent_id": workflow_agent.id,
+                    "role": agent.role,
+                    "stage": stage_label,
                     "provider": provider_result.provider,
                     "model": provider_result.metadata.get("effective_model"),
                     "requested_model": provider_result.metadata.get("requested_model"),
