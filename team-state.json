@@ -3382,6 +3382,7 @@
       "owner": "HappyDucky02",
       "branch": "team/HappyDucky02/cloud-team-setup",
       "scopes": [
+        "cloud:.gitattributes",
         "cloud:.githooks/pre-push",
         "cloud:.github/PULL_REQUEST_TEMPLATE.md",
         "cloud:.github/workflows/team-policy.yml",
@@ -3396,8 +3397,8 @@
         "cloud:tests/test_team_checks.py",
         "cloud:tests/test_team_coordination.py"
       ],
-      "updated_at": "2026-09-05T18:02:18+00:00",
-      "note": "Set up shared task claims and push checks; owner made this repository public.",
+      "updated_at": "2026-09-05T18:04:07+00:00",
+      "note": "Include LF hook attributes for Windows and Linux compatibility.",
       "pr": null,
       "resources": [],
       "required_scopes": [],
@@ -3437,6 +3438,16 @@
       "note": "Include LF hook attributes for Windows and Linux compatibility.",
       "branch": "team/HappyDucky02/core-team-setup",
       "claim_id": "0d8a28ba-2343-4077-8896-5cab0875e8f6"
+    },
+    {
+      "operation_id": "c689069a-bd46-46ab-990d-b2a4a7077cbc",
+      "at": "2026-09-05T18:04:07+00:00",
+      "action": "rescope",
+      "task": "cloud:TEAM-SETUP",
+      "worker": "HappyDucky02",
+      "note": "Include LF hook attributes for Windows and Linux compatibility.",
+      "branch": "team/HappyDucky02/cloud-team-setup",
+      "claim_id": "529b0108-2e69-47b7-8891-c4762686f7b3"
     }
   ]
 }
