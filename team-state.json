@@ -1465,12 +1465,18 @@
       "dependencies": [
         "cloud:AF-CLD-002"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-CLD-005-807782aa",
+      "scopes": [
+        "cloud:contracts/v1/engine-target-pack-fixtures.json",
+        "cloud:contracts/v1/engine-target-pack.json",
+        "cloud:docs/engine-target-pack-contract.md",
+        "cloud:scripts/validate_engine_target_pack.py",
+        "cloud:tests/test_engine_target_pack.py"
+      ],
+      "updated_at": "2026-09-05T22:28:14+00:00",
+      "note": "Coordinator agreed consumer interface proposal and synthetic manifests; executable engine interfaces remain Core owned",
       "pr": null,
       "resources": [
         "shared:engine-contract",
@@ -1483,7 +1489,8 @@
       "optional": false,
       "source_dependencies": [
         "cloud:AF-CLD-002"
-      ]
+      ],
+      "claim_id": "b95b842f-f559-4217-96f0-97a79748b551"
     },
     "cloud:AF-CLD-006": {
       "dependencies": [
@@ -4410,6 +4417,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
       "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
+    },
+    {
+      "operation_id": "2b53dfd4-a91f-44ae-b192-82b9db1aced3",
+      "at": "2026-09-05T22:28:14+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-005",
+      "worker": "HappyHahahaker",
+      "note": "Coordinator agreed consumer interface proposal and synthetic manifests; executable engine interfaces remain Core owned",
+      "branch": "agent/HappyHahahaker/AF-CLD-005-807782aa",
+      "claim_id": "b95b842f-f559-4217-96f0-97a79748b551"
     }
   ],
   "migration": {
