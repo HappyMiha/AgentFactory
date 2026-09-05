@@ -8,6 +8,8 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 > **Alpha:** the deterministic simulation, guarded single-provider execution, local orchestration state, and dry-run GitHub planning are usable today. Full unattended multi-stage live execution, native HTTP providers, and a hosted control plane are not yet complete.
 
+> **Active product direction (5 September 2026): game creation for ages 12+.** Read the [Ukrainian product audit](docs/product-audit-2026-09-05.uk.md), [prioritized game-creator backlog](docs/game-creator-backlog.uk.md), and [importable schema-v2 manifest](examples/game-creator-backlog.json). The next acceptance target is a real Godot game with guided AI/setup and a play–feedback–revision loop; local/hybrid AI and Unity follow as qualified milestones. These are planned outcomes, not capabilities delivered by the current operator dashboard. Existing platform and Autonomous Mission IDs remain stable engineering references.
+
 ## Why Agent Factory
 
 - **Provider independence.** Replace a provider without rewriting the role or workflow.
@@ -293,6 +295,7 @@ See:
 - [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
 - [Development roadmap](docs/development-roadmap.md)
+- [Active game-creator backlog (12+)](docs/game-creator-backlog.uk.md) and [product audit (2026-09-05)](docs/product-audit-2026-09-05.uk.md)
 - [Autonomous Mission Mode review](docs/autonomous-mission-mode-review.md), [planning intake contract](docs/autonomous-mission-planning.md), [epoch worktree runbook](docs/development/mission-epoch-worktrees.md), and [implementation backlog](examples/autonomous-mission-backlog.json)
 - [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)

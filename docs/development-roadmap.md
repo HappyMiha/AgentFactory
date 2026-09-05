@@ -1,5 +1,7 @@
 # Development roadmap
 
+> **Planning update — 5 September 2026:** the active product delivery order is the [Game Creator 12+ backlog](game-creator-backlog.uk.md), with an [importable schema-v2 manifest](../examples/game-creator-backlog.json) and a [current product audit](product-audit-2026-09-05.uk.md). This document retains the stable AF-001–AF-057 engineering requirements and their historical completion claims. Those claims concern component/contract delivery, not a verified beginner journey, engine integration, or clean-machine game creation. Reuse the implemented foundations; address reproduced regressions through the new AF-GC tasks.
+
 This roadmap converts the remaining requirements in *Agent Factory Technical Specification v1.0* (2 August 2026) into an ordered delivery backlog. It is deliberately based on the current repository rather than treating the specification as a greenfield design.
 
 The importable source of the issue list is [`examples/development-backlog.json`](../examples/development-backlog.json). Stable IDs in that file are permanent. Titles, descriptions, priorities, dependencies, and implementation choices may evolve without changing those IDs. Completion claims and evidence are tracked separately in the [2026-08-11 implementation audit](implementation-audit-2026-08-11.md); the manifest describes required outcomes and must not be treated as proof that they exist.
@@ -80,9 +82,9 @@ The Local Control Center sequence `AF-036 → AF-043` is complete. The active de
 
 ## Audited implementation status
 
-As of 12 August 2026, all 57 of 57 tasks meet their complete acceptance criteria: `AF-001` through `AF-057`. No tasks remain partial or not started. Partial work never satisfies a dependency.
+Historical platform assessment: As of 12 August 2026, all 57 of 57 tasks were reported to meet their acceptance criteria: `AF-001` through `AF-057`. This records the earlier audit's scope; it is not a current end-to-end product readiness claim. Partial work never satisfies a dependency. The September product audit and AF-GC backlog identify additional outcomes and regressions.
 
-The evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links for completed tasks are in the [release notes](release-notes-2026-08-11.md). The implementation backlog is fully covered; remaining work is release governance and operational follow-through.
+The earlier evidence and gap for every task are recorded in the [implementation audit](implementation-audit-2026-08-11.md). Implementation dates and commit links are in the [release notes](release-notes-2026-08-11.md). Current product work includes guided setup, real engine integration, playtesting, local/hybrid execution and the concrete defects documented in the September audit.
 
 ## R0.2 — Local Control Center MVP
 
@@ -128,7 +130,7 @@ This MVP is intentionally loopback-only and single-operator. It uses current SQL
 
 **Exit evidence:** upgrade from the current SQLite schema without lost authority; explicit domain identities and state machines; atomic audit/outbox transitions; criterion-complete evidence; dependency-ready claims with fenced leases; durable stage checkpoints and approvals; scoped Hermes sessions; enforced budgets; restart reconciliation without duplicate mutation; and the AF-029 tenant storage/isolation contract.
 
-**Progress:** AF-001 through AF-025, AF-027, and AF-044 through AF-057 are implemented and tested. AF-029 is next.
+**Historical platform progress:** AF-001 through AF-025, AF-027, and AF-044 through AF-057 were reported implemented and tested; AF-029 was subsequently recorded as a storage boundary contract. The current product order is the AF-GC plan linked above.
 
 ## R2 — Mission Factory
 

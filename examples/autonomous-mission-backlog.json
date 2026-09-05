@@ -5,10 +5,11 @@
     "name": "AgentFactory Autonomous Mission Mode implementation specification",
     "review": "docs/autonomous-mission-mode-review.md",
     "status": "PROPOSED",
+    "status_note": "PROPOSED describes this requirements manifest, not current implementation status. Stable IDs are retained; active product delivery order is docs/game-creator-backlog.uk.md and current evidence is docs/product-audit-2026-09-05.uk.md.",
     "created_date": "2026-08-27"
   },
   "planning_contract": {
-    "feature_representation": "The current schema uses kind=story with label level:feature until AF-AMM-002 adds a first-class feature level.",
+    "feature_representation": "This legacy schema-v1 manifest retains kind=story with label level:feature for compatibility. The current importer supports first-class kind=feature in schema v2; new product manifests use schema v2.",
     "execution_rule": "Only kind=task items are executable. Epic and feature items are progress containers.",
     "priority_order": ["P0", "P1", "P2"],
     "required_task_fields": [

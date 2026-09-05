@@ -1,0 +1,2371 @@
+{
+  "schema_version": 2,
+  "source": {
+    "name": "AgentFactory Game Creator 12+ product backlog",
+    "created_date": "2026-09-05",
+    "baseline_commit": "03bb23b8f58e64f1fc0e4a14ecb4ff1fe27ec32d",
+    "status": "PROPOSED",
+    "audit": "docs/product-audit-2026-09-05.uk.md"
+  },
+  "planning_contract": {
+    "active_product_backlog": true,
+    "completion_claim": "Запис у беклозі не означає реалізацію. Усі AF-GC задачі запропоновані; завершення потребує evidence та приймання власником.",
+    "execution_rule": "Залежності executable items посилаються лише на executable items цього маніфесту. Epics є контейнерами, не barriers.",
+    "priority_order": [
+      "P0",
+      "P1",
+      "P2"
+    ],
+    "roles": "assigned_role — відповідальна спеціальність, не автоматично доступний або авторизований agent ID.",
+    "size_guide": "S: до 2; M: до 5; L: до 10 інженерних днів, попередня гіпотеза; L розбивати перед стартом.",
+    "status_source": "status:proposed — початковий стан плану; фактичні стани виконання зберігаються у трекері разом з evidence.",
+    "release_gates": {
+      "M0": [
+        "AF-GC-001",
+        "AF-GC-002",
+        "AF-GC-003",
+        "AF-GC-004",
+        "AF-GC-005",
+        "AF-GC-006",
+        "AF-GC-039",
+        "AF-GC-041",
+        "AF-GC-042"
+      ],
+      "M1": [
+        "AF-GC-026"
+      ],
+      "M2": [
+        "AF-GC-031"
+      ],
+      "M3": [
+        "AF-GC-034",
+        "AF-GC-036",
+        "AF-GC-037",
+        "AF-GC-038"
+      ]
+    }
+  },
+  "items": [
+    {
+      "stable_id": "AF-GC-E0",
+      "kind": "epic",
+      "title": "Перевірена технічна основа",
+      "description": "Закрити відтворені дефекти та підтвердити готовність реальними перевірками.",
+      "parent_id": null,
+      "dependencies": [],
+      "priority": "P0",
+      "acceptance_criteria": [
+        "Закрити відтворені дефекти та підтвердити готовність реальними перевірками.",
+        "Завершення підтверджене дочірніми задачами та відповідним release gate."
+      ],
+      "source_references": [
+        "docs/game-creator-backlog.uk.md"
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "status:proposed"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-E1",
+      "kind": "epic",
+      "title": "Перша Godot-гра з хмарним AI",
+      "description": "Чистий ПК → ідея → підключення → setup → справжня гра → feedback → нова версія.",
+      "parent_id": null,
+      "dependencies": [],
+      "priority": "P1",
+      "acceptance_criteria": [
+        "Чистий ПК → ідея → підключення → setup → справжня гра → feedback → нова версія.",
+        "Завершення підтверджене дочірніми задачами та відповідним release gate."
+      ],
+      "source_references": [
+        "docs/game-creator-backlog.uk.md"
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "status:proposed"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-E2",
+      "kind": "epic",
+      "title": "Локальне та змішане створення",
+      "description": "Кваліфікувати local-only/hybrid на визначених hardware/model profiles.",
+      "parent_id": null,
+      "dependencies": [],
+      "priority": "P1",
+      "acceptance_criteria": [
+        "Кваліфікувати local-only/hybrid на визначених hardware/model profiles.",
+        "Завершення підтверджене дочірніми задачами та відповідним release gate."
+      ],
+      "source_references": [
+        "docs/game-creator-backlog.uk.md"
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m2",
+        "status:proposed"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-E3",
+      "kind": "epic",
+      "title": "Unity та поступове зростання складності",
+      "description": "Додати Unity, assets, export, 3D та підтримку життєвого циклу.",
+      "parent_id": null,
+      "dependencies": [],
+      "priority": "P2",
+      "acceptance_criteria": [
+        "Додати Unity, assets, export, 3D та підтримку життєвого циклу.",
+        "Завершення підтверджене дочірніми задачами та відповідним release gate."
+      ],
+      "source_references": [
+        "docs/game-creator-backlog.uk.md"
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "status:proposed"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-001",
+      "kind": "bug",
+      "title": "Відновити відтворюваний CI на трьох ОС",
+      "description": "Чистий checkout має давати надійний результат перевірок незалежно від установлених AI CLI на машині.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P0",
+      "assigned_role": "qa-engineer",
+      "acceptance_criteria": [
+        "Тести monitor не залежать від персональних CLI та окремо перевіряють потрібні/непотрібні провайдери.",
+        "Перевірка завершення subprocess використовує відповідний ОС механізм; Linux/macOS не викликають tasklist.exe.",
+        "Матриця Python 3.11/3.12 Windows/Linux/macOS, wheel smoke та Docker CI зелені або мають явне обґрунтоване обмеження без прихованого skip."
+      ],
+      "validation_method": [
+        "Запустити на чистих CI runners; зберегти повні підсумки, skipped reasons, wheel/demo та cancellation evidence."
+      ],
+      "required_components": [
+        "tests/test_monitor_web.py",
+        "tests/test_temporal_workflows.py",
+        ".github/workflows/ci.yml"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Відновити відтворюваний CI на трьох ОС: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-043",
+        "legacy:AF-AMM-046"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-002",
+      "kind": "bug",
+      "title": "Показувати готовність лише після реальних перевірок",
+      "description": "Повідомлення «Можна створювати гру» повинно означати готовність обраного шляху, а не лише перехід статусу в базі.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P0",
+      "assigned_role": "backend-engineer",
+      "acceptance_criteria": [
+        "DEVELOPMENT не починається без актуального звіту required tools/services/model/workspace для затвердженого плану.",
+        "Відсутня програма, модель чи невдалий probe дає конкретну дію виправлення; повторний запуск перевіряє фактичний стан.",
+        "UI розрізняє installed/authenticated/qualified/ready та simulated/live; необраний провайдер не блокує справний маршрут."
+      ],
+      "validation_method": [
+        "Regression: порожній workspace без рушія не може повернути environment READY; success/missing/stale/failed-probe cases."
+      ],
+      "required_components": [
+        "src/agent_factory/coding_delivery.py",
+        "src/agent_factory/orchestration/temporal/activities.py",
+        "src/agent_factory/web.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Показувати готовність лише після реальних перевірок: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-030",
+        "legacy:AF-AMM-033"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-003",
+      "kind": "bug",
+      "title": "Закриття діалогу ніколи не підтверджує дію",
+      "description": "Усунути ризик успадкування попереднього підтвердження при повторному відкритті native dialog.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P0",
+      "assigned_role": "frontend-engineer",
+      "acceptance_criteria": [
+        "Перед кожним відкриттям результат діалогу скинутий; лише явна кнопка підтверджує конкретний поточний запит.",
+        "Confirm → новий діалог → Escape/Cancel не надсилає mutation request.",
+        "Подвійний клік та повторне відкриття не дублюють операцію; фокус повертається до ініціатора."
+      ],
+      "validation_method": [
+        "Browser regression на disposable fixture з перехопленими запитами; записати нуль mutations при Escape/Cancel."
+      ],
+      "required_components": [
+        "src/agent_factory/static/app.js"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Закриття діалогу ніколи не підтверджує дію: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-041",
+        "legacy:AF-043"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:s",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-004",
+      "kind": "bug",
+      "title": "Зберігати чернетки та фокус під час автооновлення",
+      "description": "Редагування моделі або провайдера не повинно зникати кожні п’ять секунд.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P1",
+      "assigned_role": "frontend-engineer",
+      "acceptance_criteria": [
+        "Model/provider drafts, selection і focus зберігаються щонайменше три refresh cycles.",
+        "Серверна зміна під час редагування показує конфлікт і дозволяє вибрати версію.",
+        "Оновлення статусів продовжується без повної заміни форми; Save та Cancel мають явний результат."
+      ],
+      "validation_method": [
+        "Browser: ввести незбережену модель, дочекатися трьох циклів, перевірити value/focus та save/cancel."
+      ],
+      "required_components": [
+        "src/agent_factory/static/app.js"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Зберігати чернетки та фокус під час автооновлення: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-040",
+        "legacy:AF-043"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m0",
+        "size:s",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-005",
+      "kind": "bug",
+      "title": "Не втрачати зміст звичайного опису гри",
+      "description": "Імпорт абзацу без Markdown має зберігати намір користувача; евристичний імпорт не називати виконаним AI-аналізом.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P0",
+      "assigned_role": "backend-engineer",
+      "acceptance_criteria": [
+        "Український/англійський абзац збережений як оригінальне джерело, незалежно від результату парсера.",
+        "Для «кіт збирає монети, три життя» preview містить ці вимоги або ставить уточнення; порожній filename-epic не вважається готовим планом.",
+        "UI чесно позначає deterministic import, AI proposal і підтверджений план; користувач редагує preview до імпорту."
+      ],
+      "validation_method": [
+        "Text/PDF/Markdown import cases з семантичними assertions на вимоги, executable leaves і source trace."
+      ],
+      "required_components": [
+        "src/agent_factory/backlog_analyzer.py",
+        "src/agent_factory/web.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Не втрачати зміст звичайного опису гри: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-009",
+        "legacy:AF-AMM-007"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-006",
+      "kind": "bug",
+      "title": "Прив’язати вибрану модель до фактичного запуску",
+      "description": "Вибір моделі має змінювати реальний provider request та зберігати правдиву ідентичність для незалежної перевірки.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P0",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Дві дозволені моделі одного провайдера породжують відповідні різні qualified request/argv; довільні shell аргументи заборонені.",
+        "Непідтримувана чи невідома модель відхиляється до запуску; журнал фіксує requested і effective model без секретів.",
+        "Зміна моделі інвалідує залежну кваліфікацію/дозвіл; reviewer independence перевіряє effective identity."
+      ],
+      "validation_method": [
+        "Adapter fixture порівнює requests для model-a/model-b; live canary лише на явно дозволеному профілі та бюджеті."
+      ],
+      "required_components": [
+        "src/agent_factory/providers.py",
+        "src/agent_factory/defaults/providers.json",
+        "src/agent_factory/application.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Прив’язати вибрану модель до фактичного запуску: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-005",
+        "legacy:AF-011",
+        "legacy:AF-020"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-007",
+      "kind": "task",
+      "title": "Додати головний екран «Мої ігри» і покроковий старт",
+      "description": "Новачок починає з ідеї та бачить лише поточний крок: Ідея → AI → Підготовка → Створення → Грати.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-003",
+        "AF-GC-004"
+      ],
+      "priority": "P1",
+      "assigned_role": "frontend-engineer",
+      "acceptance_criteria": [
+        "Порожній стан має одну основну дію «Створити гру»; task IDs, roles, leases і JSON сховані у деталях.",
+        "Кроки, введені дані та помилки збережені після перезапуску; можна повернутися до попереднього кроку.",
+        "Для чинного проєкту видно останню робочу версію, поточний прогрес і наступну необхідну дію.",
+        "Пошук і пагінація дають доступ до понад 200 задач/версій без ручного API/JSON; основні фільтри мають списки допустимих значень."
+      ],
+      "validation_method": [
+        "Browser journeys: чистий стан, перерваний wizard, повернення до наявної гри; API contract tests."
+      ],
+      "required_components": [
+        "src/agent_factory/static/index.html",
+        "src/agent_factory/static/app.js",
+        "src/agent_factory/web.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Додати головний екран «Мої ігри» і покроковий старт: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-036",
+        "legacy:AF-038",
+        "legacy:AF-AMM-042",
+        "legacy:AF-AMM-044"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-008",
+      "kind": "task",
+      "title": "Перетворити ідею на зрозумілий план першої гри",
+      "description": "Система зберігає амбіцію великої гри, але погоджує маленький перший playable milestone та наступні кроки.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-005",
+        "AF-GC-007"
+      ],
+      "priority": "P1",
+      "assigned_role": "product-engineer",
+      "acceptance_criteria": [
+        "Brief містить жанр, керування, мету/програш, платформу, стиль, перший playable і відкладені можливості.",
+        "Уточнення конкретні й дозовані; припущення, витрати та межі результату можна виправити перед стартом.",
+        "Редагована чернетка має виконувані задачі й game-specific критерії з source trace; живе cloud-планування стає доступним після 018, до цього UI не оголошує AI-план прийнятим."
+      ],
+      "validation_method": [
+        "Fixtures: platformer, top-down collector, puzzle, надмірний multiplayer запит; незалежний review brief і плану."
+      ],
+      "required_components": [
+        "src/agent_factory/autonomous_planning_pipeline.py",
+        "src/agent_factory/backlog_revisions.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Перетворити ідею на зрозумілий план першої гри: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-009",
+        "legacy:AF-013",
+        "legacy:AF-AMM-007",
+        "legacy:AF-AMM-010"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-009",
+      "kind": "task",
+      "title": "Підключати хмарний AI через зрозумілий майстер",
+      "description": "Користувач називає наявні продукти; майстер пояснює, яке саме підключення вони дають: API, підтримуваний CLI або відсутність інтеграції.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-006",
+        "AF-GC-007",
+        "AF-GC-010",
+        "AF-GC-025"
+      ],
+      "priority": "P1",
+      "assigned_role": "integration-engineer",
+      "acceptance_criteria": [
+        "Версійований каталог показує офіційний login/device/API-key flow; підписка на чат не автоматично означає API доступ чи кредит.",
+        "Перший реліз кваліфікує щонайменше один cloud coding route і незалежний review route; інші показані як непідтримувані/потребують налаштування.",
+        "Login проходить у провайдера; після повернення connection check розрізняє auth, quota, model access, capability й мережеві помилки."
+      ],
+      "validation_method": [
+        "Disposable account/test keys: missing, expired, denied model, quota, offline, successful bounded canary; не обходити умови сервісу."
+      ],
+      "required_components": [
+        "src/agent_factory/providers.py",
+        "src/agent_factory/web.py",
+        "docs/providers.md"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Підключати хмарний AI через зрозумілий майстер: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-005",
+        "legacy:AF-019",
+        "legacy:AF-040"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-010",
+      "kind": "task",
+      "title": "Зберігати й відкликати доступ до AI без витоку ключів",
+      "description": "Секрет вводиться у спеціальному кроці, зберігається через ОС і не потрапляє у prompt, backlog чи support bundle.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-039"
+      ],
+      "priority": "P1",
+      "assigned_role": "security-engineer",
+      "acceptance_criteria": [
+        "OS credential-store reference переживає перезапуск; значення інжектується лише в дозволений процес/запит.",
+        "Disconnect/revoke припиняє нові виклики та пояснює, як відкликати доступ у провайдера.",
+        "Маскування перевірене у помилках, логах, exports, crash reports та скриншотних інструкціях; секрет не повертається browser API."
+      ],
+      "validation_method": [
+        "Synthetic secret canary search через усі evidence/log/export sinks; revoke та restart tests на підтримуваній ОС."
+      ],
+      "required_components": [
+        "src/agent_factory/credentials.py",
+        "src/agent_factory/security.py",
+        "src/agent_factory/web.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Зберігати й відкликати доступ до AI без витоку ключів: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-019"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-011",
+      "kind": "task",
+      "title": "Перевіряти можливості ПК до вибору моделі та рушія",
+      "description": "Read-only перевірка до затвердження плану збирає лише потрібні технічні характеристики та пояснює невідомі значення.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-007"
+      ],
+      "priority": "P1",
+      "assigned_role": "platform-engineer",
+      "acceptance_criteria": [
+        "Звіт містить ОС/архітектуру, CPU, доступну/загальну RAM, GPU/VRAM або shared memory, вільний диск, runtimes/engines та час перевірки.",
+        "Unknown/unsupported не перетворюється на нуль чи вигадану характеристику; збій GPU probe не блокує cloud-only шлях.",
+        "UI показує, що залишиться локально; серійні номери, особисті файли та список сторонніх процесів не потрібні."
+      ],
+      "validation_method": [
+        "Windows VM/host matrix: CPU-only, integrated GPU, discrete GPU, low disk; fixtures плюс фактичний inventory report."
+      ],
+      "required_components": [
+        "src/agent_factory/environment.py",
+        "src/agent_factory/environment_bootstrap.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Перевіряти можливості ПК до вибору моделі та рушія: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-030",
+        "legacy:AF-AMM-023"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-012",
+      "kind": "task",
+      "title": "Рекомендувати реалістичний рушій і конфігурацію AI",
+      "description": "Показати причину рекомендації та варіанти для слабкого ПК, без обіцянки, що будь-яка модель створить будь-яку гру.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-008",
+        "AF-GC-011"
+      ],
+      "priority": "P1",
+      "assigned_role": "product-engineer",
+      "acceptance_criteria": [
+        "Порівняння Godot/local/cloud враховує підтримку ОС, пам’ять, диск, renderer і цільовий build; Unity до кваліфікації явно позначена наступним етапом.",
+        "Оцінки завантаження/витрат/часу мають джерело, дату й діапазон невизначеності; невідомий VRAM дає обережну рекомендацію.",
+        "Користувач може обрати доступну альтернативу; обґрунтоване обмеження першого milestone не змінює ідею мовчки."
+      ],
+      "validation_method": [
+        "Decision-table tests на профілях слабкого/середнього ПК; review поточних вимог engine/model catalog."
+      ],
+      "required_components": [
+        "src/agent_factory/environment.py",
+        "src/agent_factory/autonomous_planning.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Рекомендувати реалістичний рушій і конфігурацію AI: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-023",
+        "legacy:AF-AMM-030"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-013",
+      "kind": "task",
+      "title": "Показувати точний план встановлення з перевірених джерел",
+      "description": "Перед автоматичним налаштуванням користувач бачить що, звідки, навіщо, куди та скільки буде встановлено.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-002",
+        "AF-GC-012"
+      ],
+      "priority": "P1",
+      "assigned_role": "platform-engineer",
+      "acceptance_criteria": [
+        "Каталог фіксує версію, офіційне джерело, checksum/signature, залежності, ліцензійний крок, диск і scope змін.",
+        "Plan розрізняє вже встановлене, reusable, install, update, manual action; не оновлює сторонній софт без потреби.",
+        "Затвердження прив’язане до digest плану; зміни джерела/прав/обсягу потребують нового рішення, а не довільного shell script."
+      ],
+      "validation_method": [
+        "Plan diff, підміна checksum/source, dependency conflict, no-admin та offline fixtures."
+      ],
+      "required_components": [
+        "src/agent_factory/environment_bootstrap.py",
+        "src/agent_factory/tools.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Показувати точний план встановлення з перевірених джерел: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-031",
+        "legacy:AF-AMM-032"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-014",
+      "kind": "task",
+      "title": "Виконувати та відновлювати встановлення програм",
+      "description": "AgentFactory сам виконує затверджені установки; людина підключається лише там, де потрібна особиста дія.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-013"
+      ],
+      "priority": "P1",
+      "assigned_role": "platform-engineer",
+      "acceptance_criteria": [
+        "Завантаження/перевірка/встановлення/postcondition журналюються; повтор після обриву не дублює успішні операції.",
+        "UI веде через потрібний UAC/login/EULA крок і відновлюється після нього; не приймає договір від імені користувача.",
+        "Недостатній диск, зіпсований пакет, зайнятий порт та перезавантаження ОС мають retry/repair/rollback без видалення чужих файлів."
+      ],
+      "validation_method": [
+        "Чиста Windows VM: install Godot та потрібних runtime; kill/network loss/disk full tests у disposable VM зі звітом фактичних postconditions."
+      ],
+      "required_components": [
+        "src/agent_factory/environment_bootstrap.py",
+        "src/agent_factory/tools.py",
+        "src/agent_factory/orchestration/temporal/activities.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Виконувати та відновлювати встановлення програм: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-031",
+        "legacy:AF-AMM-032",
+        "legacy:AF-AMM-033"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-015",
+      "kind": "task",
+      "title": "Запускати локальну інфраструктуру однією дією",
+      "description": "Користувач відкриває застосунок без трьох PowerShell-вікон і ручного налаштування бази, сервера та worker.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-014"
+      ],
+      "priority": "P1",
+      "assigned_role": "platform-engineer",
+      "acceptance_criteria": [
+        "Пакетований launcher встановлює/піднімає лише потрібні сервіси, перевіряє readiness та відкриває wizard.",
+        "Якщо обраний шлях потребує Temporal/Docker, setup перевіряє вимоги й запускає їх; відсутня залежність має зрозумілий guided recovery.",
+        "Закриття/оновлення/перезапуск не губить гри, не лишає неконтрольованих процесів і не відкриває сервіс у мережу."
+      ],
+      "validation_method": [
+        "Fresh Windows non-admin start, reboot/resume, port conflict, service crash, double-launch; перелік підтримуваних конфігурацій."
+      ],
+      "required_components": [
+        "scripts",
+        "infra/temporal",
+        "src/agent_factory/cli.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Запускати локальну інфраструктуру однією дією: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-043",
+        "legacy:AF-AMM-034"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-016",
+      "kind": "task",
+      "title": "Створити Godot pack для першої 2D гри",
+      "description": "Ігрові шаблони та правила розмістити в окремому pack, зберігаючи project-neutral ядро фабрики.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-008",
+        "AF-GC-014"
+      ],
+      "priority": "P1",
+      "assigned_role": "game-engineer",
+      "acceptance_criteria": [
+        "Pack фіксує підтримувану Godot версію, GDScript, структуру scenes/assets/scripts та renderer для baseline ПК.",
+        "Два мінімальні шаблони collector/platformer мають керування, win/lose і restart без зовнішнього контенту.",
+        "Проєкт відкривається у справжньому editor; імпорт/upgrade pack не перезаписує авторські файли без preview."
+      ],
+      "validation_method": [
+        "Створення двох нових projects; actual Godot import/open; pack compatibility і asset license checks."
+      ],
+      "required_components": [
+        "src/agent_factory/packs.py",
+        "src/agent_factory/reference_pack.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Створити Godot pack для першої 2D гри: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-024",
+        "legacy:AF-025"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-017",
+      "kind": "task",
+      "title": "Перевіряти Godot-проєкт і створювати реальний build",
+      "description": "Позитивний текстовий verdict не замінює запуск рушія: потрібні import, script checks, runtime smoke та export.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-016"
+      ],
+      "priority": "P1",
+      "assigned_role": "game-engineer",
+      "acceptance_criteria": [
+        "Qualified shell-free adapter перевіряє версію й підтримку flags; import/parse/runtime/export мають timeout, exit code та bounded log.",
+        "Відсутня export template, syntax error, missing resource та crash дають failure; --check-only не видається за повний тест гри.",
+        "Артефакт містить commit, engine/template version, preset, checksum; успішний headless smoke доповнений графічним запуском."
+      ],
+      "validation_method": [
+        "Godot CLI з офіційних docs: healthy/broken reference projects, export preset/template mismatch, graphical playtest."
+      ],
+      "required_components": [
+        "src/agent_factory/validators.py",
+        "src/agent_factory/defaults/validator-packs.json"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Перевіряти Godot-проєкт і створювати реальний build: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-052",
+        "legacy:AF-AMM-037"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-018",
+      "kind": "task",
+      "title": "Дозволяти обмежену cloud-сесію з прозорим бюджетом",
+      "description": "Одна зрозуміла сесія дозволяє послідовну роботу в межах вибраного AI, даних, часу й бюджету.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-009",
+        "AF-GC-010",
+        "AF-GC-025"
+      ],
+      "priority": "P1",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Окремий bounded CLOUD scope охоплює передстартове планування, coding та review; він не маскує remote provider як LOCAL і не потребує локальної моделі для M1.",
+        "UI показує provider/model, дані для передачі, scope файлів, верхні caps витрат/часу/ітерацій; нові права/витрати вимагають окремого рішення.",
+        "Перед викликом резервується бюджет з урахуванням паралелізму; quota/unknown cost/limit pause не запускають прихований paid fallback."
+      ],
+      "validation_method": [
+        "Concurrency budget, denied scope, expired auth, cancellation, uncertain charge reconciliation; capped real canary після налаштування."
+      ],
+      "required_components": [
+        "src/agent_factory/autonomous_authorization.py",
+        "src/agent_factory/execution_telemetry.py",
+        "src/agent_factory/credentials.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Дозволяти обмежену cloud-сесію з прозорим бюджетом: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-004",
+        "legacy:AF-056",
+        "legacy:AF-AMM-005",
+        "legacy:AF-AMM-029"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-019",
+      "kind": "task",
+      "title": "Підключити справжню розробку до ігрового плану",
+      "description": "Виконувані задачі мають змінювати гру через qualified worker, проходити перевірку й давати інтегровані результати.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-006",
+        "AF-GC-017",
+        "AF-GC-018",
+        "AF-GC-041",
+        "AF-GC-042"
+      ],
+      "priority": "P1",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Dependency-ready задача виконується у leased worktree з потрібним контекстом; simulation явно відокремлена.",
+        "Worker diff проходить game validators та незалежний review; bounded repair зупиняється при відсутності прогресу.",
+        "Прийнятий diff інтегрується рівно один раз; child timeout/retry/restart не дублює commit або платний виклик без reconciliation."
+      ],
+      "validation_method": [
+        "Нова Godot гра: real worker → diff → import/test/build → незалежний review → accepted commit; failure/repair і replay evidence."
+      ],
+      "required_components": [
+        "src/agent_factory/coding_delivery.py",
+        "src/agent_factory/orchestration/temporal/activities.py",
+        "src/agent_factory/worktrees.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Підключити справжню розробку до ігрового плану: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-053",
+        "legacy:AF-AMM-020",
+        "legacy:AF-AMM-035",
+        "legacy:AF-AMM-036",
+        "legacy:AF-AMM-038"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-020",
+      "kind": "task",
+      "title": "Зберігати останню перевірену ігрову версію",
+      "description": "Нова незавершена робота не позбавляє користувача можливості пограти у попередню справну версію.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-019"
+      ],
+      "priority": "P1",
+      "assigned_role": "backend-engineer",
+      "acceptance_criteria": [
+        "Playable checkpoint містить commit, build digest, engine/assets/config і результати перевірок.",
+        "Невдалий наступний build не змінює latest working pointer; promotion атомарний та replay-safe.",
+        "Відновлення створює нову гілку/версію з preview; прийнята історія й оригінали збережені."
+      ],
+      "validation_method": [
+        "Build failure, interrupted promotion, restore to prior version, duplicate acceptance та source/build identity checks."
+      ],
+      "required_components": [
+        "src/agent_factory/mission_checkpoints.py",
+        "src/agent_factory/worktrees.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Зберігати останню перевірену ігрову версію: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-020",
+        "legacy:AF-AMM-021",
+        "legacy:AF-AMM-039"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-021",
+      "kind": "task",
+      "title": "Запускати «Грати» для конкретної робочої версії",
+      "description": "Велика кнопка «Грати» відкриває перевірений build і показує прості інструкції керування.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-007",
+        "AF-GC-020"
+      ],
+      "priority": "P1",
+      "assigned_role": "game-engineer",
+      "acceptance_criteria": [
+        "UI показує version/build ID, короткі зміни та керування; Play запускає саме цей artifact.",
+        "Процес має контрольований lifecycle, logs і Stop; падіння не закриває фабрику й не губить прогрес.",
+        "Можна грати у попередню версію під час наступної розробки; якщо ресурсів недостатньо, AI призупиняється з поясненням."
+      ],
+      "validation_method": [
+        "Graphical Windows launch/stop/crash; latest working під час failed build; executable provenance/path checks."
+      ],
+      "required_components": [
+        "src/agent_factory/web.py",
+        "src/agent_factory/static/app.js",
+        "src/agent_factory/runtime.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Запускати «Грати» для конкретної робочої версії: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-039",
+        "legacy:AF-AMM-044"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-022",
+      "kind": "task",
+      "title": "Перетворювати відгук після гри на наступну версію",
+      "description": "Користувач пише «зроби стрибок вищим», а система змінює перевірену гру зі збереженням попередньої.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-008",
+        "AF-GC-021"
+      ],
+      "priority": "P1",
+      "assigned_role": "product-engineer",
+      "acceptance_criteria": [
+        "Feedback прив’язаний до played build; текст/дозволений screenshot і reproduction steps мають preview.",
+        "Система показує короткий change plan та вплив на попередні вимоги; нові витрати чи scope не приймаються мовчки.",
+        "Після розробки доступні новий build, перевірка саме запитаної поведінки та повернення до попереднього."
+      ],
+      "validation_method": [
+        "E2E: play v1 → вищий стрибок → build v2 → human playtest → restore v1; stale feedback/conflicting request cases."
+      ],
+      "required_components": [
+        "src/agent_factory/backlog_revisions.py",
+        "src/agent_factory/static/app.js"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Перетворювати відгук після гри на наступну версію: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-022",
+        "legacy:AF-AMM-043"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-023",
+      "kind": "task",
+      "title": "Пояснювати прогрес і надійно зупиняти роботу",
+      "description": "Користувач бачить що робиться, що вже можна спробувати та як продовжити після проблеми.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-019",
+        "AF-GC-020"
+      ],
+      "priority": "P1",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "UI показує людяний етап, останній heartbeat, blockers, spent/reserved budget і наступну дію; невідомий ETA так і позначено.",
+        "Pause/Resume/Stop охоплюють scheduling, inference/build processes і spending; можливий час завершення поточної дії пояснений.",
+        "Після app/worker/PC restart збережено accepted builds, uncommitted edits і decision scope; orphan не запускається повторно без перевірки."
+      ],
+      "validation_method": [
+        "Fault injection на worker/build/acceptance boundaries, stop під час paid call, service restart і no-progress tests."
+      ],
+      "required_components": [
+        "src/agent_factory/autonomous_mission.py",
+        "src/agent_factory/local_recovery.py",
+        "src/agent_factory/static/app.js"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Пояснювати прогрес і надійно зупиняти роботу: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-057",
+        "legacy:AF-AMM-015",
+        "legacy:AF-AMM-018"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-024",
+      "kind": "task",
+      "title": "Зробити основний шлях доступним українською та англійською",
+      "description": "Перевірити реальний динамічний інтерфейс, клавіатуру та зрозумілість помилок, а не лише рядки HTML.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-007",
+        "AF-GC-021",
+        "AF-GC-022",
+        "AF-GC-023"
+      ],
+      "priority": "P1",
+      "assigned_role": "frontend-engineer",
+      "acceptance_criteria": [
+        "Усі тексти основного creator flow локалізовані uk/en; помилки мають зрозумілу причину та дію.",
+        "Клавіатура, focus order/return, screen-reader labels/status, contrast і target size перевірені на rendered UI.",
+        "320 CSS px, 200% zoom і laptop viewport не приховують керування; виправлено невалідний responsive CSS."
+      ],
+      "validation_method": [
+        "Browser accessibility scan і keyboard suite, manual screen-reader walkthrough, responsive screenshots; критерії WCAG 2.2 AA за застосовністю."
+      ],
+      "required_components": [
+        "src/agent_factory/static/index.html",
+        "src/agent_factory/static/styles.css",
+        "tests/test_accessibility.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Зробити основний шлях доступним українською та англійською: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-043"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-025",
+      "kind": "task",
+      "title": "Визначити доступний шлях для 12+ та участь дорослого",
+      "description": "Продукт має підтримувати 12-річного автора без вимоги обходити вікові чи облікові правила зовнішніх сервісів.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-007"
+      ],
+      "priority": "P1",
+      "assigned_role": "product-owner",
+      "acceptance_criteria": [
+        "Для кожного connector задокументовані актуальні офіційні вимоги та дата перевірки; eligibility перевіряється перед пропозицією login.",
+        "Є зрозумілий дорослому setup/budget/consent flow там, де він дозволений; якщо cloud route недоступний, M1 пропонує зберегти ідею або offline template demo, а справжній local AI явно віднесено до 027–031.",
+        "Мінімізовано особисті дані, cloud transmission і retention зрозумілі; немає публікації, покупок або передачі ключів за замовчуванням."
+      ],
+      "validation_method": [
+        "Review офіційних умов обраних providers і релевантних вимог до запуску продукту; UX cases 12,13–15,16+ без збору зайвих персональних даних."
+      ],
+      "required_components": [
+        "docs/providers.md",
+        "src/agent_factory/policy.py",
+        "src/agent_factory/web.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Визначити доступний шлях для 12+ та участь дорослого: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-004",
+        "legacy:AF-019",
+        "legacy:AF-030"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-026",
+      "kind": "task",
+      "title": "Прийняти повний Godot-шлях на чистому ПК",
+      "description": "M1 завершується відтворюваною реальною грою, а не кількістю реалізованих сервісів.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-001",
+        "AF-GC-002",
+        "AF-GC-003",
+        "AF-GC-004",
+        "AF-GC-005",
+        "AF-GC-006",
+        "AF-GC-009",
+        "AF-GC-015",
+        "AF-GC-022",
+        "AF-GC-023",
+        "AF-GC-024",
+        "AF-GC-025",
+        "AF-GC-039",
+        "AF-GC-040"
+      ],
+      "priority": "P1",
+      "assigned_role": "qa-engineer",
+      "acceptance_criteria": [
+        "Чистий Windows ПК: установка → ідея → дозволений cloud AI → setup → Godot build → Play → feedback → v2 → restore.",
+        "Щонайменше collector і platformer пройшли сценарій; offline/no quota/low disk/crash мають перевірений recovery.",
+        "Звіт містить host/версії/cost/time і реальне відео/логи; автоматичні тести та research gate 040 пройдені; відкритих P0 немає."
+      ],
+      "validation_method": [
+        "Дві чисті підтримувані конфігурації, власні дозволені тестові облікові записи з cap; independent acceptance."
+      ],
+      "required_components": [
+        "tests",
+        "docs/qualification-suite.md"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Прийняти повний Godot-шлях на чистому ПК: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-046",
+        "legacy:AF-AMM-047",
+        "legacy:AF-AMM-048"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-027",
+      "kind": "task",
+      "title": "Встановлювати та перевіряти локальні моделі",
+      "description": "Система рекомендує сумісний локальний runtime/model, завантажує затверджену модель та перевіряє реальний inference.",
+      "parent_id": "AF-GC-E2",
+      "dependencies": [
+        "AF-GC-006",
+        "AF-GC-011",
+        "AF-GC-013",
+        "AF-GC-014"
+      ],
+      "priority": "P1",
+      "assigned_role": "integration-engineer",
+      "acceptance_criteria": [
+        "Перший локальний route через Ollama має каталог моделей з ліцензією, digest, disk/context/RAM припущеннями та датою кваліфікації.",
+        "Download має прогрес/cancel/resume; вже наявна модель перевикористовується після перевірки версії.",
+        "Доступність CLI не дорівнює loaded model; actual canary/OOM/offline checks визначають готовність і пропонують слабшій машині варіант."
+      ],
+      "validation_method": [
+        "Офіційний Ollama runtime на CPU-only і discrete GPU, обірване завантаження, OOM, bad digest, missing model."
+      ],
+      "required_components": [
+        "src/agent_factory/providers.py",
+        "src/agent_factory/environment.py",
+        "src/agent_factory/local_model_scheduler.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Встановлювати та перевіряти локальні моделі: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-023",
+        "legacy:AF-AMM-026",
+        "legacy:AF-AMM-027"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m2",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-028",
+      "kind": "task",
+      "title": "Дати локальному AI кваліфікований інструмент розробки",
+      "description": "Локальна генерація тексту стає контрольованим worker з file tools, ізоляцією, валідаторами та можливістю виправляти помилки.",
+      "parent_id": "AF-GC-E2",
+      "dependencies": [
+        "AF-GC-017",
+        "AF-GC-027",
+        "AF-GC-041",
+        "AF-GC-042"
+      ],
+      "priority": "P1",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Qualified local worker редагує лише task worktree через дозволені tools; advisory completion не називається реалізованою грою.",
+        "Role/capability/model profile сумісні з planning/development/review contracts; unsupported tasks пояснено.",
+        "Local-only Godot change проходить actual build та незалежну перевірку; якщо іншої кваліфікованої моделі немає, статус вимагає явного human review."
+      ],
+      "validation_method": [
+        "Real local model на reference machine: write → build → repair; tool injection/path escape/timeout/OOM negative suite."
+      ],
+      "required_components": [
+        "src/agent_factory/worker_runtime.py",
+        "src/agent_factory/providers.py",
+        "src/agent_factory/tools.py",
+        "src/agent_factory/sandbox.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Дати локальному AI кваліфікований інструмент розробки: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-017",
+        "legacy:AF-044",
+        "legacy:AF-AMM-035"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m2",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-029",
+      "kind": "task",
+      "title": "Ділити ресурси ПК між AI, рушієм та грою",
+      "description": "Паралельні локальні завдання не повинні забирати всю пам’ять і робити неможливим playtest.",
+      "parent_id": "AF-GC-E2",
+      "dependencies": [
+        "AF-GC-011",
+        "AF-GC-021",
+        "AF-GC-027"
+      ],
+      "priority": "P1",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Планувальник враховує host-wide RAM/VRAM reservations, queue і фактичний load; per-mission lease не видається за GPU scheduler.",
+        "Playtest може звільнити ресурс через pause/unload AI; local time/context/disk caps діють навіть без грошової вартості.",
+        "OOM, stale lease та кілька missions не спричиняють нескінченний reload; retry/backoff і diagnostics збережені."
+      ],
+      "validation_method": [
+        "Дві конкуруючі missions плюс Godot Play; RAM/VRAM pressure, crash/restart, queue fairness на кваліфікованому ПК."
+      ],
+      "required_components": [
+        "src/agent_factory/local_model_scheduler.py",
+        "src/agent_factory/execution_telemetry.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Ділити ресурси ПК між AI, рушієм та грою: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-024",
+        "legacy:AF-AMM-025",
+        "legacy:AF-AMM-028",
+        "legacy:AF-AMM-029"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m2",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-030",
+      "kind": "task",
+      "title": "Маршрутизувати cloud/local за явними правилами",
+      "description": "Користувач вибирає local-only, cloud-only або hybrid та розуміє, куди піде кожна задача.",
+      "parent_id": "AF-GC-E2",
+      "dependencies": [
+        "AF-GC-018",
+        "AF-GC-028",
+        "AF-GC-029"
+      ],
+      "priority": "P1",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "HYBRID має окрему авторизацію provider/model/data/tools/cost; LOCAL ніколи не дозволяє remote fallback.",
+        "Перед зміною маршруту перевіряються quality/capability, privacy і remaining budget; UI пояснює причину й ефективну модель.",
+        "Недоступний cloud або local OOM дає дозволений fallback чи pause; робота та independent reviewer identity не губляться."
+      ],
+      "validation_method": [
+        "Local-only network-denied тест, cloud outage, budget exhaustion, model replacement та stale capability matrix."
+      ],
+      "required_components": [
+        "src/agent_factory/agent_router.py",
+        "src/agent_factory/autonomous_authorization.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Маршрутизувати cloud/local за явними правилами: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-011",
+        "legacy:AF-AMM-005",
+        "legacy:AF-AMM-029"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m2",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-031",
+      "kind": "task",
+      "title": "Кваліфікувати local-only та hybrid створення гри",
+      "description": "M2 має довести, що гра створюється і вдосконалюється на локальних ресурсах та у дозволеній змішаній конфігурації.",
+      "parent_id": "AF-GC-E2",
+      "dependencies": [
+        "AF-GC-026",
+        "AF-GC-028",
+        "AF-GC-029",
+        "AF-GC-030"
+      ],
+      "priority": "P1",
+      "assigned_role": "qa-engineer",
+      "acceptance_criteria": [
+        "Local-only та hybrid проходять idea→build→play→feedback на задокументованих hardware/model profiles.",
+        "Виміряні peak memory, latency, quality, cost та OOM recovery; слабкий ПК отримує чесне обмеження/альтернативу.",
+        "Немає недозволеного cloud трафіку, втрати checkpoint чи повторної прийнятої мутації при відновленні."
+      ],
+      "validation_method": [
+        "Actual local hardware matrix та fault campaign; незалежна перевірка артефактів і network/cost evidence."
+      ],
+      "required_components": [
+        "tests",
+        "docs/qualification-suite.md"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Кваліфікувати local-only та hybrid створення гри: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-046",
+        "legacy:AF-AMM-047"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m2",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-032",
+      "kind": "task",
+      "title": "Підключати Unity Hub, Editor і потрібні модулі",
+      "description": "Unity має власний guided setup та кваліфіковану версію; не припускати, що всі дії Hub та активація автоматизуються.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-013",
+        "AF-GC-014",
+        "AF-GC-025",
+        "AF-GC-026"
+      ],
+      "priority": "P2",
+      "assigned_role": "integration-engineer",
+      "acceptance_criteria": [
+        "Каталог фіксує підтримувану Unity Editor/Hub версію та platform modules; detects existing installations і project compatibility.",
+        "Account/license/EULA кроки передаються людині через офіційний flow; система перевіряє результат і відновлює setup.",
+        "Insufficient license, missing module, low disk і conflicting editor versions мають actionable recovery."
+      ],
+      "validation_method": [
+        "Clean supported Windows VM з легітимною тестовою ліцензією; activation handoff та install/resume evidence."
+      ],
+      "required_components": [
+        "src/agent_factory/environment_bootstrap.py",
+        "src/agent_factory/packs.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Підключати Unity Hub, Editor і потрібні модулі: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-031",
+        "legacy:AF-AMM-032"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-033",
+      "kind": "task",
+      "title": "Додати Unity pack, тести та build adapter",
+      "description": "Unity C# pipeline використовує спільні contracts, але окремо перевіряє editor imports, compilation та реальну гру.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-017",
+        "AF-GC-019",
+        "AF-GC-032"
+      ],
+      "priority": "P2",
+      "assigned_role": "game-engineer",
+      "acceptance_criteria": [
+        "Reference project має gameplay, керування, win/lose; package lock та Editor версія відтворювані.",
+        "Batch build, EditMode/PlayMode checks та export використовують qualified vectors, logs/results і timeout; однаковий exit code не приховує compilation errors.",
+        "Graphical Play і artifact identity інтегровані з чинними checkpoint/feedback controls; local/cloud підтримка явно вказана."
+      ],
+      "validation_method": [
+        "Healthy/broken Unity projects: C# compile error, missing asset/package, test failure, real build та graphical launch."
+      ],
+      "required_components": [
+        "src/agent_factory/packs.py",
+        "src/agent_factory/validators.py",
+        "src/agent_factory/worker_runtime.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Додати Unity pack, тести та build adapter: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-024",
+        "legacy:AF-052"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-034",
+      "kind": "task",
+      "title": "Прийняти повний Unity-шлях для новачка",
+      "description": "Підтримка Unity означає пройдену послідовність створення, гри й зміни на чистій конфігурації.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-022",
+        "AF-GC-023",
+        "AF-GC-024",
+        "AF-GC-033"
+      ],
+      "priority": "P2",
+      "assigned_role": "qa-engineer",
+      "acceptance_criteria": [
+        "Setup→idea→AI→Unity project→test/build→Play→feedback→v2 пройдено із збереженою попередньою версією.",
+        "Ліцензійні/мережеві/compile/crash failures показують просте recovery і не оголошують build готовим.",
+        "Опублікована матриця Editor/platform/model/hardware та measured limits; Godot regressions пройдені."
+      ],
+      "validation_method": [
+        "Чиста підтримувана Unity машина, recorded human playtests і незалежний qualification report."
+      ],
+      "required_components": [
+        "tests",
+        "docs/qualification-suite.md"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Прийняти повний Unity-шлях для новачка: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-AMM-046",
+        "legacy:AF-AMM-048"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-035",
+      "kind": "task",
+      "title": "Керувати походженням та імпортом ігрових ресурсів",
+      "description": "Зображення, моделі, звук і шрифти мають безпечний імпорт, provenance та зрозумілі обмеження використання.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-016",
+        "AF-GC-020",
+        "AF-GC-026"
+      ],
+      "priority": "P2",
+      "assigned_role": "game-engineer",
+      "acceptance_criteria": [
+        "Кожен asset має source/license/attribution або позначку unknown; unknown блокує share/export, що потребує прав.",
+        "Імпорт перевіряє тип/розмір/шкідливі archive paths; unsupported formats не запускають довільні plugins.",
+        "Бюджети texture/poly/audio size пов’язані з target hardware; зміна asset має preview і rollback."
+      ],
+      "validation_method": [
+        "Licensed fixture assets, oversized/corrupt archives, missing attribution та engine reimport/performance checks."
+      ],
+      "required_components": [
+        "src/agent_factory/packs.py",
+        "src/agent_factory/security.py",
+        "src/agent_factory/validators.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Керувати походженням та імпортом ігрових ресурсів: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-018",
+        "legacy:AF-024"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-036",
+      "kind": "task",
+      "title": "Розширювати складність через вимірювані зразки ігор",
+      "description": "Напрям «майже будь-яка складність» перетворити на рівні підтримки, перевірені реальними проєктами.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-031",
+        "AF-GC-034",
+        "AF-GC-035"
+      ],
+      "priority": "P2",
+      "assigned_role": "game-engineer",
+      "acceptance_criteria": [
+        "Каталог покриває просту 2D, багаторівневу 2D та невелику 3D гру з save/load, UI, audio і asset budgets.",
+        "Кожен рівень має відомі engine/model/hardware межі, quality/performance targets і критерії playable acceptance.",
+        "Multiplayer/open-world/console/VR позначені окремими future investigations; система пропонує scoped prototype без неправдивої гарантії."
+      ],
+      "validation_method": [
+        "Reference-game benchmark: playability/performance/build regression плюс ручний gameplay review кожного рівня."
+      ],
+      "required_components": [
+        "src/agent_factory/packs.py",
+        "src/agent_factory/qualification.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Розширювати складність через вимірювані зразки ігор: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-025",
+        "legacy:AF-032"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:l",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-037",
+      "kind": "task",
+      "title": "Експортувати гру та ділитися нею окремою дією",
+      "description": "Готовий build можна забрати локально; публікація має окрему ціль, preview і зрозуміле рішення користувача.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-020",
+        "AF-GC-025",
+        "AF-GC-035"
+      ],
+      "priority": "P2",
+      "assigned_role": "product-engineer",
+      "acceptance_criteria": [
+        "Підтримувані target presets створюють versioned package з attribution, checksum та короткою інструкцією запуску.",
+        "Secrets, local paths і зайві особисті дані не входять в export; непідтримувана платформа пояснена до build.",
+        "Публікація/visibility/доступ зовнішніх людей ніколи не успадковується з дозволу на розробку; canceled share не змінює external state."
+      ],
+      "validation_method": [
+        "Clean-machine запуск export, package inspection та simulated publication preview/denial; live publication лише за окремим запитом."
+      ],
+      "required_components": [
+        "src/agent_factory/candidate_changes.py",
+        "src/agent_factory/tools.py",
+        "src/agent_factory/policy.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Експортувати гру та ділитися нею окремою дією: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-004",
+        "legacy:AF-051"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-038",
+      "kind": "task",
+      "title": "Оновлювати застосунок і збирати зрозумілу діагностику",
+      "description": "Власник має безпечно оновити фабрику, відновити гру й отримати допомогу без ручного пошуку логів.",
+      "parent_id": "AF-GC-E3",
+      "dependencies": [
+        "AF-GC-015",
+        "AF-GC-023",
+        "AF-GC-026"
+      ],
+      "priority": "P2",
+      "assigned_role": "platform-engineer",
+      "acceptance_criteria": [
+        "Signed update з backup/migration/rollback перевіряє сумісність проєктів і не змінює pinned engine/model без окремого плану.",
+        "Support bundle має preview/redaction і версії, але не ключі, prompts або файли гри без явного вибору.",
+        "Uninstall розрізняє застосунок і користувацькі ігри; проєкти збережені за замовчуванням і відкриваються після reinstall."
+      ],
+      "validation_method": [
+        "Upgrade попередньої підтримуваної версії, interrupted migration, rollback, secret canary export, uninstall/reinstall на VM."
+      ],
+      "required_components": [
+        "src/agent_factory/local_recovery.py",
+        "scripts",
+        "docs/operations.md"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Оновлювати застосунок і збирати зрозумілу діагностику: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-028",
+        "legacy:AF-057"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p2",
+        "milestone:m3",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-039",
+      "kind": "bug",
+      "title": "Узгодити авторизацію локального API з обіцяною політикою",
+      "description": "Усі поверхні керування мають виконувати єдиний задокументований контракт доступу; захист не залежить від конкретного екрану.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [],
+      "priority": "P0",
+      "assigned_role": "security-engineer",
+      "acceptance_criteria": [
+        "Інвентаризація read/mutation endpoints визначає потрібний auth і scope; configured token/session policy застосована послідовно.",
+        "Browser має підтримуваний session flow; actor identity, local origin/host, expiration/revoke й необхідні human gates перевіряються на сервері.",
+        "Негативна матриця без/неправильного/простроченого доступу проходить; sensitive reproduction details передаються через приватний security review."
+      ],
+      "validation_method": [
+        "Endpoint authorization matrix, intended browser flow, origin/host denial, replay та regression tests без публікації токенів."
+      ],
+      "required_components": [
+        "src/agent_factory/web.py",
+        "src/agent_factory/control_plane.py",
+        "SECURITY.md"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Узгодити авторизацію локального API з обіцяною політикою: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-026",
+        "legacy:AF-030"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-040",
+      "kind": "task",
+      "title": "Перевірити зрозумілість із користувачами 12–15 років",
+      "description": "Зручність підтверджують спостереження за новачками, а не припущення розробника чи API-тест.",
+      "parent_id": "AF-GC-E1",
+      "dependencies": [
+        "AF-GC-009",
+        "AF-GC-015",
+        "AF-GC-022",
+        "AF-GC-023",
+        "AF-GC-024",
+        "AF-GC-025"
+      ],
+      "priority": "P1",
+      "assigned_role": "ux-researcher",
+      "acceptance_criteria": [
+        "Пілот щонайменше з 5 новачками 12–15 за належною згодою дорослих; синтетичні дані та дозволені облікові записи.",
+        "Ціль: ≥4/5 знаходять старт і погоджують зрозумілий brief за ≤5 хв; ≥4/5 запускають build, дають feedback і знаходять Stop без підказки модератора.",
+        "Звіт відокремлює активний час користувача від download/build/AI wait, фіксує допомогу/помилки; usability blockers усунені й повторно перевірені."
+      ],
+      "validation_method": [
+        "Модеровані сценарії та анонімізований протокол; це gate для пілоту, не статистичний доказ для всіх дітей."
+      ],
+      "required_components": [
+        "docs",
+        "src/agent_factory/static"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Перевірити зрозумілість із користувачами 12–15 років: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-043"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p1",
+        "milestone:m1",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-041",
+      "kind": "bug",
+      "title": "Зберігати ролі та незалежність reviewer у live mission",
+      "description": "Child authorization не повинна підміняти всі стадії одним agent/model і робити самоперевірку незалежним verdict.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [
+        "AF-GC-006"
+      ],
+      "priority": "P0",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Implementation, validation, proxy review та policy stages отримують окремі сумісні scoped assignments.",
+        "Effective producer identity виключена з незалежного review; за відсутності reviewer місія чекає рішення, не self-accepts.",
+        "Replay/replace/resume зберігає provenance stage identity та не розширює права child."
+      ],
+      "validation_method": [
+        "Fixture з code-model/review-model/policy-model перевіряє різні invocation identities; same-model і mismatch denial до subprocess."
+      ],
+      "required_components": [
+        "src/agent_factory/orchestration/temporal/activities.py",
+        "src/agent_factory/reviewers.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Зберігати ролі та незалежність reviewer у live mission: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-020",
+        "legacy:AF-AMM-035",
+        "legacy:AF-AMM-038"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    },
+    {
+      "stable_id": "AF-GC-042",
+      "kind": "bug",
+      "title": "Кваліфікувати ролі planning та bootstrap для провайдерів",
+      "description": "Затверджений route має бути реально сумісний із ролями planning/development, а не зупинятися на allowlist після старту.",
+      "parent_id": "AF-GC-E0",
+      "dependencies": [
+        "AF-GC-006"
+      ],
+      "priority": "P0",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Відповідність role IDs/capabilities/profile перевіряється до вибору route й затвердження місії.",
+        "Перший підтримуваний provider проходить read-only planning і потрібний bootstrap/developer contract без blanket tool permissions.",
+        "Unsupported role показує конкретну доступну альтернативу; negative tests підтверджують, що заборонені ролі лишаються забороненими."
+      ],
+      "validation_method": [
+        "Matrix shipped provider profiles × autonomous role IDs; bounded canary для кваліфікованих пар, 0 subprocess для rejected pairs."
+      ],
+      "required_components": [
+        "src/agent_factory/autonomous_planning_pipeline.py",
+        "src/agent_factory/defaults/providers.json",
+        "src/agent_factory/providers.py"
+      ],
+      "required_infrastructure": [
+        "Ізольований тестовий workspace; інші середовища зазначені у validation_method."
+      ],
+      "expected_artifacts": [
+        "Кваліфікувати ролі planning та bootstrap для провайдерів: реалізація та інструкція користувача",
+        "Звіт перевірки з версіями, результатами й посиланням на commit/build"
+      ],
+      "definition_of_done": [
+        "Усі критерії приймання підтверджені зазначеними перевірками; незалежний reviewer перевірив докази.",
+        "Успіх, помилка та відновлення показані у відповідному UI/API; секрети не потрапляють до артефактів.",
+        "Власник прийняв результат; статус у трекері оновлено лише після приймання."
+      ],
+      "source_references": [
+        "docs/product-audit-2026-09-05.uk.md",
+        "legacy:AF-005",
+        "legacy:AF-AMM-008",
+        "legacy:AF-AMM-032"
+      ],
+      "review_notes": [
+        "Оцінка розміру відносна: S до 2, M до 5, L до 10 інженерних днів; це гіпотеза для планування, не строк чи обіцянка. L перед стартом ділиться на менші PR."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m0",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
+    }
+  ]
+}

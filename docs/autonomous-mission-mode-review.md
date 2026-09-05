@@ -1,8 +1,10 @@
 # Autonomous Mission Mode: specification and repository review
 
+> **Historical architecture review.** The baseline below is commit `9377642`, not the current implementation. Subsequent work includes first-class schema-v2 features and persisted rich contracts; retain the requirements and safety interpretations, but do not read the original gap list as today's status. The active delivery order is the [Game Creator 12+ backlog](game-creator-backlog.uk.md); see the [5 September product audit](product-audit-2026-09-05.uk.md) for current evidence.
+
 Status: **approved for implementation planning, with the interpretations in this document treated as required safety and durability constraints**.
 
-This review compares the user-provided *AgentFactory Autonomous Mission Mode — Implementation Specification* (sections 1–43) with the repository at commit `9377642`. The executable implementation plan is the validator-compatible [Autonomous Mission backlog](../examples/autonomous-mission-backlog.json). This document and that manifest describe required work; neither is evidence that the feature is already implemented. The manifest uses schema-v1-compatible items plus `agentfactory.rich-backlog/v1` extension fields; the current validator accepts them, but the current importer will not persist those rich fields until AF-AMM-002 is implemented.
+This review compares the user-provided *AgentFactory Autonomous Mission Mode — Implementation Specification* (sections 1–43) with the repository at commit `9377642`. The executable implementation plan is the validator-compatible [Autonomous Mission backlog](../examples/autonomous-mission-backlog.json). This document and that manifest describe required work; neither is evidence that the feature is already implemented. The legacy manifest retains schema-v1-compatible items plus `agentfactory.rich-backlog/v1` extension fields. At that baseline, persistence of rich fields was planned in AF-AMM-002; the current implementation supports persisted rich contracts and schema-v2 features.
 
 ## Executive assessment
 
