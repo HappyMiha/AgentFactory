@@ -37,7 +37,9 @@ python scripts/qualify_provider_roles.py --run-live --model qwen2.5-coder:7b
 
 The script neither downloads a model nor starts or exposes a service. It uses
 only synthetic prompts and a temporary empty workspace. Its API requests go to
-fixed loopback without proxies or redirects. Each of seven roles has a JSON
+fixed loopback without proxies or redirects. Before any request, it rejects an
+ambient remote/custom `OLLAMA_HOST` and pins the CLI to the same IPv4 loopback
+endpoint used for API inventory and model digests. Each of seven roles has a JSON
 contract check through the local API (96 output tokens, 2048 context tokens,
 60-second socket timeout, 128 KiB response bound) and the configured CLI
 (60-second process timeout, 1024 output characters). The CLI has no asserted hard

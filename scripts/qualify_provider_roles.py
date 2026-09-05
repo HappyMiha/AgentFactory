@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -20,6 +21,15 @@ class NoRedirect(HTTPRedirectHandler):
         raise ValueError("Local qualification must not follow redirects")
 
 
+def bind_local_cli_endpoint():
+    """Reject ambient remote/custom daemons before any canary request."""
+    host = os.environ.get("OLLAMA_HOST", "")
+    if host not in {"", "127.0.0.1:11434", "http://127.0.0.1:11434"}:
+        raise ValueError("Canary requires OLLAMA_HOST to be unset or exactly http://127.0.0.1:11434")
+    # This standalone process must use the same daemon for CLI and API/digests.
+    os.environ["OLLAMA_HOST"] = "http://127.0.0.1:11434"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-live", action="store_true", help="Authorize these synthetic local inference requests")
@@ -27,6 +37,7 @@ def main():
     args = parser.parse_args()
     if not args.run_live:
         parser.error("Live inference requires --run-live; no model download or service start is performed")
+    bind_local_cli_endpoint()
     opener = build_opener(ProxyHandler({}), NoRedirect())
     def local(path, payload=None):
         body = None if payload is None else json.dumps(payload).encode("utf-8")

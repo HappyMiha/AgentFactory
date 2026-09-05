@@ -1,6 +1,8 @@
 """Configured role/model eligibility; synthetic tests are not live qualification."""
 from copy import deepcopy
 import json
+import os
+import importlib.util
 import sys
 import tempfile
 from pathlib import Path
@@ -122,3 +124,16 @@ class ProviderRoleQualificationTests(unittest.TestCase):
                     self.assertTrue(result.ok, result.error)
                     self.assertEqual(result.content.strip(), "READ_ONLY_FIXTURE_OK")
                     self.assertEqual(result.metadata["effective_model"], "fixture:small")
+
+    def test_live_canary_rejects_remote_cli_endpoint_before_any_request(self):
+        spec = importlib.util.spec_from_file_location("role_canary", CATALOG.parents[3] / "scripts/qualify_provider_roles.py")
+        canary = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(canary)
+        with patch.dict(os.environ, {"OLLAMA_HOST": "http://remote.example:11434"}), patch.object(sys, "argv", ["canary", "--run-live"]), patch.object(canary, "build_opener") as opener:
+            with self.assertRaisesRegex(ValueError, "OLLAMA_HOST"):
+                canary.main()
+            opener.assert_not_called()
+        with patch.dict(os.environ, {}, clear=True):
+            canary.bind_local_cli_endpoint()
+            provider = CLIProvider("fixture", "unused", [], allow_execution=False)
+            self.assertEqual(provider._safe_environment()["OLLAMA_HOST"], "http://127.0.0.1:11434")
