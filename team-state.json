@@ -116,11 +116,18 @@
     },
     "core:AF-GC-005": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-GC-005-04a3d0a5",
+      "scopes": [
+        "core:src/agent_factory/backlog_analyzer.py",
+        "core:src/agent_factory/static/app.js",
+        "core:src/agent_factory/static/index.html",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_backlog_upload.py",
+        "core:tests/test_specification_preview.py"
+      ],
+      "updated_at": "2026-09-05T21:07:35+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -135,7 +142,8 @@
       "priority": "P0",
       "milestone": "m0",
       "optional": false,
-      "source_dependencies": []
+      "source_dependencies": [],
+      "claim_id": "26bee1cb-2973-4669-8195-353e8c6fd393"
     },
     "core:AF-GC-006": {
       "dependencies": [],
@@ -4017,6 +4025,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-002-adf89da0",
       "claim_id": "319137a6-7e5e-4106-a759-e9f826d07b8d"
+    },
+    {
+      "operation_id": "44254069-b35f-40a5-8abf-fb0a26642047",
+      "at": "2026-09-05T21:07:35+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-005",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-005-04a3d0a5",
+      "claim_id": "26bee1cb-2973-4669-8195-353e8c6fd393"
     }
   ],
   "migration": {
