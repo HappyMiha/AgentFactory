@@ -1309,22 +1309,12 @@
       "dependencies": [
         "core:AF-GC-006"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
-      "scopes": [
-        "core:docs/provider-role-qualification.md",
-        "core:scripts/qualify_provider_roles.py",
-        "core:src/agent_factory/autonomous_authorization.py",
-        "core:src/agent_factory/autonomous_backlog_approval.py",
-        "core:src/agent_factory/autonomous_planning.py",
-        "core:src/agent_factory/defaults/providers.json",
-        "core:src/agent_factory/models.py",
-        "core:src/agent_factory/providers.py",
-        "core:tests/test_provider_role_qualification.py"
-      ],
-      "updated_at": "2026-09-05T23:03:22+00:00",
-      "note": "Seven-role live API/CLI smoke passed on prior source head; main merge preserves canary files and passes exact integration checks",
+      "scopes": [],
+      "updated_at": "2026-09-05T23:10:59+00:00",
+      "note": "PR9 merged; 120 integration tests and seven-role local smoke recorded separately from product acceptance",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/9",
       "resources": [
         "core:provider-model",
@@ -1343,7 +1333,9 @@
         "core:AF-GC-006"
       ],
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8",
-      "review_head": "f1cab56e71de4e075c45ac06cd6f38d5efb71bfd"
+      "review_head": "f1cab56e71de4e075c45ac06cd6f38d5efb71bfd",
+      "completed_commit": "29f67dce01719a4bc14fa09b1aa33bb58a51e549",
+      "reviewed_head": "f1cab56e71de4e075c45ac06cd6f38d5efb71bfd"
     },
     "cloud:AF-CLD-001": {
       "dependencies": [],
@@ -4540,6 +4532,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
       "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
+    },
+    {
+      "operation_id": "f48f2c2c-d7f5-471e-b192-fb7eca7d6087",
+      "at": "2026-09-05T23:10:59+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-042",
+      "worker": "HappyHahahaker",
+      "note": "PR9 merged; 120 integration tests and seven-role local smoke recorded separately from product acceptance",
+      "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
+      "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
     }
   ],
   "migration": {
