@@ -41,8 +41,8 @@ jobs:
           parts = branch.split('/')
           if os.environ['PR_HEAD_REPO'] != os.environ['TARGET_REPO']:
               raise SystemExit('Three-PC task claims use branches in the owning repository. Review external contributions through a separately approved intake.')
-          if len(parts) < 3 or parts[0] != 'team':
-              raise SystemExit('Use team/<worker>/<task> and claim the task first.')
+          if len(parts) < 3 or parts[0] not in {'team', 'agent'}:
+              raise SystemExit('Use an owned team/ or agent/ task branch and claim it first.')
           subprocess.run([sys.executable, 'scripts/team.py', 'preflight', '--range', 'origin/main...HEAD', '--branch', branch, '--worker', parts[1]], check=True)
           PY
   tooling:

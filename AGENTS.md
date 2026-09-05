@@ -4,7 +4,8 @@ Read [docs/team-workflow.md](docs/team-workflow.md) before changing files. These
 
 - Worker IDs are `HappyDucky02`, `HappySnowman` (Ubuntu), and `HappyHahahaker` (Windows 11). Read `git config --local --get team.worker` to identify this clone. Do not infer the worker from a copied conversation or this shared file.
 - Inspect `python scripts/team.py status` and `ready`. Claim a dependency-ready task through `start` before implementation. The shared authority is Core's `team-state` branch, not a stale local backlog or chat message.
-- Work only on your own `team/<worker>/...` branch. Never push directly to `main`, another worker's branch, tags, or a deletion. Never force-push or bypass hooks.
+- Work only on your registered task branch. Registry version 1 creates `team/<worker>/...`; after coordinated version 2 activation, new claims use `agent/<worker>/<TASK-ID>-<8hex>`. Preserve existing branches and tokens. Read `docs/team-migration.md` before cutover. Never push directly to `main`, another worker's branch, tags, or a deletion. Never force-push or bypass hooks.
+- Core `team-state` is the only claim authority. AgentFactoryBus is message/status transport, not a second queue of independently claimable tasks. A heartbeat alone never starts AI execution or transfers ownership.
 - Declare every changed path and relevant shared resource. Respect existing claims. Do not take a differently named task to duplicate a claimed capability in the other repository.
 - A paused computer does not lose ownership automatically. Block or release through the tool when stopping; inspect preserved branches before any explicit reassignment.
 - Before each push, fetch and incorporate current `main`, inspect the diff, and run `python scripts/team_checks.py`. The pre-push hook requires checks for the exact commit. Report the actual test scope and failures.

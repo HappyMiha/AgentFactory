@@ -58,7 +58,7 @@ python scripts/team.py start core:AF-GC-003 --worker HappyHahahaker --scope core
 
 Use the actual paths needed by the task. The example is a command shape, not a reservation. The tool combines declared paths with required catalogue scopes and shared-resource locks. If those overlap active work, it rejects the claim. Do not choose false or narrower scopes just to get past a conflict: preflight also checks the changed files.
 
-The branch prefix is `team/<worker>/<repo>-<task-id>`, for example `team/HappyHahahaker/core-af-gc-003-<unique-suffix>`. A new claim gets a new identity and branch; released branch names are not reused. Start from the latest fetched `main` in a clean clone. `start` claims the task and creates its branch. If a local branch step fails, inspect the register and resolve the claim before trying again.
+Registry version 1 uses `team/<worker>/<repo>-<task-id>-<unique-suffix>`. After the [coordinated migration](team-migration.md), version 2 uses `agent/<worker>/<TASK-ID>-<8hex>`, for example `agent/HappyHahahaker/AF-GC-003-12ab34cd`. The suffix identifies a claim attempt; the stable backlog ID stays unchanged. A new claim gets a new identity and branch; released branch names are not reused. Existing `team/...` claims keep their branches and tokens. Start from the latest fetched `main` in a clean clone. `start` selects the format from the live registry, claims the task and creates its branch. If a local branch step fails, inspect the register and resolve the claim before trying again.
 
 One task has one owner and one branch. Keep branches focused. Do not commit to another worker's branch or use a task's branch for unrelated work. Multiple independent tasks can run at once when they have different scopes and no unmet dependency.
 
@@ -140,6 +140,27 @@ These are suggestions, not preclaimed work:
 Check the live register before following this table. CI/test scopes can overlap even when source files differ. Do not work on `003` and `004` together if both change `app.js`; do not combine separate claims that edit the same provider defaults or web route. Resolve overlap by scope, a small prerequisite, or a different ready task.
 
 The original backlog order and IDs remain intact. The shared catalogue adds cross-repository prerequisites and resource conflicts; `ready` provides a practical work queue. These coordination constraints can be refined with review as implementation reveals exact paths. They do not silently rewrite product acceptance criteria.
+
+## AgentFactoryBus and continued work
+
+Core `team-state` remains the sole atomic claim authority for both repositories.
+The bus carries immutable messages, review requests, results and availability.
+It never grants a second task claim, bypasses Git checks, or executes message text.
+Do not mirror a claimed Git task into a separately claimable bus queue.
+
+Use `ready` to prioritize prerequisite-complete tasks, then inspect actual scope
+conflicts with `status` and `start`. The queue sorts earlier milestones and
+priorities first, then tasks that unlock more direct dependants. Scope hints are
+planning aids, not reservations: declare the actual paths before work. If an
+upstream contract is still missing, choose independent work instead of weakening
+dependencies or occupying a broad directory. Record a newly discovered shared
+prerequisite through reviewed catalogue maintenance with stable task IDs.
+
+An active coding session can continue the claim, implement, test, push and review
+cycle within the owner's authorization. An idle heartbeat watcher only reports
+availability and receives messages. Automatic model execution requires a separate
+verified local runner with bounded scope and stop/recovery behavior; this migration
+does not launch one. Never enable arbitrary shell execution from bus messages.
 
 ## Enforcement and limits
 

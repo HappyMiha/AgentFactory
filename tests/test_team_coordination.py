@@ -302,6 +302,150 @@ class TeamCoordinationTests(unittest.TestCase):
         with mock.patch.object(team, "run", side_effect=no_origin_fetch):
             self.assertEqual(team.preflight(self.registry, path, "alice", "core", branch, "origin/main...HEAD"), "core:AF-GC-001")
 
+    def publish_initial(self):
+        self.write_state(self.initial)
+        team.git("push", "--quiet", "origin", "team-state", cwd=self.seed)
+
+    def test_new_namespace_waits_for_cutover_and_binds_task_and_worker(self):
+        branch = "agent/alice/AF-GC-001-12345678"
+        with self.assertRaisesRegex(team.TeamError, "New claims"):
+            team.claim(self.registry, "core:AF-GC-001", "alice", [], branch)
+        self.initial["version"] = 2
+        self.publish_initial()
+        with self.assertRaisesRegex(team.TeamError, "New claims"):
+            self.claim()
+        for invalid in ("agent/bob/AF-GC-001-12345678", "agent/alice/AF-GC-002-12345678",
+                        "agent/alice/AF-GC-001", "agent/alice/AF-GC-001-12345678/extra"):
+            with self.assertRaises(team.TeamError):
+                team.claim(self.registry, "core:AF-GC-001", "alice", [], invalid)
+        team.claim(self.registry, "core:AF-GC-001", "alice", [], branch)
+        old = self.token()
+        self.transition("release", "core:AF-GC-001", "alice")
+        with self.assertRaisesRegex(team.TeamError, "cannot be reused"):
+            team.claim(self.registry, "core:AF-GC-001", "alice", [], branch)
+        team.claim(self.registry, "core:AF-GC-001", "alice", [], "agent/alice/AF-GC-001-87654321")
+        with self.assertRaisesRegex(team.TeamError, "stale"):
+            team.transition(self.registry, "release", "core:AF-GC-001", "alice", claim_id=old)
+
+    def migration_fixture(self):
+        names = ["HappyDucky02", "HappySnowman", "HappyHahahaker"]
+        self.initial["workers"] = names
+        pins = {"core": "a" * 40, "cloud": "b" * 40}
+        for repo, key in team.MIGRATION_TASKS.items():
+            self.initial["tasks"][key] = task(status="done", completed_commit=pins[repo])
+        proof = {repo: {file: "c" * 40 for file in team.MIGRATION_FILES} for repo in pins}
+        self.initial["migration"] = {"acknowledgements": {
+            name: {"pins": dict(pins), "readers": json.loads(json.dumps(proof))} for name in names}}
+        return names
+
+    def test_cutover_requires_all_current_proofs_and_preserves_live_claims(self):
+        self.migration_fixture()
+        self.initial["migration"]["acknowledgements"].pop("HappySnowman")
+        self.publish_initial()
+        branch = "team/HappyHahahaker/core-af-gc-001-existing"
+        team.claim(self.registry, "core:AF-GC-001", "HappyHahahaker", [], branch)
+        old_task = self.registry.read()["tasks"]["core:AF-GC-001"]
+        with self.assertRaisesRegex(team.TeamError, "coordinator"):
+            team.activate_migration(self.registry, "HappyHahahaker")
+        with self.assertRaisesRegex(team.TeamError, "acknowledgement"):
+            team.activate_migration(self.registry, "HappyDucky02")
+        def ack(s):
+            s["migration"]["acknowledgements"]["HappySnowman"] = json.loads(json.dumps(
+                s["migration"]["acknowledgements"]["HappyDucky02"]))
+        self.registry.change("test-ack", "core:AF-TEAM-001", "HappySnowman", "fixture", ack)
+        state = team.activate_migration(self.registry, "HappyDucky02")
+        self.assertEqual(state["version"], 2)
+        self.assertEqual(state["tasks"]["core:AF-GC-001"], old_task)
+        team.transition(self.registry, "heartbeat", "core:AF-GC-001", "HappyHahahaker", claim_id=old_task["claim_id"])
+        self.assertEqual(team.branch_for("core:AF-GC-003", "HappySnowman", 2), "agent/HappySnowman/AF-GC-003")
+
+    def test_cutover_rejects_unmerged_stale_or_mismatched_proofs(self):
+        self.migration_fixture()
+        variants = ("incomplete", "old-pin", "different-reader")
+        original = json.loads(json.dumps(self.initial))
+        for variant in variants:
+            self.initial = json.loads(json.dumps(original))
+            if variant == "incomplete":
+                self.initial["tasks"]["cloud:AF-TEAM-001"]["status"] = "planned"
+            elif variant == "old-pin":
+                self.initial["migration"]["acknowledgements"]["HappySnowman"]["pins"]["core"] = "d" * 40
+            else:
+                self.initial["migration"]["acknowledgements"]["HappySnowman"]["readers"]["core"]["scripts/team.py"] = "d" * 40
+            self.publish_initial()
+            with self.subTest(variant=variant), self.assertRaises(team.TeamError):
+                team.activate_migration(self.registry, "HappyDucky02")
+            self.assertEqual(self.registry.read()["version"], 1)
+
+    def test_reader_proof_checks_real_git_ancestry_and_reviewed_blobs(self):
+        path, bare, branch = self.checkout()
+        for file in team.MIGRATION_FILES:
+            self.commit_file(path, file, "reviewed reader\n")
+        commit = team.git("rev-parse", "HEAD", cwd=path)
+        team.git("push", "--quiet", "origin", "HEAD:main", cwd=path)
+        with mock.patch.object(team, "repository", return_value="core"):
+            proof = team.reader_proof(path, "core", commit)
+            self.assertEqual(set(proof), set(team.MIGRATION_FILES))
+            self.commit_file(path, "scripts/team.py", "unreviewed reader\n")
+            with self.assertRaisesRegex(team.TeamError, "differs"):
+                team.reader_proof(path, "core", commit)
+
+    def test_old_reader_rejects_cutover_before_any_new_claim(self):
+        self.migration_fixture()
+        self.publish_initial()
+        class OldRegistry(team.Registry):
+            def _fetch(self, path):
+                state = super()._fetch(path)
+                if state["version"] != 1:
+                    raise team.TeamError("old client requires version 1")
+                return state
+        old = OldRegistry(str(self.remote))
+        self.assertEqual(old.read()["version"], 1)
+        team.activate_migration(self.registry, "HappyDucky02")
+        with self.assertRaisesRegex(team.TeamError, "old client"):
+            old.read()
+
+    def test_acknowledgement_records_only_own_verified_clone_pair(self):
+        self.migration_fixture()
+        self.initial["migration"]["acknowledgements"] = {}
+        self.publish_initial()
+        proof = {file: "c" * 40 for file in team.MIGRATION_FILES}
+        real_git = team.git
+        def config(*args, **kwargs):
+            if args == ("config", "--local", "--get", "team.worker"):
+                return "HappySnowman"
+            return real_git(*args, **kwargs)
+        with mock.patch.object(team, "repository", return_value="core"), mock.patch.object(team, "git", side_effect=config):
+            with mock.patch.object(team, "reader_proof", return_value=proof) as verify:
+                state = team.acknowledge_migration(self.registry, self.root / "core", self.root / "cloud", "HappySnowman")
+                self.assertEqual(verify.call_count, 2)
+                self.assertEqual(set(state["migration"]["acknowledgements"]), {"HappySnowman"})
+                with self.assertRaisesRegex(team.TeamError, "Both local clones"):
+                    team.acknowledge_migration(self.registry, self.root / "core", self.root / "cloud", "HappyDucky02")
+
+    def test_two_agent_claims_race_for_one_task_with_one_winner(self):
+        self.initial["version"] = 2
+        self.publish_initial()
+        barrier = threading.Barrier(2)
+        class RacingRegistry(team.Registry):
+            first = True
+            def _fetch(self, path):
+                state = super()._fetch(path)
+                if self.first:
+                    self.first = False
+                    barrier.wait(timeout=15)
+                return state
+        def submit(worker):
+            try:
+                team.claim(RacingRegistry(str(self.remote)), "core:AF-GC-001", worker, [],
+                           f"agent/{worker}/AF-GC-001-12345678")
+                return True
+            except team.TeamError:
+                return False
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(submit, ["alice", "bob"]))
+        self.assertEqual(sum(results), 1)
+        self.assertEqual(len(self.registry.read()["events"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
