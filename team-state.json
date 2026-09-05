@@ -1,0 +1,3382 @@
+{
+  "version": 1,
+  "workers": [
+    "HappyDucky02",
+    "HappySnowman",
+    "HappyHahahaker"
+  ],
+  "sources": {
+    "core": "9a9e46f9f298bffc368d3d34c01f0d9573be8cb2",
+    "cloud": "9e3c22ba33d1dc93cb9c6e75478b9fab8b75a899"
+  },
+  "policy": {
+    "no_automatic_expiry": true,
+    "main_integration_owner": "HappyDucky02",
+    "note_visibility": "Public coordination metadata only; detailed evidence belongs in the owning repository PR.",
+    "done_meaning": "Reviewed engineering PR merged; original product acceptance gates remain separate."
+  },
+  "tasks": {
+    "core:AF-GC-001": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:ci-portability"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:tests/test_monitor_web.py",
+        "core:tests/test_temporal_workflows.py",
+        "core:.github/workflows/ci.yml"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-002": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:readiness",
+        "core:http-api",
+        "core:delivery-orchestration"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/coding_delivery.py",
+        "core:src/agent_factory/orchestration/temporal/activities.py",
+        "core:src/agent_factory/web.py"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-003": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:operator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/static/app.js"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-004": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:operator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/static/app.js"
+      ],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-005": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:intake",
+        "core:http-api"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/backlog_analyzer.py",
+        "core:src/agent_factory/web.py"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-006": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:provider-model",
+        "core:application-services"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/providers.py",
+        "core:src/agent_factory/defaults/providers.json",
+        "core:src/agent_factory/application.py"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-007": {
+      "dependencies": [
+        "core:AF-GC-003",
+        "core:AF-GC-004"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:creator-ux",
+        "core:operator-ui",
+        "core:http-api"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/static/index.html",
+        "core:src/agent_factory/static/app.js",
+        "core:src/agent_factory/web.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-003",
+        "core:AF-GC-004"
+      ]
+    },
+    "core:AF-GC-008": {
+      "dependencies": [
+        "core:AF-GC-005",
+        "core:AF-GC-007"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-brief",
+        "core:planning",
+        "core:backlog-revisions"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/autonomous_planning_pipeline.py",
+        "core:src/agent_factory/backlog_revisions.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-005",
+        "core:AF-GC-007"
+      ]
+    },
+    "core:AF-GC-009": {
+      "dependencies": [
+        "core:AF-GC-006",
+        "core:AF-GC-007",
+        "core:AF-GC-010",
+        "core:AF-GC-025"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:provider-connection",
+        "core:provider-model",
+        "core:http-api"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/providers.py",
+        "core:src/agent_factory/web.py",
+        "core:docs/providers.md"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-006",
+        "core:AF-GC-007",
+        "core:AF-GC-010",
+        "core:AF-GC-025"
+      ]
+    },
+    "core:AF-GC-010": {
+      "dependencies": [
+        "core:AF-GC-039"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:credentials",
+        "core:security",
+        "core:http-api"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/credentials.py",
+        "core:src/agent_factory/security.py",
+        "core:src/agent_factory/web.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-039"
+      ]
+    },
+    "core:AF-GC-011": {
+      "dependencies": [
+        "core:AF-GC-007"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:environment"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/environment.py",
+        "core:src/agent_factory/environment_bootstrap.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-007"
+      ]
+    },
+    "core:AF-GC-012": {
+      "dependencies": [
+        "core:AF-GC-008",
+        "core:AF-GC-011"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:environment",
+        "core:planning",
+        "shared:game-fit"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/environment.py",
+        "core:src/agent_factory/autonomous_planning.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-008",
+        "core:AF-GC-011"
+      ]
+    },
+    "core:AF-GC-013": {
+      "dependencies": [
+        "core:AF-GC-002",
+        "core:AF-GC-012"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:environment-bootstrap",
+        "core:tool-gateway"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/environment_bootstrap.py",
+        "core:src/agent_factory/tools.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-002",
+        "core:AF-GC-012"
+      ]
+    },
+    "core:AF-GC-014": {
+      "dependencies": [
+        "core:AF-GC-013"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:environment-bootstrap",
+        "core:tool-gateway",
+        "core:delivery-orchestration"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/environment_bootstrap.py",
+        "core:src/agent_factory/tools.py",
+        "core:src/agent_factory/orchestration/temporal/activities.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-013"
+      ]
+    },
+    "core:AF-GC-015": {
+      "dependencies": [
+        "core:AF-GC-014"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:orchestration-runtime",
+        "core:launcher"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/cli.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-014"
+      ]
+    },
+    "core:AF-GC-016": {
+      "dependencies": [
+        "core:AF-GC-008",
+        "core:AF-GC-014"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:godot-pack",
+        "shared:engine-contract",
+        "core:pack-lifecycle"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/packs.py",
+        "core:src/agent_factory/reference_pack.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-008",
+        "core:AF-GC-014"
+      ]
+    },
+    "core:AF-GC-017": {
+      "dependencies": [
+        "core:AF-GC-016"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-validation",
+        "shared:godot-engine",
+        "core:validators"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/validators.py",
+        "core:src/agent_factory/defaults/validator-packs.json"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-016"
+      ]
+    },
+    "core:AF-GC-018": {
+      "dependencies": [
+        "core:AF-GC-009",
+        "core:AF-GC-010",
+        "core:AF-GC-025"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:execution-authority",
+        "core:usage",
+        "core:credentials"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/autonomous_authorization.py",
+        "core:src/agent_factory/execution_telemetry.py",
+        "core:src/agent_factory/credentials.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-009",
+        "core:AF-GC-010",
+        "core:AF-GC-025"
+      ]
+    },
+    "core:AF-GC-019": {
+      "dependencies": [
+        "core:AF-GC-006",
+        "core:AF-GC-017",
+        "core:AF-GC-018",
+        "core:AF-GC-041",
+        "core:AF-GC-042"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:delivery-orchestration",
+        "core:worktrees"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/coding_delivery.py",
+        "core:src/agent_factory/orchestration/temporal/activities.py",
+        "core:src/agent_factory/worktrees.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-006",
+        "core:AF-GC-017",
+        "core:AF-GC-018",
+        "core:AF-GC-041",
+        "core:AF-GC-042"
+      ]
+    },
+    "core:AF-GC-020": {
+      "dependencies": [
+        "core:AF-GC-019"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:checkpoints",
+        "core:worktrees",
+        "shared:source-version"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/mission_checkpoints.py",
+        "core:src/agent_factory/worktrees.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-019"
+      ]
+    },
+    "core:AF-GC-021": {
+      "dependencies": [
+        "core:AF-GC-007",
+        "core:AF-GC-020"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:play-build",
+        "core:http-api",
+        "core:operator-ui",
+        "core:runtime-preview"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/web.py",
+        "core:src/agent_factory/static/app.js",
+        "core:src/agent_factory/runtime.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-007",
+        "core:AF-GC-020"
+      ]
+    },
+    "core:AF-GC-022": {
+      "dependencies": [
+        "core:AF-GC-008",
+        "core:AF-GC-021"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-feedback",
+        "core:backlog-revisions",
+        "core:operator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/backlog_revisions.py",
+        "core:src/agent_factory/static/app.js"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-008",
+        "core:AF-GC-021"
+      ]
+    },
+    "core:AF-GC-023": {
+      "dependencies": [
+        "core:AF-GC-019",
+        "core:AF-GC-020"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:mission-control",
+        "core:recovery",
+        "core:operator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/autonomous_mission.py",
+        "core:src/agent_factory/local_recovery.py",
+        "core:src/agent_factory/static/app.js"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-019",
+        "core:AF-GC-020"
+      ]
+    },
+    "core:AF-GC-024": {
+      "dependencies": [
+        "core:AF-GC-007",
+        "core:AF-GC-021",
+        "core:AF-GC-022",
+        "core:AF-GC-023"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:creator-ux",
+        "core:operator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/static/index.html",
+        "core:src/agent_factory/static/styles.css",
+        "core:tests/test_accessibility.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-007",
+        "core:AF-GC-021",
+        "core:AF-GC-022",
+        "core:AF-GC-023"
+      ]
+    },
+    "core:AF-GC-025": {
+      "dependencies": [
+        "core:AF-GC-007"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:minor-access",
+        "core:policy",
+        "core:http-api"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:docs/providers.md",
+        "core:src/agent_factory/policy.py",
+        "core:src/agent_factory/web.py"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-007"
+      ]
+    },
+    "core:AF-GC-026": {
+      "dependencies": [
+        "core:AF-GC-001",
+        "core:AF-GC-002",
+        "core:AF-GC-003",
+        "core:AF-GC-004",
+        "core:AF-GC-005",
+        "core:AF-GC-006",
+        "core:AF-GC-009",
+        "core:AF-GC-015",
+        "core:AF-GC-022",
+        "core:AF-GC-023",
+        "core:AF-GC-024",
+        "core:AF-GC-025",
+        "core:AF-GC-039",
+        "core:AF-GC-040"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "qualification:godot-journey",
+        "core:qualification-tests"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:docs/qualification-suite.md"
+      ],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-001",
+        "core:AF-GC-002",
+        "core:AF-GC-003",
+        "core:AF-GC-004",
+        "core:AF-GC-005",
+        "core:AF-GC-006",
+        "core:AF-GC-009",
+        "core:AF-GC-015",
+        "core:AF-GC-022",
+        "core:AF-GC-023",
+        "core:AF-GC-024",
+        "core:AF-GC-025",
+        "core:AF-GC-039",
+        "core:AF-GC-040"
+      ]
+    },
+    "core:AF-GC-027": {
+      "dependencies": [
+        "core:AF-GC-006",
+        "core:AF-GC-011",
+        "core:AF-GC-013",
+        "core:AF-GC-014"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:provider-model",
+        "core:environment",
+        "core:local-model-runtime"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/providers.py",
+        "core:src/agent_factory/environment.py",
+        "core:src/agent_factory/local_model_scheduler.py"
+      ],
+      "priority": "P1",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-006",
+        "core:AF-GC-011",
+        "core:AF-GC-013",
+        "core:AF-GC-014"
+      ]
+    },
+    "core:AF-GC-028": {
+      "dependencies": [
+        "core:AF-GC-017",
+        "core:AF-GC-027",
+        "core:AF-GC-041",
+        "core:AF-GC-042"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:worker-runtime",
+        "core:provider-model",
+        "core:tool-gateway",
+        "core:sandbox"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/worker_runtime.py",
+        "core:src/agent_factory/providers.py",
+        "core:src/agent_factory/tools.py",
+        "core:src/agent_factory/sandbox.py"
+      ],
+      "priority": "P1",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-017",
+        "core:AF-GC-027",
+        "core:AF-GC-041",
+        "core:AF-GC-042"
+      ]
+    },
+    "core:AF-GC-029": {
+      "dependencies": [
+        "core:AF-GC-011",
+        "core:AF-GC-021",
+        "core:AF-GC-027"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:local-model-runtime",
+        "core:usage"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/local_model_scheduler.py",
+        "core:src/agent_factory/execution_telemetry.py"
+      ],
+      "priority": "P1",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-011",
+        "core:AF-GC-021",
+        "core:AF-GC-027"
+      ]
+    },
+    "core:AF-GC-030": {
+      "dependencies": [
+        "core:AF-GC-018",
+        "core:AF-GC-028",
+        "core:AF-GC-029"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:routing",
+        "core:execution-authority"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/agent_router.py",
+        "core:src/agent_factory/autonomous_authorization.py"
+      ],
+      "priority": "P1",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-018",
+        "core:AF-GC-028",
+        "core:AF-GC-029"
+      ]
+    },
+    "core:AF-GC-031": {
+      "dependencies": [
+        "core:AF-GC-026",
+        "core:AF-GC-028",
+        "core:AF-GC-029",
+        "core:AF-GC-030"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "qualification:local-hybrid-game",
+        "core:qualification-tests"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:docs/qualification-suite.md"
+      ],
+      "priority": "P1",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-026",
+        "core:AF-GC-028",
+        "core:AF-GC-029",
+        "core:AF-GC-030"
+      ]
+    },
+    "core:AF-GC-032": {
+      "dependencies": [
+        "core:AF-GC-013",
+        "core:AF-GC-014",
+        "core:AF-GC-025",
+        "core:AF-GC-026"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:unity-pack",
+        "core:environment-bootstrap",
+        "core:pack-lifecycle"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/environment_bootstrap.py",
+        "core:src/agent_factory/packs.py"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-013",
+        "core:AF-GC-014",
+        "core:AF-GC-025",
+        "core:AF-GC-026"
+      ]
+    },
+    "core:AF-GC-033": {
+      "dependencies": [
+        "core:AF-GC-017",
+        "core:AF-GC-019",
+        "core:AF-GC-032"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:unity-pack",
+        "core:pack-lifecycle",
+        "core:validators",
+        "core:worker-runtime"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/packs.py",
+        "core:src/agent_factory/validators.py",
+        "core:src/agent_factory/worker_runtime.py"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-017",
+        "core:AF-GC-019",
+        "core:AF-GC-032"
+      ]
+    },
+    "core:AF-GC-034": {
+      "dependencies": [
+        "core:AF-GC-022",
+        "core:AF-GC-023",
+        "core:AF-GC-024",
+        "core:AF-GC-033"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "qualification:unity-journey",
+        "core:qualification-tests"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:docs/qualification-suite.md"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-022",
+        "core:AF-GC-023",
+        "core:AF-GC-024",
+        "core:AF-GC-033"
+      ]
+    },
+    "core:AF-GC-035": {
+      "dependencies": [
+        "core:AF-GC-016",
+        "core:AF-GC-020",
+        "core:AF-GC-026"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:asset-provenance",
+        "core:pack-lifecycle",
+        "core:security",
+        "core:validators"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/packs.py",
+        "core:src/agent_factory/security.py",
+        "core:src/agent_factory/validators.py"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-016",
+        "core:AF-GC-020",
+        "core:AF-GC-026"
+      ]
+    },
+    "core:AF-GC-036": {
+      "dependencies": [
+        "core:AF-GC-031",
+        "core:AF-GC-034",
+        "core:AF-GC-035"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-reference-fixtures",
+        "core:qualification-tests"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/packs.py",
+        "core:src/agent_factory/qualification.py"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-031",
+        "core:AF-GC-034",
+        "core:AF-GC-035"
+      ]
+    },
+    "core:AF-GC-037": {
+      "dependencies": [
+        "core:AF-GC-020",
+        "core:AF-GC-025",
+        "core:AF-GC-035"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:artifact-export",
+        "core:candidate-changes",
+        "core:tool-gateway",
+        "core:policy"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/candidate_changes.py",
+        "core:src/agent_factory/tools.py",
+        "core:src/agent_factory/policy.py"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-020",
+        "core:AF-GC-025",
+        "core:AF-GC-035"
+      ]
+    },
+    "core:AF-GC-038": {
+      "dependencies": [
+        "core:AF-GC-015",
+        "core:AF-GC-023",
+        "core:AF-GC-026"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:recovery",
+        "core:launcher",
+        "core:operations-docs"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/local_recovery.py",
+        "core:docs/operations.md"
+      ],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-015",
+        "core:AF-GC-023",
+        "core:AF-GC-026"
+      ]
+    },
+    "core:AF-GC-039": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:http-api",
+        "core:policy"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/web.py",
+        "core:src/agent_factory/control_plane.py"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "core:AF-GC-040": {
+      "dependencies": [
+        "core:AF-GC-009",
+        "core:AF-GC-015",
+        "core:AF-GC-022",
+        "core:AF-GC-023",
+        "core:AF-GC-024",
+        "core:AF-GC-025"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "qualification:young-user-usability",
+        "shared:creator-ux"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-009",
+        "core:AF-GC-015",
+        "core:AF-GC-022",
+        "core:AF-GC-023",
+        "core:AF-GC-024",
+        "core:AF-GC-025"
+      ]
+    },
+    "core:AF-GC-041": {
+      "dependencies": [
+        "core:AF-GC-006"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:delivery-orchestration",
+        "core:reviewer-identity"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/orchestration/temporal/activities.py",
+        "core:src/agent_factory/reviewers.py"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-006"
+      ]
+    },
+    "core:AF-GC-042": {
+      "dependencies": [
+        "core:AF-GC-006"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:provider-model",
+        "core:planning"
+      ],
+      "required_scopes": [],
+      "scope_hints": [
+        "core:src/agent_factory/autonomous_planning_pipeline.py",
+        "core:src/agent_factory/defaults/providers.json",
+        "core:src/agent_factory/providers.py"
+      ],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "core:AF-GC-006"
+      ]
+    },
+    "cloud:AF-CLD-001": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:core-cloud-boundary"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": []
+    },
+    "cloud:AF-CLD-002": {
+      "dependencies": [
+        "cloud:AF-CLD-001"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:core-cloud-api"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-001"
+      ]
+    },
+    "cloud:AF-CLD-003": {
+      "dependencies": [
+        "cloud:AF-CLD-001"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:upstream-qualification-map"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-001"
+      ]
+    },
+    "cloud:AF-CLD-004": {
+      "dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-003"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:creator-ux",
+        "shared:minor-access"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-003"
+      ]
+    },
+    "cloud:AF-CLD-005": {
+      "dependencies": [
+        "cloud:AF-CLD-002"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:engine-contract",
+        "core:pack-lifecycle"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002"
+      ]
+    },
+    "cloud:AF-CLD-006": {
+      "dependencies": [
+        "cloud:AF-CLD-002"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:evidence-contract"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002"
+      ]
+    },
+    "cloud:AF-CLD-007": {
+      "dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-004",
+        "core:AF-GC-005"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-brief",
+        "cloud:creator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-004"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.intake_preserves_intent",
+          "requirements": [
+            "core:AF-GC-005"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-008": {
+      "dependencies": [
+        "cloud:AF-CLD-007"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-brief",
+        "shared:game-fit",
+        "cloud:scope-planning"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-007"
+      ]
+    },
+    "cloud:AF-CLD-009": {
+      "dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-008",
+        "core:AF-GC-006",
+        "core:AF-GC-041",
+        "core:AF-GC-042"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:provider-model",
+        "core:reviewer-identity",
+        "cloud:visible-team"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-008"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.qualified_effective_model_and_roles",
+          "requirements": [
+            "core:AF-GC-006",
+            "core:AF-GC-041",
+            "core:AF-GC-042"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-010": {
+      "dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-008",
+        "core:AF-GC-016"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:godot-pack"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-008"
+      ],
+      "integration_notes": [
+        {
+          "capability": "games.godot_pack",
+          "requirements": [
+            "core:AF-GC-016"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-011": {
+      "dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-010",
+        "core:AF-GC-017"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:godot-engine",
+        "shared:engine-contract"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-010"
+      ],
+      "integration_notes": [
+        {
+          "capability": "games.godot_build_adapter",
+          "requirements": [
+            "core:AF-GC-017"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-012": {
+      "dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-006",
+        "core:AF-GC-020"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:source-version",
+        "core:checkpoints",
+        "cloud:build-records"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-006"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.accepted_versions_and_restore",
+          "requirements": [
+            "core:AF-GC-020"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-013": {
+      "dependencies": [
+        "cloud:AF-CLD-009",
+        "cloud:AF-CLD-011",
+        "cloud:AF-CLD-012",
+        "core:AF-GC-019"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:delivery-orchestration",
+        "core:worker-runtime",
+        "cloud:worker-integration"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-009",
+        "cloud:AF-CLD-011",
+        "cloud:AF-CLD-012"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.real_coding_delivery",
+          "requirements": [
+            "core:AF-GC-019"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-014": {
+      "dependencies": [
+        "cloud:AF-CLD-010",
+        "cloud:AF-CLD-011",
+        "core:AF-GC-017"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-validation",
+        "core:validators"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-010",
+        "cloud:AF-CLD-011"
+      ],
+      "integration_notes": [
+        {
+          "capability": "games.deterministic_validation",
+          "requirements": [
+            "core:AF-GC-017"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-015": {
+      "dependencies": [
+        "cloud:AF-CLD-011",
+        "cloud:AF-CLD-012",
+        "cloud:AF-CLD-014"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:play-build",
+        "cloud:preview-delivery",
+        "cloud:creator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-011",
+        "cloud:AF-CLD-012",
+        "cloud:AF-CLD-014"
+      ]
+    },
+    "cloud:AF-CLD-016": {
+      "dependencies": [
+        "cloud:AF-CLD-011",
+        "cloud:AF-CLD-012",
+        "cloud:AF-CLD-014"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:artifact-export",
+        "cloud:export"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-011",
+        "cloud:AF-CLD-012",
+        "cloud:AF-CLD-014"
+      ]
+    },
+    "cloud:AF-CLD-017": {
+      "dependencies": [
+        "cloud:AF-CLD-007",
+        "cloud:AF-CLD-015"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:game-feedback",
+        "cloud:creator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-007",
+        "cloud:AF-CLD-015"
+      ]
+    },
+    "cloud:AF-CLD-018": {
+      "dependencies": [
+        "cloud:AF-CLD-013",
+        "cloud:AF-CLD-014",
+        "cloud:AF-CLD-017",
+        "core:AF-GC-020"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:source-version",
+        "cloud:remix",
+        "cloud:version-workflow"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-013",
+        "cloud:AF-CLD-014",
+        "cloud:AF-CLD-017"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.accepted_versions_and_restore",
+          "requirements": [
+            "core:AF-GC-020"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-019": {
+      "dependencies": [
+        "cloud:AF-CLD-009",
+        "cloud:AF-CLD-013",
+        "core:AF-GC-018",
+        "core:AF-GC-023"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:mission-control",
+        "core:usage",
+        "cloud:progress-controls"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-009",
+        "cloud:AF-CLD-013"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.bounded_cloud_execution_and_stop",
+          "requirements": [
+            "core:AF-GC-018",
+            "core:AF-GC-023"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-020": {
+      "dependencies": [
+        "cloud:AF-CLD-015",
+        "cloud:AF-CLD-016",
+        "cloud:AF-CLD-018",
+        "cloud:AF-CLD-019"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "qualification:godot-journey",
+        "cloud:acceptance-fixtures"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m1",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-015",
+        "cloud:AF-CLD-016",
+        "cloud:AF-CLD-018",
+        "cloud:AF-CLD-019"
+      ]
+    },
+    "cloud:AF-CLD-021": {
+      "dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-006",
+        "core:AF-GC-039"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:minor-access",
+        "shared:core-cloud-api",
+        "cloud:identity-policy"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-006"
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.authenticated_application_boundary",
+          "requirements": [
+            "core:AF-GC-039"
+          ],
+          "condition": "always",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-022": {
+      "dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-021"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:storage-contract",
+        "cloud:postgresql"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-002",
+        "cloud:AF-CLD-021"
+      ]
+    },
+    "cloud:AF-CLD-023": {
+      "dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-022"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:artifact-storage",
+        "shared:asset-provenance"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-022"
+      ]
+    },
+    "cloud:AF-CLD-024": {
+      "dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-022"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:worker-runtime",
+        "cloud:worker-fleet",
+        "cloud:host-profile"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-022"
+      ]
+    },
+    "cloud:AF-CLD-025": {
+      "dependencies": [
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-024"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:orchestration-runtime",
+        "cloud:workflow-state"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-024"
+      ]
+    },
+    "cloud:AF-CLD-026": {
+      "dependencies": [
+        "cloud:AF-CLD-024",
+        "cloud:AF-CLD-025"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:sandbox",
+        "cloud:runner-isolation",
+        "cloud:host-profile"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-024",
+        "cloud:AF-CLD-025"
+      ]
+    },
+    "cloud:AF-CLD-027": {
+      "dependencies": [
+        "cloud:AF-CLD-004",
+        "cloud:AF-CLD-021"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:provider-connection",
+        "cloud:creator-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-004",
+        "cloud:AF-CLD-021"
+      ]
+    },
+    "cloud:AF-CLD-028": {
+      "dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-027"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:credentials",
+        "cloud:credential-storage"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-027"
+      ],
+      "conditional_upstream": [
+        {
+          "condition": "core_broker_reused",
+          "requirements": [
+            "core:AF-GC-010"
+          ]
+        }
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.credential_scoping_and_revocation",
+          "requirements": [
+            "core:AF-GC-010"
+          ],
+          "condition": "core_broker_reused",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-029": {
+      "dependencies": [
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-027"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:usage",
+        "cloud:usage-credit-ledger"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-027"
+      ]
+    },
+    "cloud:AF-CLD-030": {
+      "dependencies": [
+        "cloud:AF-CLD-004",
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-029"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:creator-ui",
+        "shared:creator-ux"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-004",
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-029"
+      ]
+    },
+    "cloud:AF-CLD-031": {
+      "dependencies": [
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-030"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:preview-delivery",
+        "cloud:release-access"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-030"
+      ]
+    },
+    "cloud:AF-CLD-032": {
+      "dependencies": [
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-030"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:artifact-export",
+        "cloud:export"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-030"
+      ]
+    },
+    "cloud:AF-CLD-033": {
+      "dependencies": [
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-026"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:recovery",
+        "cloud:operations-recovery",
+        "cloud:host-profile"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-026"
+      ]
+    },
+    "cloud:AF-CLD-034": {
+      "dependencies": [
+        "cloud:AF-CLD-020",
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-024",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-027",
+        "cloud:AF-CLD-028",
+        "cloud:AF-CLD-029",
+        "cloud:AF-CLD-030",
+        "cloud:AF-CLD-031",
+        "cloud:AF-CLD-032",
+        "cloud:AF-CLD-033"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:acceptance-fixtures",
+        "qualification:cloud-alpha"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-020",
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-022",
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-024",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-027",
+        "cloud:AF-CLD-028",
+        "cloud:AF-CLD-029",
+        "cloud:AF-CLD-030",
+        "cloud:AF-CLD-031",
+        "cloud:AF-CLD-032",
+        "cloud:AF-CLD-033"
+      ]
+    },
+    "cloud:AF-CLD-035": {
+      "dependencies": [
+        "cloud:AF-CLD-034"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:release-state",
+        "cloud:release-access"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-034"
+      ]
+    },
+    "cloud:AF-CLD-036": {
+      "dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-035"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:profiles-library",
+        "cloud:identity-policy"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-035"
+      ]
+    },
+    "cloud:AF-CLD-037": {
+      "dependencies": [
+        "cloud:AF-CLD-031",
+        "cloud:AF-CLD-035"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:play-build",
+        "cloud:public-game-ui",
+        "cloud:release-access"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-031",
+        "cloud:AF-CLD-035"
+      ]
+    },
+    "cloud:AF-CLD-038": {
+      "dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-037"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:discovery"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-037"
+      ]
+    },
+    "cloud:AF-CLD-039": {
+      "dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-037"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:release-access",
+        "cloud:public-game-ui"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-037"
+      ]
+    },
+    "cloud:AF-CLD-040": {
+      "dependencies": [
+        "cloud:AF-CLD-032",
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-036"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:remix",
+        "shared:source-version",
+        "shared:asset-provenance"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-032",
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-036"
+      ]
+    },
+    "cloud:AF-CLD-041": {
+      "dependencies": [
+        "cloud:AF-CLD-037",
+        "cloud:AF-CLD-038"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:play-analytics",
+        "cloud:discovery"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-037",
+        "cloud:AF-CLD-038"
+      ]
+    },
+    "cloud:AF-CLD-042": {
+      "dependencies": [
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-037"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:moderation",
+        "cloud:release-state",
+        "shared:minor-access"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-037"
+      ]
+    },
+    "cloud:AF-CLD-043": {
+      "dependencies": [
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-040"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:asset-provenance",
+        "cloud:release-state",
+        "cloud:commerce-rights"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-023",
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-040"
+      ]
+    },
+    "cloud:AF-CLD-044": {
+      "dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-036",
+        "cloud:AF-CLD-037",
+        "cloud:AF-CLD-038",
+        "cloud:AF-CLD-039",
+        "cloud:AF-CLD-040",
+        "cloud:AF-CLD-042",
+        "cloud:AF-CLD-043",
+        "cloud:AF-CLD-041"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:acceptance-fixtures",
+        "qualification:public-beta"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m3",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-036",
+        "cloud:AF-CLD-037",
+        "cloud:AF-CLD-038",
+        "cloud:AF-CLD-039",
+        "cloud:AF-CLD-040",
+        "cloud:AF-CLD-042",
+        "cloud:AF-CLD-043",
+        "cloud:AF-CLD-041"
+      ]
+    },
+    "cloud:AF-CLD-045": {
+      "dependencies": [
+        "cloud:AF-CLD-036",
+        "cloud:AF-CLD-044"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:minor-access",
+        "cloud:seller-eligibility",
+        "cloud:identity-policy"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-036",
+        "cloud:AF-CLD-044"
+      ]
+    },
+    "cloud:AF-CLD-046": {
+      "dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-043",
+        "cloud:AF-CLD-045"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:listing-license",
+        "cloud:commerce-rights"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-035",
+        "cloud:AF-CLD-043",
+        "cloud:AF-CLD-045"
+      ]
+    },
+    "cloud:AF-CLD-047": {
+      "dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-046"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:payments-orders",
+        "cloud:payment-provider-events"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-046"
+      ]
+    },
+    "cloud:AF-CLD-048": {
+      "dependencies": [
+        "cloud:AF-CLD-046",
+        "cloud:AF-CLD-047"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:entitlements",
+        "cloud:profiles-library",
+        "cloud:release-access"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-046",
+        "cloud:AF-CLD-047"
+      ]
+    },
+    "cloud:AF-CLD-049": {
+      "dependencies": [
+        "cloud:AF-CLD-045",
+        "cloud:AF-CLD-047",
+        "cloud:AF-CLD-048"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:revenue-payout-ledger",
+        "cloud:payment-provider-events"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-045",
+        "cloud:AF-CLD-047",
+        "cloud:AF-CLD-048"
+      ]
+    },
+    "cloud:AF-CLD-050": {
+      "dependencies": [
+        "cloud:AF-CLD-047",
+        "cloud:AF-CLD-048",
+        "cloud:AF-CLD-049"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:payments-orders",
+        "cloud:entitlements",
+        "cloud:revenue-payout-ledger",
+        "cloud:fraud-review"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P0",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-047",
+        "cloud:AF-CLD-048",
+        "cloud:AF-CLD-049"
+      ]
+    },
+    "cloud:AF-CLD-051": {
+      "dependencies": [
+        "cloud:AF-CLD-045",
+        "cloud:AF-CLD-046",
+        "cloud:AF-CLD-047",
+        "cloud:AF-CLD-048",
+        "cloud:AF-CLD-049",
+        "cloud:AF-CLD-050"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:acceptance-fixtures",
+        "qualification:marketplace"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m4",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-045",
+        "cloud:AF-CLD-046",
+        "cloud:AF-CLD-047",
+        "cloud:AF-CLD-048",
+        "cloud:AF-CLD-049",
+        "cloud:AF-CLD-050"
+      ]
+    },
+    "cloud:AF-CLD-052": {
+      "dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-034"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:engine-contract",
+        "core:pack-lifecycle"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-005",
+        "cloud:AF-CLD-034"
+      ]
+    },
+    "cloud:AF-CLD-053": {
+      "dependencies": [
+        "cloud:AF-CLD-052"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:unity-pack"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-052"
+      ],
+      "conditional_upstream": [
+        {
+          "condition": "unity_enabled",
+          "requirements": [
+            "core:AF-GC-033"
+          ]
+        }
+      ],
+      "integration_notes": [
+        {
+          "capability": "games.unity_pack_and_validation",
+          "requirements": [
+            "core:AF-GC-033"
+          ],
+          "condition": "unity_enabled",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-054": {
+      "dependencies": [
+        "cloud:AF-CLD-052"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:unreal-pack"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-052"
+      ]
+    },
+    "cloud:AF-CLD-055": {
+      "dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-043"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:android-target",
+        "cloud:store-connectors"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-043"
+      ]
+    },
+    "cloud:AF-CLD-056": {
+      "dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-028",
+        "cloud:AF-CLD-043"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:apple-target",
+        "core:credentials",
+        "cloud:store-connectors"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-028",
+        "cloud:AF-CLD-043"
+      ]
+    },
+    "cloud:AF-CLD-057": {
+      "dependencies": [
+        "cloud:AF-CLD-032",
+        "cloud:AF-CLD-043",
+        "cloud:AF-CLD-046"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:pc-store-target",
+        "cloud:store-connectors"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-032",
+        "cloud:AF-CLD-043",
+        "cloud:AF-CLD-046"
+      ]
+    },
+    "cloud:AF-CLD-058": {
+      "dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-032"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:pc-store-target",
+        "shared:artifact-export"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-032"
+      ]
+    },
+    "cloud:AF-CLD-059": {
+      "dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-028"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:console-target",
+        "cloud:partner-policy"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m5",
+      "optional": true,
+      "source_dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-028"
+      ]
+    },
+    "cloud:AF-CLD-060": {
+      "dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-053",
+        "cloud:AF-CLD-054",
+        "cloud:AF-CLD-055",
+        "cloud:AF-CLD-056",
+        "cloud:AF-CLD-057",
+        "cloud:AF-CLD-058"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:acceptance-fixtures",
+        "qualification:engine-target-matrix"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m5",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-053",
+        "cloud:AF-CLD-054",
+        "cloud:AF-CLD-055",
+        "cloud:AF-CLD-056",
+        "cloud:AF-CLD-057",
+        "cloud:AF-CLD-058"
+      ],
+      "conditional_upstream": [
+        {
+          "condition": "unity_advertised",
+          "requirements": [
+            "core:AF-GC-034"
+          ]
+        }
+      ],
+      "integration_notes": [
+        {
+          "capability": "games.unity_journey_qualification",
+          "requirements": [
+            "core:AF-GC-034"
+          ],
+          "condition": "unity_advertised",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-061": {
+      "dependencies": [
+        "cloud:AF-CLD-009",
+        "cloud:AF-CLD-052"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:factory-manifest",
+        "core:pack-lifecycle"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-009",
+        "cloud:AF-CLD-052"
+      ]
+    },
+    "cloud:AF-CLD-062": {
+      "dependencies": [
+        "cloud:AF-CLD-051",
+        "cloud:AF-CLD-061"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:factory-manifest",
+        "cloud:listing-license",
+        "cloud:entitlements"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": true,
+      "source_dependencies": [
+        "cloud:AF-CLD-051",
+        "cloud:AF-CLD-061"
+      ]
+    },
+    "cloud:AF-CLD-063": {
+      "dependencies": [
+        "cloud:AF-CLD-029",
+        "cloud:AF-CLD-061"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:routing",
+        "core:provider-model",
+        "cloud:visible-team",
+        "cloud:usage-credit-ledger"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-029",
+        "cloud:AF-CLD-061"
+      ],
+      "conditional_upstream": [
+        {
+          "condition": "local_or_hybrid_preset_enabled",
+          "requirements": [
+            "core:AF-GC-030"
+          ]
+        }
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.explicit_local_cloud_routing",
+          "requirements": [
+            "core:AF-GC-030"
+          ],
+          "condition": "local_or_hybrid_preset_enabled",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-064": {
+      "dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-029",
+        "cloud:AF-CLD-061"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:core-cloud-api",
+        "cloud:public-api",
+        "cloud:webhooks"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-021",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-029",
+        "cloud:AF-CLD-061"
+      ]
+    },
+    "cloud:AF-CLD-065": {
+      "dependencies": [
+        "cloud:AF-CLD-024",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-033"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "core:orchestration-runtime",
+        "cloud:host-profile",
+        "cloud:operations-recovery"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-024",
+        "cloud:AF-CLD-025",
+        "cloud:AF-CLD-026",
+        "cloud:AF-CLD-033"
+      ],
+      "conditional_upstream": [
+        {
+          "condition": "local_or_hybrid_game_profile_offered",
+          "requirements": [
+            "core:AF-GC-031"
+          ]
+        }
+      ],
+      "integration_notes": [
+        {
+          "capability": "core.local_hybrid_game_qualification",
+          "requirements": [
+            "core:AF-GC-031"
+          ],
+          "condition": "local_or_hybrid_game_profile_offered",
+          "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
+        }
+      ]
+    },
+    "cloud:AF-CLD-066": {
+      "dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-061",
+        "cloud:AF-CLD-064"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "shared:non-game-pack",
+        "shared:engine-contract"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": true,
+      "source_dependencies": [
+        "cloud:AF-CLD-052",
+        "cloud:AF-CLD-061",
+        "cloud:AF-CLD-064"
+      ]
+    },
+    "cloud:AF-CLD-067": {
+      "dependencies": [
+        "cloud:AF-CLD-034",
+        "cloud:AF-CLD-044",
+        "cloud:AF-CLD-061",
+        "cloud:AF-CLD-063",
+        "cloud:AF-CLD-064",
+        "cloud:AF-CLD-065"
+      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [
+        "cloud:acceptance-fixtures",
+        "qualification:cloud-ga"
+      ],
+      "required_scopes": [],
+      "scope_hints": [],
+      "priority": "P2",
+      "milestone": "m6",
+      "optional": false,
+      "source_dependencies": [
+        "cloud:AF-CLD-034",
+        "cloud:AF-CLD-044",
+        "cloud:AF-CLD-061",
+        "cloud:AF-CLD-063",
+        "cloud:AF-CLD-064",
+        "cloud:AF-CLD-065"
+      ]
+    },
+    "core:TEAM-SETUP": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [],
+      "required_scopes": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "maintenance": true
+    },
+    "cloud:TEAM-SETUP": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": null,
+      "note": "",
+      "pr": null,
+      "resources": [],
+      "required_scopes": [],
+      "priority": "P0",
+      "milestone": "m0",
+      "maintenance": true
+    }
+  },
+  "events": []
+}
