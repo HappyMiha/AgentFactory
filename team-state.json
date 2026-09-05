@@ -1370,11 +1370,16 @@
       "dependencies": [
         "cloud:AF-CLD-001"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-CLD-003-847239d1",
+      "scopes": [
+        "cloud:docs/upstream-capability-map.json",
+        "cloud:docs/upstream-capability-map.md",
+        "cloud:scripts/validate_upstream_map.py",
+        "cloud:tests/test_upstream_map.py"
+      ],
+      "updated_at": "2026-09-05T21:11:28+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -1387,7 +1392,8 @@
       "optional": false,
       "source_dependencies": [
         "cloud:AF-CLD-001"
-      ]
+      ],
+      "claim_id": "f76a2bf1-11ac-4653-9dd5-bf9367f77486"
     },
     "cloud:AF-CLD-004": {
       "dependencies": [
@@ -4035,6 +4041,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-005-04a3d0a5",
       "claim_id": "26bee1cb-2973-4669-8195-353e8c6fd393"
+    },
+    {
+      "operation_id": "d0831d91-b4a9-4c97-a2ba-5f4edd50bf50",
+      "at": "2026-09-05T21:11:28+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-003",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-003-847239d1",
+      "claim_id": "f76a2bf1-11ac-4653-9dd5-bf9367f77486"
     }
   ],
   "migration": {
