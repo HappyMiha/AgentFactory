@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "workers": [
     "HappyDucky02",
     "HappySnowman",
@@ -3418,8 +3418,8 @@
       "milestone": "m0",
       "maintenance": true,
       "title": "Preserve active claims and migrate three-PC branch policy with one registry authority",
-      "updated_at": "2026-09-05T21:04:37+00:00",
-      "note": "Verified both local repository readers and CI parsers at reviewed migration commits.",
+      "updated_at": "2026-09-05T21:05:12+00:00",
+      "note": "All three workers verified both readers; new claims now use agent branches.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/6",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c",
       "review_head": "849451a3072aeb81f0eaf103caae9b30e57bdad7",
@@ -3988,6 +3988,16 @@
       "note": "Verified both local repository readers and CI parsers at reviewed migration commits.",
       "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
       "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
+    },
+    {
+      "operation_id": "9e9d85a8-fe24-4bb2-84b8-586e59f6469e",
+      "at": "2026-09-05T21:05:12+00:00",
+      "action": "migration-activate",
+      "task": "core:AF-TEAM-001",
+      "worker": "HappyDucky02",
+      "note": "All three workers verified both readers; new claims now use agent branches.",
+      "branch": "team/HappyDucky02/core-af-team-001-0b67a6d0",
+      "claim_id": "9de7cfb3-02bf-443d-98df-eec99b9b031c"
     }
   ],
   "migration": {
@@ -4043,6 +4053,8 @@
         },
         "at": "2026-09-05T21:04:37+00:00"
       }
-    }
+    },
+    "activated_at": "2026-09-05T21:05:12+00:00",
+    "authority": "core:team-state"
   }
 }
