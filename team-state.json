@@ -1322,8 +1322,8 @@
         "core:src/agent_factory/providers.py",
         "core:tests/test_provider_role_qualification.py"
       ],
-      "updated_at": "2026-09-05T22:39:29+00:00",
-      "note": "Strict Ollama JSON mode after real canary fence failure; exact integration checks pass; live requalification pending",
+      "updated_at": "2026-09-05T23:03:22+00:00",
+      "note": "Seven-role live API/CLI smoke passed on prior source head; main merge preserves canary files and passes exact integration checks",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/9",
       "resources": [
         "core:provider-model",
@@ -1342,7 +1342,7 @@
         "core:AF-GC-006"
       ],
       "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8",
-      "review_head": "1f2d8b4287395ece89f12717546df83cf1e875ce"
+      "review_head": "f1cab56e71de4e075c45ac06cd6f38d5efb71bfd"
     },
     "cloud:AF-CLD-001": {
       "dependencies": [],
@@ -4514,6 +4514,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
       "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
+    },
+    {
+      "operation_id": "c09f2cfa-326e-463e-8dd8-f316847fb09f",
+      "at": "2026-09-05T23:03:22+00:00",
+      "action": "review",
+      "task": "core:AF-GC-042",
+      "worker": "HappyHahahaker",
+      "note": "Seven-role live API/CLI smoke passed on prior source head; main merge preserves canary files and passes exact integration checks",
+      "branch": "agent/HappyHahahaker/AF-GC-042-13ad9c1c",
+      "claim_id": "231705f1-15b0-400d-89b8-dc8db5b925d8"
     }
   ],
   "migration": {
