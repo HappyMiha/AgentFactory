@@ -54,14 +54,105 @@ function renderMonitor(data) {
   $("monitor-blockers").innerHTML = data.blockers.length ? `<strong>Blockers</strong><ul>${data.blockers.map((item) => `<li>${escapeHtml(item.replaceAll("_", " "))}</li>`).join("")}</ul>` : `<span>No blockers detected. The local control plane can accept work.</span>`;
 }
 
+const agentEditors = new Map();
+const agentIdentity = (agent) => ({ provider: agent.provider, model: agent.model });
+const sameIdentity = (left, right) => left.provider === right.provider && left.model === right.model;
+function editorIdentity(card) {
+  return { provider: card.querySelector('.agent-provider').value, model: card.querySelector('.agent-model').value };
+}
+
+function updateAgentEditor(card, editor) {
+  const local = editorIdentity(card);
+  editor.dirty = !sameIdentity(local, editor.base);
+  const conflict = !sameIdentity(editor.base, agentIdentity(editor.server));
+  editor.conflict = conflict;
+  const warning = card.querySelector('[data-agent-conflict]');
+  warning.hidden = !conflict;
+  warning.querySelector('span').textContent = `The server changed to ${editor.server.provider} / ${editor.server.model}. Choose a version before saving.`;
+  card.querySelector('[data-agent-provider]').disabled = editor.busy || editor.missing || conflict || !editor.dirty;
+  card.querySelector('[data-agent-cancel]').disabled = editor.busy;
+  card.querySelectorAll('[data-agent-use-server],[data-agent-keep-draft]').forEach((button) => button.disabled = editor.busy);
+  card.querySelectorAll('.agent-provider,.agent-model').forEach((input) => input.disabled = editor.busy);
+  card.querySelector('[data-agent-edit-status]').textContent = editor.missing ? 'This agent is no longer available. Your draft is kept here.' :
+    editor.busy ? 'Waiting for the save result. Your draft is kept.' : editor.message || (editor.dirty ? 'Unsaved changes.' : 'No unsaved changes.');
+}
+
+function setEditorIdentity(card, identity) {
+  const select = card.querySelector('.agent-provider');
+  if (![...select.options].some((option) => option.value === identity.provider)) {
+    select.add(new Option(`${identity.provider} (not currently available)`, identity.provider));
+  }
+  select.value = identity.provider;
+  card.querySelector('.agent-model').value = identity.model;
+}
+
+function renderAgentCards(agents, providers) {
+  const list = $('agent-list');
+  const present = new Set();
+  if (!agentEditors.size) list.replaceChildren();
+  agents.forEach((agent) => {
+    present.add(agent.id);
+    let editor = agentEditors.get(agent.id);
+    if (!editor) {
+      const card = document.createElement('article');
+      card.className = 'agent-card';
+      card.dataset.agentId = agent.id;
+      card.innerHTML = `<div data-agent-summary></div><div class="agent-controls"><button type="button" data-agent-toggle></button><label>Compatible provider<select class="agent-provider"></select></label><label>Model identity<input class="agent-model"></label><button type="button" data-agent-provider>Save changes</button><button type="button" class="secondary" data-agent-cancel>Cancel changes</button></div><div data-agent-conflict role="status" hidden><span></span> <button type="button" data-agent-use-server>Use server version</button> <button type="button" data-agent-keep-draft>Keep my draft</button></div><p data-agent-edit-status role="status"></p>`;
+      list.append(card);
+      editor = { card, base: agentIdentity(agent), server: agent, dirty: false, busy: false, message: '' };
+      agentEditors.set(agent.id, editor);
+      setEditorIdentity(card, editor.base);
+    }
+    const { card } = editor;
+    const editing = editor.dirty || editor.busy || card.querySelector('.agent-controls').contains(document.activeElement);
+    editor.server = agent;
+    editor.missing = false;
+    // Update facts separately: the controls, selection and caret keep their nodes.
+    card.querySelector('[data-agent-summary]').innerHTML = `<div class="agent-title"><span><strong>${escapeHtml(agent.name)}</strong><small>${escapeHtml(agent.id)} &middot; ${escapeHtml(agent.role)}</small></span>${badge(agent.enabled ? 'enabled' : 'disabled')}</div><dl class="agent-facts"><div><dt>Provider / model</dt><dd>${escapeHtml(agent.provider)} / ${escapeHtml(agent.model)}</dd></div><div><dt>Recent work</dt><dd>${agent.last_claimed_task_id ? `Task #${agent.last_claimed_task_id}` : 'No claim'}</dd></div><div><dt>Reviewer use</dt><dd>${agent.reviewer_assignment_count}${agent.last_reviewed_run_id ? ` (last run #${agent.last_reviewed_run_id})` : ''}</dd></div><div><dt>Permissions</dt><dd>${escapeHtml(agent.permissions.join(', '))}</dd></div></dl>`;
+    const toggle = card.querySelector('[data-agent-toggle]');
+    toggle.dataset.agentToggle = String(!agent.enabled);
+    toggle.textContent = agent.enabled ? 'Disable' : 'Enable';
+    toggle.className = agent.enabled ? 'danger' : '';
+    const select = card.querySelector('.agent-provider');
+    const selected = select.value;
+    const compatible = providers.filter((provider) => provider.enabled && (provider.id === 'deterministic' || provider.allowed_roles.includes(agent.role)));
+    const available = new Set(compatible.map((provider) => provider.id));
+    compatible.forEach((provider) => {
+      let option = [...select.options].find((item) => item.value === provider.id);
+      if (!option) { option = new Option('', provider.id); select.add(option); }
+      const label = `${provider.id} (${provider.status})`;
+      if (option.textContent !== label) option.textContent = label;
+    });
+    [...select.options].forEach((option) => {
+      if (!available.has(option.value)) {
+        if (option.value === selected) option.textContent = `${option.value} (not currently available)`;
+        else option.remove();
+      }
+    });
+    select.value = selected;
+    if (!editing) {
+      editor.base = agentIdentity(agent);
+      setEditorIdentity(card, editor.base);
+    }
+    updateAgentEditor(card, editor);
+  });
+  agentEditors.forEach((editor, id) => {
+    if (present.has(id)) return;
+    if (editor.dirty || editor.busy || editor.card.contains(document.activeElement)) {
+      editor.missing = true;
+      updateAgentEditor(editor.card, editor);
+    } else {
+      editor.card.remove();
+      agentEditors.delete(id);
+    }
+  });
+  if (!agentEditors.size) list.innerHTML = empty('No agents configured');
+}
+
 function renderRuntime(agents, providers, reviews) {
   $("agent-list").classList.remove("loading-block");
   $("routing-list").classList.remove("loading-block");
-  $("agent-list").innerHTML = agents.length ? agents.map((agent) => {
-    const compatible = providers.filter((provider) => provider.enabled && (provider.id === "deterministic" || provider.allowed_roles.includes(agent.role)));
-    const options = compatible.map((provider) => `<option value="${escapeHtml(provider.id)}" ${provider.id === agent.provider ? "selected" : ""}>${escapeHtml(provider.id)} (${escapeHtml(provider.status)})</option>`).join("");
-    return `<article class="agent-card" data-agent-id="${escapeHtml(agent.id)}"><div class="agent-title"><span><strong>${escapeHtml(agent.name)}</strong><small>${escapeHtml(agent.id)} &middot; ${escapeHtml(agent.role)}</small></span>${badge(agent.enabled ? "enabled" : "disabled")}</div><dl class="agent-facts"><div><dt>Provider / model</dt><dd>${escapeHtml(agent.provider)} / ${escapeHtml(agent.model)}</dd></div><div><dt>Recent work</dt><dd>${agent.last_claimed_task_id ? `Task #${agent.last_claimed_task_id}` : "No claim"}</dd></div><div><dt>Reviewer use</dt><dd>${agent.reviewer_assignment_count}${agent.last_reviewed_run_id ? ` (last run #${agent.last_reviewed_run_id})` : ""}</dd></div><div><dt>Permissions</dt><dd>${escapeHtml(agent.permissions.join(", "))}</dd></div></dl><div class="agent-controls"><button type="button" data-agent-toggle="${agent.enabled ? "false" : "true"}" class="${agent.enabled ? "danger" : ""}">${agent.enabled ? "Disable" : "Enable"}</button><label>Compatible provider<select class="agent-provider">${options}</select></label><label>Model identity<input class="agent-model" value="${escapeHtml(agent.model)}"></label><button type="button" data-agent-provider>Replace provider</button></div></article>`;
-  }).join("") : empty("No agents configured");
+  renderAgentCards(agents, providers);
   $("routing-list").innerHTML = reviews.length ? [...reviews].reverse().map((review) => {
     const producerModels = review.producer_agents.map((producer) => producer.model || producer.model_identity || producer.provider || "unknown");
     const independent = !producerModels.some((model) => String(model).toLowerCase() === review.reviewer_model.toLowerCase());
@@ -258,13 +349,14 @@ function confirmCommand(summary) {
   });
 }
 
-async function guardedCommand(url, payload, summary) {
+async function guardedCommand(url, payload, summary, beforeSend = null) {
   const body = JSON.stringify({ ...payload, confirmed: true });
   const commandKey = JSON.stringify([url, body]);
   if (pendingCommands.has(commandKey)) return null;
   pendingCommands.add(commandKey);
   try {
     if (!await confirmCommand(summary)) return null;
+    if (beforeSend && !await beforeSend()) return null;
     const result = await fetchJson(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Agent-Factory-Confirm": "true" },
@@ -303,16 +395,55 @@ async function handleAgentAction(target) {
   const card = target.closest("[data-agent-id]");
   if (!card) return;
   const agentId = card.dataset.agentId;
+  const editor = agentEditors.get(agentId);
+  if (target.matches('[data-agent-cancel],[data-agent-use-server],[data-agent-keep-draft]')) {
+    if (editor.busy) return;
+    const keep = target.hasAttribute('data-agent-keep-draft');
+    editor.base = agentIdentity(editor.server);
+    if (!keep) setEditorIdentity(card, editor.base);
+    editor.message = keep ? 'Your draft is kept. Save changes to replace the server version.' : 'Changes cancelled. Latest server version shown.';
+    updateAgentEditor(card, editor);
+    return;
+  }
   if (target.dataset.agentToggle) {
     const enabled = target.dataset.agentToggle === "true";
     const action = enabled ? "Enable" : "Disable";
     const result = await guardedCommand(`/api/agents/${encodeURIComponent(agentId)}/enabled`, { enabled }, `${action} ${agentId}; future work and reviewer routing may change`);
     if (result) $("notice").textContent = result.impact_summary;
   } else if (target.hasAttribute("data-agent-provider")) {
+    updateAgentEditor(card, editor);
+    if (editor.busy || editor.missing || editor.conflict || !editor.dirty) return;
     const provider = card.querySelector(".agent-provider").value;
     const model = card.querySelector(".agent-model").value.trim();
-    const result = await guardedCommand(`/api/agents/${encodeURIComponent(agentId)}/provider`, { provider, model }, `Replace ${agentId} provider with ${provider} / ${model || `provider:${provider}`}; prior approval snapshots will not be reused`);
-    if (result) $("notice").textContent = result.impact_summary;
+    const expected = { ...editor.base };
+    editor.busy = true;
+    editor.message = '';
+    updateAgentEditor(card, editor);
+    try {
+      const result = await guardedCommand(`/api/agents/${encodeURIComponent(agentId)}/provider`, { provider, model }, `Replace ${agentId} provider with ${provider} / ${model || `provider:${provider}`}; prior approval snapshots will not be reused`, async () => {
+        const latest = await fetchJson('/api/agents?limit=200');
+        state.refreshGeneration = (state.refreshGeneration || 0) + 1;
+        const current = latest.items.find((agent) => agent.id === agentId);
+        if (!current) { editor.missing = true; return false; }
+        editor.server = current;
+        return sameIdentity(expected, agentIdentity(current));
+      });
+      if (result) {
+        state.refreshGeneration = (state.refreshGeneration || 0) + 1;
+        editor.server = result.agent;
+        editor.base = agentIdentity(result.agent);
+        setEditorIdentity(card, editor.base);
+        editor.message = 'Changes saved. Future assignments use this provider and model.';
+      } else {
+        editor.message = 'Save cancelled. Your draft is kept.';
+      }
+    } catch (error) {
+      editor.message = `Save failed: ${error.message}. Your draft is kept; refresh before retrying an uncertain result.`;
+      throw error;
+    } finally {
+      editor.busy = false;
+      updateAgentEditor(card, editor);
+    }
   }
   await refresh();
 }
@@ -413,6 +544,7 @@ async function handleFounderDecision(decision) {
 }
 
 async function refresh() {
+  const generation = state.refreshGeneration = (state.refreshGeneration || 0) + 1;
   $("refresh").disabled = true;
   try {
     const [dashboard, monitor, executions, agents, providers, reviews, founderPackets] = await Promise.all([
@@ -428,14 +560,16 @@ async function refresh() {
       loadAudit(),
       loadSettings()
     ]);
+    if (generation !== state.refreshGeneration) return;
     renderDashboard(dashboard); renderMonitor(monitor); renderExecutions(executions); renderRuntime(agents.items, providers.items, reviews.items); renderFounderInbox(founderPackets); state.lastSuccess = new Date();
     $("connection-dot").className = "online"; $("connection-text").textContent = "Local service online";
     $("updated").textContent = `Updated ${state.lastSuccess.toLocaleTimeString()}`; if (!$("notice").textContent.startsWith("Completed:")) $("notice").hidden = true;
   } catch (error) {
+    if (generation !== state.refreshGeneration) return;
     $("connection-dot").className = "offline"; $("connection-text").textContent = "Service disconnected";
     $("notice").hidden = false; $("notice").textContent = state.lastSuccess ? "Live refresh failed. Showing the last successful local snapshot." : "Dashboard data is unavailable. Check the local service and retry.";
     if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list","audit-list","settings-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
-  } finally { $("refresh").disabled = false; }
+  } finally { if (generation === state.refreshGeneration) $("refresh").disabled = false; }
 }
 
 $("execution-list").addEventListener("click", (event) => { const action = event.target.closest("[data-execution-action]"); if (!action) return; const type = action.dataset.executionAction; const request = type === "release-lease" ? ["/api/executions/leases/release", { assignment_id: Number(action.dataset.assignment), fencing_token: Number(action.dataset.fence) }, "Release execution lease"] : type === "stop-session" ? [`/api/executions/sessions/${action.dataset.id}/stop`, {}, `Stop runtime session #${action.dataset.id}`] : [`/api/executions/runs/${action.dataset.id}/cancel`, {}, `Cancel workflow run #${action.dataset.id}`]; guardedCommand(request[0], request[1], request[2]).then(() => refresh()).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
@@ -452,7 +586,16 @@ $("work-detail").addEventListener("click", (event) => { const action = event.tar
 $("run-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
 $("run-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-temporal-action]"); if (!action) return; const verb = action.dataset.temporalAction; guardedCommand(`/api/executions/runs/${action.dataset.runId}/${verb}`, { reason: `${verb} requested from Local Control Center` }, `${verb} Temporal workflow for run #${action.dataset.runId}`).then(() => showRun(action.dataset.runId)).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("approval-list").addEventListener("click", (event) => { const row = event.target.closest("[data-founder-gate]"); if (row) openFounderDecision(row.dataset.founderGate); });
-$("agent-list").addEventListener("click", (event) => { const action = event.target.closest("[data-agent-toggle],[data-agent-provider]"); if (action) handleAgentAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("agent-list").addEventListener("click", (event) => { const action = event.target.closest("[data-agent-toggle],[data-agent-provider],[data-agent-cancel],[data-agent-use-server],[data-agent-keep-draft]"); if (action) handleAgentAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+function handleAgentDraft(event) {
+  if (!event.target.matches('.agent-provider,.agent-model')) return;
+  const card = event.target.closest('[data-agent-id]');
+  const editor = agentEditors.get(card.dataset.agentId);
+  editor.message = '';
+  updateAgentEditor(card, editor);
+}
+$('agent-list').addEventListener('input', handleAgentDraft);
+$('agent-list').addEventListener('change', handleAgentDraft);
 $("audit-filters").addEventListener("submit", (event) => { event.preventDefault(); loadAudit().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("clear-audit").addEventListener("click", () => { $("audit-filters").reset(); loadAudit(); });
 $("audit-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
