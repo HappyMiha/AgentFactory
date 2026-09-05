@@ -42,7 +42,10 @@ ambient remote/custom `OLLAMA_HOST` and pins the CLI to the same IPv4 loopback
 endpoint used for API inventory and model digests. Each of seven roles has a JSON
 contract check through the local API (96 output tokens, 2048 context tokens,
 60-second socket timeout, 128 KiB response bound) and the configured CLI
-(60-second process timeout, 1024 output characters). The CLI has no asserted hard
+(60-second process timeout, 16384 combined stdout/stderr characters, with the
+JSON response separately limited to 1024 characters). Bounded numeric diagnostics
+report retained stream lengths and stderr ANSI-sequence count, never raw prompts
+or stderr. The CLI has no asserted hard
 token cap. The script stops on the first failure and reports the installed model
 digest and profile digest; a changed model digest invalidates the result.
 

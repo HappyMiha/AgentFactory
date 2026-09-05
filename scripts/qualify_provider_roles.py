@@ -63,7 +63,7 @@ def main():
                                executable_candidates=config.get("executable_candidates"),
                                allowed_roles=config["allowed_roles"], allow_execution=config["allow_execution"],
                                capabilities=capability, workspace=Path(folder),
-                               max_timeout=60, max_output_chars=1024)
+                               max_timeout=60, max_output_chars=16384)
         for index, role in enumerate(roles, 1):
             expected = {"role": role, "mode": "read_only", "writes": []}
             prompt = "Synthetic role contract smoke. Do not call tools or change files. Return only this JSON object: " + json.dumps(expected)
@@ -82,10 +82,16 @@ def main():
             item = WorkItem(id=index, project_id=1, title="Read-only role canary", description=prompt)
             approval = ExecutionApproval(index, "ollama", agent.id, item.id, approved_by="Local canary operator")
             result = provider.execute(agent, item, {"synthetic": True}, approval)
-            if not result.ok or json.loads(result.content) != expected:
-                raise ValueError(f"Configured CLI contract failed for {role}: {result.error or 'JSON mismatch'}")
+            diagnostics = {key: result.metadata.get(key) for key in (
+                "elapsed_seconds", "returncode", "output_limit_chars", "retained_output_chars",
+                "observed_output_chars", "stdout_retained_chars", "stderr_retained_chars", "stderr_ansi_sequences",
+            )}
+            if not result.ok:
+                raise ValueError(f"Configured CLI contract failed for {role}: {result.error}; bounded diagnostics: {json.dumps(diagnostics)}")
+            if len(result.content) > 1024 or json.loads(result.content) != expected:
+                raise ValueError(f"Configured CLI JSON contract failed for {role}; bounded diagnostics: {json.dumps(diagnostics)}")
             results.append({"role": role, "api_output_tokens": generated["eval_count"],
-                            "cli_effective_model": result.metadata.get("effective_model"), "passed": True})
+                            "cli_effective_model": result.metadata.get("effective_model"), "cli_diagnostics": diagnostics, "passed": True})
             print(json.dumps(results[-1]), flush=True)
     final_model = next((entry for entry in local("/api/tags")["models"] if entry["name"] == args.model), None)
     if not final_model or final_model["digest"] != model["digest"]:
@@ -93,7 +99,7 @@ def main():
     print(json.dumps({"scope": "local-role-contract-smoke-only", "model_digest": model["digest"],
                       "profile_sha256": hashlib.sha256(config_bytes).hexdigest(), "roles": len(results),
                       "api_limit_tokens": 96, "request_timeout_seconds": 60,
-                      "cli_output_limit_chars": 1024, "cli_hard_token_limit": None}))
+                      "cli_combined_output_limit_chars": 16384, "cli_json_limit_chars": 1024, "cli_hard_token_limit": None}))
     return 0
 
 

@@ -137,3 +137,22 @@ class ProviderRoleQualificationTests(unittest.TestCase):
             canary.bind_local_cli_endpoint()
             provider = CLIProvider("fixture", "unused", [], allow_execution=False)
             self.assertEqual(provider._safe_environment()["OLLAMA_HOST"], "http://127.0.0.1:11434")
+
+    def test_output_limit_reports_stream_counts_without_raw_stderr(self):
+        args = ["-c", "import sys; sys.stderr.write('\\x1b[32m' * 1000); sys.stderr.flush()", "{model}"]
+        profile = {**self.ollama, "args": args, "model_namespace": "fixture", "model_ids": ["small"]}
+        with tempfile.TemporaryDirectory() as folder:
+            provider = CLIProvider("fixture", sys.executable, args, allow_execution=True,
+                                   model_namespace="fixture", model_ids=["small"],
+                                   capabilities=ProviderCapabilities.from_config(profile),
+                                   workspace=Path(folder), max_timeout=10, max_output_chars=1024)
+            agent = Agent(id="fixture", name="Fixture", role="Developer", provider="fixture",
+                          model="fixture:small", enabled=True, instructions="Read only")
+            item = WorkItem(id=1, project_id=1, title="Fixture", description="Synthetic stderr")
+            result = provider.execute(agent, item, {}, ExecutionApproval(1, "fixture", agent.id, 1))
+            self.assertFalse(result.ok)
+            self.assertTrue(result.metadata["output_limit_exceeded"])
+            self.assertEqual(result.metadata["stdout_retained_chars"], 0)
+            self.assertGreater(result.metadata["stderr_retained_chars"], 0)
+            self.assertGreater(result.metadata["stderr_ansi_sequences"], 0)
+            self.assertNotIn("stderr", result.metadata)
