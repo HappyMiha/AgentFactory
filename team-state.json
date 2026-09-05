@@ -58,12 +58,14 @@
         "core:src/agent_factory/storage.py",
         "core:src/agent_factory/web.py",
         "core:tests/test_autonomous_child_orchestration.py",
+        "core:tests/test_autonomous_epoch_handoff.py",
+        "core:tests/test_autonomous_mission_control.py",
         "core:tests/test_autonomous_preapproval_workflow.py",
         "core:tests/test_environment.py",
         "core:tests/test_environment_readiness.py",
         "core:tests/test_monitor_web.py"
       ],
-      "updated_at": "2026-09-05T23:06:40+00:00",
+      "updated_at": "2026-09-05T23:15:32+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4562,6 +4564,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-CLD-004-15205ae4",
       "claim_id": "631b9166-5818-439f-b990-50cefbd01787"
+    },
+    {
+      "operation_id": "5c5725d3-8ddf-4977-bca6-910318d7d345",
+      "at": "2026-09-05T23:15:32+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
     }
   ],
   "migration": {
