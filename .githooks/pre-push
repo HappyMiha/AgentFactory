@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+repo_root=$(git rev-parse --show-toplevel)
+team_python=$(git config --local --get team.python || true)
+if [ -n "$team_python" ]; then
+    :
+elif command -v python3 >/dev/null 2>&1; then
+    team_python=python3
+elif command -v python >/dev/null 2>&1; then
+    team_python=python
+else
+    echo "Python 3.11+ is required. Run team setup before pushing." >&2
+    exit 1
+fi
+"$team_python" "$repo_root/scripts/team.py" preflight --push "$1" "$2"
+"$team_python" "$repo_root/scripts/team_checks.py" --verify

@@ -2,6 +2,12 @@
 
 Thank you for helping build a dependable, provider-neutral orchestration layer.
 
+## Three-computer workflow
+
+Read [AGENTS.md](AGENTS.md) and [the team workflow](docs/team-workflow.md). Configure this clone with `python scripts/team.py configure --worker <your-worker-name>`, inspect `ready` and `status`, and use `start` to claim a task and create your branch. All Core and Cloud claims use one register on Core's `team-state` branch.
+
+Run `python scripts/team_checks.py` after committing and updating from current `main`. The configured pre-push hook checks task ownership, dependencies, paths, fast-forward history, and exact-commit test evidence. Open a focused PR; merge dependencies first and use `complete` only after the recorded PR merges. Do not force-push, push directly to `main`, or edit another worker's branch.
+
 ## Ground rules
 
 - Keep the core project-neutral. Customer names, private requirement documents, and domain-specific workflows belong in downstream configuration.

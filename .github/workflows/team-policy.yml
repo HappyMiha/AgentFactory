@@ -1,0 +1,62 @@
+name: Team coordination
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: team-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: Coordination policy
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check the live task claim and changed paths
+        env:
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          TARGET_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY'
+          import os, subprocess, sys
+          branch = os.environ['PR_HEAD_REF']
+          parts = branch.split('/')
+          if os.environ['PR_HEAD_REPO'] != os.environ['TARGET_REPO']:
+              raise SystemExit('Three-PC task claims use branches in the owning repository. Review external contributions through a separately approved intake.')
+          if len(parts) < 3 or parts[0] != 'team':
+              raise SystemExit('Use team/<worker>/<task> and claim the task first.')
+          subprocess.run([sys.executable, 'scripts/team.py', 'preflight', '--range', 'origin/main...HEAD', '--branch', branch, '--worker', parts[1]], check=True)
+          PY
+  tooling:
+    name: Team tooling tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify coordination tooling and planning contracts
+        run: python scripts/team_checks.py --test test_team_coordination --test test_team_checks

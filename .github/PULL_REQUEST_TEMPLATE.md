@@ -1,5 +1,15 @@
 ## Outcome
 
+Task: `core:AF-GC-...` or `cloud:AF-CLD-...`
+
+Worker: `HappyDucky02` / `HappySnowman` / `HappyHahahaker`
+
+Claim branch and declared scopes:
+
+Merged prerequisites and upstream commit evidence:
+
+Reviewer worker and downstream impact:
+
 Describe the operator-visible result and why it matters.
 
 ## Scope

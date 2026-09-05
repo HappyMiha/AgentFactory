@@ -8,7 +8,9 @@ The factory is project-neutral. Bring your own repository, requirements, roles, 
 
 > **Alpha:** the deterministic simulation, guarded single-provider execution, local orchestration state, and dry-run GitHub planning are usable today. Full unattended multi-stage live execution, native HTTP providers, and a hosted control plane are not yet complete.
 
-> **Planning update — 5 September 2026:** there are two projects. This repository remains the public, Apache-2.0 **Core**. [AgentFactory Cloud](https://github.com/HappyMiha/AgentFactory-Cloud) is a separate commercial product plan for creating, playing, remixing, and publishing games. Its planning repository is private. No Cloud application or game pipeline is claimed as delivered by this update.
+> **Planning update — 5 September 2026:** there are two projects. This repository remains the public, Apache-2.0 **Core**. [AgentFactory Cloud](https://github.com/HappyMiha/AgentFactory-Cloud) is a separate public repository for the commercial product plan: creating, playing, remixing, and publishing games. No Cloud application or game pipeline is claimed as delivered by this update.
+
+**Developing from three computers:** read the [team workflow](docs/team-workflow.md) and [live task register](https://github.com/HappyMiha/AgentFactory/blob/team-state/team-state.json). HappyDucky02, HappySnowman, and HappyHahahaker use owned branches, atomic task claims, checks before push, and pull requests into `main`.
 
 Start with the simple English [Core and Cloud description](docs/core-cloud-boundaries.md), [roadmap](docs/core-cloud-roadmap.md), [backlog ownership](docs/core-cloud-backlog.md), and [audit summary](docs/product-audit-2026-09-05.md). The Cloud repository holds its [product description](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/product-description.md), [roadmap](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/roadmap.md), and [67-task backlog](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/backlog.md).
 
