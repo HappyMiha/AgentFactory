@@ -18,7 +18,7 @@
   "tasks": {
     "core:AF-GC-001": {
       "dependencies": [],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
       "scopes": [
@@ -29,9 +29,9 @@
         "core:tests/test_team_checks.py",
         "core:tests/test_temporal_workflows.py"
       ],
-      "updated_at": "2026-09-05T18:57:40+00:00",
-      "note": "Targeted regressions, clean wheel, and Docker smoke pass; full suite running.",
-      "pr": null,
+      "updated_at": "2026-09-05T19:05:00+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/3",
       "resources": [
         "core:ci-portability"
       ],
@@ -45,7 +45,8 @@
       "milestone": "m0",
       "optional": false,
       "source_dependencies": [],
-      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376",
+      "review_head": "da2aad1dd9ef4a0e31da0bc52b6722f6481c6f36"
     },
     "core:AF-GC-002": {
       "dependencies": [],
@@ -3571,6 +3572,16 @@
       "note": "",
       "branch": "team/HappyHahahaker/core-af-gc-003-e61be08b",
       "claim_id": "cf888e24-e2c2-4d8f-8837-ad5e69416fc6"
+    },
+    {
+      "operation_id": "9180699d-8e2e-4563-a0e8-0eabe17f0a00",
+      "at": "2026-09-05T19:05:00+00:00",
+      "action": "review",
+      "task": "core:AF-GC-001",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "team/HappySnowman/core-af-gc-001-25a87c3e",
+      "claim_id": "17268eb2-c16d-4686-bb30-b48a8b7f8376"
     }
   ]
 }
