@@ -1207,20 +1207,12 @@
     },
     "core:AF-GC-039": {
       "dependencies": [],
-      "status": "claimed",
-      "owner": "HappySnowman",
-      "branch": "team/HappySnowman/core-af-gc-039-c0cad891",
-      "scopes": [
-        "core:SECURITY.md",
-        "core:docs/local-api-auth.md",
-        "core:src/agent_factory/local_auth.py",
-        "core:src/agent_factory/static/index.html",
-        "core:src/agent_factory/web.py",
-        "core:tests/test_control_plane_web.py",
-        "core:tests/test_local_api_auth.py"
-      ],
-      "updated_at": "2026-09-05T19:10:27+00:00",
-      "note": "Unify local API authentication with browser sessions and server-owned identity.",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": "2026-09-05T19:11:45+00:00",
+      "note": "No code changed; released while performing owner-requested node and Agent Bus bootstrap.",
       "pr": null,
       "resources": [
         "core:http-api",
@@ -3627,6 +3619,16 @@
       "note": "Update API model-selection fixture to the explicit allowlist contract.",
       "branch": "team/HappyDucky02/core-af-gc-006-daa23762",
       "claim_id": "e8892e93-8803-4ca0-8b54-2c899a0a07b6"
+    },
+    {
+      "operation_id": "fb22c161-9a2f-4c08-b31f-b218eea3111e",
+      "at": "2026-09-05T19:11:45+00:00",
+      "action": "release",
+      "task": "core:AF-GC-039",
+      "worker": "HappySnowman",
+      "note": "No code changed; released while performing owner-requested node and Agent Bus bootstrap.",
+      "branch": null,
+      "claim_id": "ac1e8748-d118-4572-abe7-960f0816077d"
     }
   ]
 }
