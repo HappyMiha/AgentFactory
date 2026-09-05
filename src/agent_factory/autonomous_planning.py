@@ -365,6 +365,9 @@ class AutonomousPlanningService:
                     f"Planning provider {selection.provider_id!r} is outside mission scope"
                 )
             capability = self._provider(selection.provider_id)
+            compatibility_error = capability.role_model_error(role_id, selection.model)
+            if compatibility_error:
+                raise PermissionError(f"Planning route {selection.provider_id!r}: {compatibility_error}")
             if not capability.autonomous_local_eligible:
                 raise PermissionError(
                     f"Planning provider {selection.provider_id!r} is not explicitly local"

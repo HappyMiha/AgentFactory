@@ -394,6 +394,7 @@ class AutonomousBacklogApprovalService:
             raise ValueError(
                 "Autonomous approval requires explicit execution role/model bindings"
             )
+        self.authorizations.assert_role_model_profiles(provider_ids, execution_manifest["role_models"])
         execution_manifest_digest = self._digest(execution_manifest)
         planning_model_manifest = planning_manifest.document()
         if self._digest(planning_model_manifest) != planning_manifest.manifest_digest:

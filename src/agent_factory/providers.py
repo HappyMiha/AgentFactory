@@ -319,6 +319,9 @@ class CLIProvider(Provider):
             return "provider execution disabled by configuration"
         if self.allowed_roles and agent.role not in self.allowed_roles:
             return f"agent role {agent.role!r} is not allowlisted for provider {self.name}"
+        compatibility_error = self.capabilities.role_model_error(agent.role, agent.model)
+        if compatibility_error:
+            return compatibility_error
         if approval is None:
             return "operator provider-execution approval required"
         expected = (self.name, agent.id, item.id)
