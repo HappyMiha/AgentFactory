@@ -1879,6 +1879,8 @@ class AgentFactoryActivities:
             agent, provider_authorization = self._autonomous_execution_agent(
                 storage, job, workflow_agent
             )
+            if stage.get("reviewer_pool") and job.mode == ExecutionMode.LIVE.value:
+                runtime.validate_review_binding(workflow_agent, agent)
             task = storage.get_task(job.task_id)
             child = WorkItem(
                 id=task.id,

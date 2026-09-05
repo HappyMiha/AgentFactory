@@ -92,6 +92,11 @@ class AgentRuntime:
             raise ValueError("Provider model identity is unknown")
         return identity
 
+    def validate_review_binding(self, selected: Agent, execution: Agent) -> None:
+        """Do not substitute a different model after independent review selection."""
+        if self.effective_model(selected) != self.effective_model(execution):
+            raise ValueError("Effective review model changed after independent selection")
+
     def run(
         self,
         agent: Agent,

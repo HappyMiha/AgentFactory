@@ -89,6 +89,13 @@ class ModelBindingTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertTrue(result.metadata["model_binding_error"])
 
+    def test_autonomous_override_cannot_replace_independently_selected_model(self):
+        runtime = AgentRuntime({"test": self.provider()}, workspace=self.root)
+        selected = replace(self.agent, model="fixture:model-b")
+        runtime.validate_review_binding(selected, replace(selected, id="execution-agent"))
+        with self.assertRaisesRegex(ValueError, "changed after independent selection"):
+            runtime.validate_review_binding(selected, self.agent)
+
     def test_shipped_bindings_replace_the_native_model_argument(self):
         runtime = AgentRuntime(workspace=self.root)
         for provider, prefix, first, second in (
