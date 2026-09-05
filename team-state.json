@@ -1507,7 +1507,7 @@
         "cloud:scripts/validate_evidence_gates.py",
         "cloud:tests/test_evidence_gates.py"
       ],
-      "updated_at": "2026-09-05T22:56:00+00:00",
+      "updated_at": "2026-09-05T22:58:44+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/6",
       "resources": [
@@ -1522,7 +1522,7 @@
         "cloud:AF-CLD-002"
       ],
       "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192",
-      "review_head": "be8a824312dd9c7446de00b0605ccd2afad95911"
+      "review_head": "1b33681dd64408e2fa9516c917d2282c816535a0"
     },
     "cloud:AF-CLD-007": {
       "dependencies": [
@@ -4481,6 +4481,16 @@
     {
       "operation_id": "8b354005-a5b0-4199-9c13-787159296db4",
       "at": "2026-09-05T22:56:00+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-006",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-006-865f1b50",
+      "claim_id": "a48c99d6-ef29-4eab-bcb7-766f9e746192"
+    },
+    {
+      "operation_id": "6a7e6946-f6a3-4bfa-b934-687fb6757d1c",
+      "at": "2026-09-05T22:58:44+00:00",
       "action": "review",
       "task": "cloud:AF-CLD-006",
       "worker": "HappyDucky02",
