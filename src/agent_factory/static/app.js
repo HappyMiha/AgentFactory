@@ -355,11 +355,47 @@ async function handleBacklogImport(event) {
 async function handleSpecificationUpload(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
-  const response = await fetchJson("/api/backlog/analyze-upload", { method: "POST", body: form });
-  const counts = Object.entries(response.counts).map(([kind, count]) => `${kind}: ${count}`).join(" · ");
-  $("spec-analysis").innerHTML = `<div class="dry-run-banner"><strong>${escapeHtml(response.analysis_status)} · ${escapeHtml(response.recommended_agent)} (${escapeHtml(response.agent_role)})</strong><span>Source type: ${escapeHtml(response.source_type)} · ${escapeHtml(counts)}</span><span>Source: <code>${escapeHtml(response.source_path)}</code></span><button type="button" data-import-analyzed>Import analyzed backlog</button></div><div class="preview-counts">${response.items.map((item) => `<span>${escapeHtml(item.kind)}: ${escapeHtml(item.title)}</span>`).join("")}</div>`;
-  $("spec-analysis").dataset.projectName = String(form.get("project_name") || "").trim();
-  $("spec-analysis").dataset.backlogPath = response.source_path;
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const response = await fetchJson("/api/backlog/analyze-upload", { method: "POST", body: form });
+    const panel = $("spec-analysis");
+    panel.innerHTML = `<div class="dry-run-banner"><strong>Deterministic import · Needs your review</strong><span>No AI analysis was run. These are editable proposals, not a confirmed plan.</span><span>Original source: <code>${escapeHtml(response.original_path)}</code></span></div><details><summary>Original extracted text</summary><pre>${escapeHtml(response.original_text)}</pre></details><form id="spec-preview-form">${response.items.map((item) => `<fieldset data-preview-item="${escapeHtml(item.stable_id)}"><legend>${escapeHtml(item.kind)} · ${escapeHtml(item.stable_id)}</legend><label>Title<input name="title" required value="${escapeHtml(item.title)}"></label><label>Requirements<textarea name="description" required rows="4">${escapeHtml(item.description)}</textarea></label><label>Acceptance criteria (one per line)<textarea name="acceptance_criteria" required rows="3">${escapeHtml(item.acceptance_criteria.join("\n"))}</textarea></label></fieldset>`).join("")}<button type="submit" data-import-analyzed>Confirm and import edited plan</button><p data-preview-status role="status"></p></form>`;
+    panel.dataset.projectName = String(form.get("project_name") || "").trim();
+    panel.dataset.backlogPath = response.source_path;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function handleSpecificationImport(event) {
+  event.preventDefault();
+  const form = event.target.closest('#spec-preview-form');
+  if (!form || !form.reportValidity()) return;
+  const panel = $("spec-analysis");
+  const reviewedItems = [...form.querySelectorAll('[data-preview-item]')].map((item) => ({
+    stable_id: item.dataset.previewItem,
+    title: item.querySelector('[name="title"]').value,
+    description: item.querySelector('[name="description"]').value,
+    acceptance_criteria: item.querySelector('[name="acceptance_criteria"]').value.split("\n").map((value) => value.trim()).filter(Boolean),
+  }));
+  if (reviewedItems.some((item) => !item.acceptance_criteria.length)) throw new Error('Each item needs an acceptance criterion.');
+  const button = form.querySelector('[data-import-analyzed]');
+  button.disabled = true;
+  try {
+    const result = await guardedCommand('/api/backlog/import', {
+      project_name: panel.dataset.projectName,
+      project_description: 'User-reviewed deterministic specification import',
+      backlog_path: panel.dataset.backlogPath,
+      reviewed_items: reviewedItems,
+    }, `Confirm this edited plan and import it into ${panel.dataset.projectName}; no AI analysis or product acceptance is implied`);
+    if (!result) return;
+    form.querySelector('[data-preview-status]').textContent = `Plan confirmed. Created ${result.created.length}; skipped ${result.skipped.length} existing items. Existing items were not updated; product acceptance is still separate.`;
+    state.projectsLoaded = false;
+    await refresh();
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function handleFounderDecision(decision) {
@@ -409,7 +445,7 @@ $("work-filters").addEventListener("submit", (event) => { event.preventDefault()
 $("backlog-import-form").addEventListener("submit", (event) => { handleBacklogImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("archive-all-work-items").addEventListener("click", () => { guardedCommand("/api/work-items/archive-all", { reason: "Bulk archive from Local Control Center" }, "Archive all active work items; active runs and leases will block this operation").then((result) => { if (result) { $("notice").hidden = false; $("notice").textContent = `Archived ${result.count} work item(s)`; refresh(); } }).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("spec-upload-form").addEventListener("submit", (event) => { handleSpecificationUpload(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
-$("spec-analysis").addEventListener("click", (event) => { if (!event.target.closest("[data-import-analyzed]")) return; const panel = $("spec-analysis"); const command = { project_name: panel.dataset.projectName, project_description: "Imported from analyzed technical specification", backlog_path: panel.dataset.backlogPath }; guardedCommand("/api/backlog/import", command, `Import analyzed specification as ${command.project_name}`).then((result) => { if (result) refresh(); }).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("spec-analysis").addEventListener("submit", (event) => { handleSpecificationImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("clear-filters").addEventListener("click", () => { $("work-filters").reset(); loadWork(); });
 $("work-list").addEventListener("click", (event) => { const row = event.target.closest("[data-task-id]"); if (row) selectWorkItem(row.dataset.taskId).catch((error) => { $("work-detail").innerHTML = empty(error.message); }); });
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });

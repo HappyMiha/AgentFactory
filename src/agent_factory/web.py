@@ -3,6 +3,7 @@
 import sqlite3
 import os
 import json
+import hashlib
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from collections.abc import AsyncIterator
@@ -37,6 +38,7 @@ from .application import (
 )
 from .storage import MIGRATIONS, SQLiteStorage
 from .control_plane import HumanControlPlaneService
+from .backlog import proposal_from_document
 from .backlog_analyzer import analyze_specification
 from .orchestration.temporal.client import (
     connect_temporal,
@@ -147,10 +149,18 @@ class FounderDecisionCommand(ConfirmedCommand):
     actor: Literal["Founder"] = "Founder"
 
 
+class ReviewedBacklogItem(BaseModel):
+    stable_id: str
+    title: str
+    description: str
+    acceptance_criteria: list[str]
+
+
 class BacklogImportCommand(ConfirmedCommand):
     project_name: str
     project_description: str = ""
     backlog_path: str
+    reviewed_items: list[ReviewedBacklogItem] | None = None
 
 
 class ArchiveWorkItemCommand(ConfirmedCommand):
@@ -173,6 +183,10 @@ class UploadedBacklogResponse(BaseModel):
     agent_role: str
     analysis_status: Literal["completed", "needs_review"]
     source_type: str
+    analysis_method: Literal["deterministic_import"] = "deterministic_import"
+    original_path: str
+    original_sha256: str
+    original_text: str
     counts: dict[str, int]
     items: list[dict[str, Any]]
 
@@ -461,10 +475,36 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         confirmation: Confirmation = None,
     ) -> BacklogFileImportResult:
         _require_confirmation(command, confirmation)
+        backlog_path = command.backlog_path
+        if command.reviewed_items is not None:
+            if not command.project_name.strip():
+                raise ValueError("Backlog import requires a project name")
+            upload_dir = (workspace / ".agent-factory" / "uploads").resolve()
+            manifest = (workspace / backlog_path).resolve()
+            if Path(backlog_path).is_absolute() or manifest.parent != upload_dir or not manifest.is_file():
+                raise ValueError("Edited preview must reference an uploaded proposal")
+            document = json.loads(manifest.read_text(encoding="utf-8"))
+            source = document.get("source", {})
+            if source.get("analysis_method") != "deterministic_import":
+                raise ValueError("Edited preview must reference a deterministic upload")
+            edits = {item.stable_id: item for item in command.reviewed_items}
+            expected = {item["stable_id"] for item in document["items"]}
+            if len(edits) != len(command.reviewed_items) or set(edits) != expected:
+                raise ValueError("Edited preview must retain each proposed item exactly once")
+            for item in document["items"]:
+                item.update(edits[item["stable_id"]].model_dump())
+            source["review_status"] = "user_confirmed"
+            proposal = proposal_from_document(
+                document, source_path=document["source_path"],
+                source_sha256=document["source_sha256"], source_name=document["source_name"],
+            )
+            reviewed = json.dumps(proposal.to_dict(), ensure_ascii=False, indent=2)
+            reviewed_path = upload_dir / (hashlib.sha256(reviewed.encode("utf-8")).hexdigest() + ".reviewed.json")
+            # A separate content-addressed file preserves the initial proposal.
+            reviewed_path.write_text(reviewed, encoding="utf-8")
+            backlog_path = reviewed_path.relative_to(workspace).as_posix()
         return service.import_backlog_file(
-            command.project_name,
-            command.backlog_path,
-            command.project_description,
+            command.project_name, backlog_path, command.project_description,
         )
 
     @app.post("/api/backlog/analyze-upload", response_model=UploadedBacklogResponse)
@@ -479,12 +519,27 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
         if not raw or len(raw) > 10 * 1024 * 1024:
             raise ValueError("Uploaded specification must be between 1 byte and 10 MB")
         source_name = Path(upload.filename or "uploaded-specification.txt").name
-        proposal = analyze_specification(raw, source_name)
         upload_dir = (workspace / ".agent-factory" / "uploads").resolve()
         upload_dir.mkdir(parents=True, exist_ok=True)
-        manifest_name = f"{proposal.source_sha256}.json"
+        digest = hashlib.sha256(raw).hexdigest()
+        original = upload_dir / f"{digest}.original"
+        # Preserve bytes even if extraction or proposal validation fails.
+        original.write_bytes(raw)
+        proposal = analyze_specification(raw, source_name)
+        document = proposal.to_dict()
+        original_path = original.relative_to(workspace).as_posix()
+        document["source"].update({
+            "original_path": original_path, "original_sha256": digest,
+            "analysis_method": "deterministic_import", "review_status": "needs_review",
+        })
+        for item in document["items"]:
+            item["source_references"] = list(dict.fromkeys([
+                *item["source_references"], f"{original_path}#sha256={digest}",
+            ]))
+        manifest_text = json.dumps(document, ensure_ascii=False, indent=2)
+        manifest_name = hashlib.sha256(manifest_text.encode("utf-8")).hexdigest() + ".json"
         manifest = upload_dir / manifest_name
-        manifest.write_text(json.dumps(proposal.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        manifest.write_text(manifest_text, encoding="utf-8")
         counts = {
             kind: sum(item.level == kind for item in proposal.items)
             for kind in ("epic", "feature", "story", "task")
@@ -497,7 +552,10 @@ def create_app(workspace: Path, database: Path) -> FastAPI:
             analysis_status="needs_review",
             source_type=Path(source_name).suffix.lower().lstrip(".") or "binary",
             counts=counts,
-            items=[asdict(item) for item in proposal.items],
+            original_path=original_path,
+            original_sha256=digest,
+            original_text=document["source"]["original_text"],
+            items=document["items"],
         )
 
     @app.get("/api/runs", response_model=Page[RunView])
