@@ -2210,25 +2210,12 @@
         "cloud:AF-CLD-004",
         "cloud:AF-CLD-021"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
-      "scopes": [
-        "cloud:docs/connection-guidance.md",
-        "cloud:docs/upstream-capability-map.json",
-        "cloud:docs/upstream-capability-map.md",
-        "cloud:src/agentfactory_cloud/brief_web.py",
-        "cloud:src/agentfactory_cloud/connection_guidance.py",
-        "cloud:src/agentfactory_cloud/connection_guidance_web.py",
-        "cloud:src/agentfactory_cloud/static/connections.html",
-        "cloud:src/agentfactory_cloud/static/connections.js",
-        "cloud:src/agentfactory_cloud/static/game-team.html",
-        "cloud:tests/test_connection_guidance.py",
-        "cloud:tests/test_connection_guidance_browser.py",
-        "cloud:tests/test_connection_guidance_web.py"
-      ],
-      "updated_at": "2026-09-06T11:05:32+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T11:30:01+00:00",
+      "note": "Guidance component PR18 merged. Whole task awaits Core evaluator and actual independent model canaries. Branch preserved.",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/18",
       "resources": [
         "shared:provider-connection",
@@ -6115,6 +6102,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "5c252deb-28a8-4abb-9208-d85b2af5d804",
+      "at": "2026-09-06T11:30:01+00:00",
+      "action": "block",
+      "task": "cloud:AF-CLD-027",
+      "worker": "HappyHahahaker",
+      "note": "Guidance component PR18 merged. Whole task awaits Core evaluator and actual independent model canaries. Branch preserved.",
+      "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
+      "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
     }
   ],
   "migration": {
