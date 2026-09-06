@@ -81,8 +81,12 @@ class HardwareBrowserTests(unittest.TestCase):
             self.calls.append(workspace)
             return self.collect()
 
-        self.app = create_app(self.root, self.root / 'state.db')
-        install_routes(self.app, self.root, collector=collect)
+        # Bind before create_app so both the Core007 base and Core010's default
+        # composition exercise this fixture through the same real installer.
+        with patch('agent_factory.hardware_web.collect_inventory', collect):
+            self.app = create_app(self.root, self.root / 'state.db')
+            if not getattr(self.app.state, 'hardware_routes_installed', False):
+                install_routes(self.app, self.root)
         self.server = uvicorn.Server(uvicorn.Config(
             self.app, host='127.0.0.1', port=0, log_level='error', access_log=False))
         self.thread = threading.Thread(target=self.server.run, daemon=True)

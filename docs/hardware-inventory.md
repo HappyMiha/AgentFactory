@@ -47,7 +47,9 @@ from agent_factory.web import create_app
 from agent_factory.hardware_web import install_routes
 
 app = create_app(workspace, database)
-install_routes(app, workspace)
+# Compatibility for a base host that does not yet include the PC page:
+if not getattr(app.state, "hardware_routes_installed", False):
+    install_routes(app, workspace)
 ```
 
 Install once, before application startup. The installer requires Core's existing
@@ -56,6 +58,11 @@ local access object and HTTP boundary; a bare FastAPI app is rejected. It adds
 workspace comes from trusted application composition, never from a request.
 Extra body fields or query parameters are rejected. Static assets use Core's
 existing `/assets` mount and are included by the package's static-file rule.
+Once Core010 supplies default composition, ordinary callers use `create_app`
+alone. Calling the installer twice remains an error. Component tests bind their
+collector before creating the app, so the default installer uses the same fixture;
+Core010 separately tests that its default app includes the page and scan route
+without a manual installer call.
 
 The scan inherits Core authentication, loopback host/origin checks, and the
 existing `write` scope requirement for POST requests. An unauthenticated page

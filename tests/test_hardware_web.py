@@ -30,12 +30,21 @@ class HardwareWebTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
         self.collector = Mock(return_value={"schema_version": 1, "gpu_status": "unknown"})
-        self.app = create_app(self.root, self.root / "state.db")
-        install_routes(self.app, self.root, collector=self.collector)
+        self.app = self.make_app(self.root / "state.db", self.collector)
         self.client = TestClient(self.app, base_url="http://127.0.0.1")
         self.client.__enter__()
         self.addCleanup(self.client.__exit__, None, None, None)
         self.headers = {"Authorization": "Bearer synthetic-hardware-token"}
+
+    def make_app(self, database, collector):
+        # Bind before composition so Core010's default installer captures the
+        # fixture too. The fallback supports the pre-composition Core007 base.
+        # Core010 separately asserts its default app installs these routes.
+        with patch("agent_factory.hardware_web.collect_inventory", collector):
+            app = create_app(self.root, database)
+            if not getattr(app.state, "hardware_routes_installed", False):
+                install_routes(app, self.root)
+        return app
 
     def post(self, **kwargs):
         return self.client.post("/api/hardware/scan", json={}, headers=self.headers, **kwargs)
@@ -95,8 +104,7 @@ class HardwareWebTests(unittest.TestCase):
             return {"schema_version": 1}
         self.collector.side_effect = slow
         other_collector = Mock()
-        other = create_app(self.root, self.root / "other.db")
-        install_routes(other, self.root, collector=other_collector)
+        other = self.make_app(self.root / "other.db", other_collector)
         with TestClient(other, base_url="http://127.0.0.1") as client, ThreadPoolExecutor(max_workers=1) as pool:
             pending = pool.submit(self.post)
             try:
