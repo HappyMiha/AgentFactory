@@ -359,11 +359,23 @@
         "core:AF-GC-008",
         "core:AF-GC-011"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
+      "scopes": [
+        "core:docs/configuration-advice.md",
+        "core:examples/configuration-advice-catalog.json",
+        "core:src/agent_factory/configuration_advice.py",
+        "core:src/agent_factory/configuration_advice_web.py",
+        "core:src/agent_factory/static/configuration-advice.js",
+        "core:src/agent_factory/static/game-plan.html",
+        "core:src/agent_factory/static/game-plan.js",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_configuration_advice.py",
+        "core:tests/test_configuration_advice_browser.py",
+        "core:tests/test_configuration_advice_web.py"
+      ],
+      "updated_at": "2026-09-06T07:22:35+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -382,7 +394,8 @@
       "source_dependencies": [
         "core:AF-GC-008",
         "core:AF-GC-011"
-      ]
+      ],
+      "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
     },
     "core:AF-GC-013": {
       "dependencies": [
@@ -5636,6 +5649,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
       "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb"
+    },
+    {
+      "operation_id": "2e22c947-691c-4a2d-9848-160b1b0f7e99",
+      "at": "2026-09-06T07:22:35+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-012",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
+      "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
     }
   ],
   "migration": {
