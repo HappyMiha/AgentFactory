@@ -7,6 +7,7 @@ import tempfile
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
 from pathlib import Path
 from urllib.error import URLError
 from urllib.request import urlopen
@@ -248,6 +249,23 @@ class WebHostTests(unittest.TestCase):
                     responses = list(pool.map(client.get, paths))
                 self.assertTrue(all(response.status_code == 200 for response in responses))
 
+    def test_default_app_composes_hardware_without_manual_installer_or_auto_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            report = {"schema_version": 1, "source": "local_read_only", "gpu_status": "unknown"}
+            with patch("agent_factory.hardware_web.collect_inventory", return_value=report) as collect:
+                app = create_app(root, root / "state.db")
+            self.assertTrue(app.state.hardware_routes_installed)
+            with TestClient(app, base_url="http://localhost") as client:
+                self.assertIn('href="/hardware"', client.get("/").text)
+                self.assertEqual(client.get("/hardware").status_code, 200)
+                collect.assert_not_called()
+                result = client.post("/api/hardware/scan", json={})
+                self.assertEqual(result.status_code, 200, result.text)
+                self.assertEqual(result.json(), report)
+                collect.assert_called_once_with(root.resolve())
+                self.assertFalse((root / "state.db").exists())
+
     def test_openapi_exposes_only_reviewed_guarded_mutations(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
@@ -265,6 +283,8 @@ class WebHostTests(unittest.TestCase):
                 self.assertEqual(
                     mutation_routes,
                     {
+                        "/api/credential-connections",
+                        "/api/hardware/scan",
                         "/api/games/starts",
                         "/api/games/starts/{ident}/save",
                         "/api/games/starts/{ident}/submit",

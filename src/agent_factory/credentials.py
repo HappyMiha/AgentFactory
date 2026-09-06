@@ -168,8 +168,9 @@ class CredentialBroker:
             self._denied(row, actor, "credential scope mismatch")
             raise PermissionError("Credential scope does not authorize this use")
         serialized_arguments = self._json(arguments)
-        if secret in prompt or secret in serialized_arguments or handle in prompt \
-                or handle in serialized_arguments:
+        if (self._contains_material(prompt, (secret, handle))
+                or self._contains_material(arguments, (secret, handle))
+                or self._contains_material(serialized_arguments, (secret, handle))):
             self._denied(row, actor, "credential injection firewall blocked secret material")
             raise PermissionError("Credential material cannot enter prompts or tool arguments")
         request = {
@@ -208,6 +209,17 @@ class CredentialBroker:
         return result
 
     @classmethod
+    def _contains_material(cls, value: Any, secrets: tuple[str, ...]) -> bool:
+        if isinstance(value, str):
+            return any(secret and secret in value for secret in secrets)
+        if isinstance(value, dict):
+            return any(cls._contains_material(str(key), secrets)
+                       or cls._contains_material(item, secrets) for key, item in value.items())
+        if isinstance(value, (list, tuple)):
+            return any(cls._contains_material(item, secrets) for item in value)
+        return False
+
+    @classmethod
     def _sanitize(cls, value: Any, secrets: tuple[str, ...]) -> Any:
         if isinstance(value, str):
             result = value
@@ -215,8 +227,12 @@ class CredentialBroker:
                 if secret:
                     result = result.replace(secret, REDACTED)
             return result
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if cls._contains_material(cls._json(value), secrets):
+                return REDACTED
+            return value
         if isinstance(value, dict):
-            return {str(key): cls._sanitize(item, secrets) for key, item in value.items()}
+            return {cls._sanitize(str(key), secrets): cls._sanitize(item, secrets) for key, item in value.items()}
         if isinstance(value, (list, tuple)):
             return [cls._sanitize(item, secrets) for item in value]
         return value

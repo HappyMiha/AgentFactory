@@ -24,6 +24,8 @@ from .config import config_path_for_workspace
 from .local_games import LocalGames, GameConflict, local_games_lock
 from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
+from .credential_web import install_routes as install_credential_routes
+from .hardware_web import install_routes as install_hardware_routes
 
 from .application import (
     AgentFactoryService,
@@ -256,7 +258,7 @@ def _require_confirmation(command: ConfirmedCommand, header: str | None) -> None
         raise ValueError("Explicit confirmation is required")
 
 
-def create_app(workspace: Path, database: Path, *, environment_probes=None) -> FastAPI:
+def create_app(workspace: Path, database: Path, *, environment_probes=None, credential_store=None) -> FastAPI:
     workspace = workspace.expanduser().resolve()
     database = database.expanduser().resolve()
     temporal_settings = TemporalSettings.from_env()
@@ -328,6 +330,8 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
                             headers={"Cache-Control": "no-store"})
 
     app.add_middleware(LocalHTTPBoundary, access=access)
+    install_credential_routes(app, workspace, store=credential_store)
+    install_hardware_routes(app, workspace)
 
     @app.get("/auth/session", include_in_schema=False)
     async def session_status(request: Request):
