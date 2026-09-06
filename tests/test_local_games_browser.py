@@ -194,14 +194,24 @@ class LocalGamesBrowserTests(unittest.TestCase):
             try:
                 self.page.goto(self.url+'/operations#work')
                 self.assertTrue(entered.wait(2), 'The actual HTTP route must reach the slow probe')
+                with self.page.expect_request('**/api/integrations'):
+                    self.page.evaluate("""() => {
+                        window.integrationRead = fetch('/api/integrations').then(response => {
+                            window.integrationStatus = response.status;
+                            return response.json();
+                        });
+                    }""")
                 self.page.wait_for_function("document.querySelector('#work-page').textContent === '1–50 of 205'", timeout=2500)
                 self.page.locator('#work-next').click()
                 self.page.wait_for_function("document.querySelector('#work-page').textContent === '51–100 of 205'", timeout=2500)
-                self.assertEqual(len(calls), 1, 'Dashboard/monitor/providers must share one in-flight probe')
+                self.assertEqual(len(calls), 1, 'Dashboard/monitor/providers/integrations must share one in-flight probe')
             finally:
                 release.set()
             self.page.wait_for_function("document.querySelector('#connection-dot').className === 'online'")
             self.assertEqual(self.page.locator('#work-page').inner_text(), '51–100 of 205')
+            self.page.wait_for_function('window.integrationStatus === 200')
+            self.assertTrue(self.page.evaluate('async () => Array.isArray(await window.integrationRead)'))
+            self.assertEqual(len(calls), 1, 'The integrations response must reuse the shared health result')
 
     def test_readiness_expiry_and_failed_refresh_never_leave_positive_status(self):
         self.submit()

@@ -1098,7 +1098,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
 
     @app.get("/api/integrations", response_model=list[IntegrationStatus])
     async def integrations(service: Service) -> list[IntegrationStatus]:
-        provider_states = service.providers()
+        provider_states = await provider_snapshot()
         unhealthy = sum(item.status not in {"ready", "disabled"} for item in provider_states)
         return [
             IntegrationStatus(
