@@ -253,12 +253,19 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T13:16:51+00:00",
-      "note": "PR31 component merged; preserve branch and take agreed existing telemetry reservation prerequisite as fresh claim.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-45f21110",
+      "scopes": [
+        "core:docs/execution-telemetry.md",
+        "core:src/agent_factory/execution_telemetry.py",
+        "core:src/agent_factory/storage.py",
+        "core:tests/test_execution_reservations.py",
+        "core:tests/test_execution_telemetry.py",
+        "core:tests/test_storage_migrations.py"
+      ],
+      "updated_at": "2026-09-06T13:16:58+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +287,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
+      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6297,6 +6304,16 @@
       "note": "PR31 component merged; preserve branch and take agreed existing telemetry reservation prerequisite as fresh claim.",
       "branch": null,
       "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
+    },
+    {
+      "operation_id": "ab7046b9-3a1f-4d82-85a7-1b4f0de628cb",
+      "at": "2026-09-06T13:16:58+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-45f21110",
+      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
     }
   ],
   "migration": {
