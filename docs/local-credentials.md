@@ -97,7 +97,8 @@ Chromium tests exercise the production HTTP composition with a synthetic store;
 separate native tests qualify actual persistence and broker use across processes.
 No real provider key, paid request or game acceptance is used as evidence.
 
-Core010 owns `web.py` and home settings composition. Core011 owns independent
-hardware inventory modules; its reviewed `install_routes(app, workspace)` will
-be composed here after upstream integration. Hardware default-app acceptance is
-pending until that composition is reviewed; no unfinished hardware link is shown.
+The default application composes both the credential page and Core011's reviewed
+hardware inventory installer. My games settings links to **Check this PC** and
+**AI access**. Opening either page grants no execution authority and starts no
+hardware scan; scanning requires its explicit action. Default-composition tests
+verify the real page/API registration without manually installing the module.
