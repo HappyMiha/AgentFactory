@@ -1630,7 +1630,7 @@
         "cloud:tests/test_game_team_browser.py",
         "cloud:tests/test_game_team_web.py"
       ],
-      "updated_at": "2026-09-06T09:22:49+00:00",
+      "updated_at": "2026-09-06T09:26:46+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/17",
       "resources": [
@@ -1660,7 +1660,7 @@
         }
       ],
       "claim_id": "c1dab18b-4f70-4f5a-ae9b-a53cf33a7f95",
-      "review_head": "bb46463f3904941884d2023d7df86471e9b96e01"
+      "review_head": "3c276cbed172f58731d5a3dbdc6989c4ee1bb0a6"
     },
     "cloud:AF-CLD-010": {
       "dependencies": [
@@ -5907,6 +5907,16 @@
       "operation_id": "15ae07ef-356b-4367-a808-3f9978b775f0",
       "at": "2026-09-06T09:22:49+00:00",
       "action": "rescope",
+      "task": "cloud:AF-CLD-009",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-009-4ad10454",
+      "claim_id": "c1dab18b-4f70-4f5a-ae9b-a53cf33a7f95"
+    },
+    {
+      "operation_id": "6b2b316b-6b92-4e9b-adb3-4eeb38a0a8ee",
+      "at": "2026-09-06T09:26:46+00:00",
+      "action": "review",
       "task": "cloud:AF-CLD-009",
       "worker": "HappyHahahaker",
       "note": "",
