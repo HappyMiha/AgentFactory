@@ -253,12 +253,18 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T09:47:33+00:00",
-      "note": "Preserve accepted component branches; resume agreed current connection scope component with fresh claim.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-b387c7d0",
+      "scopes": [
+        "core:docs/provider-qualification.md",
+        "core:src/agent_factory/credential_connections.py",
+        "core:src/agent_factory/provider_connection_scope.py",
+        "core:tests/test_credential_connections.py",
+        "core:tests/test_provider_connection_scope.py"
+      ],
+      "updated_at": "2026-09-06T09:47:46+00:00",
+      "note": "Agreed trusted local connection scope and revocation component; no live provider qualification or central web changes.",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +286,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
+      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5946,6 +5952,16 @@
       "note": "Preserve accepted component branches; resume agreed current connection scope component with fresh claim.",
       "branch": null,
       "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
+    },
+    {
+      "operation_id": "9cb17b4c-2a4a-4d7f-bc3f-41e43a66c1a9",
+      "at": "2026-09-06T09:47:46+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Agreed trusted local connection scope and revocation component; no live provider qualification or central web changes.",
+      "branch": "agent/HappySnowman/AF-GC-009-b387c7d0",
+      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
     }
   ],
   "migration": {
