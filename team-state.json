@@ -3625,10 +3625,10 @@
         "Retain uncertain capacity until trusted stop reconciliation; lease expiry is not process termination.",
         "Preserve local API compatibility and prove concurrency, rollback, stale denial and replay behavior."
       ],
-      "updated_at": "2026-09-06T05:49:25+00:00",
+      "updated_at": "2026-09-06T06:32:25+00:00",
       "note": "",
       "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112",
-      "review_head": "a39b587302a8584625ef8d906d134af2e5b9ddb2"
+      "review_head": "4531e25dee28d5829af221641b7da635907d5b4d"
     }
   },
   "events": [
@@ -5381,6 +5381,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
       "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
+    },
+    {
+      "operation_id": "87470549-bbae-4a66-a886-906b8d11d5e1",
+      "at": "2026-09-06T06:32:25+00:00",
+      "action": "review",
+      "task": "core:AF-GC-043",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
+      "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
     }
   ],
   "migration": {
