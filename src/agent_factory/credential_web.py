@@ -6,11 +6,14 @@ from pathlib import Path
 from fastapi import Request
 from fastapi.responses import FileResponse, JSONResponse
 from .credential_connections import CredentialConnections
+from .connector_eligibility import CREDENTIAL_ROUTES, request_setup_decision
+from .eligibility_web import install_routes as install_eligibility_routes
 
 
 def install_routes(app, workspace: Path, *, store=None):
     service = CredentialConnections(workspace / '.agent-factory' / 'credential-connections.db', store=store)
     static = Path(__file__).parent / 'static'
+    install_eligibility_routes(app)
 
     def owner(request, mutation=False):
         p = request.state.local_principal
@@ -34,7 +37,9 @@ def install_routes(app, workspace: Path, *, store=None):
         try:
             scope = owner(request)
             values = await asyncio.to_thread(service.list, **scope)
-            return response({'connections':values, 'supported':os.name == 'nt' or store is not None})
+            decisions = {provider: request_setup_decision(request, provider, workspace=workspace, **scope) for provider in CREDENTIAL_ROUTES}
+            return response({'connections':values, 'supported':os.name == 'nt' or store is not None,
+                             'setup': decisions})
         except PermissionError:
             return response({'error':'connection_access_denied'},403)
         except Exception:
@@ -46,6 +51,10 @@ def install_routes(app, workspace: Path, *, store=None):
             scope = owner(request, True)
         except PermissionError:
             return response({'error':'connection_access_denied'},403)
+        # Check trusted eligibility before reading a body that can contain a key.
+        decisions = {provider: request_setup_decision(request, provider, workspace=workspace, **scope) for provider in CREDENTIAL_ROUTES}
+        if not any(value['allowed'] for value in decisions.values()):
+            return response({'error': 'connector_eligibility_required', 'guide': '/access-guide'}, 403)
         body = bytearray()
         try:
             async for chunk in request.stream():
@@ -63,6 +72,9 @@ def install_routes(app, workspace: Path, *, store=None):
         finally:
             body[:] = b'\x00' * len(body)
         try:
+            # Re-resolve the specific route after bounded input; revocation is not cached.
+            if not request_setup_decision(request, data['provider'], workspace=workspace, **scope)['allowed']:
+                return response({'error': 'connector_eligibility_required', 'guide': '/access-guide'}, 403)
             result = await asyncio.to_thread(service.connect, **scope, provider=data['provider'], secret=data['secret'])
             return response(result,201)
         except Exception:
