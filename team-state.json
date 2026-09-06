@@ -444,8 +444,8 @@
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T14:19:38+00:00",
-      "note": "PR36 persisted publication evidence and recovery pushed; selected tests passed. Independent review pending; full installer incomplete.",
+      "updated_at": "2026-09-06T14:45:29+00:00",
+      "note": "PR36 merged after independent reviews. Reviewing shared policy prerequisite before admitted installer composition; full014 incomplete.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/36",
       "resources": [
         "core:environment-bootstrap",
@@ -6479,6 +6479,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
       "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+    },
+    {
+      "operation_id": "8f983b00-dffa-4c78-b6ec-d770031e9c8d",
+      "at": "2026-09-06T14:45:29+00:00",
+      "action": "heartbeat",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "PR36 merged after independent reviews. Reviewing shared policy prerequisite before admitted installer composition; full014 incomplete.",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
