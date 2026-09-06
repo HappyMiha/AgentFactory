@@ -253,19 +253,12 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
-      "scopes": [
-        "core:docs/worker-admission.md",
-        "core:docs/worker-runtime.md",
-        "core:src/agent_factory/worker_admission.py",
-        "core:src/agent_factory/worker_runtime.py",
-        "core:tests/test_runtime_effects.py",
-        "core:tests/test_worker_admission_runtime.py"
-      ],
-      "updated_at": "2026-09-06T15:38:47+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T15:57:58+00:00",
+      "note": "Runtime effect PR39 merged; whole009 incomplete. Preserve branch pending agreed next component.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/39",
       "resources": [
         "shared:provider-connection",
@@ -6579,6 +6572,16 @@
       "task": "core:AF-GC-009",
       "worker": "HappySnowman",
       "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
+      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
+    },
+    {
+      "operation_id": "c318e6b3-23ee-46af-9bd8-695cb67c8a89",
+      "at": "2026-09-06T15:57:58+00:00",
+      "action": "block",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Runtime effect PR39 merged; whole009 incomplete. Preserve branch pending agreed next component.",
       "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
       "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
     }
