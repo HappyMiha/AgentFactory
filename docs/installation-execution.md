@@ -74,3 +74,25 @@ The future executor must separately bind this exact intent to current Core
 execution permission and durable steps. It must not treat a journal reservation,
 an old consent receipt or a successful archive check as permission to run tools.
 Crash recovery, publication, download and the final VM acceptance remain open.
+
+## Read-only content checks
+
+`manifest_for_stage` hashes the files in verified private archive staging and
+records their relative paths, lengths and SHA-256 values, plus the package and
+archive identity. The resulting immutable, bounded, canonical manifest can be
+stored by a future trusted publication step. Changed staging inventory is rejected.
+
+`observe_manifest` compares a directory with that expected manifest and reports
+`matched`, `conflict`, `absent` or `indeterminate`. Missing or changed files and
+unexpected files/directories cannot match. Size/entry limits, unreadable content,
+changes detected during a read, links, reparse paths and special files prevent
+a successful result. The observer reads files only; it never follows links,
+deletes anything or performs a repair. A partial observation is not success.
+
+The expected manifest must come from verified staging or a trusted journal record,
+not from a manifest inside the untrusted directory being checked. A valid digest
+alone does not authenticate its origin. The host must keep its workspace private
+from untrusted concurrent writers; this is not same-user process isolation.
+Even a `matched` directory returns `execution_eligible: false` and still needs
+an owned publication receipt and actual executable postconditions before setup
+can be considered successful. Automatic publication and repair remain future work.
