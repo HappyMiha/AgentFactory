@@ -423,10 +423,12 @@
       "scopes": [
         "core:docs/installation-execution.md",
         "core:src/agent_factory/installation_archive.py",
-        "core:tests/test_installation_archive.py"
+        "core:src/agent_factory/installation_intent.py",
+        "core:tests/test_installation_archive.py",
+        "core:tests/test_installation_intent.py"
       ],
-      "updated_at": "2026-09-06T10:57:53+00:00",
-      "note": "Archive staging component merged and official layouts checked; durable installer, recovery/UI and clean VM acceptance remain.",
+      "updated_at": "2026-09-06T11:16:43+00:00",
+      "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/27",
       "resources": [
         "core:environment-bootstrap",
@@ -6093,6 +6095,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
       "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
+    },
+    {
+      "operation_id": "ddaebba1-e54d-4d3c-91b0-80b06596ac4b",
+      "at": "2026-09-06T11:16:43+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
