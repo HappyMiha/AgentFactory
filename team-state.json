@@ -2062,11 +2062,21 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
+      "scopes": [
+        "cloud:contracts/v1/protected-objects.json",
+        "cloud:docs/protected-objects.md",
+        "cloud:requirements-objects.txt",
+        "cloud:scripts/qualify_objects.py",
+        "cloud:src/agentfactory_cloud/object_migrations.py",
+        "cloud:src/agentfactory_cloud/protected_objects.py",
+        "cloud:src/agentfactory_cloud/upload_inspection.py",
+        "cloud:tests/test_protected_objects.py",
+        "cloud:tests/test_upload_inspection.py"
+      ],
+      "updated_at": "2026-09-06T03:06:06+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -2081,7 +2091,8 @@
       "source_dependencies": [
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
-      ]
+      ],
+      "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
     },
     "cloud:AF-CLD-024": {
       "dependencies": [
@@ -4991,6 +5002,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
       "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22"
+    },
+    {
+      "operation_id": "b7a97610-376c-45d8-aadd-c687e1b61470",
+      "at": "2026-09-06T03:06:06+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-023",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
+      "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
     }
   ],
   "migration": {
