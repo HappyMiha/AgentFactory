@@ -2208,7 +2208,7 @@
         "cloud:AF-CLD-004",
         "cloud:AF-CLD-021"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
       "scopes": [
@@ -2225,9 +2225,9 @@
         "cloud:tests/test_connection_guidance_browser.py",
         "cloud:tests/test_connection_guidance_web.py"
       ],
-      "updated_at": "2026-09-06T10:58:30+00:00",
+      "updated_at": "2026-09-06T11:05:32+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/18",
       "resources": [
         "shared:provider-connection",
         "cloud:creator-ui"
@@ -2241,7 +2241,8 @@
         "cloud:AF-CLD-004",
         "cloud:AF-CLD-021"
       ],
-      "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
+      "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc",
+      "review_head": "672bdccbb7f137abfb7e0bdb08333662325664c4"
     },
     "cloud:AF-CLD-028": {
       "dependencies": [
@@ -6077,6 +6078,16 @@
       "operation_id": "d78a24da-0695-4505-b854-b92ec6f366a5",
       "at": "2026-09-06T10:58:30+00:00",
       "action": "claim",
+      "task": "cloud:AF-CLD-027",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
+      "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
+    },
+    {
+      "operation_id": "060b0c84-cfa6-4217-af08-0970ea7c4b75",
+      "at": "2026-09-06T11:05:32+00:00",
+      "action": "review",
       "task": "cloud:AF-CLD-027",
       "worker": "HappyHahahaker",
       "note": "",
