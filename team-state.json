@@ -3634,10 +3634,13 @@
     },
     "core:AF-DOC-001": {
       "title": "Document Temporal commercial suitability and Unreal planning links",
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-DOC-001-51a6f25d",
+      "scopes": [
+        "core:README.md",
+        "core:docs/architecture/temporal-commercial-decision.md"
+      ],
       "pr": null,
       "dependencies": [],
       "source_dependencies": [],
@@ -3659,8 +3662,9 @@
         "Preserve existing implementation dependencies, task IDs and peer ownership.",
         "Documentation only; no Temporal replacement or Unreal execution."
       ],
-      "updated_at": "2026-09-06T06:57:44+00:00",
-      "note": "Owner-requested two-repository documentation maintenance; implementation claims unchanged."
+      "updated_at": "2026-09-06T06:58:14+00:00",
+      "note": "",
+      "claim_id": "70907554-45d2-4130-9e93-38f98bba6c07"
     },
     "cloud:AF-DOC-001": {
       "title": "Publish Unreal and gameplay AI plan and update product description",
@@ -5501,6 +5505,16 @@
       "note": "Owner-requested two-repository documentation maintenance; implementation claims unchanged.",
       "branch": null,
       "claim_id": null
+    },
+    {
+      "operation_id": "6bc47026-526d-437f-935a-4da6ddfa8012",
+      "at": "2026-09-06T06:58:14+00:00",
+      "action": "claim",
+      "task": "core:AF-DOC-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DOC-001-51a6f25d",
+      "claim_id": "70907554-45d2-4130-9e93-38f98bba6c07"
     }
   ],
   "migration": {
