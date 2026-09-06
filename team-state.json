@@ -3588,10 +3588,19 @@
     },
     "core:AF-GC-043": {
       "title": "Atomically admit qualified workers with scoped attempts and shared capacity",
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
+      "scopes": [
+        "core:docs/game-creator-backlog.uk.md",
+        "core:docs/worker-admission.md",
+        "core:examples/game-creator-backlog.json",
+        "core:src/agent_factory/storage.py",
+        "core:src/agent_factory/worker_admission.py",
+        "core:src/agent_factory/worker_runtime.py",
+        "core:tests/test_worker_admission.py",
+        "core:tests/test_worker_admission_runtime.py"
+      ],
       "pr": null,
       "dependencies": [
         "core:AF-GC-039"
@@ -3628,8 +3637,9 @@
         "Retain uncertain capacity until trusted stop reconciliation; lease expiry is not process termination.",
         "Preserve local API compatibility and prove concurrency, rollback, stale denial and replay behavior."
       ],
-      "updated_at": "2026-09-06T04:54:47+00:00",
-      "note": "Three-worker reviewed additive prerequisite for Cloud024; no existing claims or dependencies changed."
+      "updated_at": "2026-09-06T05:21:35+00:00",
+      "note": "",
+      "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
     }
   },
   "events": [
@@ -5312,6 +5322,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
       "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
+    },
+    {
+      "operation_id": "acfe96af-fafb-4230-9546-ff11685b0956",
+      "at": "2026-09-06T05:21:35+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-043",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
+      "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
     }
   ],
   "migration": {
