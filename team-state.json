@@ -281,12 +281,27 @@
       "dependencies": [
         "core:AF-GC-039"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
+      "scopes": [
+        "core:docs/local-credentials.md",
+        "core:src/agent_factory/credential_connections.py",
+        "core:src/agent_factory/credential_web.py",
+        "core:src/agent_factory/credentials.py",
+        "core:src/agent_factory/os_credentials.py",
+        "core:src/agent_factory/static/credentials.html",
+        "core:src/agent_factory/static/credentials.js",
+        "core:src/agent_factory/static/index.html",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_credential_browser.py",
+        "core:tests/test_credential_connections.py",
+        "core:tests/test_credential_web.py",
+        "core:tests/test_credentials.py",
+        "core:tests/test_os_credentials.py"
+      ],
+      "updated_at": "2026-09-06T03:10:05+00:00",
+      "note": "Native OS credential references, broker admission, revocation and UI. Core010 owns central composition; Core011 owns inventory modules.",
       "pr": null,
       "resources": [
         "core:credentials",
@@ -304,7 +319,8 @@
       "optional": false,
       "source_dependencies": [
         "core:AF-GC-039"
-      ]
+      ],
+      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
     },
     "core:AF-GC-011": {
       "dependencies": [
@@ -5012,6 +5028,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
       "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
+    },
+    {
+      "operation_id": "818e72cd-807d-495d-9ee6-18097fd7b70d",
+      "at": "2026-09-06T03:10:05+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-010",
+      "worker": "HappyHahahaker",
+      "note": "Native OS credential references, broker admission, revocation and UI. Core010 owns central composition; Core011 owns inventory modules.",
+      "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
+      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
     }
   ],
   "migration": {
