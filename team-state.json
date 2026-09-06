@@ -1625,11 +1625,12 @@
         "cloud:src/agentfactory_cloud/static/game-team.html",
         "cloud:src/agentfactory_cloud/static/game-team.js",
         "cloud:src/agentfactory_cloud/static/scope.html",
+        "cloud:src/agentfactory_cloud/static/scope.js",
         "cloud:tests/test_game_team.py",
         "cloud:tests/test_game_team_browser.py",
         "cloud:tests/test_game_team_web.py"
       ],
-      "updated_at": "2026-09-06T09:15:47+00:00",
+      "updated_at": "2026-09-06T09:22:49+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/17",
       "resources": [
@@ -5896,6 +5897,16 @@
       "operation_id": "768a9e49-3372-4952-bd8b-3539cd9fc598",
       "at": "2026-09-06T09:15:47+00:00",
       "action": "review",
+      "task": "cloud:AF-CLD-009",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-009-4ad10454",
+      "claim_id": "c1dab18b-4f70-4f5a-ae9b-a53cf33a7f95"
+    },
+    {
+      "operation_id": "15ae07ef-356b-4367-a808-3f9978b775f0",
+      "at": "2026-09-06T09:22:49+00:00",
+      "action": "rescope",
       "task": "cloud:AF-CLD-009",
       "worker": "HappyHahahaker",
       "note": "",
