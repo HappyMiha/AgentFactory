@@ -1,7 +1,8 @@
 # Review an installation before changing the computer
 
-Status: AF-GC-013 installation review for the local Godot path. Actual installation
-is not implemented and the full multi-engine setup task is not complete.
+Reviewed AF-GC-013 scope: installation planning and consent for the initial local
+Godot Windows profile. Actual recoverable installation belongs to AF-GC-014.
+This result does not qualify an installed environment or a complete multi-engine setup.
 
 An installation proposal lists exact packages, their sources, their versions,
 their download sizes, their licence steps and the folders they would use. It
@@ -85,8 +86,8 @@ The digest binds tenant, project, host, workspace, selected packages, locked
 dependencies, sources, hashes, licensing steps, permissions, observations and
 disk budgets. `require_same_reviewed_content` only compares content. A caller
 can compute a digest, so this method is **not an approval issuer**. A future
-integration must authenticate the person, persist their decision, bind it to
-this digest and re-check current Core policy before any change. A different
+installer integration must consume the authenticated, persisted decision described
+below and re-check current Core execution policy before any change. A different
 source, permission, byte count, target or context requires a new decision.
 
 ## Local review screen and persistent decisions
@@ -129,13 +130,22 @@ claims a discovered editor is usable. Initial Windows x86-64 staging is supporte
 other platforms show a manual action. Offline preparation has no verified cache
 adapter yet, so it cannot silently approve a missing archive.
 
-## Remaining AF-GC-013 work
+## Follow-up work beyond the reviewed planning profile
 
 - Add verified installed-package/cache receipts so reuse and offline plans can be
   offered from actual host evidence rather than caller fixtures.
 - Expand the reviewed catalogue and licensing flow for supported local models
   and further engines/platforms.
-- Accept actual setup evidence before calling the complete environment ready.
+- Accept actual setup evidence in AF-GC-014 and later environment qualification
+  before calling the complete environment ready.
+
+The original AF-GC-013 criteria are covered for this initial profile: pinned
+catalogue and change scope, all five planning classifications, and persistent
+digest-bound decisions. Validation includes plan differences, source/hash changes,
+dependency conflict, no-admin/offline fixtures and the default UI/API recovery
+paths. Independent Windows and Ubuntu reviews are recorded in PRs 24 and 25.
+The unknown installed/cache state is deliberately manual; it is not a claim of
+verified reuse. Broadening that support must preserve the same review boundary.
 
 AF-GC-014 then owns actual recoverable installation through Core's operation
 journal and policy checks, bounded archive extraction, crash recovery, cleanup
