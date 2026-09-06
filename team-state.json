@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-f181725d",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T12:04:51+00:00",
-      "note": "Transport component PR29 merged; whole evaluator task incomplete. Preserve branch and free scopes pending next agreed evaluator increment.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/29",
+      "updated_at": "2026-09-06T12:22:48+00:00",
+      "note": "Preserve accepted transport PR29; coordinator agreed versioned arithmetic-only smoke evaluator continuation.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396",
-      "review_head": "4e305098154eea512ac3ac873b5aced8ae45a679"
+      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6194,6 +6193,16 @@
       "note": "PR30 content manifest awaiting independent review; executable installation and recovery acceptance remain incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "a422e863-5700-4197-bbc1-2fed2fe4c180",
+      "at": "2026-09-06T12:22:48+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Preserve accepted transport PR29; coordinator agreed versioned arithmetic-only smoke evaluator continuation.",
+      "branch": null,
+      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
     }
   ],
   "migration": {
