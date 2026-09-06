@@ -155,5 +155,6 @@ class InstallationReviewTests(unittest.TestCase):
         migrated=SQLiteStorage(path)
         try:
             self.assertEqual(tuple(migrated.db.execute('SELECT name,description FROM projects').fetchone()),('keep','original'))
-            self.assertEqual(migrated.db.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],76)
+            self.assertEqual(migrated.db.execute('SELECT MAX(version) FROM schema_migrations').fetchone()[0],
+                             max(version for version, _ in MIGRATIONS))
         finally:migrated.close()
