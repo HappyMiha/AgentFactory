@@ -253,12 +253,21 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T07:58:54+00:00",
-      "note": "Merged qualification component preserved; continue incomplete wizard in a fresh scoped attempt.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
+      "scopes": [
+        "core:docs/provider-connections.md",
+        "core:src/agent_factory/credential_web.py",
+        "core:src/agent_factory/provider_connection_catalog.py",
+        "core:src/agent_factory/static/credentials.html",
+        "core:src/agent_factory/static/credentials.js",
+        "core:tests/test_credential_browser.py",
+        "core:tests/test_credential_web.py",
+        "core:tests/test_provider_connection_catalog.py"
+      ],
+      "updated_at": "2026-09-06T07:59:32+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +289,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5737,6 +5746,16 @@
       "note": "Merged qualification component preserved; continue incomplete wizard in a fresh scoped attempt.",
       "branch": null,
       "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
+    },
+    {
+      "operation_id": "afd6fa2c-86e1-431b-ab52-3a62291fe52b",
+      "at": "2026-09-06T07:59:32+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
     }
   ],
   "migration": {
