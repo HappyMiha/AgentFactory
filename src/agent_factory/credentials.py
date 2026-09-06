@@ -167,8 +167,8 @@ class CredentialBroker:
         ) or operation not in json.loads(row["operations_json"]):
             self._denied(row, actor, "credential scope mismatch")
             raise PermissionError("Credential scope does not authorize this use")
-        if (self._sanitize(prompt, (secret, handle)) != prompt
-                or self._sanitize(arguments, (secret, handle)) != arguments):
+        if (self._contains_material(prompt, (secret, handle))
+                or self._contains_material(arguments, (secret, handle))):
             self._denied(row, actor, "credential injection firewall blocked secret material")
             raise PermissionError("Credential material cannot enter prompts or tool arguments")
         request = {
@@ -205,6 +205,17 @@ class CredentialBroker:
         if outcome == "failed":
             raise RuntimeError(result["error"])
         return result
+
+    @classmethod
+    def _contains_material(cls, value: Any, secrets: tuple[str, ...]) -> bool:
+        if isinstance(value, str):
+            return any(secret and secret in value for secret in secrets)
+        if isinstance(value, dict):
+            return any(cls._contains_material(str(key), secrets)
+                       or cls._contains_material(item, secrets) for key, item in value.items())
+        if isinstance(value, (list, tuple)):
+            return any(cls._contains_material(item, secrets) for item in value)
+        return False
 
     @classmethod
     def _sanitize(cls, value: Any, secrets: tuple[str, ...]) -> Any:

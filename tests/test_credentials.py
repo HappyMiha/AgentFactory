@@ -167,5 +167,6 @@ class CredentialEscapedMaterialTests(unittest.TestCase):
                 for args in ({'value':secret},{secret:'value'}):
                     with self.assertRaises(PermissionError):
                         broker.use(handle,tenant_id='t',mission_id='m',tool_key='k',operation='read',prompt='safe',arguments=args,executor=lambda *args: self.fail('Executor must not run'),actor='Owner')
+                self.assertEqual(broker.use(handle,tenant_id='t',mission_id='m',tool_key='k',operation='read',prompt='safe',arguments={1:('safe',2)},executor=lambda env,args: {'ok':True},actor='Owner'), {'ok':True})
                 self.assertNotIn(secret,'\n'.join(storage.db.iterdump()))
             finally:storage.close()

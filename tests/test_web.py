@@ -265,6 +265,7 @@ class WebHostTests(unittest.TestCase):
                 self.assertEqual(
                     mutation_routes,
                     {
+                        "/api/credential-connections",
                         "/api/games/starts",
                         "/api/games/starts/{ident}/save",
                         "/api/games/starts/{ident}/submit",
