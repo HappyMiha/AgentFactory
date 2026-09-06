@@ -359,18 +359,36 @@ class WorkerAdmissionService:
             self._event("worker.pool.configured", pool_id, {"pool_id": pool_id, "capacity": capacity, "version": version, "enabled": enabled, "actor": actor, "reason": reason})
             return dict(self.storage.db.execute("SELECT * FROM worker_capacity_pools WHERE pool_id=?", (pool_id,)).fetchone())
 
-    def _live_legacy_work(self, worker_id: str) -> bool:
+    def _live_legacy_work(self, worker_id: str | None = None, *, project_id: int | None = None) -> bool:
         # Any failed legacy session can still own a process: even a returned
         # external identity may be followed by a failed local persistence step.
         # Assignment finalization/release is not exact stopped-process evidence.
         # This profile must not silently convert that uncertainty into free space.
-        return self.storage.db.execute("""SELECT 1 FROM assignments a
+        if (worker_id is None) == (project_id is None):
+            raise ValueError("Legacy work lookup requires exactly one scope")
+        assignment_scope = "a.agent_id=?" if worker_id is not None else "t.project_id=?"
+        provider_scope = "p.agent_id=?" if worker_id is not None else "t.project_id=?"
+        parameters = (worker_id if worker_id is not None else project_id,)
+        active_assignment = self.storage.db.execute(f"""SELECT 1 FROM assignments a
+            JOIN work_items t ON t.id=a.task_id
             LEFT JOIN worker_admissions admitted ON admitted.assignment_id=a.id
-            WHERE a.agent_id=? AND admitted.id IS NULL AND
+            WHERE {assignment_scope} AND admitted.id IS NULL AND
                 (a.status IN ('pending','active','suspended') OR EXISTS(
                     SELECT 1 FROM worker_sessions s WHERE s.assignment_id=a.id
                     AND s.status IN ('starting','running','suspended','failed')))
-            LIMIT 1""", (worker_id,)).fetchone() is not None
+            LIMIT 1""", parameters).fetchone()
+        if active_assignment:
+            return True
+        # Legacy provider recovery labels lost work abandoned and mirrors that
+        # into cancelled assignments/sessions. It does not establish a stop.
+        # Check the source table too, including historical rows without mirrors.
+        return self.storage.db.execute(f"""SELECT 1 FROM provider_execution_attempts p
+            JOIN work_items t ON t.id=p.task_id
+            LEFT JOIN attempts a ON a.provider_attempt_id=p.id
+            LEFT JOIN worker_admissions admitted ON admitted.assignment_id=a.assignment_id
+            WHERE {provider_scope} AND admitted.id IS NULL
+              AND p.status IN ('claimed','running','failed','abandoned')
+            LIMIT 1""", parameters).fetchone() is not None
 
     def bind_worker(self, *, worker_id: str, pool_id: str, tenant_id: str,
                     expected_version: int = 0, enabled: bool = True, actor: str, reason: str) -> dict:
@@ -410,6 +428,8 @@ class WorkerAdmissionService:
             version = self._version(row, expected_version)
             if row and row["tenant_id"] != tenant_id:
                 raise AdmissionConflictError("Core project tenant ownership cannot be reassigned")
+            if (not row or enabled) and self._live_legacy_work(project_id=project_id):
+                raise AdmissionConflictError("Live or unresolved legacy project work prevents registration")
             if row:
                 self.storage.db.execute("UPDATE worker_admission_projects SET authority_digest=?,enabled=?,version=?,actor=?,reason=?,updated_at=? WHERE project_id=?", (authority_digest, int(enabled), version, actor, reason, _now().isoformat(), project_id))
             else:

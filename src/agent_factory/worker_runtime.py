@@ -18,7 +18,7 @@ from .control_plane import (
 from .policy import ControlPlanePolicy, PolicyOutcome, PolicyRequest
 from .providers import Provider
 from .storage import SQLiteStorage
-from .worker_admission import WorkerAdmissionService
+from .worker_admission import WorkerAdmissionService, admission_for_assignment
 
 
 class FallbackForbiddenError(PermissionError):
@@ -285,10 +285,21 @@ class WorkerRuntime(ABC):
             raise TypeError("Runtime mission control binding must be an object")
         return RuntimeMissionControlBinding(**value)
 
+    def _runtime_session_row(self, session_id: int):
+        """Bind the selected adapter without requiring a live lease to stop it."""
+        row = self.storage.runtime_session(session_id)
+        admitted = admission_for_assignment(self.storage, int(row["assignment_id"]))
+        if admitted is not None and (
+            row["runtime"] != self.runtime_id or admitted["runtime"] != self.runtime_id
+            or admitted["runtime_session_id"] != session_id
+        ):
+            raise PermissionError("Selected runtime does not own the admitted session")
+        return row
+
     def _session_control_binding(
         self, session_id: int
     ) -> RuntimeMissionControlBinding | None:
-        row = self.storage.runtime_session(session_id)
+        row = self._runtime_session_row(session_id)
         request = json.loads(row["request_json"])
         return self._control_binding(request.get("mission_control"))
 
@@ -331,6 +342,7 @@ class WorkerRuntime(ABC):
     ) -> MissionOperationLease | None:
         """Fence every tool turn inside a long-lived multi-tool worker session."""
 
+        self._runtime_session_row(session_id)
         self.storage.assert_runtime_session_authority(session_id, allowed_states=("running",))
         binding = mission_control or self._session_control_binding(session_id)
         return self._begin_control_operation(
@@ -553,7 +565,7 @@ class WorkerRuntime(ABC):
         return self.session(session_id)
 
     def session(self, session_id: int) -> RuntimeSession:
-        row = self.storage.runtime_session(session_id)
+        row = self._runtime_session_row(session_id)
         return RuntimeSession(
             id=int(row["id"]),
             identity=str(row["identity"]),
@@ -730,6 +742,7 @@ class WorkerRuntime(ABC):
         )
 
     def assert_fallback_allowed(self, session_id: int) -> None:
+        self._runtime_session_row(session_id)
         if not self.storage.runtime_fallback_allowed(session_id):
             raise FallbackForbiddenError(
                 "Runtime fallback is forbidden after the first mutable action"

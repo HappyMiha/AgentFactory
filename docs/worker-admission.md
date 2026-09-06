@@ -24,6 +24,7 @@ version. Stale updates fail. Project ownership cannot be reassigned. Policy can
 be disabled or updated; previous admission versions then lose authority. An
 occupied worker cannot be moved to a fresh pool to evade its existing occupancy.
 Registering a worker with live legacy work is rejected.
+Project registration also rejects existing live or unresolved legacy work.
 Failed legacy sessions are also treated as unresolved, even when an external
 identity is known. This slice has no legacy stop-reconciliation API. A fresh
 logical name is not proof that the physical machine is empty: the trusted host
@@ -50,6 +51,9 @@ another attempt. Its `active` field is separate from its capacity occupancy.
 Registered workers and projects must use this boundary; the old public claim
 and extra-attempt methods cannot bypass it. Unregistered trusted local workers
 on unregistered projects keep the legacy API.
+The separate legacy provider-gate claim path applies the same rule before it
+consumes an approval. Interrupted provider attempts stay unresolved even if their
+mirrored assignment or session was locally marked cancelled.
 
 ## Start and recovery
 
@@ -64,6 +68,10 @@ an external driver. An identical concurrent or repeated start returns that same
 session; different launch content fails. Replay does not consume another approval
 or call the driver again. Mutable execution still needs the existing scoped
 approval and, where applicable, the mission control fence.
+Every admitted-session operation also checks the selected runtime against the
+stored session and admission before contacting its driver. This identity check
+still applies to cancellation after expiry; the correct runtime can stop its
+own expired session without renewing permission to work.
 
 A `starting` session may mean that a driver accepted a request but its response
 was lost. It is an uncertain outcome, not an invitation to retry the external

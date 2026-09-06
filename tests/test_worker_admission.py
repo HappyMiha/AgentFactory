@@ -269,6 +269,98 @@ class WorkerAdmissionTests(AdmissionFixture):
         local = self.storage.claim_runnable_task(local_task, 'legacy-local', 'direct-cli')
         self.assertEqual(local.worker, 'legacy-local')
 
+    def test_legacy_provider_gate_cannot_bypass_registered_worker_or_project(self):
+        self.configure(workers=(('worker-a', 'tenant-a'), ('worker-b', 'tenant-a')))
+        occupied = self.service.admit(self.request())
+        _, unregistered_task, _ = self.task()
+        registered_project_request = self.request()
+        for worker, task_id in (
+            ('worker-b', unregistered_task),
+            ('unregistered-alias', registered_project_request.task_id),
+        ):
+            with self.subTest(worker=worker):
+                gate = self.storage.request_provider_execution(
+                    'synthetic-provider', worker, task_id, 'a' * 64, 'b' * 64)
+                self.storage.decide_provider_execution(gate, 'approved', 'Synthetic approval')
+                before_gate = dict(self.storage.db.execute(
+                    'SELECT * FROM provider_execution_gates WHERE id=?', (gate,)).fetchone())
+                tables = ('assignments', 'leases', 'attempts', 'events', 'worker_sessions',
+                          'provider_execution_attempts', 'worker_admissions',
+                          'pending_provider_gate_claims')
+                before = {table: self.storage.db.execute(
+                    f'SELECT COUNT(*) FROM {table}').fetchone()[0] for table in tables}
+                with self.assertRaises(PermissionError):
+                    self.storage.claim_provider_execution(gate, 'a' * 64, 'b' * 64)
+                self.assertEqual(dict(self.storage.db.execute(
+                    'SELECT * FROM provider_execution_gates WHERE id=?', (gate,)).fetchone()), before_gate)
+                self.assertEqual({table: self.storage.db.execute(
+                    f'SELECT COUNT(*) FROM {table}').fetchone()[0] for table in tables}, before)
+                self.assertFalse(self.storage.db.in_transaction)
+        self.assertEqual(self.storage.db.execute(
+            'SELECT occupancy_state FROM worker_admissions WHERE id=?',
+            (occupied.admission_id,)).fetchone()[0], 'occupied')
+        _, legacy_task, _ = self.task()
+        gate = self.storage.request_provider_execution(
+            'synthetic-provider', 'legacy-local', legacy_task, 'a' * 64, 'b' * 64)
+        self.storage.decide_provider_execution(gate, 'approved', 'Synthetic legacy approval')
+        claimed = self.storage.claim_provider_execution(gate, 'a' * 64, 'b' * 64)
+        self.assertEqual(claimed['status'], 'claimed')
+        self.assertEqual(claimed['agent_id'], 'legacy-local')
+        self.assertEqual(self.storage.db.execute(
+            'SELECT status FROM provider_execution_gates WHERE id=?', (gate,)).fetchone()[0], 'claimed')
+
+    def test_project_registration_cannot_adopt_active_legacy_assignment(self):
+        project, task_id, _ = self.task()
+        claim = self.storage.claim_runnable_task(task_id, 'legacy-local', 'direct-cli')
+        self.storage.create_assignment_attempt(claim.assignment_id, claim.fencing_token)
+        before = self.counts()
+        with self.assertRaises(AdmissionConflictError):
+            self.service.bind_project(
+                project_id=project, tenant_id='tenant-a', authority_digest='a' * 64,
+                actor='fixture-coordinator', reason='Synthetic project migration')
+        self.assertEqual(self.counts(), before)
+        self.assertIsNone(self.storage.db.execute(
+            'SELECT project_id FROM worker_admission_projects WHERE project_id=?',
+            (project,)).fetchone())
+        self.assertFalse(self.storage.db.in_transaction)
+        self.storage.release_task_lease(claim.assignment_id, claim.fencing_token, outcome='cancelled')
+        bound = self.service.bind_project(
+            project_id=project, tenant_id='tenant-a', authority_digest='a' * 64,
+            actor='fixture-coordinator', reason='Synthetic migration after stopped local work')
+        self.assertEqual(bound['tenant_id'], 'tenant-a')
+
+    def test_abandoned_legacy_provider_attempt_is_not_stopped_process_evidence(self):
+        self.configure(workers=())
+        project, task_id, _ = self.task()
+        gate = self.storage.request_provider_execution(
+            'synthetic-provider', 'legacy-worker', task_id, 'a' * 64, 'b' * 64)
+        self.storage.decide_provider_execution(gate, 'approved', 'Synthetic legacy approval')
+        attempt = self.storage.claim_provider_execution(gate, 'a' * 64, 'b' * 64)
+        self.storage.finish_provider_attempt(
+            attempt['id'], 'abandoned', 'Synthetic lost process response', {})
+        assignment = self.storage.db.execute(
+            'SELECT assignment_id FROM attempts WHERE provider_attempt_id=?',
+            (attempt['id'],)).fetchone()[0]
+        self.assertEqual(self.storage.db.execute(
+            'SELECT status FROM assignments WHERE id=?', (assignment,)).fetchone()[0], 'cancelled')
+        self.assertEqual(self.storage.db.execute(
+            'SELECT status FROM worker_sessions WHERE assignment_id=?',
+            (assignment,)).fetchone()[0], 'cancelled')
+        before = self.counts()
+        with self.assertRaises(AdmissionConflictError):
+            self.service.bind_worker(
+                worker_id='legacy-worker', pool_id='physical-pool', tenant_id='tenant-a',
+                actor='fixture-coordinator', reason='Synthetic worker migration')
+        with self.assertRaises(AdmissionConflictError):
+            self.service.bind_project(
+                project_id=project, tenant_id='tenant-a', authority_digest='a' * 64,
+                actor='fixture-coordinator', reason='Synthetic project migration')
+        self.assertEqual(self.counts(), before)
+        self.assertEqual(self.storage.db.execute(
+            'SELECT COUNT(*) FROM worker_admission_workers').fetchone()[0], 0)
+        self.assertEqual(self.storage.db.execute(
+            'SELECT COUNT(*) FROM worker_admission_projects').fetchone()[0], 0)
+
     def test_expiry_denies_renewal_but_holds_capacity_until_exact_stop(self):
         self.configure(workers=(('worker-a', 'tenant-a'), ('worker-b', 'tenant-b')))
         now = datetime.now(timezone.utc)

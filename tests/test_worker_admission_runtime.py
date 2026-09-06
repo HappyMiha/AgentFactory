@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import threading
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from agent_factory.context_packages import ContextPackageBuilder
 from agent_factory.live_stages import LiveStageExecution
@@ -14,7 +14,8 @@ from agent_factory.policy import PolicyRequest
 from agent_factory.storage import SQLiteStorage
 from agent_factory.worker_admission import AdmissionConflictError, CapacityUnavailableError
 from agent_factory.worker_runtime import (
-    DirectCLIWorkerRuntime, RuntimeBinding, RuntimeDriver, RuntimeDriverEvent, RuntimeLaunch,
+    CodexCLIWorkerRuntime, DirectCLIWorkerRuntime, RuntimeBinding, RuntimeDriver,
+    RuntimeDriverEvent, RuntimeLaunch,
 )
 from test_worker_admission import AdmissionFixture
 
@@ -328,7 +329,7 @@ class WorkerAdmissionRuntimeTests(AdmissionFixture):
         for external_identity_known in (False, True):
             with self.subTest(external_identity_known=external_identity_known):
                 worker = f'legacy-worker-{external_identity_known}'
-                _, task_id, run_id = self.task()
+                project_id, task_id, run_id = self.task()
                 claim = self.storage.claim_runnable_task(task_id, worker, 'direct-cli')
                 self.storage.create_assignment_attempt(claim.assignment_id, claim.fencing_token)
                 package = ContextPackageBuilder(self.storage, self.root).build(
@@ -364,8 +365,52 @@ class WorkerAdmissionRuntimeTests(AdmissionFixture):
                 self.assertIsNone(self.storage.db.execute(
                     'SELECT worker_id FROM worker_admission_workers WHERE worker_id=?',
                     (worker,)).fetchone())
+                with self.assertRaises(AdmissionConflictError):
+                    self.service.bind_project(
+                        project_id=project_id, tenant_id='tenant-a', authority_digest='a' * 64,
+                        actor='fixture-coordinator', reason='Synthetic uncertain project migration')
+                self.assertIsNone(self.storage.db.execute(
+                    'SELECT project_id FROM worker_admission_projects WHERE project_id=?',
+                    (project_id,)).fetchone())
                 self.assertEqual(self.storage.runtime_session(row['id'])['status'], 'failed')
                 self.assertEqual(len(driver.starts), 1)
+
+    def test_wrong_runtime_cannot_control_admitted_session_but_owner_can_cancel_after_expiry(self):
+        _, receipt, launch = self.launch_fixture(mutable=False)
+        driver = AdmissionDriver()
+        runtime = DirectCLIWorkerRuntime(self.storage, driver)
+        session = runtime.start(launch)
+        wrong_driver = Mock(spec=RuntimeDriver)
+        for method in ('resume', 'heartbeat', 'collect_events', 'finalize', 'cancel'):
+            getattr(wrong_driver, method).side_effect = AssertionError('Wrong runtime reached driver')
+        wrong_runtime = CodexCLIWorkerRuntime(self.storage, wrong_driver)
+        operations = (
+            ('resume', lambda: wrong_runtime.resume(session.id)),
+            ('heartbeat', lambda: wrong_runtime.heartbeat(session.id)),
+            ('collect_events', lambda: wrong_runtime.collect_events(session.id)),
+            ('finalize', lambda: wrong_runtime.finalize(session.id)),
+            ('tool', lambda: wrong_runtime.admit_tool_operation(
+                session.id, operation_id='wrong-runtime-tool', tool_name='read_file')),
+            ('fallback', lambda: wrong_runtime.assert_fallback_allowed(session.id)),
+            ('cancel', lambda: wrong_runtime.cancel(session.id, reason='Wrong runtime cancellation')),
+        )
+        before = dict(self.storage.runtime_session(session.id))
+        for name, operation in operations:
+            with self.subTest(operation=name):
+                with patch.object(wrong_runtime, '_begin_control_operation', return_value=None) as control_boundary:
+                    with self.assertRaises(PermissionError):
+                        operation()
+                    control_boundary.assert_not_called()
+                self.assertEqual(wrong_driver.mock_calls, [])
+                self.assertEqual(dict(self.storage.runtime_session(session.id)), before)
+        later = datetime.fromisoformat(receipt.expires_at) + timedelta(seconds=1)
+        with patch('agent_factory.storage._utc', return_value=later):
+            cancelled = runtime.cancel(session.id, reason='Synthetic stop after lease expiry')
+        self.assertEqual(cancelled.status, 'cancelled')
+        self.assertEqual(driver.cancelled, [session.external_session_id])
+        self.assertEqual(self.storage.db.execute(
+            'SELECT occupancy_state FROM worker_admissions WHERE id=?',
+            (receipt.admission_id,)).fetchone()[0], 'occupied')
 
 
 if __name__ == '__main__':

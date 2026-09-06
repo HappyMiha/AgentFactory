@@ -10821,12 +10821,27 @@ class SQLiteStorage:
             )
 
     def claim_provider_execution(self, gate_id: int, request_hash: str, definition_hash: str):
-        self._assert_dispatch_allowed()
+        from .worker_admission import registered_worker
+
         request_hash = _sha256_snapshot(request_hash, "request_hash")
         definition_hash = _sha256_snapshot(definition_hash, "definition_hash")
         mismatch_error: str | None = None
         attempt_id: int | None = None
         with self.db:
+            self._begin_immediate()
+            self._assert_dispatch_allowed()
+            gate = self.db.execute(
+                "SELECT agent_id,task_id FROM provider_execution_gates WHERE id=?", (gate_id,)
+            ).fetchone()
+            if not gate:
+                raise KeyError(f"Unknown provider gate: {gate_id}")
+            bound_project = self.db.execute(
+                """SELECT 1 FROM worker_admission_projects p
+                     JOIN work_items t ON t.project_id=p.project_id WHERE t.id=?""",
+                (gate["task_id"],),
+            ).fetchone()
+            if registered_worker(self, str(gate["agent_id"])) or bound_project:
+                raise PermissionError("Registered workers and projects require WorkerAdmissionService.admit")
             updated = self.db.execute(
                 """UPDATE provider_execution_gates
                       SET status='claimed'
