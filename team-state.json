@@ -217,12 +217,26 @@
         "core:AF-GC-005",
         "core:AF-GC-007"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
+      "scopes": [
+        "core:docs/game-planning.md",
+        "core:examples/game-planning-fixtures.json",
+        "core:src/agent_factory/game_planning.py",
+        "core:src/agent_factory/game_planning_web.py",
+        "core:src/agent_factory/static/game-plan.css",
+        "core:src/agent_factory/static/game-plan.html",
+        "core:src/agent_factory/static/game-plan.js",
+        "core:src/agent_factory/static/games.js",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_game_planning.py",
+        "core:tests/test_game_planning_browser.py",
+        "core:tests/test_game_planning_web.py",
+        "core:tests/test_web.py"
+      ],
+      "updated_at": "2026-09-06T04:57:30+00:00",
+      "note": "Local planning facade over Core immutable intake and backlog revisions; no Cloud planner copy, storage migration or worker runtime edits.",
       "pr": null,
       "resources": [
         "shared:game-brief",
@@ -240,7 +254,8 @@
       "source_dependencies": [
         "core:AF-GC-005",
         "core:AF-GC-007"
-      ]
+      ],
+      "claim_id": "1b549690-df10-419c-a781-d122938d1532"
     },
     "core:AF-GC-009": {
       "dependencies": [
@@ -5260,6 +5275,16 @@
       "note": "Three-worker reviewed additive prerequisite for Cloud024; no existing claims or dependencies changed.",
       "branch": null,
       "claim_id": null
+    },
+    {
+      "operation_id": "97700628-3671-424b-86d8-1e57def53f27",
+      "at": "2026-09-06T04:57:30+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-008",
+      "worker": "HappyHahahaker",
+      "note": "Local planning facade over Core immutable intake and backlog revisions; no Cloud planner copy, storage migration or worker runtime edits.",
+      "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
+      "claim_id": "1b549690-df10-419c-a781-d122938d1532"
     }
   ],
   "migration": {
