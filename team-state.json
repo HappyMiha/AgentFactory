@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T15:57:58+00:00",
-      "note": "Runtime effect PR39 merged; whole009 incomplete. Preserve branch pending agreed next component.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/39",
+      "updated_at": "2026-09-06T16:05:36+00:00",
+      "note": "PR39 component merged; preserve old branch. Coordinator agreed next bounded canary usage component.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d",
-      "review_head": "4669f0686de301b9d90678b4f1b7d44a101a2ecb"
+      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6604,6 +6603,16 @@
       "note": "PR40 exact03d593d pushed: prebound installation effect guard and admitted runtime composition; 74 tests,73pass1skip. Peer review pending.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "741921d9-f703-440d-b41e-6a13dfa89f06",
+      "at": "2026-09-06T16:05:36+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR39 component merged; preserve old branch. Coordinator agreed next bounded canary usage component.",
+      "branch": null,
+      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
     }
   ],
   "migration": {
