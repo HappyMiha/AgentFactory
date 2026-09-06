@@ -29,6 +29,8 @@ class StagedArchive:
     directory: Path
     files: tuple[str, ...]
     extracted_bytes: int
+    file_digests: tuple[tuple[str, str], ...]
+    entry_paths: tuple[str, ...]
 
 
 _CHUNK = 1024 * 1024
@@ -192,6 +194,7 @@ def stage_verified_zip(source, *, catalog, package_id, staging_parent):
         content = root / 'content'
         total = 0
         names = []
+        digests = []
         try:
             with zipfile.ZipFile(copy) as archive:
                 entries = _entries(archive, expected_count, package['extraction_budget_bytes'])
@@ -205,6 +208,7 @@ def stage_verified_zip(source, *, catalog, package_id, staging_parent):
                         continue
                     target.parent.mkdir(parents=True, exist_ok=True)
                     count = 0
+                    digest = hashlib.sha256()
                     with archive.open(entry) as src, target.open('xb') as dst:
                         while chunk := src.read(_CHUNK):
                             count += len(chunk)
@@ -212,9 +216,13 @@ def stage_verified_zip(source, *, catalog, package_id, staging_parent):
                             if count > entry.file_size or total > package['extraction_budget_bytes']:
                                 raise ArchiveRejected('Actual extraction exceeds reviewed bounds')
                             dst.write(chunk)
+                            digest.update(chunk)
                     if count != entry.file_size:
                         raise ArchiveRejected('Extracted entry size mismatch')
                     names.append(name)
+                    digests.append((name, digest.hexdigest()))
         except (zipfile.BadZipFile, NotImplementedError, EOFError) as error:
             raise ArchiveRejected('Corrupt or unsupported ZIP content') from error
-        yield StagedArchive(package_id, package['sha256'], content, tuple(names), total)
+        paths = tuple(sorted({'/'.join(name.split('/')[:n]).casefold()
+            for _, name, _ in entries for n in range(1, len(name.split('/')) + 1)}))
+        yield StagedArchive(package_id, package['sha256'], content, tuple(names), total, tuple(digests), paths)
