@@ -60,6 +60,59 @@ These tests are not live provider or native credential-store qualification.
 
 ## Trusted host boundary
 
+### Bounded observation transport prerequisite
+
+`ProviderCanaryTransport` can make one credential-backed OpenAI Responses request
+for a separately trusted evaluator. It uses the existing current-connection
+resolver and credential broker. The initial route is OpenAI API only; there is
+no default model, HTTP/UI endpoint, automatic account discovery or qualification
+writer. Anthropic/CLI transports and the coding/review canary suite remain open.
+
+Host composition must provide `authorize`, a trusted callable that checks current
+mission/account policy and atomically reserves budget for each exact request
+digest. It receives the connection scope, mission, operation and fixed call/token/
+deadline bounds. Only an exact `True` admits the call. The callback runs inside
+the existing connection admission immediately before network execution; absent,
+false or failed authorization sends nothing. A callback that always returns true
+is a test fixture, not a production authority. Repeated `observe` calls each need
+fresh authorization; this transport does not implement a mission budget ledger.
+
+Only a host-selected canary prompt up to 4096 UTF-8 bytes is accepted. The fixed
+HTTPS endpoint is `api.openai.com/v1/responses`, with verified TLS, no environment
+proxy discovery, redirects, retries, tools, streaming or requested response
+storage. Each call requests at most 512 output tokens. A spawned child bounds
+network work to 15 seconds after startup, followed by at most two seconds of
+termination/kill joins. Response reads stop at 64 KiB plus one overflow byte;
+accepted generated text is limited to 2048 UTF-8 bytes. The parent never runs
+generated text. Host scripts must follow Python's normal spawn/main-guard rules.
+The secret crosses only the private child IPC; it is not placed in command-line
+arguments, environment variables or files. A synchronous admitted call can finish
+before local disconnect; the existing metadata writer lock is held during it.
+
+Timeout/cancellation does not prove the provider cancelled work or charged
+nothing. Host budget approval must cover that uncertainty; there is no automatic
+retry. The bounded reason `quota_or_rate_limit` deliberately does not infer the
+cause of an HTTP 429. Other failures expose only bounded reason codes, never raw
+provider bodies. Unknown/incomplete/refused/tool responses cannot supply an
+observation. Identity comes from the completed provider response envelope, not a
+requested alias or model-generated text; canonical mapping remains separately
+trusted and is not learned here.
+
+The frozen observation contains in-process text for the future evaluator, the
+current scope, observed identity and a digest. Broker evidence retains only
+identity and hashes, not prompts/generated text; credential echoes are rejected.
+Handles are revoked on every exit. Success creates no qualification and does not
+invalidate or renew an earlier qualification: the future evaluator must fence
+stale worker evidence, run its actual purpose-specific suite and publish through
+the existing Core writer. This observation alone cannot establish coding,
+independent review, model quality, quota headroom or game execution permission.
+
+API contract sources reviewed 2026-09-06: [text generation](https://developers.openai.com/api/docs/guides/text)
+and [Responses creation](https://developers.openai.com/api/reference/resources/responses/methods/create).
+The tests use synthetic HTTPS envelopes and credentials, actual spawned child
+termination and real SQLite/broker records. No provider account, live budget or
+actual model capability was qualified by these tests.
+
 `ProviderQualificationService` accepts evidence only from a trusted host
 evaluator. It does not authenticate that evaluator, run its canary, inspect an
 account, verify a provider signature or establish execution permission. Do not
