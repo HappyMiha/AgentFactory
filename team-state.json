@@ -328,21 +328,11 @@
       "dependencies": [
         "core:AF-GC-007"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
-      "scopes": [
-        "core:docs/hardware-inventory.md",
-        "core:src/agent_factory/hardware_inventory.py",
-        "core:src/agent_factory/hardware_web.py",
-        "core:src/agent_factory/static/hardware.css",
-        "core:src/agent_factory/static/hardware.html",
-        "core:src/agent_factory/static/hardware.js",
-        "core:tests/test_hardware_browser.py",
-        "core:tests/test_hardware_inventory.py",
-        "core:tests/test_hardware_web.py"
-      ],
-      "updated_at": "2026-09-06T04:01:14+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T04:40:06+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/16",
       "resources": [
@@ -360,7 +350,9 @@
         "core:AF-GC-007"
       ],
       "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473",
-      "review_head": "bd025cfcc5eeca8fdcda7444a4e1182c91e35422"
+      "review_head": "bd025cfcc5eeca8fdcda7444a4e1182c91e35422",
+      "completed_commit": "60e7895940359fdcf7ea32e4d38f7d6d5e3e97ed",
+      "reviewed_head": "bd025cfcc5eeca8fdcda7444a4e1182c91e35422"
     },
     "core:AF-GC-012": {
       "dependencies": [
@@ -5186,6 +5178,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
       "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
+    },
+    {
+      "operation_id": "930932e7-582c-471d-868c-096602f5c36f",
+      "at": "2026-09-06T04:40:06+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-011",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
+      "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473"
     }
   ],
   "migration": {
