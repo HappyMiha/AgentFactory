@@ -58,6 +58,8 @@ class CredentialBrowserTests(unittest.TestCase):
         self.page.locator('#disconnect-dialog').get_by_role('button',name='Відключити',exact=True).click()
         self.page.wait_for_function("document.querySelector('#connections').textContent.includes('Відключено')")
         self.assertFalse(self.store.values)
+        self.page.wait_for_function("!document.querySelector('#save').disabled")
+        self.assertTrue(self.page.locator('#save').is_enabled())
     def test_failure_and_lost_response_clear_secret_and_offer_recovery(self):
         self.enter()
         with patch.object(self.store,'put',side_effect=RuntimeError(self.secret)):

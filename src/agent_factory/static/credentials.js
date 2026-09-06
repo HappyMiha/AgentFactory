@@ -1,6 +1,7 @@
 const notice = document.querySelector('#notice');
 const secretInput = document.querySelector('#secret');
 let busy = false;
+let supported = false;
 function say(text) { notice.textContent = text; }
 function failure(status) { return status === 401 ? 'Увійдіть, щоб керувати доступом.' : status === 403 ? 'Потрібні права власника операцій і дозвіл керувати доступом.' : 'Не вдалося виконати дію. Перевірте доступність сховища Windows і повторіть.'; }
 async function refresh() {
@@ -8,7 +9,8 @@ async function refresh() {
     const response = await fetch('/api/credential-connections', {cache:'no-store'});
     if (!response.ok) { say(failure(response.status)); return; }
     const data = await response.json();
-    document.querySelector('#save').disabled = !data.supported || busy;
+    supported = data.supported;
+    document.querySelector('#save').disabled = !supported || busy;
     if (!data.supported) say('Збереження ключів підтримується лише у Windows. Незахищеного запасного сховища немає.');
     const list = document.querySelector('#connections'); list.replaceChildren();
     for (const item of data.connections) {
@@ -37,7 +39,7 @@ async function disconnect(id) {
       say(data.os_removal_pending ? 'Доступ заблоковано. Видалення зі сховища не завершилося; повторіть видалення.' : 'Локальний доступ відключено. Відкличте ключ у провайдера, щоб вимкнути інші копії.');
       await refresh();
     } catch { say('Відповідь втрачено. Оновіть стан і за потреби повторіть відключення.'); }
-    finally { busy = false; }
+    finally { busy = false; document.querySelector('#save').disabled = !supported; }
   }, {once:true});
 }
 document.querySelector('#connect').addEventListener('submit', async event => {
@@ -52,7 +54,7 @@ document.querySelector('#connect').addEventListener('submit', async event => {
     say('Ключ збережено у Windows. Запуск AI потребує окремого дозволу.');
     await refresh();
   } catch { say('Відповідь втрачено. Оновіть список перед повторним введенням ключа.'); }
-  finally { body = ''; busy = false; document.querySelector('#save').disabled = false; }
+  finally { body = ''; busy = false; document.querySelector('#save').disabled = !supported; }
 });
 window.addEventListener('pagehide', () => { secretInput.value = ''; });
 document.querySelector('#refresh').addEventListener('click', refresh);
