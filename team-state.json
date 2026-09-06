@@ -445,9 +445,9 @@
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T14:45:29+00:00",
-      "note": "PR36 merged after independent reviews. Reviewing shared policy prerequisite before admitted installer composition; full014 incomplete.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/36",
+      "updated_at": "2026-09-06T15:10:53+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/38",
       "resources": [
         "core:environment-bootstrap",
         "core:tool-gateway",
@@ -466,7 +466,7 @@
         "core:AF-GC-013"
       ],
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463",
-      "review_head": "0071673d7a9ddba2ece3c512c97474eaa738d6a4"
+      "review_head": "3c365260dfa47a4668788267dd3cf5c1f73ed424"
     },
     "core:AF-GC-015": {
       "dependencies": [
@@ -6530,6 +6530,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
       "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
+    },
+    {
+      "operation_id": "d7deae30-87d1-4645-8f9d-993101cfa417",
+      "at": "2026-09-06T15:10:53+00:00",
+      "action": "review",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
