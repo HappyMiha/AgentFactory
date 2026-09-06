@@ -423,6 +423,7 @@
       "scopes": [
         "core:docs/installation-execution.md",
         "core:src/agent_factory/installation_archive.py",
+        "core:src/agent_factory/installation_execution.py",
         "core:src/agent_factory/installation_intent.py",
         "core:src/agent_factory/installation_journal.py",
         "core:src/agent_factory/installation_manifest.py",
@@ -431,6 +432,7 @@
         "core:src/agent_factory/installation_publication.py",
         "core:src/agent_factory/static/installation.js",
         "core:tests/test_installation_archive.py",
+        "core:tests/test_installation_execution.py",
         "core:tests/test_installation_intent.py",
         "core:tests/test_installation_journal.py",
         "core:tests/test_installation_manifest.py",
@@ -439,8 +441,8 @@
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T16:35:32+00:00",
-      "note": "PR42 exact13fc845 pushed; current intent validates without reservation or caller commit. 68 tests67pass1skip, CI green, peer review pending.",
+      "updated_at": "2026-09-06T16:57:05+00:00",
+      "note": "Add bounded Windows publication executor and actual admitted-session tests; full014 remains incomplete.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/42",
       "resources": [
         "core:environment-bootstrap",
@@ -6672,6 +6674,16 @@
       "task": "core:AF-GC-014",
       "worker": "HappyDucky02",
       "note": "PR42 exact13fc845 pushed; current intent validates without reservation or caller commit. 68 tests67pass1skip, CI green, peer review pending.",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "a56f9d69-98d9-4785-821b-f396ca44a5bf",
+      "at": "2026-09-06T16:57:05+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "Add bounded Windows publication executor and actual admitted-session tests; full014 remains incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
