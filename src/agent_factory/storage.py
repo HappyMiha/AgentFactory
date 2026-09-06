@@ -5,6 +5,7 @@ import hashlib
 import os
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -6635,6 +6636,10 @@ WORKFLOW_MUTATION_LIFECYCLES = frozenset(
 )
 
 
+class ScopedApprovalExpiredError(PermissionError):
+    """An expiry transition was recorded; never an execution grant."""
+
+
 class TaskNotRunnableError(RuntimeError):
     """Raised when a work item cannot be dispatched by the scheduler."""
 
@@ -7226,10 +7231,32 @@ class SQLiteStorage:
 
     @staticmethod
     def _policy_digest(request: dict[str, Any]) -> str:
-        normalized = dict(request)
-        normalized["permissions"] = sorted(set(normalized.get("permissions", [])))
+        from .policy import canonical_policy_request
+
+        normalized = canonical_policy_request(request)
         payload = json.dumps(normalized, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @contextmanager
+    def _policy_transaction(self):
+        """A policy unit owns its transaction or a savepoint in the caller's."""
+        if not self.db.in_transaction:
+            with self.db:
+                self.db.execute("BEGIN IMMEDIATE")
+                yield
+            return
+        # Obtain writer exclusion before reading authority. A stale WAL read
+        # snapshot cannot upgrade and must fail instead of granting execution.
+        self.db.execute("UPDATE policy_state SET id=id WHERE 0")
+        self.db.execute("SAVEPOINT policy_unit")
+        try:
+            yield
+        except BaseException:
+            self.db.execute("ROLLBACK TO policy_unit")
+            self.db.execute("RELEASE policy_unit")
+            raise
+        else:
+            self.db.execute("RELEASE policy_unit")
 
     def policy_state(self) -> dict[str, Any]:
         row = self.db.execute("SELECT * FROM policy_state WHERE id=1").fetchone()
@@ -7256,12 +7283,15 @@ class SQLiteStorage:
         policy_version: int,
         approval_id: int | None = None,
     ) -> int:
+        from .policy import canonical_policy_request
+
+        request = canonical_policy_request(request)
         if outcome not in {"allow", "deny", "require_approval"}:
             raise ValueError(outcome)
         if self._policy_digest(request) != request_digest:
             raise ValueError("Policy request digest does not match canonical request")
         request_json = json.dumps(request, sort_keys=True, separators=(",", ":"))
-        with self.db:
+        with self._policy_transaction():
             cur = self.db.execute(
                 """INSERT INTO policy_decisions(
                        identity,request_digest,request_json,outcome,reason,
@@ -7299,39 +7329,30 @@ class SQLiteStorage:
         requested_by: str,
         ttl_seconds: int = 900,
     ) -> int:
-        required = {
-            "mission_id",
-            "task_id",
-            "run_id",
-            "stage_id",
-            "worker_id",
-            "runtime_id",
-            "worktree_id",
-            "permissions",
-        }
-        if set(request) != required:
-            raise ValueError(f"Approval request requires exact fields: {sorted(required)}")
+        from .policy import canonical_policy_request
+
+        request = canonical_policy_request(request)
         if not requested_by.strip():
             raise ValueError("Approval requester is required")
         if ttl_seconds < 1 or ttl_seconds > 86_400:
             raise ValueError("Approval TTL must be between 1 and 86400 seconds")
-        task = self.db.execute(
-            "SELECT project_id FROM work_items WHERE id=?", (request["task_id"],)
-        ).fetchone()
-        if not task:
-            raise KeyError(f"Unknown task: {request['task_id']}")
-        if int(task["project_id"]) != int(request["mission_id"]):
-            raise ValueError("Approval mission does not own the requested task")
-        if request["run_id"] is not None:
-            run = self.db.execute(
-                "SELECT task_id FROM workflow_runs WHERE id=?", (request["run_id"],)
+        with self._policy_transaction():
+            task = self.db.execute(
+                "SELECT project_id FROM work_items WHERE id=?", (request["task_id"],)
             ).fetchone()
-            if not run or int(run["task_id"]) != int(request["task_id"]):
-                raise ValueError("Approval run does not belong to the requested task")
-        normalized = dict(request)
-        normalized["permissions"] = sorted(set(request["permissions"]))
-        digest = self._policy_digest(normalized)
-        with self.db:
+            if not task:
+                raise KeyError(f"Unknown task: {request['task_id']}")
+            if int(task["project_id"]) != int(request["mission_id"]):
+                raise ValueError("Approval mission does not own the requested task")
+            if request["run_id"] is not None:
+                run = self.db.execute(
+                    "SELECT task_id FROM workflow_runs WHERE id=?", (request["run_id"],)
+                ).fetchone()
+                if not run or int(run["task_id"]) != int(request["task_id"]):
+                    raise ValueError("Approval run does not belong to the requested task")
+            normalized = dict(request)
+            normalized["permissions"] = sorted(set(request["permissions"]))
+            digest = self._policy_digest(normalized)
             cur = self.db.execute(
                 """INSERT INTO scoped_execution_approvals(
                        identity,mission_id,task_id,run_id,stage_id,worker_id,
@@ -7369,7 +7390,7 @@ class SQLiteStorage:
             raise ValueError(decision)
         if not actor.strip():
             raise ValueError("Approval decision actor is required")
-        with self.db:
+        with self._policy_transaction():
             row = self.db.execute(
                 "SELECT * FROM scoped_execution_approvals WHERE id=?", (approval_id,)
             ).fetchone()
@@ -7418,13 +7439,16 @@ class SQLiteStorage:
         assignment_id: int | None = None,
         attempt_id: int | None = None,
     ) -> None:
-        self._assert_dispatch_allowed()
+        from .policy import canonical_policy_request
+
+        request = canonical_policy_request(request)
         if self._policy_digest(request) != request_digest:
             raise PermissionError("Current policy request digest is invalid")
         if (assignment_id is None) != (attempt_id is None):
             raise ValueError("Assignment and attempt must be supplied together")
         expired = False
-        with self.db:
+        with self._policy_transaction():
+            self._assert_dispatch_allowed()
             row = self.db.execute(
                 "SELECT * FROM scoped_execution_approvals WHERE id=?", (approval_id,)
             ).fetchone()
@@ -7548,7 +7572,7 @@ class SQLiteStorage:
                     {**request, "request_digest": request_digest},
                 )
         if expired:
-            raise PermissionError(f"Scoped approval {approval_id} has expired")
+            raise ScopedApprovalExpiredError(f"Scoped approval {approval_id} has expired")
 
     def set_emergency_stop(self, active: bool, *, actor: str, reason: str) -> bool:
         if not actor.strip() or not reason.strip():
