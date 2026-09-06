@@ -2062,12 +2062,19 @@
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-021"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
+      "scopes": [
+        "cloud:contracts/v1/hosted-storage.json",
+        "cloud:docs/hosted-storage.md",
+        "cloud:requirements-postgres.txt",
+        "cloud:src/agentfactory_cloud/hosted_store.py",
+        "cloud:src/agentfactory_cloud/storage_migrations",
+        "cloud:tests/test_hosted_store.py"
+      ],
+      "updated_at": "2026-09-06T01:47:59+00:00",
+      "note": "Map and qualify Cloud-owned tenant records, identity-preserving migration and transactional outbox; preserve Core mission authority.",
       "pr": null,
       "resources": [
         "core:storage-contract",
@@ -2081,7 +2088,8 @@
       "source_dependencies": [
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-021"
-      ]
+      ],
+      "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a"
     },
     "cloud:AF-CLD-023": {
       "dependencies": [
@@ -4917,6 +4925,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
       "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22"
+    },
+    {
+      "operation_id": "8f5f8144-d8d7-4d68-9958-540e97f04cc3",
+      "at": "2026-09-06T01:47:59+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-022",
+      "worker": "HappyHahahaker",
+      "note": "Map and qualify Cloud-owned tenant records, identity-preserving migration and transactional outbox; preserve Core mission authority.",
+      "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
+      "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a"
     }
   ],
   "migration": {
