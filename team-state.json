@@ -428,6 +428,7 @@
         "core:docs/installation-execution.md",
         "core:src/agent_factory/installation_archive.py",
         "core:src/agent_factory/installation_intent.py",
+        "core:src/agent_factory/installation_journal.py",
         "core:src/agent_factory/installation_manifest.py",
         "core:src/agent_factory/installation_plan.py",
         "core:src/agent_factory/installation_policy.py",
@@ -435,14 +436,15 @@
         "core:src/agent_factory/static/installation.js",
         "core:tests/test_installation_archive.py",
         "core:tests/test_installation_intent.py",
+        "core:tests/test_installation_journal.py",
         "core:tests/test_installation_manifest.py",
         "core:tests/test_installation_plan.py",
         "core:tests/test_installation_policy.py",
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T13:51:44+00:00",
-      "note": "PR35 corrected setup disk budget pushed; 51 tests passed including browser flows. Independent review pending; full installer incomplete.",
+      "updated_at": "2026-09-06T14:11:29+00:00",
+      "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/35",
       "resources": [
         "core:environment-bootstrap",
@@ -6436,6 +6438,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
       "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+    },
+    {
+      "operation_id": "244482b6-ee2f-4daf-9502-89a6d3c300e3",
+      "at": "2026-09-06T14:11:29+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
