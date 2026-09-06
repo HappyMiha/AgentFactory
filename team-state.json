@@ -45,12 +45,17 @@
     },
     "core:AF-GC-002": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T00:39:44+00:00",
-      "note": "Post-merge review found incomplete role authority coverage; corrective claim will retain this dependency as incomplete. Historical branch preserved.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-002-6412aa16",
+      "scopes": [
+        "core:docs/environment-readiness.md",
+        "core:src/agent_factory/environment_model_probe.py",
+        "core:tests/test_autonomous_preapproval_workflow.py",
+        "core:tests/test_environment_model_probe.py"
+      ],
+      "updated_at": "2026-09-06T00:39:52+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "core:readiness",
@@ -67,7 +72,7 @@
       "milestone": "m0",
       "optional": false,
       "source_dependencies": [],
-      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
+      "claim_id": "37ecae5f-84c8-468c-b09d-180e9f822e88"
     },
     "core:AF-GC-003": {
       "dependencies": [],
@@ -4744,6 +4749,16 @@
       "note": "Post-merge review found incomplete role authority coverage; corrective claim will retain this dependency as incomplete. Historical branch preserved.",
       "branch": null,
       "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
+    },
+    {
+      "operation_id": "52b14c6c-0f55-42a8-8fde-4ab976c5ad80",
+      "at": "2026-09-06T00:39:52+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-6412aa16",
+      "claim_id": "37ecae5f-84c8-468c-b09d-180e9f822e88"
     }
   ],
   "migration": {
