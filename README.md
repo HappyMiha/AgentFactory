@@ -16,6 +16,8 @@ Start with the simple English [Core and Cloud description](docs/core-cloud-bound
 
 The first product proof is a small Godot 2D game: idea → build → Play → feedback → version 2 → restore and source export, plus a private remix of an owned or licensed sample. The intended 12+ journey needs qualified age, account, privacy, and guardian controls before a minor pilot. More engines, local/hybrid models, public sharing, and commerce have separate gates.
 
+The [Unreal and Gameplay AI plan](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/unreal-gameplay-plan.md) adds a separate direction: Core coordinates the AI team, an optional adapter controls Unreal through an existing MCP backend, and a game-owned runtime supplies NPC memory and world behavior. Its first proof is one level, three NPCs and one objective, a Windows package played without the editor, save/load, an AI outage and a second accepted build after feedback.
+
 The existing [42-task AF-GC manifest](examples/game-creator-backlog.json), [detailed Ukrainian backlog](docs/game-creator-backlog.uk.md), and older AF/AF-AMM IDs remain stable upstream references. A backlog entry or component test is not proof of the full creator journey.
 
 ## Why Agent Factory
@@ -144,6 +146,8 @@ The demo is deterministic. It does not invoke an external model or mutate GitHub
 The Local Control Center can be installed and opened on Windows with `python -m pip install -e ".[web]"; if ($LASTEXITCODE -eq 0) { python -m agent_factory --workspace . web --open }`. It binds to `127.0.0.1:8765`; press `Ctrl+C` to stop it and see [Local Control Center](docs/local-control-center.md).
 
 ## Durable workflows with Temporal
+
+For the commercial product, the recommendation is to retain Temporal for durable development jobs and keep it outside the first shipped game's NPC loop. The [commercial-use and architecture review](docs/architecture/temporal-commercial-decision.md) explains the MIT licenses, self-hosted versus managed service, current dependency and replacement tradeoffs.
 
 Temporal can durably orchestrate AgentFactory delivery runs while the Worker remains on the Windows host with access to the existing local CLI and project environment. Start the loopback-only PostgreSQL-backed development stack with `.\infra\temporal\start.ps1`, enable it with `$env:TEMPORAL_ENABLED = "true"`, then run the Local Control Center and `agent-factory-temporal-worker` in separate PowerShell windows. Autonomous parents continue as new at configured safe boundaries; typed Search Attributes and memo identify every retained run, while the immutable SQLite run ledger remains authoritative after the default seven-day Temporal retention window. Normal stops preserve Workflow history; only `reset.ps1` deletes the named database volume.
 
