@@ -3679,7 +3679,7 @@
     },
     "cloud:AF-DOC-001": {
       "title": "Publish Unreal and gameplay AI plan and update product description",
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
       "scopes": [
@@ -3691,7 +3691,7 @@
         "cloud:docs/unreal-gameplay-plan.md",
         "cloud:examples/agentfactory-cloud-backlog.json"
       ],
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/15",
       "dependencies": [],
       "source_dependencies": [],
       "resources": [],
@@ -3723,8 +3723,9 @@
         "Documentation only; no Temporal replacement or Unreal execution."
       ],
       "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb",
-      "updated_at": "2026-09-06T06:58:50+00:00",
-      "note": ""
+      "updated_at": "2026-09-06T07:10:00+00:00",
+      "note": "",
+      "review_head": "b4d00afa13277804f2bfd29f1a6a334af7af5fe1"
     }
   },
   "events": [
@@ -5597,6 +5598,16 @@
       "note": "Continue after accepted Core043: authenticated admission component and isolated lab fault checks; preserve earlier inventory component history.",
       "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
       "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
+    },
+    {
+      "operation_id": "8f9c0eea-4a10-4342-a542-fc24bcd488c6",
+      "at": "2026-09-06T07:10:00+00:00",
+      "action": "review",
+      "task": "cloud:AF-DOC-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
+      "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb"
     }
   ],
   "migration": {
