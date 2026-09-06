@@ -274,3 +274,33 @@ journal stays reserved. This is not an installed or qualified environment.
 The production executor still needs current intent checks at the effect boundary,
 durable publication start, real package publication and recovery integration.
 The request helper does not supply those steps or mark an installation ready.
+
+## Recheck intent without a new reservation
+
+`InstallationIntents.current(mission, actor, operation_id)` checks a saved,
+reserved parent intent without writing another journal event or renewing consent.
+It uses the same current review checks as reservation: authenticated owner,
+exact approved and latest plan, current catalogue and host observation, available
+disk space, expiry and a running mission. The saved decision and complete mission
+scope must still match, including version, backlog revision, execution epoch,
+checkpoint and control fence. Pausing and resuming a mission does not silently
+restore an old intent. Historical evidence remains available through `view`.
+
+This helper can run after a stage approval has been consumed. It neither checks
+nor grants runtime authority and does not consume that approval again. The host
+must separately validate the actual runtime admission, session, exact effect and
+publication lifecycle before publishing anything.
+
+Validation acquires the existing SQLite writer lock. Within a caller transaction
+it uses a savepoint and keeps that caller's pending work uncommitted on success or
+failure. A stale WAL reader cannot upgrade into a successful validation. The
+caller must commit its complete execution reservation before an external effect.
+Standalone validation releases its lock before returning and is only a snapshot.
+Neither mode locks the filesystem or prevents later host and disk changes.
+
+The full reviewed disk budget is still required; this helper does not subtract
+unverified staging allocations or infer completed installation steps. A future
+executor needs explicit accounting for those allocations and partial progress.
+Returned evidence keeps `execution_eligible: false`. Tests cover current and
+historical reads, real two-connection isolation, rollback, stale readers and
+post-approval validation with a synthetic runtime; they do not execute an installer.
