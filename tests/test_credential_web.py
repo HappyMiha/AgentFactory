@@ -58,3 +58,24 @@ class CredentialWebTests(unittest.TestCase):
     def test_backend_failure_never_echoes_secret(self):
         with patch.object(self.store,'put',side_effect=RuntimeError(self.secret)):
             response=self.post();self.assertEqual(response.status_code,503);self.assertNotIn(self.secret,response.text)
+
+    def test_catalogue_is_guidance_and_keeps_current_authority_separate(self):
+        from agent_factory.provider_connection_catalog import connection_catalog
+        with patch('agent_factory.credential_web.connection_catalog', return_value=connection_catalog(now=AT)):
+            response=self.client.get('/api/credential-connections',headers=self.headers)
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.json()['connections'],[])
+        self.assertFalse(response.json()['catalog']['execution_ready'])
+        self.assertEqual(set(response.json()['catalog']['connection_checks'].values()),{'not_run'})
+        self.app.state.connector_setup_approval=lambda **scope: None
+        response=self.client.get('/api/credential-connections',headers=self.headers)
+        self.assertFalse(any(item['allowed'] for item in response.json()['setup'].values()))
+        self.assertEqual(self.post().status_code,403)
+        self.assertFalse(self.store.values)
+
+    def test_catalogue_does_not_admit_cli_tokens_or_product_labels(self):
+        for product in ('chatgpt','codex-cli','claude-chat','claude-code','other'):
+            with self.subTest(product=product):self.assertEqual(self.post(provider=product).status_code,400)
+        with patch.dict(os.environ,{'AGENT_FACTORY_API_TENANTS':'other'}):
+            self.assertEqual(self.client.get('/api/credential-connections',headers=self.headers).status_code,403)
+        self.assertFalse(self.store.values)
