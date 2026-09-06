@@ -2115,22 +2115,12 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
-      "scopes": [
-        "cloud:contracts/v1/server-workers.json",
-        "cloud:docs/game-brief-intake.md",
-        "cloud:docs/server-workers.md",
-        "cloud:pyproject.toml",
-        "cloud:scripts/qualify_workers.py",
-        "cloud:src/agentfactory_cloud/server_inventory.py",
-        "cloud:src/agentfactory_cloud/worker_fleet.py",
-        "cloud:tests/test_server_inventory.py",
-        "cloud:tests/test_worker_fleet.py"
-      ],
-      "updated_at": "2026-09-06T04:49:43+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T05:04:23+00:00",
+      "note": "Inventory component PR14 merged; awaiting accepted Core043 atomic admission and declared server/lab qualification. Full task remains incomplete.",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/14",
       "resources": [
         "core:worker-runtime",
@@ -5285,6 +5275,16 @@
       "note": "Local planning facade over Core immutable intake and backlog revisions; no Cloud planner copy, storage migration or worker runtime edits.",
       "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
       "claim_id": "1b549690-df10-419c-a781-d122938d1532"
+    },
+    {
+      "operation_id": "713b4c4e-6241-4ede-9c92-476001ad9efd",
+      "at": "2026-09-06T05:04:23+00:00",
+      "action": "block",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "Inventory component PR14 merged; awaiting accepted Core043 atomic admission and declared server/lab qualification. Full task remains incomplete.",
+      "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
     }
   ],
   "migration": {
