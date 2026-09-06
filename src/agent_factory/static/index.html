@@ -46,6 +46,13 @@
         <div id="monitor-summary" class="monitor-summary loading-block">Checking system readiness…</div>
         <div id="monitor-checks" class="monitor-grid"></div>
         <div id="monitor-blockers" class="monitor-blockers"></div>
+        <details id="environment-panel"><summary>Check an approved development route</summary>
+          <label for="environment-mission">Approved mission</label>
+          <select id="environment-mission"><option value="">Choose a mission</option></select>
+          <button id="environment-check" type="button" disabled>Run actual-state checks</button>
+          <p id="environment-status" role="status">Choose a mission to inspect its current checks. No software is installed or inference started by this action.</p>
+          <div id="environment-checks" class="monitor-grid"></div>
+        </details>
       </section>
       <div class="dashboard-grid">
         <section id="runs" class="panel" aria-labelledby="runs-title"><div class="panel-head"><div><p class="eyebrow">Execution</p><h2 id="runs-title">Recent runs</h2></div><a href="#work">View work</a></div><div id="run-list" class="list loading-block">Loading workflow runs…</div></section>

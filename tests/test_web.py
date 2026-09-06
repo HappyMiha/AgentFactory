@@ -283,6 +283,7 @@ class WebHostTests(unittest.TestCase):
                         "/api/backlog/import",
                         "/api/backlog/analyze-upload",
                         "/api/control/actions",
+                        "/api/autonomous-missions/{mission_id}/environment/check",
                     },
                 )
 

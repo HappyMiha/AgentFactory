@@ -38,6 +38,7 @@ from ...autonomous_proposal_verifier import (
 )
 from ...backlog_revisions import BacklogRevisionService
 from ...coding_delivery import AutonomousCodingDeliveryService
+from ...environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from ...config import config_path_for_workspace, load_yaml
 from ...control_plane import (
     MissionControlAction,
@@ -188,12 +189,14 @@ class AgentFactoryActivities:
         settings: TemporalSettings | None = None,
         *,
         autonomous_planning_invoker: PlanningProviderInvoker | None = None,
+        autonomous_environment_probes: Mapping[str, Any] | None = None,
         autonomous_provider_capabilities: Mapping[
             str, ProviderCapabilities
         ] | None = None,
     ):
         self.settings = settings or TemporalSettings.from_env()
         self.autonomous_planning_invoker = autonomous_planning_invoker
+        self.autonomous_environment_probes = dict(autonomous_environment_probes or {})
         self.autonomous_provider_capabilities = dict(
             autonomous_provider_capabilities or {}
         )
@@ -968,6 +971,12 @@ class AgentFactoryActivities:
                 expected_fencing_token=request.expected_fencing_token,
                 execution_epoch_id=approval.execution_epoch_id,
             )
+            readiness = EnvironmentReadiness(storage, probes=self.autonomous_environment_probes)
+            if not storage.db.execute(
+                "SELECT 1 FROM environment_readiness_reports WHERE approval_id=? LIMIT 1", (approval.id,)
+            ).fetchone():
+                readiness.assess(approval.id)
+            readiness.require_ready(approval.id)
             mission = delivery.enter_development(
                 request.scope.mission_id,
                 expected_mission_version=request.expected_mission_version,
@@ -983,7 +992,7 @@ class AgentFactoryActivities:
                 .fencing_token,
                 environment_status="READY",
                 summary=(
-                    "Authorized environment discovery and bootstrap completed; "
+                    "Current actual-state checks passed for the approved route; "
                     "mission development is ready"
                 ),
                 occurred_at=mission.updated_at,
@@ -999,6 +1008,8 @@ class AgentFactoryActivities:
             return await asyncio.to_thread(
                 self._enter_autonomous_development_sync, request
             )
+        except EnvironmentNotReady as exc:
+            raise ApplicationError(str(exc), type="ENVIRONMENT_NOT_READY", non_retryable=True) from exc
         except (KeyError, PermissionError, ValueError, RuntimeError) as exc:
             raise self._autonomous_activity_error(exc) from exc
 

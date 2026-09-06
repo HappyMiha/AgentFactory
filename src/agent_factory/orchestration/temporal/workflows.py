@@ -1328,6 +1328,12 @@ class AutonomousMissionWorkflow:
                     self._touch(
                         "Environment orchestration failed: " + str(exc)
                     )
+                    if (workflow.patched("environment-readiness-recheck-v1")
+                            and getattr(exc.cause, "type", None) == "ENVIRONMENT_NOT_READY"):
+                        # Only read the latest durable report on retry. Fresh probes
+                        # require the explicit check action; polling creates no receipts.
+                        await workflow.sleep(timedelta(seconds=30))
+                        continue
                     await workflow.wait_condition(lambda: False)
                 self.state.mission_version = environment.mission_version
                 self.state.phase = environment.phase
