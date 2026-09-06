@@ -26,12 +26,12 @@ class ConfigurationAdviceBrowserTests(unittest.TestCase):
         source=self.page.locator('#source').inner_text()
         self.page.locator('#compare-configuration').click();self.page.wait_for_selector('#advice-results article')
         self.assertEqual(self.page.locator('#history li').count(),0)
-        card=self.page.locator('#advice-results article').filter(has_text='локальний qwen2.5-coder:7b')
+        card=self.page.locator('#advice-results article').filter(has_text='локальний AI')
         card.locator('button').click()
         self.assertEqual(self.page.locator('#source').inner_text(),source)
         self.assertEqual(self.page.locator('#deferred_scope').input_value(),'Keep the large multiplayer ambition')
         self.assertIn('My existing budget note',self.page.locator('#cost_notes').input_value())
-        self.assertIn('qwen2.5-coder',self.page.locator('#cost_notes').input_value())
+        self.assertIn('локальний AI',self.page.locator('#cost_notes').input_value())
         self.assertFalse(self.page.locator('#confirmed').is_checked());self.assertEqual(self.page.locator('#history li').count(),0)
         self.save();self.assertEqual(self.page.locator('#history li').count(),1)
     def test_delayed_scan_does_not_overwrite_user_edit(self):
@@ -75,3 +75,15 @@ class ConfigurationAdviceBrowserTests(unittest.TestCase):
         self.assertIn('застаріла',self.page.locator('#advice-status').inner_text())
         self.assertEqual(self.page.locator('#cost_notes').input_value(),notes)
         self.assertEqual(self.page.locator('#advice-results article').count(),0)
+
+    def test_main_copy_explains_consequences_and_details_hold_technical_terms(self):
+        self.scan();self.page.set_viewport_size({'width':390,'height':844});self.open()
+        self.page.locator('#compare-configuration').click();self.page.wait_for_selector('#advice-results article')
+        visible=self.page.locator('#advice-results').inner_text()
+        for term in ('worker','renderer','engine/model/target','coding/review','кваліфікован'):
+            self.assertNotIn(term,visible)
+        self.assertIn('іншому перевіреному комп’ютері',visible)
+        self.assertIn('незалежно перевірити власну роботу',visible)
+        self.assertFalse(self.page.evaluate('document.documentElement.scrollWidth > innerWidth'))
+        self.page.locator('#advice-results summary').click()
+        self.assertIn('Compatibility renderer',self.page.locator('#advice-results details').inner_text())

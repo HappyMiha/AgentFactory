@@ -31,10 +31,10 @@
      else node('advice-status').textContent='План змінився або бракує місця в нотатках. Ваші поля залишилися; повторіть порівняння.';
     };card.append(button);root.append(card);
    }
-   for(const estimate of result.estimates)root.append(make('p',`${estimate.item}: ${estimate.range} Джерело: ${estimate.source}; огляд ${result.catalog.reviewed_on}.`));
-   const details=make('details','');details.append(make('summary','Джерела й планові припущення'),make('p',result.catalog.policy_basis));
+   const details=make('details','');details.append(make('summary','Джерела й планові припущення'),make('p',result.catalog.policy_basis),make('p',result.catalog.technical_requirements));
+   for(const estimate of result.estimates)details.append(make('p',`${estimate.item}: ${estimate.range} Джерело: ${estimate.source}; огляд ${result.catalog.reviewed_on}.`));
    for(const source of result.catalog.sources){const link=make('a',source.id);link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';details.append(link,make('p',source.finding));}root.append(details);
-   node('advice-status').textContent='Порівняння готове. Це планові варіанти; модель і збірка ще не кваліфіковані.';
+   node('advice-status').textContent='Порівняння готове. Оберіть варіант для чернетки. Це нічого не встановлює й не витрачає гроші; роботу AI та готової гри ще потрібно перевірити.';
   }catch(error){node('advice-results').replaceChildren();node('advice-status').textContent=error.message;}
   finally{node('compare-configuration').disabled=false;}
  };

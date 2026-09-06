@@ -16,6 +16,7 @@ CATALOG = {
     ],
     "planning_policy": {"editor_total_gib": 8, "editor_available_gib": 4, "editor_free_disk_gib": 10,
                         "local_total_gib": 16, "local_available_gib": 8, "local_free_disk_gib": 15},
+    "technical_requirements": "Godot Compatibility renderer: verify graphics API/driver and export templates for the target. Local candidate qwen2.5-coder:7b requires effective-model canary and runtime memory measurement. A cloud option requires qualified worker/provider admission. Independent coding/review requires distinct qualified identities.",
     "policy_basis": "Conservative AgentFactory planning reserves for a small 2D project, not upstream minimum requirements or measured performance.",
 }
 
@@ -70,9 +71,9 @@ def advise(fields, report, *, now=None):
     if old_windows: reasons.append("Поточний Godot потребує Windows 10 або новішої; цей звіт показує старішу систему.")
     for value, label in ((total,"Обсяг RAM"),(available,"Доступна RAM"),(free,"Вільний диск")):
         if value is None: reasons.append(label + " невідомий; запас ресурсів не підтверджений.")
-    if vram is None: reasons.append("VRAM невідомий. Не обіцяємо прискорення GPU; CPU-режим потребує окремого вимірювання.")
-    reasons.append("Назва GPU не підтверджує renderer: перевірте Compatibility та реальний запуск і експорт.")
-    reasons.append("Версію ОС, архітектуру CPU та драйвер слід перевірити для обраного випуску рушія.")
+    if vram is None: reasons.append("Пам’ять відеокарти невідома. Локальний AI може працювати повільно; його швидкість потрібно перевірити.")
+    reasons.append("Потрібно перевірити, чи цей ПК правильно показує гру та запускає готовий файл.")
+    reasons.append("Обрана версія програми для створення гри має працювати з вашою системою та відеокартою.")
     resource_ok = fresh and catalog_current and known_os and not old_windows
     def capacity(prefix):
         p = CATALOG["planning_policy"]
@@ -80,22 +81,22 @@ def advise(fields, report, *, now=None):
                                   ((total,"_total_gib"),(available,"_available_gib"),(free,"_free_disk_gib")))
     editor = capacity("editor"); local = capacity("local")
     if not editor: reasons.append("Для локальної розробки поки не підтверджено плановий запас 8 ГіБ RAM, 4 ГіБ доступної RAM і 10 ГіБ диска.")
-    target = "Windows: потрібні export templates і тест пакета на Windows без редактора." if fields["platform"] == "windows" else "Web: потрібні Compatibility, export templates і реальна перевірка браузера; native-запуск цього не підтверджує."
+    target = "Windows: потрібно додати засоби створення готового файлу та перевірити гру на Windows без редактора." if fields["platform"] == "windows" else "Web: потрібно створити браузерну версію й перевірити її у браузері. Успішний запуск звичайного файлу цього не підтверджує."
     def option(key, title, engine, mode, selectable, explanation):
-        note = f"Плановий варіант: {title}. {explanation} Каталог {CATALOG['reviewed_on']}; виконання потребує окремого погодження та кваліфікації."
+        note = f"Плановий варіант: {title}. {explanation} Каталог {CATALOG['reviewed_on']}; встановлення, запуск і витрати потребують окремого погодження та перевірки."
         return {"id": key, "title": title, "engine": engine, "ai_mode": mode,
                 "selectable": bool(selectable), "reason": explanation, "selection_note": note}
     options = [
         option("manual", "Зберегти поточний задум і готувати план вручну", fields["engine"], "manual", True,
                "Не потребує модельного завантаження або витрат на AI. Поточний рушій залишається у плані."),
-        option("godot-cloud", "Godot Compatibility + хмарний AI", "godot", "cloud", catalog_current,
-               "Модель не займає локальну RAM. Локальний редактор усе одно потребує ресурсів; за їх нестачі потрібен окремо кваліфікований віддалений worker. Потрібні дозволений акаунт, бюджет і перевірена модель."),
-        option("godot-local", "Godot Compatibility + локальний qwen2.5-coder:7b", "godot", "local", local,
-               "Плановий запас: 16 ГіБ RAM, 8 ГіБ доступної RAM, 15 ГіБ диска. Одна модель послідовно; швидкість і якість ще треба виміряти. Це не незалежна пара coding/review."),
+        option("godot-cloud", "Godot + хмарний AI", "godot", "cloud", catalog_current,
+               "AI працює через інтернет і не займає пам’ять цього ПК. Редактор гри все одно потребує ресурсів. Якщо їх мало, редактор має працювати на іншому перевіреному комп’ютері. Потрібні доступний вам сервіс, перевірка його роботи й погоджений бюджет."),
+        option("godot-local", "Godot + локальний AI", "godot", "local", local,
+               "Для цього варіанта плануємо 16 ГіБ пам’яті, з них 8 ГіБ вільних, і 15 ГіБ диска. AI виконує одну роботу за раз; швидкість і якість потрібно перевірити. Один локальний AI не може незалежно перевірити власну роботу."),
         option("unity-later", "Unity — наступний етап", "unity", "unqualified", False,
-               "Потрібна окрема кваліфікація engine/model/target; наявність редактора не підтверджує підтримку."),
+               "Підтримка Unity ще потребує перевірки: чи можна створити гру, виправити помилки та запустити готовий результат. Самого встановленого редактора недостатньо."),
         option("unreal-later", "Unreal — наступний етап", "unreal", "unqualified", False,
-               "Окремі editor, packaging і gameplay перевірки ще потрібні; цей вибір не має автоматичної кваліфікації."),
+               "Підтримка Unreal ще потребує перевірки створення гри, готового файлу та гри всередині нього. Цей варіант поки не пропонуємо для першої версії."),
     ]
     recommended = "godot-local" if local and vram is not None and vram >= 8 * GIB else "godot-cloud" if editor else "manual"
     if fields["engine"] != "godot": recommended = "manual"
@@ -106,7 +107,7 @@ def advise(fields, report, *, now=None):
             "renderer": "Compatibility (needs actual API/driver test)", "target": target,
             "reasons": reasons, "options": options,
             "estimates": [
-                {"item":"Godot editor + export templates", "range":"Близько 1.5 GB після встановлення; проєкт і кеш — додатково, верхня межа невідома.", "source":"godot"},
-                {"item":"qwen2.5-coder:7b", "range":"Близько 4.7 GB завантаження; runtime RAM/VRAM залежить від контексту, верхня межа тут невідома.", "source":"ollama"},
-                {"item":"Час і вартість", "range":"Діапазон невідомий до вимірювання мережі, моделі, задачі й тарифу. Cloud не означає безкоштовно; local має витрати часу й електроенергії.", "source":"planning_policy"}],
+                {"item":"Godot і засоби створення готової гри", "range":"Близько 1.5 GB після встановлення; проєкт і кеш — додатково, верхня межа невідома.", "source":"godot"},
+                {"item":"qwen2.5-coder:7b", "range":"Близько 4.7 GB завантаження; пам’ять під час роботи залежить від обсягу задачі, верхня межа тут невідома.", "source":"ollama"},
+                {"item":"Час і вартість", "range":"Діапазон невідомий до вимірювання мережі, моделі, задачі й тарифу. Хмарний сервіс може бути платним; локальний AI витрачає час і електроенергію.", "source":"planning_policy"}],
             "scope_note":"Пропозиція першої версії: один завершений ігровий цикл у малому рівні. Жанр, правила й відкладений задум не змінюються автоматично."}

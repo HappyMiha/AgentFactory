@@ -38,8 +38,8 @@ class ConfigurationAdviceTests(unittest.TestCase):
         self.assertEqual(result["options"][0]["engine"],"unreal")
     def test_web_target_and_unknown_gpu_have_explicit_limits(self):
         result=advise(template()|{"platform":"web"},report(vram=None),now=NOW)
-        self.assertIn("браузера",result["target"])
-        self.assertTrue(any("VRAM невідомий" in reason for reason in result["reasons"]))
+        self.assertIn("браузері",result["target"])
+        self.assertTrue(any("Пам’ять відеокарти невідома" in reason for reason in result["reasons"]))
         self.assertFalse(result["options"][3]["selectable"])
     def test_invalid_numeric_and_nested_data_rejected(self):
         for bad in (-1,True,"99999999",float('nan'),2**61):
