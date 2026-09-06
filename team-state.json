@@ -327,12 +327,22 @@
       "dependencies": [
         "core:AF-GC-007"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
+      "scopes": [
+        "core:docs/hardware-inventory.md",
+        "core:src/agent_factory/hardware_inventory.py",
+        "core:src/agent_factory/hardware_web.py",
+        "core:src/agent_factory/static/hardware.css",
+        "core:src/agent_factory/static/hardware.html",
+        "core:src/agent_factory/static/hardware.js",
+        "core:tests/test_hardware_browser.py",
+        "core:tests/test_hardware_inventory.py",
+        "core:tests/test_hardware_web.py"
+      ],
+      "updated_at": "2026-09-06T03:26:48+00:00",
+      "note": "Dedicated inventory and installer; Core010 owns central web composition. Full completion follows reviewed default-app integration.",
       "pr": null,
       "resources": [
         "core:environment"
@@ -347,7 +357,8 @@
       "optional": false,
       "source_dependencies": [
         "core:AF-GC-007"
-      ]
+      ],
+      "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473"
     },
     "core:AF-GC-012": {
       "dependencies": [
@@ -5049,6 +5060,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
       "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
+    },
+    {
+      "operation_id": "a4e4c8b8-dedf-4c20-9822-260f7e8f790c",
+      "at": "2026-09-06T03:26:48+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-011",
+      "worker": "HappyDucky02",
+      "note": "Dedicated inventory and installer; Core010 owns central web composition. Full completion follows reviewed default-app integration.",
+      "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
+      "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473"
     }
   ],
   "migration": {
