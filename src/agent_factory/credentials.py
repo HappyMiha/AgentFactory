@@ -167,8 +167,10 @@ class CredentialBroker:
         ) or operation not in json.loads(row["operations_json"]):
             self._denied(row, actor, "credential scope mismatch")
             raise PermissionError("Credential scope does not authorize this use")
+        serialized_arguments = self._json(arguments)
         if (self._contains_material(prompt, (secret, handle))
-                or self._contains_material(arguments, (secret, handle))):
+                or self._contains_material(arguments, (secret, handle))
+                or self._contains_material(serialized_arguments, (secret, handle))):
             self._denied(row, actor, "credential injection firewall blocked secret material")
             raise PermissionError("Credential material cannot enter prompts or tool arguments")
         request = {

@@ -170,3 +170,18 @@ class CredentialEscapedMaterialTests(unittest.TestCase):
                 self.assertEqual(broker.use(handle,tenant_id='t',mission_id='m',tool_key='k',operation='read',prompt='safe',arguments={1:('safe',2)},executor=lambda env,args: {'ok':True},actor='Owner'), {'ok':True})
                 self.assertNotIn(secret,'\n'.join(storage.db.iterdump()))
             finally:storage.close()
+
+    def test_numeric_json_material_is_blocked_before_executor_or_evidence(self):
+        with tempfile.TemporaryDirectory() as root:
+            storage=SQLiteStorage(Path(root)/'state.db')
+            try:
+                broker=CredentialBroker(storage)
+                for secret, scalar in [('12345678901234567890',12345678901234567890),('1.234567890123e+30',1.234567890123e+30)]:
+                    handle=broker.issue(tenant_id='t',mission_id='m',tool_key='k',operations=('read',),preapproved_operations={'read'},environment_key='API_KEY',secret_value=secret,ttl_seconds=60,actor='Owner')
+                    for args in ({'token':scalar},{'nested':[{'token':scalar}]}, {scalar:'value'}):
+                        with self.subTest(secret_kind=type(scalar).__name__,nested=isinstance(args.get('nested'),list)):
+                            with self.assertRaises(PermissionError):
+                                broker.use(handle,tenant_id='t',mission_id='m',tool_key='k',operation='read',prompt='safe',arguments=args,executor=lambda *args:self.fail('Numeric secret must never reach executor'),actor='Owner')
+                    self.assertNotIn(secret,'\n'.join(storage.db.iterdump()))
+                self.assertEqual(storage.db.execute('SELECT count(*) FROM credential_use_evidence').fetchone()[0],0)
+            finally:storage.close()
