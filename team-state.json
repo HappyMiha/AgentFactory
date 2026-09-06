@@ -443,9 +443,9 @@
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T16:02:48+00:00",
-      "note": "PR40 exact03d593d pushed: prebound installation effect guard and admitted runtime composition; 74 tests,73pass1skip. Peer review pending.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/40",
+      "updated_at": "2026-09-06T16:33:43+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/42",
       "resources": [
         "core:environment-bootstrap",
         "core:tool-gateway",
@@ -464,7 +464,7 @@
         "core:AF-GC-013"
       ],
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463",
-      "review_head": "03d593de9a6876ba162a954d956d24bfdeed52ea"
+      "review_head": "13fc845e99cd7befa82c3b8fb0c00e1c149b44b2"
     },
     "core:AF-GC-015": {
       "dependencies": [
@@ -6648,6 +6648,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-90113dc6",
       "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb"
+    },
+    {
+      "operation_id": "e581eee1-c9cd-4cf0-9cfb-4cdc589b0732",
+      "at": "2026-09-06T16:33:43+00:00",
+      "action": "review",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
