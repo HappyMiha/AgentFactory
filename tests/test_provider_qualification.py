@@ -284,6 +284,27 @@ class ProviderQualificationTests(unittest.TestCase):
             result = self.compose(self.pool({'worker-a': self.scope()}))
         self.assertNotEqual(result.status, 'ready')
 
+    def test_workforce_rejects_qualification_replacement_between_diagnostics_and_routing(self):
+        self.identities = CanonicalModels(dict(self.identities.bindings) | {
+            ('cloud-b', 'alias-of-a'): 'family:model-a'})
+        self.service = ProviderQualificationService(self.storage, self.identities, clock=lambda: self.now)
+        first, second = self.scope(), self.scope(provider='cloud-b')
+        self.record('one', scope=first)
+        self.record('two', scope=second, observed='observed-b')
+        pool = self.pool({'one': first, 'two': second}, replicas=2)
+        composer = WorkforceComposer(self.storage, qualification_service=self.service)
+        original = composer.router.route
+        def replace_before_route(**kwargs):
+            self.record('two', scope=second, observed='alias-of-a')
+            return original(**kwargs)
+        with patch.object(composer.router, 'route', side_effect=replace_before_route):
+            with self.assertRaises(QualificationDenied):
+                composer.compose(composition_key='between-passes', mission_key='fixture', pools=(pool,), budget=10)
+        self.assertEqual(self.storage.db.execute(
+            "SELECT COUNT(*) FROM workforce_compositions WHERE composition_key='between-passes'").fetchone()[0], 0)
+        latest = composer.compose(composition_key='between-passes', mission_key='fixture', pools=(pool,), budget=10)
+        self.assertNotEqual(latest.status, 'ready')
+
 
 if __name__ == '__main__':
     unittest.main()

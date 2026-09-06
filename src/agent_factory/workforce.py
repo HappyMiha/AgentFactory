@@ -428,6 +428,16 @@ class WorkforceComposer:
                         for c in available} if pool.qualification_scopes else None,
                     producer_receipt=pool.producer_receipt,
                 )
+                if pool.qualification_scopes:
+                    expected = {item["agent_id"]: item for item in diagnostics if item["eligible"]}
+                    observed = {item["agent_id"]: item for item in decision.eligible}
+                    bound_fields = ("qualification_id", "qualification_evidence_digest",
+                                    "model_identity", "effective_model", "identity_registry")
+                    if set(expected) != set(observed) or any(
+                        any(expected[worker][field] != observed[worker][field] for field in bound_fields)
+                        for worker in expected
+                    ):
+                        raise QualificationDenied("composition_qualification_changed")
                 ordered = list(decision.fallback_chain)
                 base_options = list(itertools.combinations(ordered, pool.minimum_replicas))
                 independent_options = [option for option in base_options if len({
