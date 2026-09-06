@@ -185,3 +185,15 @@ class CredentialEscapedMaterialTests(unittest.TestCase):
                     self.assertNotIn(secret,'\n'.join(storage.db.iterdump()))
                 self.assertEqual(storage.db.execute('SELECT count(*) FROM credential_use_evidence').fetchone()[0],0)
             finally:storage.close()
+
+    def test_numeric_secret_echoes_are_redacted_before_result_and_evidence(self):
+        with tempfile.TemporaryDirectory() as root:
+            storage=SQLiteStorage(Path(root)/'state.db')
+            try:
+                broker=CredentialBroker(storage)
+                for secret, scalar in [('12345678901234567890',12345678901234567890),('1.234567890123e+30',1.234567890123e+30)]:
+                    handle=broker.issue(tenant_id='t',mission_id='m',tool_key='k',operations=('read',),preapproved_operations={'read'},environment_key='API_KEY',secret_value=secret,ttl_seconds=60,actor='Owner')
+                    result=broker.use(handle,tenant_id='t',mission_id='m',tool_key='k',operation='read',prompt='safe',arguments={},executor=lambda env,args:{scalar:[scalar,{'safe':42,'flag':True}]},actor='Owner')
+                    self.assertEqual(result,{REDACTED:[REDACTED,{'safe':42,'flag':True}]})
+                    self.assertNotIn(secret,json.dumps(result)+'\n'.join(storage.db.iterdump()))
+            finally:storage.close()

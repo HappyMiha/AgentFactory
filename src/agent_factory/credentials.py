@@ -227,6 +227,10 @@ class CredentialBroker:
                 if secret:
                     result = result.replace(secret, REDACTED)
             return result
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if cls._contains_material(cls._json(value), secrets):
+                return REDACTED
+            return value
         if isinstance(value, dict):
             return {cls._sanitize(str(key), secrets): cls._sanitize(item, secrets) for key, item in value.items()}
         if isinstance(value, (list, tuple)):
