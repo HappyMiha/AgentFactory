@@ -47,6 +47,18 @@ class GamePlanningTests(unittest.TestCase):
         with self.assertRaises(PlanningConflict):self.save(expected_revision_id=0)
         with self.assertRaises(PlanningConflict):self.save(expected_source_digest='0'*64)
         self.assertEqual(len(self.plans.view(self.ident,'Founder')['history']),1)
+    def test_edited_rules_are_authoritative_over_genre_suggestions(self):
+        for genre in ('platformer','collector','puzzle'):
+            with self.subTest(genre=genre):
+                fields=template(genre)|{'controls':'Use voice commands only.',
+                    'goal':'Reach the tower without collecting items.',
+                    'lose_rule':'Falling respawns only the player; preserve all collected items and objective progress.'}
+                plan=self.save(fields)
+                criteria=' '.join(c for task in plan['tasks'] for c in task['acceptance_criteria'])
+                for key in ('controls','goal','lose_rule'):self.assertIn(fields[key],criteria)
+                for forbidden in ('resets the player and objective state','increments progress exactly once','all required tokens','Only legal tile moves','matches the displayed target','reset permits a second'):
+                    self.assertNotIn(forbidden,criteria)
+
     def test_owner_and_version_validation(self):
         with self.assertRaises(KeyError):self.plans.view(self.ident,'Other')
         with self.assertRaises(KeyError):self.plans.save(self.ident,'Other',fields=template(),command_id=str(uuid.uuid4()),expected_revision_id=0,expected_source_digest=self.result.source.source_digest)

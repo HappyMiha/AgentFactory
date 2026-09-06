@@ -87,3 +87,32 @@ class GamePlanningBrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator('#goal').input_value(),'New edits while retrying.')
         self.assertEqual(self.page.locator('#history li').count(),1)
         self.save();self.assertEqual(self.page.locator('#history li').count(),2)
+
+    def test_typing_during_delayed_navigation_is_not_overwritten(self):
+        self.open();self.page.locator('#goal').fill('Saved goal.');self.save()
+        held=[]
+        def hold(route):held.append((route,route.fetch()))
+        self.page.route('**/api/game-planning/*',hold)
+        self.page.locator('#latest').click()
+        self.page.wait_for_timeout(100)
+        self.assertEqual(len(held),1)
+        self.page.locator('#goal').fill('Unsaved edit while loading.')
+        route,response=held.pop();route.fulfill(response=response)
+        self.page.wait_for_function("document.getElementById('notice').textContent.includes('Відповідь відхилено')")
+        self.assertEqual(self.page.locator('#goal').input_value(),'Unsaved edit while loading.')
+
+    def test_obsolete_navigation_response_cannot_replace_newer_selection(self):
+        self.open();self.page.locator('#goal').fill('First saved goal.');self.save()
+        self.page.locator('#goal').fill('Second saved goal.');self.save()
+        held=[]
+        def hold(route):held.append((route,route.fetch()))
+        self.page.route('**/api/game-planning/*',hold)
+        self.page.get_by_role('button',name='Версія 1',exact=True).click()
+        self.page.locator('#latest').click();self.page.wait_for_timeout(100)
+        self.assertEqual(len(held),2)
+        route,response=held[1];route.fulfill(response=response)
+        self.page.wait_for_function("document.getElementById('goal').value==='Second saved goal.'")
+        route,response=held[0];route.fulfill(response=response)
+        self.page.wait_for_timeout(100)
+        self.assertEqual(self.page.locator('#goal').input_value(),'Second saved goal.')
+        self.assertFalse(self.page.locator('#fields').is_disabled())

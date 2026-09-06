@@ -17,19 +17,13 @@ FIELDS = ('genre','engine','platform','controls','goal','lose_rule','visual_styl
 GENRES = {
     'platformer': ('Jump to a reachable exit on one small platform level.',
                    'Arrow keys move; Space jumps.',
-                   'Falling below the level restarts the attempt.',
-                   ('A jump lands on a platform without passing through it.',
-                    'Falling resets the player and objective state.')),
+                   'Falling below the level restarts the attempt.'),
     'collector': ('Collect three visible tokens and reach an exit in one room.',
                   'Arrow keys move the player.',
-                  'Touching an obstacle resets the current attempt.',
-                  ('A token increments progress exactly once.',
-                   'The exit cannot report success before all required tokens are collected.')),
+                  'Touching an obstacle resets the current attempt.'),
     'puzzle': ('Solve one small tile arrangement with a visible target.',
                'Click a tile to make one legal move.',
-               'An illegal move leaves the puzzle state unchanged.',
-               ('Only legal tile moves change the board.',
-                'Success appears only when the board matches the displayed target.')),
+               'An illegal move leaves the puzzle state unchanged.'),
 }
 
 class PlanningConflict(ValueError):
@@ -48,7 +42,7 @@ def validate_fields(fields):
 def template(genre='collector'):
     if genre not in GENRES:
         raise ValueError('unsupported_genre')
-    goal,controls,lose,_=GENRES[genre]
+    goal,controls,lose=GENRES[genre]
     return {'genre':genre,'engine':'godot','platform':'windows','controls':controls,
             'goal':goal,'lose_rule':lose,'visual_style':'Readable placeholder shapes.',
             'first_playable':goal,'assumptions':'Manual template suggestion: one player, one small scene. Review every field against your source.',
@@ -71,18 +65,17 @@ def questions(fields):
 def proposal(fields, source):
     validate_fields(fields)
     trace=f'core-source:{source.id}:v{source.version}:sha256:{source.source_digest}'
-    genre_checks=GENRES[fields['genre']][3]
     steps=[
       ('scene','Prepare the declared first scene',(),
        ('The '+fields['engine']+' project opens for the '+fields['platform']+' target.',
         'The scene implements only this first playable: '+fields['first_playable']),('first_playable','engine','platform')),
       ('input','Implement the declared player input',('scene',),
-       ('These controls work: '+fields['controls'],genre_checks[0]),('controls','genre')),
+       ('These controls work: '+fields['controls'],),('controls','genre')),
       ('rules','Implement goal and failure rules',('input',),
-       ('Success follows this goal: '+fields['goal'],'Failure or invalid input follows: '+fields['lose_rule'],genre_checks[1]),('goal','lose_rule','genre')),
+       ('Success follows this goal: '+fields['goal'],'Failure or invalid input follows: '+fields['lose_rule']),('goal','lose_rule','genre')),
       ('verify','Verify the complete repeatable loop',('rules',),
        ('An input-driven test reaches the declared goal.','An incomplete attempt cannot report success.',
-        'A reset permits a second complete attempt.','The visual direction stays readable: '+fields['visual_style']),('goal','controls','lose_rule','visual_style')),
+        'Observed failure and retained state follow exactly this declared rule: '+fields['lose_rule'],'The visual direction stays readable: '+fields['visual_style']),('goal','controls','lose_rule','visual_style')),
       ('delivery','Check an exported build without publication',('verify',),
        ('The '+fields['platform']+' build opens outside the editor and repeats the same input/goal checks.',
         'Record source/build digests and test evidence; do not publish.'),('platform','first_playable')),
