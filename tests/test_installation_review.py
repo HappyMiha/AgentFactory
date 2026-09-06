@@ -122,6 +122,20 @@ class InstallationReviewTests(unittest.TestCase):
         with ThreadPoolExecutor(max_workers=2) as pool:
             self.assertCountEqual(list(pool.map(decide,['approved','rejected'])),['saved','conflict'])
 
+    def test_probe_crossing_deadline_cannot_persist_a_new_decision(self):
+        for decision in ('approved','rejected'):
+            with self.subTest(decision=decision):
+                self.now=NOW
+                self.service.probe=lambda *_:deepcopy(HOST)
+                plan=self.prepare();self.now=NOW+timedelta(minutes=14,seconds=59)
+                def slow_probe(*_):
+                    self.now+=timedelta(seconds=2)
+                    return deepcopy(HOST)
+                self.service.probe=slow_probe
+                with self.assertRaisesRegex(InstallationConflict,'review_expired'):
+                    self.decide(self.command(plan,decision=decision))
+                self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM installation_review_decisions WHERE plan_id=?',(plan['id'],)).fetchone()[0],0)
+
     def test_actual_workspace_probe_never_infers_existing_binary_provenance(self):
         target=self.root/self.catalog['packages']['godot-editor']['target'];target.mkdir(parents=True)
         observation=observe_workspace(self.root,self.catalog)

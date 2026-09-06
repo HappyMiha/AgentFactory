@@ -179,7 +179,10 @@ class InstallationReview:
                     raise InstallationConflict('manual_action_required')
                 if free is None or free < document['disk_budget_bytes']:
                     raise InstallationConflict('disk_space_changed')
+            decided_at = self._now()
+            if decided_at >= datetime.fromisoformat(row['expires_at']):
+                raise InstallationConflict('review_expired')
             self.storage.db.execute('''INSERT INTO installation_review_decisions
                 (plan_id,actor,command_id,plan_digest,decision,created_at) VALUES(?,?,?,?,?,?)''',
-                (plan_id, actor, command_id, digest, decision, self._now().isoformat()))
+                (plan_id, actor, command_id, digest, decision, decided_at.isoformat()))
             return self._response(row)
