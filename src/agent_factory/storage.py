@@ -6536,6 +6536,39 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         );
     """),
     (75, ADMISSION_MIGRATION),
+    (76, """
+        CREATE TABLE installation_review_plans(
+            id INTEGER PRIMARY KEY,
+            mission_id INTEGER NOT NULL REFERENCES autonomous_missions(id),
+            actor TEXT NOT NULL, command_id TEXT NOT NULL,
+            request_digest TEXT NOT NULL, plan_digest TEXT NOT NULL,
+            plan_json TEXT NOT NULL CHECK(json_valid(plan_json)),
+            created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+            UNIQUE(actor,command_id)
+        );
+        CREATE INDEX installation_review_mission ON installation_review_plans(mission_id,id);
+        CREATE TABLE installation_review_decisions(
+            id INTEGER PRIMARY KEY,
+            plan_id INTEGER NOT NULL UNIQUE REFERENCES installation_review_plans(id),
+            actor TEXT NOT NULL, command_id TEXT NOT NULL,
+            plan_digest TEXT NOT NULL,
+            decision TEXT NOT NULL CHECK(decision IN ('approved','rejected')),
+            created_at TEXT NOT NULL,
+            UNIQUE(actor,command_id)
+        );
+        CREATE TRIGGER installation_decision_scope BEFORE INSERT ON installation_review_decisions
+        WHEN NOT EXISTS (SELECT 1 FROM installation_review_plans p
+                         WHERE p.id=NEW.plan_id AND p.actor=NEW.actor AND p.plan_digest=NEW.plan_digest)
+        BEGIN SELECT RAISE(ABORT,'installation decision scope differs'); END;
+        CREATE TRIGGER installation_plans_no_update BEFORE UPDATE ON installation_review_plans
+        BEGIN SELECT RAISE(ABORT,'installation plans are immutable'); END;
+        CREATE TRIGGER installation_plans_no_delete BEFORE DELETE ON installation_review_plans
+        BEGIN SELECT RAISE(ABORT,'installation plans are durable'); END;
+        CREATE TRIGGER installation_decisions_no_update BEFORE UPDATE ON installation_review_decisions
+        BEGIN SELECT RAISE(ABORT,'installation decisions are immutable'); END;
+        CREATE TRIGGER installation_decisions_no_delete BEFORE DELETE ON installation_review_decisions
+        BEGIN SELECT RAISE(ABORT,'installation decisions are durable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

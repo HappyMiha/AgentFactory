@@ -287,6 +287,8 @@ class WebHostTests(unittest.TestCase):
                         "/api/hardware/scan",
                         "/api/configuration-advice",
                         "/api/game-planning/{mission_id}",
+                        "/api/installation-plans/{mission_id}",
+                        "/api/approvals/installation/{mission_id}",
                         "/api/games/starts",
                         "/api/games/starts/{ident}/save",
                         "/api/games/starts/{ident}/submit",

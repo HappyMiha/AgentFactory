@@ -1,6 +1,7 @@
 # Review an installation before changing the computer
 
-Status: AF-GC-013 contract component. The full task is not complete.
+Status: AF-GC-013 installation review for the local Godot path. Actual installation
+is not implemented and the full multi-engine setup task is not complete.
 
 An installation proposal lists exact packages, their sources, their versions,
 their download sizes, their licence steps and the folders they would use. It
@@ -31,6 +32,14 @@ Each step is one of:
 No automatic update of unrelated software occurs. A conflicting installation
 at the target is never overwritten. A missing offline archive blocks the step
 and its dependants. Cache presence is matched by the exact archive hash.
+
+Inventory locations default to canonical workspace-relative paths. Windows case
+and backslash separators are normalized for comparison. Dot segments, duplicate
+separators, trailing dots/spaces, absolute paths, short-name aliases and opaque
+external labels are not guessed. Such observations make the proposal require
+manual action. Callers can explicitly mark opaque labels with
+`location_kind: external_label`; this never proves that a target is free. Even a
+canonical relative label does not prove filesystem containment or file integrity.
 
 ## Sources and disk budget
 
@@ -80,13 +89,53 @@ integration must authenticate the person, persist their decision, bind it to
 this digest and re-check current Core policy before any change. A different
 source, permission, byte count, target or context requires a new decision.
 
+## Local review screen and persistent decisions
+
+From a saved game plan, choose **Переглянути встановлення для збереженого плану**.
+The page loads existing state without creating a proposal. **Скласти новий план**
+explicitly saves a snapshot from the server's catalogue and current host checks.
+It lists packages, source links, sizes, permissions, licensing and target folders.
+Changes from the previous snapshot are grouped in plain language. A separate
+checkbox and button record approval; rejection has its own button. No installer
+or provider is called. A new snapshot does not inherit an earlier decision.
+
+SQLite migration 76 adds immutable plan and decision records to the existing Core
+database. A snapshot binds the mission owner, source digest, game-plan revision,
+host/workspace fingerprints and exact proposal. Its review period is 15 minutes.
+Decisions have unique command IDs and one decision per snapshot; concurrent
+conflicting decisions cannot both commit. An exact lost-response retry returns
+the original receipt without renewing permission. Records survive app restart.
+
+The normal app installs the routes behind LocalHTTPBoundary. Preparing needs the
+current owner's write access; deciding additionally needs a configured authenticated
+session or bearer, the approve scope and an owner role. Local-open mode permits
+planning but cannot record consent. The server does not accept caller-supplied
+catalogues, host reports, actors, snapshots or permission lists from the browser.
+
+Before a new decision, the service checks the latest snapshot, owner, editable
+game revision, source, expiry, current catalogue and current host observations
+within a database writer transaction. It compares the exact proposal while
+retaining the reviewed capacity value, then separately checks current free space
+against the reviewed budget. Normal free-space fluctuation does not require new
+consent if enough space remains. A changed scope, conflicting target or insufficient
+capacity rejects approval and asks for a new review. Historical receipts remain
+visible; they are not current execution permissions.
+
+The default host probe reads the actual workspace drive's free capacity and fixed
+managed target paths. It does not launch tools or scan arbitrary user directories.
+Existing targets have unknown provenance and are conflicts, including blocking
+ancestor files; links and Windows reparse points need manual resolution. It never
+claims a discovered editor is usable. Initial Windows x86-64 staging is supported;
+other platforms show a manual action. Offline preparation has no verified cache
+adapter yet, so it cannot silently approve a missing archive.
+
 ## Remaining AF-GC-013 work
 
-- Add a simple installation review screen to the normal setup flow.
-- Add authenticated, persisted consent and rejection bound to the exact plan.
-- Connect trusted host observations and show stale or missing evidence clearly.
-- Re-check the displayed plan before submission and show differences on change.
-- Test the default application flow, including rejection and changed-plan cases.
+- Add verified installed-package/cache receipts so reuse and offline plans can be
+  offered from actual host evidence rather than caller fixtures.
+- Expand the reviewed catalogue and licensing flow for supported local models
+  and further engines/platforms.
+- Accept actual setup evidence before calling the complete environment ready.
 
 AF-GC-014 then owns actual recoverable installation through Core's operation
 journal and policy checks, bounded archive extraction, crash recovery, cleanup
@@ -100,3 +149,9 @@ and checksum, changed permissions and size, content-review invalidation, isolate
 updates, target conflicts, offline cache, no-admin, licensing, unsupported
 platforms, disk uncertainty, bounded input and immutable snapshots. It uses
 fixtures; it never downloads a package or changes the host environment.
+`test_installation_review`, `test_installation_web` and
+`test_installation_browser` additionally cover database upgrade preservation,
+restart, authenticated ownership/scopes, conflicting concurrent decisions,
+source/host/space changes, explicit review/rejection, lost responses, and the
+default app in real Chromium at 390px. Synthetic host fixtures exercise the
+approve branch; a separate filesystem probe test reads a disposable local folder.
