@@ -281,7 +281,7 @@
       "dependencies": [
         "core:AF-GC-039"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
       "scopes": [
@@ -301,9 +301,9 @@
         "core:tests/test_os_credentials.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T03:25:35+00:00",
+      "updated_at": "2026-09-06T03:29:46+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/15",
       "resources": [
         "core:credentials",
         "core:security",
@@ -321,7 +321,8 @@
       "source_dependencies": [
         "core:AF-GC-039"
       ],
-      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
+      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222",
+      "review_head": "8874baecffbe59917317c8d778bad1a660c34e38"
     },
     "core:AF-GC-011": {
       "dependencies": [
@@ -5070,6 +5071,16 @@
       "note": "Dedicated inventory and installer; Core010 owns central web composition. Full completion follows reviewed default-app integration.",
       "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
       "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473"
+    },
+    {
+      "operation_id": "756f675c-cf03-421f-a993-074988714733",
+      "at": "2026-09-06T03:29:46+00:00",
+      "action": "review",
+      "task": "core:AF-GC-010",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
+      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
     }
   ],
   "migration": {
