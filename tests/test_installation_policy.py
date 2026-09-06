@@ -2,6 +2,7 @@ from dataclasses import replace
 from datetime import timedelta
 import unittest
 import uuid
+from unittest.mock import patch
 
 from agent_factory.autonomous_mission import AutonomousMissionService
 from agent_factory.installation_policy import InstallationPolicyBinding
@@ -89,6 +90,97 @@ class InstallationPolicyTests(unittest.TestCase):
         with self.assertRaisesRegex(InstallationConflict,'review_expired'): self.request()
         self.now -= timedelta(hours=1); self.host['workspace']='changed'
         with self.assertRaises(InstallationConflict): self.request()
+
+
+class InstallationLivePolicyTests(unittest.TestCase):
+    def setUp(self):
+        from test_installation_journal import InstallationJournalTests
+        from test_live_stages import LiveStageExecutionTests
+        self.fixture = InstallationJournalTests()
+        self.fixture.setUp(); self.addCleanup(self.fixture.doCleanups)
+        self.storage = self.fixture.storage
+        with self.fixture.archive.stage(self.fixture.catalog) as staged:
+            self.publication = self.fixture.prepare(staged)
+        live = LiveStageExecutionTests()
+        live.workspace = self.fixture.root; live.storage = self.storage; live.counter = 0
+        live.project_id = AutonomousMissionService(self.storage).get(self.fixture.mission).project_id
+        create_task = self.storage.create_task
+        create_worktree = self.storage.create_managed_worktree
+        # The synthetic existing live-stage fixture must declare tool_use and
+        # assign the actual installation workspace as its managed worktree.
+        with patch.object(self.storage, 'create_task', side_effect=lambda item:
+                          create_task(replace(item, permissions=['read_project', 'tool_use', 'worktree_write']))), \
+             patch.object(self.storage, 'create_managed_worktree', side_effect=lambda **kw:
+                          create_worktree(**(kw | {'path': str(self.fixture.root)}))):
+            self.run, _, self.launch = live.fixture()
+        self.binding = InstallationPolicyBinding(self.fixture.intents)
+
+    def request(self, **changes):
+        return self.binding.publication_request(self.fixture.mission, 'Founder',
+            **({'publication_id': self.publication['operation_id'], 'launch': self.launch,
+                'runtime_id': 'direct-cli'} | changes))
+
+    def test_publication_uses_real_stage_and_database_scope_without_approval(self):
+        request = self.request()
+        self.assertEqual(request.effect_digest, self.publication['request_digest'])
+        self.assertEqual((request.run_id, request.stage_id), (self.run, 'implementation'))
+        self.assertEqual(request.worktree_id, str(self.launch.binding.worktree_id))
+        self.assertEqual(request.permissions, ('read_project', 'tool_use', 'worktree_write'))
+        self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM scoped_execution_approvals').fetchone()[0], 0)
+        self.assertEqual(self.fixture.publications.view(self.fixture.mission, 'Founder',
+            self.publication['operation_id'])['state'], 'reserved')
+
+    def test_real_stage_approval_binds_package_and_consumes_only_once(self):
+        from agent_factory.live_stages import LiveStageExecution
+        request = self.request()
+        gate = LiveStageExecution(self.storage).request_approval(request, requested_by='Founder')
+        self.storage.decide_scoped_approval(gate.approval_id, 'approved', actor='Founder')
+        self.assertEqual(self.request(), request)  # Still valid while waiting for approval consumption.
+        scope = {'approval_id': gate.approval_id, 'assignment_id': self.launch.assignment_id,
+                 'attempt_id': self.launch.binding.attempt_id}
+        policy = ControlPlanePolicy(self.storage)
+        with self.assertRaises(PermissionError):
+            policy.authorize(replace(request, effect_digest='b'*64), **scope)
+        self.assertEqual(policy.authorize(request, **scope).outcome, PolicyOutcome.ALLOW)
+        with self.assertRaisesRegex(InstallationConflict, 'already_approved'): self.request()
+        row = self.storage.db.execute('SELECT * FROM stage_approval_consumptions').fetchone()
+        self.assertEqual(row['request_digest'], request.digest)
+        self.assertEqual(row['run_id'], self.run)
+
+    def test_wrong_live_scope_or_permissions_cannot_prepare_effect_request(self):
+        variants = [replace(self.launch, binding=replace(self.launch.binding, run_id=self.run+999)),
+                    replace(self.launch, binding=replace(self.launch.binding, stage_id='missing')),
+                    replace(self.launch, binding=replace(self.launch.binding, worktree_id=99999)),
+                    replace(self.launch, binding=replace(self.launch.binding, attempt_id=99999)),
+                    replace(self.launch, item=replace(self.launch.item, project_id=99999)),
+                    replace(self.launch, item=replace(self.launch.item, permissions=['worktree_write']))]
+        for launch in variants:
+            with self.subTest(launch=launch.binding), self.assertRaises(InstallationConflict):
+                self.request(launch=launch)
+        with self.assertRaises(InstallationConflict): self.request(runtime_id='different-runtime')
+        with self.assertRaises(ValueError): self.request(launch=replace(self.launch, assignment_id=True))
+
+    def test_installation_root_must_match_the_managed_worktree(self):
+        self.fixture.review.workspace = self.fixture.root/'outside-worktree'
+        with self.assertRaisesRegex(InstallationConflict, 'outside_worktree'): self.request()
+
+    def test_preparation_does_not_commit_an_enclosing_caller_transaction(self):
+        self.storage.db.execute('BEGIN IMMEDIATE')
+        try:
+            with self.assertRaisesRegex(ValueError, 'outside a caller transaction'): self.request()
+            self.assertTrue(self.storage.db.in_transaction)
+            self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM scoped_execution_approvals').fetchone()[0], 0)
+        finally:
+            self.storage.db.rollback()
+
+    def test_stale_lease_expired_intent_and_unknown_publication_deny_preparation(self):
+        with self.assertRaises(PermissionError):
+            self.request(launch=replace(self.launch, fencing_token=self.launch.fencing_token+1))
+        self.fixture.now += timedelta(hours=1)
+        with self.assertRaisesRegex(InstallationConflict, 'review_expired'): self.request()
+        self.fixture.now -= timedelta(hours=1)
+        self.fixture.intents.journal.mark_unknown(self.publication['operation_id'], event_key='unknown', evidence={})
+        with self.assertRaisesRegex(InstallationConflict, 'publication_not_reserved'): self.request()
 
 
 if __name__=='__main__': unittest.main()

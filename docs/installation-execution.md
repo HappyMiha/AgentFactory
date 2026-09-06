@@ -226,3 +226,37 @@ copying again. Fixture authorization in that test only exercises the journal and
 filesystem; live runtime admission, one-use policy composition, executable checks
 and Windows VM fault acceptance remain open. Every response still reports
 `execution_eligible: false`.
+
+## Publication requests for an existing live stage
+
+`InstallationPolicyBinding.publication_request` builds a request for a recorded
+publication and an existing mutable `RuntimeLaunch`. It preserves the real run
+and stage names and binds the complete publication journal request through
+`effect_digest`. The older bootstrap request method remains available unchanged;
+it does not acquire live-stage authority through this addition.
+
+The helper checks the current approved intent, reserved publication, assignment
+lease, task project, worker/runtime, attempt and managed worktree. The stage must
+be running or waiting for approval, and the attempt must not already have consumed
+a stage approval. Permissions come from the current task and must match the
+launch and include `tool_use` and `worktree_write`.
+
+The installation workspace must be exactly that managed worktree. Permission
+to write one worktree cannot silently authorize package files in another project
+directory. The host must plan and provision the correct workspace before using
+this flow; the helper never relocates files or rewrites the saved plan.
+
+Preparation must run outside a caller transaction because current-intent
+reservation uses the existing journal's transaction boundary. An enclosing
+transaction is rejected without committing it. The result is still a snapshot,
+not an execution grant. It can be passed to the existing live-stage approval
+flow; assignment-bound consumption checks the real stage/attempt and exact
+effect digest. Reconstructing a request after that attempt's consumption is
+rejected and cannot create a second execution opportunity.
+
+Tests exercise real SQLite live-stage approval and exact one-use consumption
+with synthetic launch/worktree records. They do not start a runtime driver.
+An executor still needs explicit support for carrying the effect into its
+immutable launch, actual runtime admission, current intent checks at the effect
+boundary and the existing publication/recovery operations. This helper does not
+supply those steps or mark an installation ready.
