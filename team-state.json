@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-b387c7d0",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T10:27:55+00:00",
-      "note": "Current connection scope component merged; whole task awaits trusted evaluator and live route acceptance. Preserve branch; release active scopes.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/26",
+      "updated_at": "2026-09-06T11:33:43+00:00",
+      "note": "Preserve merged connection-scope component; agreed bounded evaluator transport continuation uses fresh claim.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4",
-      "review_head": "cced818ed88948b5ff2b40afe6807b59305c3bed"
+      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6112,6 +6111,16 @@
       "note": "Guidance component PR18 merged. Whole task awaits Core evaluator and actual independent model canaries. Branch preserved.",
       "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
       "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
+    },
+    {
+      "operation_id": "aa7b79b5-f338-4f97-bbe5-c112d8dee4aa",
+      "at": "2026-09-06T11:33:43+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Preserve merged connection-scope component; agreed bounded evaluator transport continuation uses fresh claim.",
+      "branch": null,
+      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
     }
   ],
   "migration": {
