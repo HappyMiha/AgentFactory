@@ -217,7 +217,7 @@
         "core:AF-GC-005",
         "core:AF-GC-007"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
       "scopes": [
@@ -235,9 +235,9 @@
         "core:tests/test_game_planning_web.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T04:57:30+00:00",
-      "note": "Local planning facade over Core immutable intake and backlog revisions; no Cloud planner copy, storage migration or worker runtime edits.",
-      "pr": null,
+      "updated_at": "2026-09-06T05:21:53+00:00",
+      "note": "Manual planning facade; 64 Windows tests passed, zero skips. Independent source/plan and authority review requested.",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/17",
       "resources": [
         "shared:game-brief",
         "core:planning",
@@ -255,7 +255,8 @@
         "core:AF-GC-005",
         "core:AF-GC-007"
       ],
-      "claim_id": "1b549690-df10-419c-a781-d122938d1532"
+      "claim_id": "1b549690-df10-419c-a781-d122938d1532",
+      "review_head": "07454f30f4a44bea54aef6949bfe689bf7bedacf"
     },
     "core:AF-GC-009": {
       "dependencies": [
@@ -5332,6 +5333,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
       "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
+    },
+    {
+      "operation_id": "1409958c-1bed-4b79-9540-3a2e35955084",
+      "at": "2026-09-06T05:21:53+00:00",
+      "action": "review",
+      "task": "core:AF-GC-008",
+      "worker": "HappyHahahaker",
+      "note": "Manual planning facade; 64 Windows tests passed, zero skips. Independent source/plan and authority review requested.",
+      "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
+      "claim_id": "1b549690-df10-419c-a781-d122938d1532"
     }
   ],
   "migration": {
