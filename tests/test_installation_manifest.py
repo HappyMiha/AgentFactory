@@ -90,7 +90,7 @@ class InstallationManifestTests(unittest.TestCase):
             manifest=manifest_for_stage(staged)
         with self.assertRaises(ValueError): InstallationManifest('{}')
         with self.assertRaises(ValueError): InstallationManifest(manifest.snapshot+' ')
-        for field,value in (('total_bytes',-1),('total_bytes',True),('paths',['../outside']),('archive_sha256','bad')):
+        for field,value in (('schema_version',True),('total_bytes',-1),('total_bytes',True),('paths',['../outside']),('archive_sha256','bad')):
             document=manifest.document(); document[field]=value
             with self.subTest(field=field),self.assertRaises(ValueError):
                 InstallationManifest(json.dumps(document,sort_keys=True,separators=(',',':')))

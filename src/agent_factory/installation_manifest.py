@@ -28,7 +28,7 @@ class InstallationManifest:
                 raise ValueError()
             document=json.loads(self.snapshot)
             if (set(document)!={'schema_version','package_id','archive_sha256','files','paths','total_bytes'}
-                    or document['schema_version']!=1 or _json(document)!=self.snapshot
+                    or type(document['schema_version']) is not int or document['schema_version']!=1 or _json(document)!=self.snapshot
                     or not re.fullmatch('[a-z0-9][a-z0-9._-]{0,79}',document['package_id'])
                     or not re.fullmatch('[a-f0-9]{64}',document['archive_sha256'])):
                 raise ValueError()
