@@ -3631,6 +3631,74 @@
       "review_head": "4531e25dee28d5829af221641b7da635907d5b4d",
       "completed_commit": "765bea67f0164a71b24a8e5d042cd4d90c3e7101",
       "reviewed_head": "4531e25dee28d5829af221641b7da635907d5b4d"
+    },
+    "core:AF-DOC-001": {
+      "title": "Document Temporal commercial suitability and Unreal planning links",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [],
+      "source_dependencies": [],
+      "resources": [],
+      "required_scopes": [
+        "core:README.md",
+        "core:docs/architecture/temporal-commercial-decision.md"
+      ],
+      "scope_hints": [
+        "core:README.md",
+        "core:docs/architecture/temporal-commercial-decision.md"
+      ],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "acceptance_summary": [
+        "Publish the owner-requested architecture and evidence plan in simple English.",
+        "Exclude the local ecosystem comparison document and private research cache.",
+        "Preserve existing implementation dependencies, task IDs and peer ownership.",
+        "Documentation only; no Temporal replacement or Unreal execution."
+      ],
+      "updated_at": "2026-09-06T06:57:44+00:00",
+      "note": "Owner-requested two-repository documentation maintenance; implementation claims unchanged."
+    },
+    "cloud:AF-DOC-001": {
+      "title": "Publish Unreal and gameplay AI plan and update product description",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [],
+      "source_dependencies": [],
+      "resources": [],
+      "required_scopes": [
+        "cloud:README.md",
+        "cloud:docs/product-description.md",
+        "cloud:docs/roadmap.md",
+        "cloud:docs/backlog.md",
+        "cloud:docs/core-cloud-boundary.md",
+        "cloud:docs/unreal-gameplay-plan.md",
+        "cloud:examples/agentfactory-cloud-backlog.json"
+      ],
+      "scope_hints": [
+        "cloud:README.md",
+        "cloud:docs/product-description.md",
+        "cloud:docs/roadmap.md",
+        "cloud:docs/backlog.md",
+        "cloud:docs/core-cloud-boundary.md",
+        "cloud:docs/unreal-gameplay-plan.md",
+        "cloud:examples/agentfactory-cloud-backlog.json"
+      ],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "acceptance_summary": [
+        "Publish the owner-requested architecture and evidence plan in simple English.",
+        "Exclude the local ecosystem comparison document and private research cache.",
+        "Preserve existing implementation dependencies, task IDs and peer ownership.",
+        "Documentation only; no Temporal replacement or Unreal execution."
+      ]
     }
   },
   "events": [
@@ -5423,6 +5491,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
       "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
+    },
+    {
+      "operation_id": "2ff32e98-ee73-42e7-aedf-a437fc419f46",
+      "at": "2026-09-06T06:57:44+00:00",
+      "action": "catalogue-add",
+      "task": "core:AF-DOC-001",
+      "worker": "HappyDucky02",
+      "note": "Owner-requested two-repository documentation maintenance; implementation claims unchanged.",
+      "branch": null,
+      "claim_id": null
     }
   ],
   "migration": {
