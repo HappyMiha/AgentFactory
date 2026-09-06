@@ -160,5 +160,107 @@ class InstallationIntentTests(unittest.TestCase):
         with self.assertRaises(sqlite3.DatabaseError), self.storage.db:
             self.storage.db.execute("UPDATE autonomous_mission_operations SET request_json='{}' WHERE id=?",(results[0]['operation_id'],))
 
+    def test_current_validation_never_reserves_or_writes_and_reopens(self):
+        self.approve(); saved = self.reserve()
+        before = self.storage.db.total_changes
+        with patch.object(self.intents.journal, 'reserve', side_effect=AssertionError('No reservation allowed')):
+            self.assertEqual(self.intents.current(self.mission, 'Founder', saved['operation_id']), saved)
+        self.assertEqual(self.storage.db.total_changes, before)
+        self.assertFalse(self.storage.db.in_transaction)
+        other = SQLiteStorage(self.path)
+        try:
+            self.assertEqual(InstallationIntents(self.review_for(other)).current(
+                self.mission, 'Founder', saved['operation_id']), saved)
+        finally: other.close()
+        self.assertEqual(len(self.intents.journal.events(saved['operation_id'])), 1)
+        self.assertFalse(saved['execution_eligible'])
+
+    def test_current_success_and_failure_preserve_caller_transaction(self):
+        self.approve(); saved = self.reserve()
+        self.storage.db.execute('CREATE TABLE caller_fixture (value TEXT)')
+        self.storage.db.commit()
+        other = SQLiteStorage(self.path); self.addCleanup(other.close)
+        self.storage.db.execute('BEGIN IMMEDIATE')
+        self.storage.db.execute("INSERT INTO caller_fixture VALUES ('pending')")
+        try:
+            self.assertEqual(self.intents.current(self.mission, 'Founder', saved['operation_id']), saved)
+            self.now += timedelta(hours=1)
+            with self.assertRaisesRegex(InstallationConflict, 'review_expired'):
+                self.intents.current(self.mission, 'Founder', saved['operation_id'])
+            self.assertTrue(self.storage.db.in_transaction)
+            self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM caller_fixture').fetchone()[0], 1)
+            self.assertEqual(other.db.execute('SELECT COUNT(*) FROM caller_fixture').fetchone()[0], 0)
+        finally: self.storage.db.rollback()
+        self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM caller_fixture').fetchone()[0], 0)
+
+    def test_current_rejects_changed_host_space_catalogue_and_newer_plan(self):
+        self.approve(); saved = self.reserve()
+        for mutation in ('host', 'capacity', 'catalogue'):
+            host, catalog = deepcopy(self.host), deepcopy(self.catalog)
+            if mutation == 'host': self.host['workspace'] = 'other'
+            if mutation == 'capacity': self.host['free_bytes'] = 1
+            if mutation == 'catalogue': self.catalog['packages']['godot-editor']['sha256'] = '0'*64
+            try:
+                with self.assertRaises(InstallationConflict):
+                    self.intents.current(self.mission, 'Founder', saved['operation_id'])
+            finally: self.host, self.catalog = host, catalog
+        self.review.prepare(self.mission, 'Founder', command_id=str(uuid.uuid4()))
+        with self.assertRaisesRegex(InstallationConflict, 'newer_plan_exists'):
+            self.intents.current(self.mission, 'Founder', saved['operation_id'])
+        self.assertEqual(self.intents.view(self.mission, 'Founder', saved['operation_id']), saved)
+
+    def test_current_rejects_unknown_operation_and_wrong_actor_or_identifier(self):
+        self.approve(); saved = self.reserve()
+        for value in (True, 0, -1, '1', 2**63):
+            with self.assertRaises(ValueError): self.intents.current(self.mission, 'Founder', value)
+        with self.assertRaises(KeyError): self.intents.current(self.mission, 'Other', saved['operation_id'])
+        self.intents.journal.mark_unknown(saved['operation_id'], event_key='lost', evidence={})
+        with self.assertRaisesRegex(InstallationConflict, 'not_reserved'):
+            self.intents.current(self.mission, 'Founder', saved['operation_id'])
+
+    def test_current_rejects_resumed_mission_with_changed_fence(self):
+        self.approve(); saved = self.reserve()
+        missions = AutonomousMissionService(self.storage)
+        for disposition in ('PAUSED', 'RUNNING'):
+            missions.transition_disposition(self.mission, disposition, actor='Founder', command_id=str(uuid.uuid4()),
+                expected_version=missions.get(self.mission).version, reason='Current-intent fixture')
+            with self.assertRaises(InstallationConflict):
+                self.intents.current(self.mission, 'Founder', saved['operation_id'])
+        self.assertEqual(self.intents.view(self.mission, 'Founder', saved['operation_id']), saved)
+
+    def test_current_writer_lock_blocks_scope_change_until_caller_rollback(self):
+        self.approve(); saved = self.reserve()
+        other = SQLiteStorage(self.path); self.addCleanup(other.close)
+        other.db.execute('PRAGMA busy_timeout=0')
+        missions = AutonomousMissionService(other)
+        def pause():
+            missions.transition_disposition(self.mission, 'PAUSED', actor='Founder', command_id=str(uuid.uuid4()),
+                expected_version=missions.get(self.mission).version, reason='Concurrent pause fixture')
+        self.storage.db.execute('BEGIN')
+        try:
+            self.intents.current(self.mission, 'Founder', saved['operation_id'])
+            with self.assertRaises(sqlite3.OperationalError): pause()
+            self.assertTrue(self.storage.db.in_transaction)
+        finally: self.storage.db.rollback()
+        pause()
+        with self.assertRaisesRegex(InstallationConflict, 'mission_is_fenced'):
+            self.intents.current(self.mission, 'Founder', saved['operation_id'])
+
+    def test_current_stale_wal_reader_cannot_validate_old_scope(self):
+        self.approve(); saved = self.reserve()
+        other = SQLiteStorage(self.path); self.addCleanup(other.close)
+        self.storage.db.execute('BEGIN')
+        self.storage.db.execute('SELECT version FROM autonomous_missions WHERE id=?', (self.mission,)).fetchone()
+        missions = AutonomousMissionService(other)
+        missions.transition_disposition(self.mission, 'PAUSED', actor='Founder', command_id=str(uuid.uuid4()),
+            expected_version=missions.get(self.mission).version, reason='Stale reader fixture')
+        try:
+            with self.assertRaises(sqlite3.OperationalError):
+                self.intents.current(self.mission, 'Founder', saved['operation_id'])
+            self.assertTrue(self.storage.db.in_transaction)
+        finally: self.storage.db.rollback()
+        with self.assertRaisesRegex(InstallationConflict, 'mission_is_fenced'):
+            self.intents.current(self.mission, 'Founder', saved['operation_id'])
+
 
 if __name__=='__main__': unittest.main()

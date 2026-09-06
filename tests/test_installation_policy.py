@@ -250,6 +250,10 @@ class InstallationAdmittedPolicyTests(unittest.TestCase):
                                       (receipt.admission_id,)).fetchone()
         self.assertEqual(row[0], session.id)
         self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM stage_approval_consumptions').fetchone()[0], 1)
+        # Rechecking parent intent after one-use consumption neither reserves
+        # another operation nor attempts to consume the stage approval again.
+        self.assertEqual(self.fixture.intents.current(self.fixture.mission, 'Founder',
+            self.publication['intent_id']), self.fixture.intent)
         self.assertEqual(self.fixture.publications.view(self.fixture.mission, 'Founder',
             self.publication['operation_id'])['state'], 'reserved')
         self.assertFalse((self.fixture.root/self.publication['relative_target']).exists())

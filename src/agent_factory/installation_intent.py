@@ -40,6 +40,72 @@ class InstallationIntents:
             raise KeyError('installation_intent_not_found')
         return self._response(operation)
 
+    def _current_review(self, mission, actor, plan_id, digest):
+        GamePlanning(self.storage)._mission(mission, actor)
+        row = self.storage.db.execute('''SELECT * FROM installation_review_plans
+            WHERE id=? AND mission_id=? AND actor=?''', (plan_id, mission, actor)).fetchone()
+        if row is None:
+            raise KeyError('review_not_found')
+        plan = InstallationPlan(row['plan_json'])
+        if plan.digest != digest or digest != row['plan_digest']:
+            raise InstallationConflict('plan_changed')
+        decision = self.storage.db.execute('''SELECT * FROM installation_review_decisions
+            WHERE plan_id=? AND actor=? AND plan_digest=? AND decision='approved' ''',
+            (plan_id, actor, digest)).fetchone()
+        if decision is None:
+            raise InstallationConflict('approved_review_required')
+        if self.review._latest(mission)['id'] != plan_id:
+            raise InstallationConflict('newer_plan_exists')
+        document = plan.document()
+        fresh, free = self.review._proposal(mission, actor, document['offline'],
+            reviewed_free=document['free_bytes'], preserve_free=True)
+        if changed_fields(plan, fresh) or document['requires_manual_action']:
+            raise InstallationConflict('plan_changed')
+        if free is None or free < document['disk_budget_bytes']:
+            raise InstallationConflict('disk_space_changed')
+        if self.review._now() >= datetime.fromisoformat(row['expires_at']):
+            raise InstallationConflict('review_expired')
+        # No scheduling state is changed here. Draft missions still need the
+        # existing RUNNING control disposition for an intent reservation.
+        scope = self.storage.db.execute('''SELECT m.version, m.active_backlog_revision_id,
+            m.active_execution_epoch_id, m.current_checkpoint_id, m.disposition,
+            f.fencing_token, f.disposition AS fence_disposition
+            FROM autonomous_missions m JOIN autonomous_mission_control_fences f ON f.mission_id=m.id
+            WHERE m.id=?''', (mission,)).fetchone()
+        if not scope or scope['disposition'] != 'RUNNING' or scope['fence_disposition'] != 'RUNNING':
+            raise InstallationConflict('mission_is_fenced')
+        return document, decision, scope
+
+    def current(self, mission, actor, operation_id):
+        """Recheck a reserved intent without reserving, granting or committing caller work.
+
+        This is a current snapshot for trusted host composition, not an execution
+        grant. Inside a caller transaction, its writer lock remains owned by that
+        caller; standalone validation releases the lock before returning.
+        """
+        if type(operation_id) is not int or not 0 < operation_id < 2**63:
+            raise ValueError('invalid_operation_id')
+        with self.storage._policy_transaction():
+            response = self.view(mission, actor, operation_id)
+            if response['state'] != 'reserved':
+                raise InstallationConflict('installation_intent_not_reserved')
+            operation = self.journal.get(operation_id)
+            document, decision, scope = self._current_review(
+                mission, actor, response['plan_id'], response['plan_digest'])
+            expected = {'kind': 'installation-intent-v1', 'plan_id': response['plan_id'],
+                        'decision_id': decision['id'], 'decision_created_at': decision['created_at'],
+                        'plan_digest': response['plan_digest'], 'plan': document}
+            if operation.request != expected:
+                raise InstallationConflict('installation_intent_changed')
+            saved_scope = (operation.mission_version, operation.backlog_revision_id,
+                           operation.execution_epoch_id, operation.checkpoint_id,
+                           operation.control_fencing_token)
+            current_scope = tuple(scope[key] for key in ('version', 'active_backlog_revision_id',
+                                  'active_execution_epoch_id', 'current_checkpoint_id', 'fencing_token'))
+            if saved_scope != current_scope:
+                raise InstallationConflict('installation_intent_scope_changed')
+            return response
+
     def reserve(self, mission, actor, *, plan_id, digest):
         """Record a still-current approved draft under the existing mission fence.
 
@@ -54,39 +120,7 @@ class InstallationIntents:
             # Keep source, consent, host observation and journal reservation under
             # one writer lock. The journal's own nested context commits the insert.
             self.storage._begin_immediate()
-            GamePlanning(self.storage)._mission(mission, actor)
-            row = self.storage.db.execute('''SELECT * FROM installation_review_plans
-                WHERE id=? AND mission_id=? AND actor=?''', (plan_id, mission, actor)).fetchone()
-            if row is None:
-                raise KeyError('review_not_found')
-            plan = InstallationPlan(row['plan_json'])
-            if plan.digest != digest or digest != row['plan_digest']:
-                raise InstallationConflict('plan_changed')
-            decision = self.storage.db.execute('''SELECT * FROM installation_review_decisions
-                WHERE plan_id=? AND actor=? AND plan_digest=? AND decision='approved' ''',
-                (plan_id, actor, digest)).fetchone()
-            if decision is None:
-                raise InstallationConflict('approved_review_required')
-            if self.review._latest(mission)['id'] != plan_id:
-                raise InstallationConflict('newer_plan_exists')
-            document = plan.document()
-            fresh, free = self.review._proposal(mission, actor, document['offline'],
-                reviewed_free=document['free_bytes'], preserve_free=True)
-            if changed_fields(plan, fresh) or document['requires_manual_action']:
-                raise InstallationConflict('plan_changed')
-            if free is None or free < document['disk_budget_bytes']:
-                raise InstallationConflict('disk_space_changed')
-            if self.review._now() >= datetime.fromisoformat(row['expires_at']):
-                raise InstallationConflict('review_expired')
-            # No scheduling state is changed here. Draft missions still need the
-            # existing RUNNING control disposition for an intent reservation.
-            scope = self.storage.db.execute('''SELECT m.version, m.active_backlog_revision_id,
-                m.active_execution_epoch_id, m.current_checkpoint_id, m.disposition,
-                f.fencing_token, f.disposition AS fence_disposition
-                FROM autonomous_missions m JOIN autonomous_mission_control_fences f ON f.mission_id=m.id
-                WHERE m.id=?''', (mission,)).fetchone()
-            if not scope or scope['disposition'] != 'RUNNING' or scope['fence_disposition'] != 'RUNNING':
-                raise InstallationConflict('mission_is_fenced')
+            document, decision, scope = self._current_review(mission, actor, plan_id, digest)
             result = self.journal.reserve(mission_id=mission, actor=actor,
                 operation_key=f'installation-intent:{plan_id}:{digest}',
                 operation_class=OperationClass.INSTALLATION,
