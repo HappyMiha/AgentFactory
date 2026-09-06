@@ -2063,7 +2063,7 @@
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-021"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
       "scopes": [
@@ -2074,9 +2074,9 @@
         "cloud:src/agentfactory_cloud/storage_migrations",
         "cloud:tests/test_hosted_store.py"
       ],
-      "updated_at": "2026-09-06T01:47:59+00:00",
-      "note": "Map and qualify Cloud-owned tenant records, identity-preserving migration and transactional outbox; preserve Core mission authority.",
-      "pr": null,
+      "updated_at": "2026-09-06T02:11:43+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/12",
       "resources": [
         "core:storage-contract",
         "cloud:postgresql"
@@ -2090,7 +2090,8 @@
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-021"
       ],
-      "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a"
+      "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a",
+      "review_head": "e9c00cf9bee2e5ec5c82794bb4dbad28aa70730f"
     },
     "cloud:AF-CLD-023": {
       "dependencies": [
@@ -4956,6 +4957,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
       "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22"
+    },
+    {
+      "operation_id": "5a3e9227-329d-480a-8fcf-1e72ecf54cc7",
+      "at": "2026-09-06T02:11:43+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-022",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
+      "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a"
     }
   ],
   "migration": {
