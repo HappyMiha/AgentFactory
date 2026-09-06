@@ -2132,7 +2132,7 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
       "scopes": [
@@ -2148,9 +2148,9 @@
         "cloud:tests/test_worker_gateway.py",
         "cloud:tests/test_worker_gateway_api.py"
       ],
-      "updated_at": "2026-09-06T07:37:29+00:00",
-      "note": "Include accepted Cloud manifest baseline correction required by combined-main regression.",
-      "pr": null,
+      "updated_at": "2026-09-06T07:41:54+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/16",
       "resources": [
         "core:worker-runtime",
         "cloud:worker-fleet",
@@ -2165,7 +2165,8 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
+      "claim_id": "972c329d-648c-4968-9a8a-15059dc04865",
+      "review_head": "8cadd0927a7dc7202431a74c3d01b5ae021d2b73"
     },
     "cloud:AF-CLD-025": {
       "dependencies": [
@@ -5713,6 +5714,16 @@
       "task": "cloud:AF-CLD-024",
       "worker": "HappySnowman",
       "note": "Include accepted Cloud manifest baseline correction required by combined-main regression.",
+      "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
+      "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
+    },
+    {
+      "operation_id": "a3298b6a-af02-4891-8409-bbbfc51c38d3",
+      "at": "2026-09-06T07:41:54+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "",
       "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
       "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
     }
