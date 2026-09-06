@@ -6569,6 +6569,36 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         CREATE TRIGGER installation_decisions_no_delete BEFORE DELETE ON installation_review_decisions
         BEGIN SELECT RAISE(ABORT,'installation decisions are durable'); END;
     """),
+    (77, """
+        -- Lifecycle extension of the existing reservation authority. No old
+        -- reservation or usage is rewritten, inferred complete, or refunded.
+        CREATE TABLE execution_reservation_closures(
+            reservation_id INTEGER PRIMARY KEY REFERENCES execution_stage_reservations(id),
+            state TEXT NOT NULL CHECK(state IN ('settled','released')),
+            reason TEXT NOT NULL CHECK(length(trim(reason)) > 0),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TRIGGER execution_closure_scope BEFORE INSERT ON execution_reservation_closures
+        WHEN NOT EXISTS (
+            SELECT 1 FROM execution_stage_reservations r JOIN execution_traces t ON t.id=r.trace_id
+            WHERE r.id=NEW.reservation_id AND r.decision='allowed' AND t.status IN ('active','paused')
+              AND ((NEW.state='settled' AND EXISTS (SELECT 1 FROM execution_usage_samples s
+                     WHERE s.trace_id=r.trace_id AND s.stage_key=r.stage_key))
+                OR (NEW.state='released' AND NOT EXISTS (SELECT 1 FROM execution_usage_samples s
+                     WHERE s.trace_id=r.trace_id AND s.stage_key=r.stage_key)))
+        )
+        BEGIN SELECT RAISE(ABORT,'invalid execution reservation closure'); END;
+        CREATE TRIGGER execution_closures_no_update BEFORE UPDATE ON execution_reservation_closures
+        BEGIN SELECT RAISE(ABORT,'execution reservation closure is immutable'); END;
+        CREATE TRIGGER execution_closures_no_delete BEFORE DELETE ON execution_reservation_closures
+        BEGIN SELECT RAISE(ABORT,'execution reservation closure is immutable'); END;
+        CREATE TRIGGER execution_usage_after_closure BEFORE INSERT ON execution_usage_samples
+        WHEN EXISTS (SELECT 1 FROM execution_stage_reservations r
+                     JOIN execution_reservation_closures c ON c.reservation_id=r.id
+                     WHERE r.trace_id=NEW.trace_id AND r.stage_key=NEW.stage_key)
+        BEGIN SELECT RAISE(ABORT,'execution reservation is closed'); END;
+        CREATE INDEX execution_usage_stage ON execution_usage_samples(trace_id,stage_key);
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

@@ -8,6 +8,56 @@ from agent_factory.storage import MIGRATIONS, SQLiteStorage
 
 
 class StorageMigrationTests(unittest.TestCase):
+    def test_v76_upgrade_preserves_all_history_and_holds_unclosed_reservations(self):
+        from unittest.mock import patch
+        from agent_factory.execution_telemetry import BudgetExceeded, ExecutionBudgets, ExecutionTelemetryService
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "v76.db"
+            with patch("agent_factory.storage.MIGRATIONS", tuple(m for m in MIGRATIONS if m[0] <= 76)):
+                old = SQLiteStorage(path)
+            try:
+                project = old.create_project("Existing budget", "Retain history")
+                task = old.create_task(WorkItem("Existing task", "Retain usage", project))
+                run = old.start_durable_run(project_id=project, task_id=task,
+                    workflow_id="existing", workflow_version="1", definition={"id": "existing"},
+                    stages=[{"id": "execute", "depends_on": []}])
+                trace = ExecutionTelemetryService(old).create(task_id=task, run_id=run,
+                    budgets=ExecutionBudgets(100, 1, 5, 1, 10))
+                # Actual schema-76 shape; the old release had no closure table.
+                with old.db:
+                    old.db.execute("""INSERT INTO execution_stage_reservations(
+                        identity,trace_id,stage_key,estimated_tokens,estimated_cost_usd,
+                        estimated_tool_calls,decision,reason) VALUES('old',?,'pending',75,.75,7,'allowed','within budget')""", (trace.id,))
+                    old.db.execute("""INSERT INTO execution_usage_samples(identity,trace_id,idempotency_key,
+                        stage_key,duration_ms,tokens,estimated_cost_usd,tool_calls,metadata_json)
+                        VALUES('old-usage',?,'partial','pending',10,20,.2,2,'{}')""", (trace.id,))
+                    old.db.execute("""UPDATE execution_traces SET stages_reserved=1,tokens=20,
+                        estimated_cost_usd=.2,tool_calls=2,duration_ms=10 WHERE id=?""", (trace.id,))
+                tables = [r[0] for r in old.db.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+                before = {name: [tuple(r) for r in old.db.execute('SELECT * FROM "' + name.replace('"', '""') + '"')]
+                          for name in tables}
+            finally:
+                old.close()
+            upgraded = SQLiteStorage(path)
+            try:
+                for name, rows in before.items():
+                    actual = [tuple(r) for r in upgraded.db.execute('SELECT * FROM "' + name.replace('"', '""') + '"')]
+                    if name == "schema_migrations":
+                        actual = [r for r in actual if r[0] <= 76]
+                    self.assertEqual(actual, rows, name)
+                self.assertEqual(upgraded.db.execute("SELECT COUNT(*) FROM execution_reservation_closures").fetchone()[0], 0)
+                with self.assertRaises(BudgetExceeded):
+                    ExecutionTelemetryService(upgraded).reserve_stage(trace.id, "next", estimated_tokens=30)
+            finally:
+                upgraded.close()
+            reopened = SQLiteStorage(path)
+            try:
+                self.assertEqual(reopened.db.execute("SELECT COUNT(*) FROM schema_migrations WHERE version=77").fetchone()[0], 1)
+                self.assertEqual(ExecutionTelemetryService(reopened).state(trace.id).tokens, 20)
+            finally:
+                reopened.close()
+
     def test_v70_database_upgrades_to_epoch_worktree_authority_ledger(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "v70.db"
