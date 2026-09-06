@@ -253,7 +253,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
       "scopes": [
@@ -262,9 +262,9 @@
         "core:src/agent_factory/storage.py",
         "core:tests/test_policy_composition.py"
       ],
-      "updated_at": "2026-09-06T14:11:26+00:00",
+      "updated_at": "2026-09-06T14:24:27+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/37",
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -285,7 +285,8 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47",
+      "review_head": "396ce2f9998d2a1236068ecde50b2c4164bd1b04"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6468,6 +6469,16 @@
       "note": "PR36 persisted publication evidence and recovery pushed; selected tests passed. Independent review pending; full installer incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "042b197c-021d-4b3f-9918-a0fa1b0ce923",
+      "at": "2026-09-06T14:24:27+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     }
   ],
   "migration": {
