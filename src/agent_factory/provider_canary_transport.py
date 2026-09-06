@@ -3,7 +3,7 @@
 No qualification writer, default model, browser route or automatic authority.
 The child only speaks HTTPS; it never executes returned text or loads tools.
 """
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import hashlib
 import http.client
 import json
@@ -20,6 +20,34 @@ MAX_TEXT_BYTES = 2048
 DEADLINE_SECONDS = 15
 OPERATION = 'provider_canary_observation'
 TOOL = 'openai-responses-canary-v1'
+# Exact across JSON integer consumers; a metadata bound, not a spending limit.
+MAX_USAGE_TOKENS = 2**53 - 1
+
+
+@dataclass(frozen=True)
+class CanaryTokenUsage:
+    """Provider-reported totals, not a bill, price or settlement instruction."""
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+    def __post_init__(self):
+        if any(type(value) is not int or not 0 <= value <= MAX_USAGE_TOKENS
+               for value in (self.input_tokens, self.output_tokens, self.total_tokens)):
+            raise ValueError('Usage requires bounded nonnegative integer tokens')
+        if self.input_tokens + self.output_tokens != self.total_tokens:
+            raise ValueError('Usage total must equal input plus output tokens')
+
+
+def _reported_usage(value):
+    """Map OpenAI Responses aggregate fields only; unknown is never zero."""
+    if not isinstance(value, dict):
+        return None
+    try:
+        return CanaryTokenUsage(**{name: value[name] for name in
+            ('input_tokens', 'output_tokens', 'total_tokens')})
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def _digest(value):
@@ -69,7 +97,11 @@ def _decode(status, body):
         text = ''.join(pieces)
         if not text or len(text.encode()) > MAX_TEXT_BYTES:
             raise ValueError()
-        return {'observed_model': model, 'text': text}
+        result = {'observed_model': model, 'text': text}
+        usage = _reported_usage(data.get('usage'))
+        if usage is not None:
+            result['usage'] = asdict(usage)
+        return result
     except (ValueError, KeyError, TypeError, UnicodeError):
         return {'error': 'response_unqualified'}
 
@@ -140,6 +172,11 @@ class CanaryObservation:
     text: str = field(repr=False)
     request_digest: str
     observation_digest: str
+    usage: CanaryTokenUsage | None = None
+
+    def __post_init__(self):
+        if self.usage is not None and type(self.usage) is not CanaryTokenUsage:
+            raise ValueError('Observation usage must be immutable validated token metadata')
 
 
 class ProviderCanaryTransport:
@@ -189,10 +226,16 @@ class ProviderCanaryTransport:
                 return result
             if environment['OPENAI_API_KEY'] in _json(result):
                 return {'error': 'response_unqualified'}
+            # Revalidate at the IPC consumer and exclude unrecognized metadata.
+            usage = _reported_usage(result.get('usage'))
+            result = {'observed_model': result['observed_model'], 'text': result['text']}
+            if usage is not None:
+                result['usage'] = asdict(usage)
             observation.append(result)
-            # Broker audit persists only bounded identity and hashes, never generated text.
+            # Broker audit persists bounded identity, counts and hashes, never text.
             return {'observed_model': result['observed_model'], 'text_digest': _digest(result['text']),
-                    'observation_digest': _digest(_json({'request_digest': request_digest, 'result': result}))}
+                    'observation_digest': _digest(_json({'request_digest': request_digest, 'result': result})),
+                    **({'usage': result['usage']} if usage is not None else {})}
 
         try:
             summary = self.connections.execute(scope.connection, actor=scope.actor, tenant=scope.tenant,
@@ -207,4 +250,5 @@ class ProviderCanaryTransport:
         if current != scope:
             raise QualificationDenied('connection_scope_changed')
         return CanaryObservation(scope, summary['observed_model'], observation[0]['text'],
-                                 request_digest, summary['observation_digest'])
+                                 request_digest, summary['observation_digest'],
+                                 _reported_usage(observation[0].get('usage')))
