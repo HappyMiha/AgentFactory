@@ -190,3 +190,39 @@ Previously saved plans and decisions remain readable. Their earlier, smaller
 disk budget cannot authorize a new reservation: current proposal comparison
 rejects it, and the user must review the new total. This does not automatically
 launch an installer or change the final package layout.
+
+## Durable publication evidence and recovery
+
+`InstallationPublicationJournal` stores each package's expected publication
+receipt in the existing `MissionOperationJournal`. It links the record to the
+reviewed installation intent, verifies the package source and extraction bound,
+and derives the relative target from that plan. It creates no parallel operation
+log or migration. One intent/package pair has one immutable publication record;
+repeated or concurrent reservations return the same record.
+
+Preparation starts by checking the current approved intent. It then verifies the
+stage and reserves evidence under the recorded mission scope. This records a
+snapshot, not an atomic lock on subsequent source, host or plan changes. A future
+executor must revalidate the current intent and establish real policy/admission
+at the effect boundary. This service never starts the publisher, consumes an
+approval, registers a runtime or creates target directories.
+
+Recovery reads the expected receipt from the journal, checks that the current
+trusted host/workspace matches the recorded one, and observes only the planned
+relative target. Old evidence remains readable after review expiry. Conflicting
+or unreadable files and changed host/workspace identities are preserved and
+cannot be adopted as successful publication.
+
+For an operation already marked `unknown`, `reconcile_unknown` uses the existing
+journal reconciliation path. A complete matching receipt and payload produce a
+`reconciled` publication record. Absence, conflict or uncertainty produce
+`needs_attention`, because this component uses `verify_only` and never grants
+an automatic retry. Replaying the same reconciliation event creates no second
+effect. The parent installation intent remains separate and is not completed.
+
+Tests combine real SQLite reservation/reopen with actual Windows file publication
+and a lost completion record. They confirm recovery adopts matching files without
+copying again. Fixture authorization in that test only exercises the journal and
+filesystem; live runtime admission, one-use policy composition, executable checks
+and Windows VM fault acceptance remain open. Every response still reports
+`execution_eligible: false`.
