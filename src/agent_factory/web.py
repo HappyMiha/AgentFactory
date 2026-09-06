@@ -26,6 +26,7 @@ from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
 from .credential_web import install_routes as install_credential_routes
 from .hardware_web import install_routes as install_hardware_routes
+from .game_planning_web import install_routes as install_game_planning_routes
 
 from .application import (
     AgentFactoryService,
@@ -332,6 +333,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
     app.add_middleware(LocalHTTPBoundary, access=access)
     install_credential_routes(app, workspace, store=credential_store)
     install_hardware_routes(app, workspace)
+    install_game_planning_routes(app, database)
 
     @app.get("/auth/session", include_in_schema=False)
     async def session_status(request: Request):

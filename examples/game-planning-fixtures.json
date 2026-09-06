@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "mode": "manual_draft_examples",
+  "examples": [
+    {
+      "name": "platformer",
+      "source": "A platform game: jump between three platforms to a blue exit. Falling restarts the attempt.",
+      "genre": "platformer",
+      "first_playable": "One room, three platforms, one reachable blue exit.",
+      "deferred_scope": "Additional levels, enemies and online leaderboards are later milestones."
+    },
+    {
+      "name": "top_down_collector",
+      "source": "A top-down garden: collect three seeds and reach the gate, with readable movement and a visible counter.",
+      "genre": "collector",
+      "first_playable": "One garden room, three seeds, one gate and a repeatable reset.",
+      "deferred_scope": "Larger gardens, upgrades and extra characters are later milestones."
+    },
+    {
+      "name": "puzzle",
+      "source": "A tile puzzle: use legal clicks to match one displayed target, with a clear solved state.",
+      "genre": "puzzle",
+      "first_playable": "One small board and one target; invalid moves do not change the board.",
+      "deferred_scope": "Puzzle generation, level packs and social sharing are later milestones."
+    },
+    {
+      "name": "oversized_multiplayer",
+      "source": "My ambition is a persistent multiplayer archipelago with thousands of players, trade, flying, procedural islands, chat and cross-platform accounts. Keep this whole ambition visible.",
+      "genre": "collector",
+      "first_playable": "Proposed first milestone: one local player collects three tokens on one island and reaches an exit.",
+      "deferred_scope": "Persistent multiplayer, trading, procedural worlds, chat and accounts remain part of the original ambition, deferred for separate review.",
+      "review_note": "The single-player slice is an editable human proposal, not an inferred or accepted AI decision."
+    }
+  ]
+}
