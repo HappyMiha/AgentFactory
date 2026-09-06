@@ -50,6 +50,8 @@ class InstallationPolicyBinding:
         publication = publications.view(mission, actor, publication_id)
         if publication['state'] != 'reserved':
             raise InstallationConflict('publication_not_reserved')
+        if launch.effect_digest is not None and launch.effect_digest != publication['request_digest']:
+            raise InstallationConflict('publication_launch_effect_mismatch')
         binding = launch.binding
         # Reuse current plan/owner/host validation. This remains a snapshot;
         # runtime admission must repeat it at the eventual effect boundary.

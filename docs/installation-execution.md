@@ -254,9 +254,23 @@ flow; assignment-bound consumption checks the real stage/attempt and exact
 effect digest. Reconstructing a request after that attempt's consumption is
 rejected and cannot create a second execution opportunity.
 
-Tests exercise real SQLite live-stage approval and exact one-use consumption
-with synthetic launch/worktree records. They do not start a runtime driver.
-An executor still needs explicit support for carrying the effect into its
-immutable launch, actual runtime admission, current intent checks at the effect
-boundary and the existing publication/recovery operations. This helper does not
-supply those steps or mark an installation ready.
+If a launch already has an `effect_digest`, it must match the saved publication.
+A mismatch is rejected before current-intent reservation, approval or runtime
+start. An absent effect is allowed only for preparing a request; this helper
+does not add an effect to a launch or upgrade an existing admission.
+
+The trusted host must obtain the saved publication digest before worker admission
+and bind that same digest in `AdmissionRequest`, `RuntimeLaunch` and the real
+stage's policy request. The existing runtime enforces this agreement. An older
+admission without an effect cannot gain permission by changing only the launch.
+
+Tests exercise real SQLite live-stage approval and exact one-use consumption.
+An additional composition test starts the actual admitted runtime with a
+synthetic counting driver: the saved publication digest reaches the committed
+session, the approval is consumed once, and replay calls no second driver. Its
+worker qualification is synthetic; no package is published, and the publication
+journal stays reserved. This is not an installed or qualified environment.
+
+The production executor still needs current intent checks at the effect boundary,
+durable publication start, real package publication and recovery integration.
+The request helper does not supply those steps or mark an installation ready.
