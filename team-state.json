@@ -1558,23 +1558,11 @@
       "dependencies": [
         "cloud:AF-CLD-007"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-CLD-008-1beacacc",
-      "scopes": [
-        "cloud:README.md",
-        "cloud:docs/first-playable-planning.md",
-        "cloud:src/agentfactory_cloud/brief_web.py",
-        "cloud:src/agentfactory_cloud/scope_plans.py",
-        "cloud:src/agentfactory_cloud/static/brief.html",
-        "cloud:src/agentfactory_cloud/static/brief.js",
-        "cloud:src/agentfactory_cloud/static/scope.html",
-        "cloud:src/agentfactory_cloud/static/scope.js",
-        "cloud:tests/test_scope_plan_browser.py",
-        "cloud:tests/test_scope_plan_web.py",
-        "cloud:tests/test_scope_plans.py"
-      ],
-      "updated_at": "2026-09-06T01:52:36+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T02:11:48+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/11",
       "resources": [
@@ -1591,7 +1579,9 @@
         "cloud:AF-CLD-007"
       ],
       "claim_id": "29acb938-eee8-4555-a3c7-6d1cc6383afb",
-      "review_head": "b1c096988d8341841debc9bfbb4efd9a580585de"
+      "review_head": "b1c096988d8341841debc9bfbb4efd9a580585de",
+      "completed_commit": "b8c11124d56cec8f4ea2c756d20622e35b41a27d",
+      "reviewed_head": "b1c096988d8341841debc9bfbb4efd9a580585de"
     },
     "cloud:AF-CLD-009": {
       "dependencies": [
@@ -4967,6 +4957,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
       "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a"
+    },
+    {
+      "operation_id": "6c177801-ffa9-436f-aaf5-a34060fcff2b",
+      "at": "2026-09-06T02:11:48+00:00",
+      "action": "complete",
+      "task": "cloud:AF-CLD-008",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-008-1beacacc",
+      "claim_id": "29acb938-eee8-4555-a3c7-6d1cc6383afb"
     }
   ],
   "migration": {
