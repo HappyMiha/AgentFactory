@@ -253,12 +253,19 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T15:06:40+00:00",
-      "note": "Take agreed existing runtime/admission effect propagation with fresh branch; prior component preserved.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
+      "scopes": [
+        "core:docs/worker-admission.md",
+        "core:docs/worker-runtime.md",
+        "core:src/agent_factory/worker_admission.py",
+        "core:src/agent_factory/worker_runtime.py",
+        "core:tests/test_runtime_effects.py",
+        "core:tests/test_worker_admission_runtime.py"
+      ],
+      "updated_at": "2026-09-06T15:06:50+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +287,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6513,6 +6520,16 @@
       "note": "Take agreed existing runtime/admission effect propagation with fresh branch; prior component preserved.",
       "branch": null,
       "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+    },
+    {
+      "operation_id": "6fe72ce2-d2d7-4d56-a8ec-58366d3b3202",
+      "at": "2026-09-06T15:06:50+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
+      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
     }
   ],
   "migration": {
