@@ -69,7 +69,7 @@ def run_git(repository: Path, *arguments: str) -> str:
 
 
 class AutonomousPreapprovalFixture:
-    def create_fixture(self, *, provider_id="local", model=None, capability=None) -> None:
+    def create_fixture(self, *, provider_id="local", model=None, capability=None, role_models=None) -> None:
         self.fixture_provider_id = provider_id
         self.temporary = tempfile.TemporaryDirectory()
         self.workspace = Path(self.temporary.name).resolve()
@@ -117,7 +117,7 @@ class AutonomousPreapprovalFixture:
             configuration=AutonomousMissionConfiguration(
                 repository_path=str(self.repository),
                 default_model=model or "local-planner",
-                role_models={
+                role_models=role_models if role_models is not None else {
                     "Developer": model or "local-coder",
                     "Environment Bootstrap": model or "local-coder",
                 },

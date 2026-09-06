@@ -96,8 +96,11 @@ this mapping is not accepted from HTTP requests or generated project files.
 
 The bundled Ollama production collector supports `local:qwen2.5-coder:7b` and
 `local:qwen2.5-coder:14b`, one selected model per route, with `ollama` as the only
-approved provider. Selected roles must belong to the five autonomous planning
-roles, Environment Bootstrap, or Developer. The effective workspace provider
+approved provider. The approved execution role/model manifest must explicitly include all seven
+executed roles: the five autonomous planning roles, Environment Bootstrap and
+Developer, each assigned to that same selected model. A grant containing only
+Developer and Environment Bootstrap is rejected before any model request.
+The operator must approve a new complete plan; the checker never widens a grant. The effective workspace provider
 configuration must match the bundled profile exactly. Custom overrides, other
 models/providers/roles, and unknown services remain blocked. The optional service
 `selected-local-model-runtime` is qualified by the same actual daemon checks.

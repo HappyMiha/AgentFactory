@@ -33,7 +33,8 @@ def synthetic_result():
 class EnvironmentModelProbeTests(AutonomousChildFixture, unittest.TestCase):
     def setUp(self):
         config = next(p for p in json.loads(canary.PROFILE.read_bytes())['providers'] if p['id'] == 'ollama')
-        self.create_fixture(provider_id='ollama', model=MODEL, capability=ProviderCapabilities.from_config(config))
+        self.create_fixture(provider_id='ollama', model=MODEL, capability=ProviderCapabilities.from_config(config),
+                            role_models={role: MODEL for role in canary.ROLES})
         self.addCleanup(self.close_fixture)
         self.approved = self.approve_fixture(readiness=False)
         self.ident = self.approved.approval.id
@@ -184,7 +185,8 @@ class LiveEnvironmentRouteTests(AutonomousChildFixture, unittest.TestCase):
         # seven API/CLI inference pairs, persistence and entry below are real.
         # This is environment acceptance, not end-to-end planning/game acceptance.
         config = next(p for p in json.loads(canary.PROFILE.read_bytes())['providers'] if p['id'] == 'ollama')
-        self.create_fixture(provider_id='ollama', model=MODEL, capability=ProviderCapabilities.from_config(config))
+        self.create_fixture(provider_id='ollama', model=MODEL, capability=ProviderCapabilities.from_config(config),
+                            role_models={role: MODEL for role in canary.ROLES})
         self.addCleanup(self.close_fixture)
         approved = self.approve_fixture(readiness=False)
         readiness = EnvironmentReadiness(self.storage)
@@ -202,3 +204,22 @@ class LiveEnvironmentRouteTests(AutonomousChildFixture, unittest.TestCase):
             'binding_digest': receipt['binding_digest'], 'started_at': receipt['started_at'],
             'finished_at': receipt['finished_at'], 'result': receipt['result'],
             'entry_phase': entered.phase.value}), flush=True)
+
+
+class MissingRoleAuthorityTests(AutonomousChildFixture, unittest.TestCase):
+    def test_two_role_execution_grant_cannot_authorize_seven_role_canary(self):
+        config = next(p for p in json.loads(canary.PROFILE.read_bytes())['providers'] if p['id'] == 'ollama')
+        self.create_fixture(provider_id='ollama', model=MODEL, capability=ProviderCapabilities.from_config(config))
+        self.addCleanup(self.close_fixture)
+        approved = self.approve_fixture(readiness=False)
+        readiness = EnvironmentReadiness(self.storage)
+        _, requirements = readiness.context(approved.approval.id)
+        self.assertEqual({r['role'] for k, r in requirements.items() if k.startswith('model:')},
+                         {'Developer', 'Environment Bootstrap'})
+        with patch.object(probe, 'qualify') as runner, patch.object(probe, 'model_inventory') as inventory:
+            report = readiness.assess(approved.approval.id, run_live=True)
+            self.assertEqual(report['status'], 'blocked')
+            runner.assert_not_called(); inventory.assert_not_called()
+        self.assertNotIn('model_qualification', report)
+        # Denial must not widen or replace the durable approved role manifest.
+        self.assertEqual(readiness.context(approved.approval.id)[1], requirements)

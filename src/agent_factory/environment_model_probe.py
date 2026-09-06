@@ -41,7 +41,8 @@ def model_inventory(model):
 def selected_model(requirements):
     selected = [r for k, r in requirements.items() if k.startswith('model:')]
     models = {r['model'] for r in selected}
-    if (len(models) != 1 or not models <= SUPPORTED
+    if ({r['role'] for r in selected} != set(ROLES)
+            or len(models) != 1 or not models <= SUPPORTED
             or any(r['role'] not in ROLES or 'ollama' not in r['provider_ids'] for r in selected)):
         raise ValueError('Selected route is outside the supported local role/model profile')
     return next(iter(models))
