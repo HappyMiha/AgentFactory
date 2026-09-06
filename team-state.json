@@ -3669,10 +3669,18 @@
     },
     "cloud:AF-DOC-001": {
       "title": "Publish Unreal and gameplay AI plan and update product description",
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
+      "scopes": [
+        "cloud:README.md",
+        "cloud:docs/backlog.md",
+        "cloud:docs/core-cloud-boundary.md",
+        "cloud:docs/product-description.md",
+        "cloud:docs/roadmap.md",
+        "cloud:docs/unreal-gameplay-plan.md",
+        "cloud:examples/agentfactory-cloud-backlog.json"
+      ],
       "pr": null,
       "dependencies": [],
       "source_dependencies": [],
@@ -3703,7 +3711,10 @@
         "Exclude the local ecosystem comparison document and private research cache.",
         "Preserve existing implementation dependencies, task IDs and peer ownership.",
         "Documentation only; no Temporal replacement or Unreal execution."
-      ]
+      ],
+      "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb",
+      "updated_at": "2026-09-06T06:58:50+00:00",
+      "note": ""
     }
   },
   "events": [
@@ -5536,6 +5547,16 @@
       "note": "Initial trusted-host qualification contract only; 63 tests passed, zero skips. Whole wizard/live canary acceptance remains incomplete.",
       "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
       "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
+    },
+    {
+      "operation_id": "75010c54-27ef-435a-8ea4-2ca11154509b",
+      "at": "2026-09-06T06:58:50+00:00",
+      "action": "claim",
+      "task": "cloud:AF-DOC-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
+      "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb"
     }
   ],
   "migration": {
