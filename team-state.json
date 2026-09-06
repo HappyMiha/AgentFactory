@@ -253,17 +253,12 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
-      "scopes": [
-        "core:docs/live-stage-approvals.md",
-        "core:src/agent_factory/policy.py",
-        "core:src/agent_factory/storage.py",
-        "core:tests/test_policy_composition.py"
-      ],
-      "updated_at": "2026-09-06T14:46:10+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T15:06:37+00:00",
+      "note": "PR37 merged; whole009 incomplete. Preserve branch for fresh runtime effect propagation prerequisite.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/37",
       "resources": [
         "shared:provider-connection",
@@ -6497,6 +6492,16 @@
       "task": "core:AF-GC-009",
       "worker": "HappySnowman",
       "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+    },
+    {
+      "operation_id": "3890ed32-fa24-4a20-8b93-a7d0b7df286f",
+      "at": "2026-09-06T15:06:37+00:00",
+      "action": "block",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR37 merged; whole009 incomplete. Preserve branch for fresh runtime effect propagation prerequisite.",
       "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
       "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     }
