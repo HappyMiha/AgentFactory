@@ -179,6 +179,30 @@ class LocalGamesBrowserTests(unittest.TestCase):
         self.assertEqual(self.page.locator('#filter-priority').evaluate('(node) => node.tagName'), 'SELECT')
         self.assertIn('high', self.page.locator('#filter-priority').inner_text())
 
+    def test_slow_provider_health_does_not_block_paging_or_duplicate_probes(self):
+        entered = threading.Event(); release = threading.Event(); calls = []
+        def slow_health(runtime):
+            calls.append(threading.get_ident()); entered.set()
+            if not release.wait(12): raise RuntimeError('Synthetic health barrier timed out')
+            return [{'provider':'deterministic', 'healthy':True}]
+        with closing(SQLiteStorage(self.path)) as storage:
+            service = AgentFactoryService(storage, workspace=self.root)
+            project = service.create_project('Responsive paging').project_id
+            for index in range(205):
+                service.create_work_item(project_id=project, title=f'Task {index:03}', description='')
+        with patch('agent_factory.runtime.AgentRuntime.health', slow_health):
+            try:
+                self.page.goto(self.url+'/operations#work')
+                self.assertTrue(entered.wait(2), 'The actual HTTP route must reach the slow probe')
+                self.page.wait_for_function("document.querySelector('#work-page').textContent === '1–50 of 205'", timeout=2500)
+                self.page.locator('#work-next').click()
+                self.page.wait_for_function("document.querySelector('#work-page').textContent === '51–100 of 205'", timeout=2500)
+                self.assertEqual(len(calls), 1, 'Dashboard/monitor/providers must share one in-flight probe')
+            finally:
+                release.set()
+            self.page.wait_for_function("document.querySelector('#connection-dot').className === 'online'")
+            self.assertEqual(self.page.locator('#work-page').inner_text(), '51–100 of 205')
+
     def test_readiness_expiry_and_failed_refresh_never_leave_positive_status(self):
         self.submit()
         report = {'status':'ready', 'mode':'live', 'checks':[{'ready':True}], 'expires_at':(datetime.now(timezone.utc)+timedelta(seconds=2)).isoformat()}

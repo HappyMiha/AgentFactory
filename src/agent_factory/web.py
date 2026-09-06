@@ -1,6 +1,10 @@
 """Loopback-only FastAPI host for the Local Control Center."""
 
 import sqlite3
+import asyncio
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import json
 import hashlib
 from contextlib import asynccontextmanager, closing
@@ -14,8 +18,9 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Reques
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
+from .config import config_path_for_workspace
 from .local_games import LocalGames, GameConflict, local_games_lock
 from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
@@ -66,7 +71,7 @@ class GameSaveCommand(GameCreateCommand):
 
 class GameSubmitCommand(GameCreateCommand):
     expected_revision: StrictInt = Field(ge=1)
-    confirmed: bool = False
+    confirmed: StrictBool = False
 
 
 T = TypeVar("T")
@@ -255,6 +260,45 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
     workspace = workspace.expanduser().resolve()
     database = database.expanduser().resolve()
     temporal_settings = TemporalSettings.from_env()
+    probe_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="provider-health")
+    probe_guard = threading.RLock()
+    probe_cache = {"future": None, "key": None, "finished": 0.0}
+
+    def provider_configuration_key():
+        path = config_path_for_workspace("providers", workspace)
+        return (str(path), hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def collect_provider_health():
+        # SQLite connections are created, used and closed in this same worker.
+        with closing(SQLiteStorage(database)) as storage:
+            return AgentFactoryService(storage, workspace=workspace).providers()
+
+    async def provider_snapshot():
+        key = provider_configuration_key()
+        with probe_guard:
+            future = probe_cache["future"]
+            fresh = (probe_cache["key"] == key and
+                     time.monotonic() - probe_cache["finished"] < 5)
+            if future is None or (future.done() and not fresh):
+                future = probe_executor.submit(collect_provider_health)
+                probe_cache.update(future=future, key=key, finished=0.0)
+                def completed(done):
+                    with probe_guard:
+                        if probe_cache["future"] is done:
+                            probe_cache["finished"] = time.monotonic()
+                future.add_done_callback(completed)
+            selected_key = probe_cache["key"]
+        try:
+            # Cancellation/timeout of one HTTP reader must not cancel another's
+            # shared probe or enqueue a second slow CLI batch.
+            result = await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(future)), 10)
+        except TimeoutError:
+            raise HTTPException(503, "provider_health_pending") from None
+        except Exception:
+            raise HTTPException(503, "provider_health_unavailable") from None
+        if selected_key != provider_configuration_key() or selected_key != key:
+            raise HTTPException(503, "provider_configuration_changed")
+        return result
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -262,7 +306,10 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
             app.state.temporal_client = await connect_temporal(
                 temporal_settings, initialize_namespace=True
             )
-        yield
+        try:
+            yield
+        finally:
+            probe_executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(
         title="Agent Factory Local Control Center",
@@ -444,7 +491,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
                 awaiting_approval=sum(item.status == "pending" for item in approvals),
             ),
             runs=runs[-10:][::-1],
-            providers=service.providers(),
+            providers=await provider_snapshot(),
             pending_approvals=[item for item in approvals if item.status == "pending"],
             recent_failures=failures,
             operations=service.operational_state(),
@@ -560,7 +607,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
         ).fetchone()
         current_version = int(migration_row["current_version"])
         latest_version = max(version for version, _ in MIGRATIONS)
-        providers = service.providers()
+        providers = await provider_snapshot()
         agents = service.agents()
         operational = service.operational_state()
         safety = service.storage.policy_state()
@@ -953,7 +1000,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
     async def providers(
         service: Service, offset: Offset = 0, limit: Limit = 50
     ) -> Page[ProviderView]:
-        return _page(service.providers(), offset, limit)
+        return _page(await provider_snapshot(), offset, limit)
 
     @app.get("/api/reviews", response_model=Page[ReviewView])
     async def reviews(

@@ -90,3 +90,13 @@ Chromium journeys cover the empty/mobile page, server restart, previous steps,
 existing mission navigation, conflicting tabs, response loss, history/work search,
 and readiness expiry. Model inference and playable build evidence are outside
 these synthetic-source checks.
+
+Operator dashboard, monitor and provider reads share one in-flight health probe
+on a dedicated worker. Its SQLite connection is created, used and closed in that
+worker. Completed health snapshots are reused for at most five seconds and are
+invalidated by provider configuration changes. An HTTP reader waits at most ten
+seconds; cancellation does not enqueue or cancel another reader's shared probe.
+These CLI health checks are separate from model qualification. Work paging stays
+responsive while a probe is slow, and a failed health refresh preserves an already
+loaded work list. Actual Chromium tests hold a synthetic slow probe behind a
+barrier while navigating real HTTP work pages and check that only one probe runs.

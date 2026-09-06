@@ -309,6 +309,7 @@ async function loadWork() {
   const data = await fetchJson(`/api/work-items?limit=50&offset=${offset}${query ? `&${query}` : ""}`);
   if (generation <= (state.completedWorkGeneration || 0) || query !== filterQuery() || offset !== state.workOffset) return;
   state.completedWorkGeneration = generation;
+  state.workLoaded = true;
   $("work-prev").disabled = state.workOffset === 0;
   $("work-next").disabled = state.workOffset + data.items.length >= data.total;
   $("work-page").textContent = data.total ? `${state.workOffset + 1}–${state.workOffset + data.items.length} of ${data.total}` : "0 results";
@@ -639,7 +640,7 @@ async function refresh() {
     state.completedRefreshGeneration = generation;
     $("connection-dot").className = "offline"; $("connection-text").textContent = "Service disconnected";
     $("notice").hidden = false; $("notice").textContent = state.lastSuccess ? "Live refresh failed. Showing the last successful local snapshot." : "Dashboard data is unavailable. Check the local service and retry.";
-    if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list","audit-list","settings-list"].forEach((id) => $(id).innerHTML = empty("Unable to load local data"));
+    if (!state.lastSuccess) ["metrics","run-list","approval-list","provider-list","failure-list","work-list","agent-list","routing-list","audit-list","settings-list"].forEach((id) => { if (id !== "work-list" || !state.workLoaded) $(id).innerHTML = empty("Unable to load local data"); });
   } finally { $("refresh").disabled = false; }
 }
 

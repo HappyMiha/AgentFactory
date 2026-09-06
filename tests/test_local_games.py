@@ -156,6 +156,17 @@ class LocalGamesApiTests(unittest.TestCase):
         saved = self.client.post(url+'/save', headers=self.headers, json=fields).json()
         submit = dict(command_id=command(), expected_revision=saved['revision'], confirmed=True)
         self.assertEqual(self.client.post(url+'/submit', headers=self.headers, json=submit).status_code, 400)
+        for invalid in (1, 0, 'yes', 'true', 'false', None):
+            with self.subTest(confirmation=invalid):
+                response = self.client.post(url+'/submit', headers=self.headers|{'X-Agent-Factory-Confirm':'true'}, json=submit|{'confirmed':invalid})
+                self.assertEqual(response.status_code, 422, response.text)
+                unchanged = self.client.get(url, headers=self.headers).json()
+                self.assertFalse(unchanged['source_locked']); self.assertIsNone(unchanged['mission_id'])
+                self.assertEqual(unchanged['revision'], saved['revision'])
+                with closing(SQLiteStorage(self.path)) as storage:
+                    self.assertEqual(storage.db.execute('SELECT COUNT(*) FROM autonomous_missions').fetchone()[0], 0)
+        rejected = self.client.post(url+'/submit', headers=self.headers|{'X-Agent-Factory-Confirm':'true'}, json=submit|{'confirmed':False})
+        self.assertEqual(rejected.status_code, 400)
         result = self.client.post(url+'/submit', headers=self.headers|{'X-Agent-Factory-Confirm':'true'}, json=submit)
         self.assertEqual(result.status_code, 200, result.text)
         self.assertEqual(result.json()['project']['phase'], 'DRAFT')
