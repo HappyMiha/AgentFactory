@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "revision": "godot-windows-2026-09-06-v1",
+  "reviewed_on": "2026-09-06",
+  "packages": {
+    "godot-editor": {
+      "version": "4.7.2-stable",
+      "platform": "windows-x86_64",
+      "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_win64.exe.zip",
+      "sha256": "731980f9608d61333e5baf54a2ef17210acc7a538446c0cb9969f002aca1e953",
+      "download_bytes": 86013866,
+      "extraction_budget_bytes": 2147483648,
+      "target": "tools/godot-editor/4.7.2-stable",
+      "requires_admin": false,
+      "dependencies": {},
+      "license": "MIT; preserve bundled third-party notices",
+      "license_url": "https://github.com/godotengine/godot/blob/4.7.2-stable/LICENSE.txt",
+      "license_step": "preserve_notices",
+      "source_evidence": "https://api.github.com/repos/godotengine/godot-builds/releases/tags/4.7.2-stable"
+    },
+    "godot-export-templates": {
+      "version": "4.7.2-stable",
+      "platform": "windows-x86_64",
+      "url": "https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz",
+      "sha256": "f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011",
+      "download_bytes": 1281349702,
+      "extraction_budget_bytes": 4294967296,
+      "target": "tools/godot-export-templates/4.7.2-stable",
+      "requires_admin": false,
+      "dependencies": {"godot-editor": "4.7.2-stable"},
+      "license": "MIT; preserve bundled third-party notices",
+      "license_url": "https://github.com/godotengine/godot/blob/4.7.2-stable/LICENSE.txt",
+      "license_step": "preserve_notices",
+      "source_evidence": "https://api.github.com/repos/godotengine/godot-builds/releases/tags/4.7.2-stable"
+    }
+  }
+}
