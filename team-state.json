@@ -77,7 +77,7 @@
         "core:tests/test_provider_role_qualification.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T00:13:31+00:00",
+      "updated_at": "2026-09-06T00:25:21+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/12",
       "resources": [
@@ -96,7 +96,7 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4",
-      "review_head": "d32f71e3a1175f7b10bc444c29c7c82a21d57035"
+      "review_head": "856d15ffed3940426c9c3a916102f7c06d92e022"
     },
     "core:AF-GC-003": {
       "dependencies": [],
@@ -4726,6 +4726,16 @@
       "operation_id": "b8a3e822-874d-4cdc-ad82-3d207b72c77f",
       "at": "2026-09-06T00:13:31+00:00",
       "action": "rescope",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
+    },
+    {
+      "operation_id": "2d1cce47-58af-4eb1-9089-af5c8103ff4a",
+      "at": "2026-09-06T00:25:21+00:00",
+      "action": "review",
       "task": "core:AF-GC-002",
       "worker": "HappySnowman",
       "note": "",
