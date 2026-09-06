@@ -385,18 +385,13 @@
         "core:AF-GC-002",
         "core:AF-GC-012"
       ],
-      "status": "review",
-      "owner": "HappyDucky02",
-      "branch": "agent/HappyDucky02/AF-GC-013-8d3c500a",
-      "scopes": [
-        "core:docs/installation-plans.md",
-        "core:src/agent_factory/defaults/installation-catalog.json",
-        "core:src/agent_factory/installation_plan.py",
-        "core:tests/test_installation_plan.py"
-      ],
-      "updated_at": "2026-09-06T08:45:07+00:00",
-      "note": "",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/24",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": "2026-09-06T08:48:39+00:00",
+      "note": "PR24 contract merged after independent review. Whole013 incomplete; preserve branch and reclaim UI/consent increment.",
+      "pr": null,
       "resources": [
         "core:environment-bootstrap",
         "core:tool-gateway"
@@ -413,8 +408,7 @@
         "core:AF-GC-002",
         "core:AF-GC-012"
       ],
-      "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1",
-      "review_head": "243f750af9075d8c7620ea60622062ecaa90b5b2"
+      "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
     },
     "core:AF-GC-014": {
       "dependencies": [
@@ -5822,6 +5816,16 @@
       "worker": "HappyDucky02",
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-013-8d3c500a",
+      "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
+    },
+    {
+      "operation_id": "433862d1-f62a-4e4d-afb1-ca7372454321",
+      "at": "2026-09-06T08:48:39+00:00",
+      "action": "release",
+      "task": "core:AF-GC-013",
+      "worker": "HappyDucky02",
+      "note": "PR24 contract merged after independent review. Whole013 incomplete; preserve branch and reclaim UI/consent increment.",
+      "branch": null,
       "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
     }
   ],
