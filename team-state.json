@@ -3585,19 +3585,10 @@
     },
     "core:AF-GC-043": {
       "title": "Atomically admit qualified workers with scoped attempts and shared capacity",
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
-      "scopes": [
-        "core:docs/game-creator-backlog.uk.md",
-        "core:docs/worker-admission.md",
-        "core:examples/game-creator-backlog.json",
-        "core:src/agent_factory/storage.py",
-        "core:src/agent_factory/worker_admission.py",
-        "core:src/agent_factory/worker_runtime.py",
-        "core:tests/test_worker_admission.py",
-        "core:tests/test_worker_admission_runtime.py"
-      ],
+      "scopes": [],
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/19",
       "dependencies": [
         "core:AF-GC-039"
@@ -3634,10 +3625,12 @@
         "Retain uncertain capacity until trusted stop reconciliation; lease expiry is not process termination.",
         "Preserve local API compatibility and prove concurrency, rollback, stale denial and replay behavior."
       ],
-      "updated_at": "2026-09-06T06:32:25+00:00",
+      "updated_at": "2026-09-06T06:53:08+00:00",
       "note": "",
       "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112",
-      "review_head": "4531e25dee28d5829af221641b7da635907d5b4d"
+      "review_head": "4531e25dee28d5829af221641b7da635907d5b4d",
+      "completed_commit": "765bea67f0164a71b24a8e5d042cd4d90c3e7101",
+      "reviewed_head": "4531e25dee28d5829af221641b7da635907d5b4d"
     }
   },
   "events": [
@@ -5420,6 +5413,16 @@
       "note": "Initial Core purpose-bound qualification contract; existing evidence and routing authority. Whole wizard and live qualification remain incomplete.",
       "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
       "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
+    },
+    {
+      "operation_id": "fd1db1d3-d9bd-4700-9aec-b2ef8a211544",
+      "at": "2026-09-06T06:53:08+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-043",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
+      "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
     }
   ],
   "migration": {
