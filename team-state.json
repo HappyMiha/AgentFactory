@@ -253,16 +253,12 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-1043ac7a",
-      "scopes": [
-        "core:docs/provider-qualification.md",
-        "core:src/agent_factory/provider_canary_transport.py",
-        "core:tests/test_provider_canary_transport.py"
-      ],
-      "updated_at": "2026-09-06T17:37:23+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T17:43:28+00:00",
+      "note": "PR44 preparation component merged; whole009 incomplete. Await agreed trusted authority and runtime integration scope; branch preserved.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/44",
       "resources": [
         "shared:provider-connection",
@@ -6760,6 +6756,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "f92548ff-d37f-4713-80cf-2e14bfbaf48d",
+      "at": "2026-09-06T17:43:28+00:00",
+      "action": "block",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR44 preparation component merged; whole009 incomplete. Await agreed trusted authority and runtime integration scope; branch preserved.",
+      "branch": "agent/HappySnowman/AF-GC-009-1043ac7a",
+      "claim_id": "db824773-3560-4546-bee4-2884c128b38e"
     }
   ],
   "migration": {
