@@ -253,12 +253,17 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T14:11:15+00:00",
-      "note": "PR34 merged; preserve prior branch and take agreed narrow policy transaction and effect binding prerequisite.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "scopes": [
+        "core:docs/live-stage-approvals.md",
+        "core:src/agent_factory/policy.py",
+        "core:src/agent_factory/storage.py",
+        "core:tests/test_policy_composition.py"
+      ],
+      "updated_at": "2026-09-06T14:11:26+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +285,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6421,6 +6426,16 @@
       "note": "PR34 merged; preserve prior branch and take agreed narrow policy transaction and effect binding prerequisite.",
       "branch": null,
       "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
+    },
+    {
+      "operation_id": "2c13457d-e354-42d5-9697-72425534fccb",
+      "at": "2026-09-06T14:11:26+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     }
   ],
   "migration": {
