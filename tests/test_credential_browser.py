@@ -71,8 +71,56 @@ class CredentialBrowserTests(unittest.TestCase):
             self.page.wait_for_function("document.querySelector('#notice').textContent.includes('Не вдалося')")
         self.assertEqual(self.page.locator('#secret').input_value(),'')
         self.assertNotIn(self.secret,self.page.content())
+
         self.page.route('**/api/credential-connections',lambda route:route.abort() if route.request.method=='POST' else route.continue_())
         self.page.locator('#secret').fill(self.secret);self.page.locator('#confirmed').check();self.page.locator('#save').click()
         self.page.wait_for_function("document.querySelector('#notice').textContent.includes('Відповідь втрачено')")
         self.assertEqual(self.page.locator('#secret').input_value(),'')
         self.assertNotIn(self.secret,self.page.content())
+
+    def test_product_guidance_selects_only_api_field_without_login_or_save(self):
+        from agent_factory.provider_connection_catalog import connection_catalog
+        with patch('agent_factory.credential_web.connection_catalog',return_value=connection_catalog(now=AT)):
+            self.page.set_viewport_size({'width':390,'height':844})
+            posts=[];self.page.on('request',lambda request:posts.append(request.url) if request.method=='POST' else None)
+            self.page.goto(self.url+'/settings/credentials')
+            self.page.locator('#connection-product').select_option('chatgpt')
+            self.assertIn('не є ключем API',self.page.locator('#connection-guide').inner_text())
+            self.assertEqual(self.page.locator('#connection-guide button').count(),0)
+            self.page.locator('#connection-product').select_option('codex-cli')
+            self.assertIn('codex login --device-auth',self.page.locator('#connection-guide').inner_text())
+            self.assertEqual(self.page.locator('#connection-guide button').count(),0)
+            self.page.locator('#secret').fill(self.secret)
+            self.page.locator('#connection-product').select_option('anthropic-api')
+            self.assertEqual(self.page.locator('#secret').input_value(),'')
+            self.page.locator('#connection-guide button').click()
+            self.assertEqual(self.page.locator('#provider').input_value(),'anthropic')
+            self.assertFalse(self.page.locator('#confirmed').is_checked())
+            self.assertFalse(self.store.values)
+            self.assertLessEqual(self.page.evaluate('document.documentElement.scrollWidth'),390)
+            self.assertNotIn(self.secret,self.page.content())
+            self.assertEqual(posts,[])
+
+    def test_refresh_denial_removes_old_catalogue_action_and_secret(self):
+        from agent_factory.provider_connection_catalog import connection_catalog
+        with patch('agent_factory.credential_web.connection_catalog',return_value=connection_catalog(now=AT)):
+            self.enter();self.page.locator('#connection-product').select_option('openai-api')
+            self.page.locator('#secret').fill(self.secret)
+            self.page.route('**/api/credential-connections',lambda route:route.fulfill(status=403,body='{}'))
+            self.page.locator('#refresh').click()
+            self.page.wait_for_function("document.querySelector('#secret').disabled")
+            self.assertEqual(self.page.locator('#connection-guide button').count(),0)
+            self.assertEqual(self.page.locator('#secret').input_value(),'')
+            self.assertTrue(self.page.locator('#connection-product').is_disabled())
+
+    def test_catalogue_expiry_is_rechecked_at_selection(self):
+        from agent_factory.provider_connection_catalog import connection_catalog
+        with patch('agent_factory.credential_web.connection_catalog',return_value=connection_catalog(now=AT)):
+            self.page.goto(self.url+'/settings/credentials')
+            self.page.locator('#connection-product').select_option('openai-api')
+            # No timer needs to fire: the click must itself reject obsolete guidance.
+            self.page.evaluate("Date.now = () => Date.parse('2026-10-06T00:00:00Z')")
+            self.page.locator('#connection-guide button').click()
+            self.assertIn('потребують нового огляду',self.page.locator('#connection-guide-notice').inner_text())
+            self.assertEqual(self.page.locator('#connection-guide button').count(),0)
+            self.assertFalse(self.store.values)

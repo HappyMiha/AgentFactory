@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from .credential_connections import CredentialConnections
 from .connector_eligibility import CREDENTIAL_ROUTES, request_setup_decision
 from .eligibility_web import install_routes as install_eligibility_routes
+from .provider_connection_catalog import connection_catalog
 
 
 def install_routes(app, workspace: Path, *, store=None):
@@ -39,7 +40,7 @@ def install_routes(app, workspace: Path, *, store=None):
             values = await asyncio.to_thread(service.list, **scope)
             decisions = {provider: request_setup_decision(request, provider, workspace=workspace, **scope) for provider in CREDENTIAL_ROUTES}
             return response({'connections':values, 'supported':os.name == 'nt' or store is not None,
-                             'setup': decisions})
+                             'setup': decisions, 'catalog': connection_catalog()})
         except PermissionError:
             return response({'error':'connection_access_denied'},403)
         except Exception:
