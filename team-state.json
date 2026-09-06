@@ -262,7 +262,7 @@
         "core:src/agent_factory/storage.py",
         "core:tests/test_policy_composition.py"
       ],
-      "updated_at": "2026-09-06T14:24:27+00:00",
+      "updated_at": "2026-09-06T14:46:10+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/37",
       "resources": [
@@ -286,7 +286,7 @@
         "core:AF-GC-025"
       ],
       "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47",
-      "review_head": "396ce2f9998d2a1236068ecde50b2c4164bd1b04"
+      "review_head": "a158b9fef9fd6c90730394e0d13368e72a0cbb3c"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6489,6 +6489,16 @@
       "note": "PR36 merged after independent reviews. Reviewing shared policy prerequisite before admitted installer composition; full014 incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "c33cc02e-b949-4d94-89e1-0dee83f65dd6",
+      "at": "2026-09-06T14:46:10+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     }
   ],
   "migration": {
