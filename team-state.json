@@ -261,7 +261,7 @@
         "core:src/agent_factory/provider_canary_transport.py",
         "core:tests/test_provider_canary_transport.py"
       ],
-      "updated_at": "2026-09-06T17:22:41+00:00",
+      "updated_at": "2026-09-06T17:37:23+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/44",
       "resources": [
@@ -285,7 +285,7 @@
         "core:AF-GC-025"
       ],
       "claim_id": "db824773-3560-4546-bee4-2884c128b38e",
-      "review_head": "79853c80a63364f50d6ae03d15c2398b5c6f9076"
+      "review_head": "285c5db59094a07ee0c96758ef7f7d3ceb9f12e4"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6734,6 +6734,16 @@
     {
       "operation_id": "5bde9492-1fbf-448e-82f1-3430085c3f5d",
       "at": "2026-09-06T17:22:41+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-1043ac7a",
+      "claim_id": "db824773-3560-4546-bee4-2884c128b38e"
+    },
+    {
+      "operation_id": "6b4af697-e6c1-43a0-b6cb-9247c6c926c4",
+      "at": "2026-09-06T17:37:23+00:00",
       "action": "review",
       "task": "core:AF-GC-009",
       "worker": "HappySnowman",
