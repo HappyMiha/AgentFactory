@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-90113dc6",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T16:34:56+00:00",
-      "note": "Usage metadata PR41 merged; whole009 incomplete. Preserve branch pending next agreed component.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/41",
+      "updated_at": "2026-09-06T17:12:40+00:00",
+      "note": "PR41 merged; preserve branch. Coordinator approved pure request preparation prerequisite.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb",
-      "review_head": "83241d05373a7028063b8b05b771692297e41bf0"
+      "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6706,6 +6705,16 @@
       "note": "PR43 exact0e23b07 pushed: actual Windows admitted publication, recovery and concurrency tests. 85tests83pass2skip, CI green; peer review pending.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "8c1edd96-18ba-44ac-a2ae-d907f37f7e8b",
+      "at": "2026-09-06T17:12:40+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR41 merged; preserve branch. Coordinator approved pure request preparation prerequisite.",
+      "branch": null,
+      "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb"
     }
   ],
   "migration": {
