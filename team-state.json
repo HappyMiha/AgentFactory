@@ -2114,7 +2114,7 @@
         "cloud:tests/test_server_inventory.py",
         "cloud:tests/test_worker_fleet.py"
       ],
-      "updated_at": "2026-09-06T04:45:13+00:00",
+      "updated_at": "2026-09-06T04:49:43+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/14",
       "resources": [
@@ -2132,7 +2132,7 @@
         "cloud:AF-CLD-022"
       ],
       "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc",
-      "review_head": "e49f9b010901986224feb4fc83294609a8fb4af7"
+      "review_head": "825fae74f07e7ebd7773a761ef1ecee17ed13cae"
     },
     "cloud:AF-CLD-025": {
       "dependencies": [
@@ -5190,6 +5190,16 @@
       "operation_id": "777cd931-6c0a-4e0a-bb93-4358642f5244",
       "at": "2026-09-06T04:45:13+00:00",
       "action": "rescope",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
+    },
+    {
+      "operation_id": "32715575-f8cd-45e6-8fc0-6ca4483ad892",
+      "at": "2026-09-06T04:49:43+00:00",
+      "action": "review",
       "task": "cloud:AF-CLD-024",
       "worker": "HappySnowman",
       "note": "",
