@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T08:40:56+00:00",
-      "note": "Both components merged; release active scopes for installation integration while full provider qualification remains pending.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/23",
+      "updated_at": "2026-09-06T09:47:33+00:00",
+      "note": "Preserve accepted component branches; resume agreed current connection scope component with fresh claim.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027",
-      "review_head": "da376b4a0f78243fa79a92415544079d86311851"
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5937,6 +5936,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
       "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
+    },
+    {
+      "operation_id": "f4280d6b-8410-472f-b98a-20662e965e8f",
+      "at": "2026-09-06T09:47:33+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Preserve accepted component branches; resume agreed current connection scope component with fresh claim.",
+      "branch": null,
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
     }
   ],
   "migration": {
