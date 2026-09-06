@@ -429,8 +429,8 @@
         "core:tests/test_installation_intent.py",
         "core:tests/test_installation_manifest.py"
       ],
-      "updated_at": "2026-09-06T12:03:32+00:00",
-      "note": "",
+      "updated_at": "2026-09-06T12:20:10+00:00",
+      "note": "PR30 content manifest awaiting independent review; executable installation and recovery acceptance remain incomplete.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/30",
       "resources": [
         "core:environment-bootstrap",
@@ -6184,6 +6184,16 @@
       "note": "Transport component PR29 merged; whole evaluator task incomplete. Preserve branch and free scopes pending next agreed evaluator increment.",
       "branch": "agent/HappySnowman/AF-GC-009-f181725d",
       "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
+    },
+    {
+      "operation_id": "116dd858-bcc4-425a-aebc-1f167f11f9bc",
+      "at": "2026-09-06T12:20:10+00:00",
+      "action": "heartbeat",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "PR30 content manifest awaiting independent review; executable installation and recovery acceptance remain incomplete.",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
