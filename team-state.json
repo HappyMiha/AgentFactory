@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T15:06:37+00:00",
-      "note": "PR37 merged; whole009 incomplete. Preserve branch for fresh runtime effect propagation prerequisite.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/37",
+      "updated_at": "2026-09-06T15:06:40+00:00",
+      "note": "Take agreed existing runtime/admission effect propagation with fresh branch; prior component preserved.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47",
-      "review_head": "a158b9fef9fd6c90730394e0d13368e72a0cbb3c"
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6503,6 +6502,16 @@
       "worker": "HappySnowman",
       "note": "PR37 merged; whole009 incomplete. Preserve branch for fresh runtime effect propagation prerequisite.",
       "branch": "agent/HappySnowman/AF-GC-009-5ccab4cf",
+      "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
+    },
+    {
+      "operation_id": "654474a9-bf28-433b-b532-ec8109d460a2",
+      "at": "2026-09-06T15:06:40+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Take agreed existing runtime/admission effect propagation with fresh branch; prior component preserved.",
+      "branch": null,
       "claim_id": "fe07534a-4ae1-4343-a6f4-01040afc0e47"
     }
   ],
