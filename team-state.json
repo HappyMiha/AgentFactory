@@ -1500,6 +1500,7 @@
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
       "scopes": [
+        "cloud:README.md",
         "cloud:docs/game-brief-intake.md",
         "cloud:pyproject.toml",
         "cloud:src/agentfactory_cloud/__init__.py",
@@ -1512,7 +1513,7 @@
         "cloud:tests/test_game_brief_web.py",
         "cloud:tests/test_game_briefs.py"
       ],
-      "updated_at": "2026-09-06T00:36:56+00:00",
+      "updated_at": "2026-09-06T00:42:56+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/10",
       "resources": [
@@ -4759,6 +4760,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-002-6412aa16",
       "claim_id": "37ecae5f-84c8-468c-b09d-180e9f822e88"
+    },
+    {
+      "operation_id": "715f933e-4f7a-4b1d-b9e2-9672c99d0752",
+      "at": "2026-09-06T00:42:56+00:00",
+      "action": "rescope",
+      "task": "cloud:AF-CLD-007",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
+      "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5"
     }
   ],
   "migration": {
