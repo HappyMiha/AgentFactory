@@ -122,7 +122,7 @@ class AutonomousStageIdentityTests(AutonomousChildFixture, unittest.TestCase):
 
     def test_migration_from_71_preserves_existing_artifact_identity(self):
         path = self.workspace / 'legacy.db'
-        with patch.object(storage_module, 'MIGRATIONS', storage_module.MIGRATIONS[:-1]):
+        with patch.object(storage_module, 'MIGRATIONS', tuple(m for m in storage_module.MIGRATIONS if m[0] <= 71)):
             with closing(storage_module.SQLiteStorage(path)) as legacy:
                 project = legacy.create_project('Legacy', 'Before stage assignments')
                 task = legacy.create_task(WorkItem('Existing', 'Keep evidence', project))

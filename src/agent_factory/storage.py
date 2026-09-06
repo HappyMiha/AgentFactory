@@ -6495,6 +6495,21 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEGIN SELECT RAISE(ABORT, 'autonomous stage assignments are durable'); END;
     """),
 
+    (73, """
+        CREATE TABLE environment_readiness_reports(
+            id INTEGER PRIMARY KEY,
+            approval_id INTEGER NOT NULL REFERENCES autonomous_backlog_approvals(id),
+            report_json TEXT NOT NULL CHECK(json_valid(report_json)),
+            report_digest TEXT NOT NULL CHECK(length(report_digest)=64),
+            created_at TEXT NOT NULL
+        );
+        CREATE TRIGGER environment_readiness_reports_no_update
+        BEFORE UPDATE ON environment_readiness_reports
+        BEGIN SELECT RAISE(ABORT, 'environment readiness reports are immutable'); END;
+        CREATE TRIGGER environment_readiness_reports_no_delete
+        BEFORE DELETE ON environment_readiness_reports
+        BEGIN SELECT RAISE(ABORT, 'environment readiness reports are durable'); END;
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

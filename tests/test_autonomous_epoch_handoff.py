@@ -467,6 +467,7 @@ class AutonomousEpochHandoffTemporalTests(
                 "session_id": "epoch-handoff-temporal",
             },
         )
+        self.record_fixture_readiness(approved)
         await signal_autonomous_backlog_approved(
             self.environment.client,
             self.mission.id,

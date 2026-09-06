@@ -78,7 +78,7 @@ def checks() -> list[Check]:
     return [
         Check(
             name,
-            "ready" if path else "missing",
+            "installed" if path else "missing",
             path or "not found",
             "required" if name in REQUIRED else "optional",
         )

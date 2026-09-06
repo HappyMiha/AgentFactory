@@ -129,7 +129,7 @@ class ProviderRoleQualificationTests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("role_canary", CATALOG.parents[3] / "scripts/qualify_provider_roles.py")
         canary = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(canary)
-        with patch.dict(os.environ, {"OLLAMA_HOST": "http://remote.example:11434"}), patch.object(sys, "argv", ["canary", "--run-live"]), patch.object(canary, "build_opener") as opener:
+        with patch.dict(os.environ, {"OLLAMA_HOST": "http://remote.example:11434"}), patch.object(sys, "argv", ["canary", "--run-live"]), patch("agent_factory.local_role_qualification.build_opener") as opener:
             with self.assertRaisesRegex(ValueError, "OLLAMA_HOST"):
                 canary.main()
             opener.assert_not_called()

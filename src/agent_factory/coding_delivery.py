@@ -30,6 +30,7 @@ from .backlog_revisions import (
 from .candidate_changes import CandidateChangeService
 from .control_plane import MissionControlFenceService
 from .engineering_loop import EngineeringLoopService, IterationUsage, LoopLimits
+from .environment_readiness import EnvironmentReadiness
 from .evaluation import EvaluationService, ReviewFunction
 from .mission_checkpoints import MissionCheckpointService, MissionCheckpointType
 from .models import Agent, Budget, ProviderCapabilities, Status, WorkItem
@@ -482,6 +483,7 @@ class AutonomousCodingDeliveryService:
                 "Environment bootstrap did not resolve autonomous authority: "
                 + decision.reason
             )
+        EnvironmentReadiness(self.storage).require_ready(approval.id)
         next_version = expected_mission_version
         for ordinal, target in enumerate(
             (
