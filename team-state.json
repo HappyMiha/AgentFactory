@@ -1541,14 +1541,15 @@
         "cloud:docs/first-playable-planning.md",
         "cloud:src/agentfactory_cloud/brief_web.py",
         "cloud:src/agentfactory_cloud/scope_plans.py",
-        "cloud:src/agentfactory_cloud/static/brief.css",
         "cloud:src/agentfactory_cloud/static/brief.html",
         "cloud:src/agentfactory_cloud/static/brief.js",
+        "cloud:src/agentfactory_cloud/static/scope.html",
+        "cloud:src/agentfactory_cloud/static/scope.js",
         "cloud:tests/test_scope_plan_browser.py",
         "cloud:tests/test_scope_plan_web.py",
         "cloud:tests/test_scope_plans.py"
       ],
-      "updated_at": "2026-09-06T01:11:43+00:00",
+      "updated_at": "2026-09-06T01:13:55+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4829,6 +4830,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-002-6412aa16",
       "claim_id": "37ecae5f-84c8-468c-b09d-180e9f822e88"
+    },
+    {
+      "operation_id": "688cea6e-39fe-4ff3-bfe4-7ba9db85b88c",
+      "at": "2026-09-06T01:13:55+00:00",
+      "action": "rescope",
+      "task": "cloud:AF-CLD-008",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-008-1beacacc",
+      "claim_id": "29acb938-eee8-4555-a3c7-6d1cc6383afb"
     }
   ],
   "migration": {
