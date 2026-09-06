@@ -298,10 +298,11 @@
         "core:tests/test_credential_connections.py",
         "core:tests/test_credential_web.py",
         "core:tests/test_credentials.py",
-        "core:tests/test_os_credentials.py"
+        "core:tests/test_os_credentials.py",
+        "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T03:10:05+00:00",
-      "note": "Native OS credential references, broker admission, revocation and UI. Core010 owns central composition; Core011 owns inventory modules.",
+      "updated_at": "2026-09-06T03:25:35+00:00",
+      "note": "",
       "pr": null,
       "resources": [
         "core:credentials",
@@ -5036,6 +5037,16 @@
       "task": "core:AF-GC-010",
       "worker": "HappyHahahaker",
       "note": "Native OS credential references, broker admission, revocation and UI. Core010 owns central composition; Core011 owns inventory modules.",
+      "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
+      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
+    },
+    {
+      "operation_id": "b45b1237-a890-4de8-8f79-d99a44c91c6d",
+      "at": "2026-09-06T03:25:35+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-010",
+      "worker": "HappyHahahaker",
+      "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
       "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
     }
