@@ -167,4 +167,26 @@ junction parents, insufficient space and an injected flush failure. A hard kill
 may leave private temporary data. Automatic orphan cleanup, end-to-end journal
 composition, power-loss/reboot guarantees and actual Windows VM installation
 qualification remain open. Publication needs additional space for a second copy
-of the extracted payload; the future plan and executor must budget for it.
+of the extracted payload; the planning budget below includes it.
+
+## Space shown in the installation plan
+
+The plan now budgets for the files that coexist during verified staging and
+publication: a new download when needed, the private verification archive,
+extracted content, a second payload copy, 8 MiB for publication metadata and
+64 MiB of filesystem headroom per changed package. Each step records this
+breakdown, and the existing review screen shows the resulting total. The
+headroom is a conservative planning allowance, not a measurement or a guarantee
+for every filesystem. Actual free space must still be checked before each effect
+and write failures must still be handled.
+
+A cached archive saves network transfer and the original download allocation.
+It does not remove the need for a private verified archive copy or a publication
+copy. Reusing an existing package requires none of these allocations. The total
+sums every package's budget, without assuming that earlier temporary files will
+already have been cleaned up. Network download totals remain separate.
+
+Previously saved plans and decisions remain readable. Their earlier, smaller
+disk budget cannot authorize a new reservation: current proposal comparison
+rejects it, and the user must review the new total. This does not automatically
+launch an installer or change the final package layout.

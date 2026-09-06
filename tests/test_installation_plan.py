@@ -43,6 +43,37 @@ class InstallationPlanTests(unittest.TestCase):
         self.assertEqual(self.catalog, before)
         self.assertEqual(changed_fields(a, b), [])
 
+    def test_disk_budget_covers_coexisting_copies_and_cache_saves_only_download(self):
+        online = self.plan(['godot-editor']).document()
+        cached = self.plan(['godot-editor'], offline=True,
+                           cached_sha256=[self.editor['sha256']]).document()
+        step = online['steps'][0]
+        expected = 2*self.editor['download_bytes'] + 2*self.editor['extraction_budget_bytes'] + 72*1024**2
+        self.assertEqual(online['disk_budget_bytes'], expected)
+        self.assertEqual(sum(step['disk_budget_components'].values()), expected)
+        self.assertEqual(cached['download_required_bytes'], 0)
+        self.assertEqual(cached['disk_budget_bytes'], expected-self.editor['download_bytes'])
+        self.assertEqual(cached['steps'][0]['disk_budget_components']['verification_archive_bytes'],
+                         self.editor['download_bytes'])
+        self.assertEqual(online['download_required_bytes'], self.editor['download_bytes'])
+
+    def test_old_single_copy_capacity_is_rejected_and_exact_new_budget_is_allowed(self):
+        old = self.editor['download_bytes'] + self.editor['extraction_budget_bytes']
+        insufficient = self.plan(['godot-editor'], free_bytes=old).document()
+        self.assertEqual(insufficient['issues'], ['insufficient_disk_budget'])
+        self.assertTrue(insufficient['requires_manual_action'])
+        enough = self.plan(['godot-editor'], free_bytes=insufficient['disk_budget_bytes']).document()
+        self.assertFalse(enough['requires_manual_action'])
+        self.assertFalse(enough['execution_eligible'])
+
+    def test_reused_package_has_no_copy_budget_and_package_totals_add_up(self):
+        document = self.plan().document()
+        self.assertEqual(document['disk_budget_bytes'], sum(s['disk_budget_bytes'] for s in document['steps']))
+        reused = self.plan(['godot-editor'], inventory={'godot-editor': self.observed()}, free_bytes=0).document()
+        self.assertEqual(reused['disk_budget_bytes'], 0)
+        self.assertTrue(all(value == 0 for value in reused['steps'][0]['disk_budget_components'].values()))
+        self.assertFalse(reused['requires_manual_action'])
+
     def test_installed_reuse_install_and_explicit_update(self):
         fixtures = [
             (self.observed(), {}, "already_installed"),

@@ -6,6 +6,8 @@ import sqlite3
 import tempfile
 import unittest
 import uuid
+import json
+from unittest.mock import patch
 
 from agent_factory.installation_intent import InstallationIntents
 from agent_factory.autonomous_mission import AutonomousMissionService
@@ -41,6 +43,32 @@ class InstallationIntentTests(unittest.TestCase):
 
     def count(self):
         return self.storage.db.execute('SELECT COUNT(*) FROM autonomous_mission_operations').fetchone()[0]
+
+    def test_saved_single_copy_approval_cannot_reserve_after_budget_upgrade(self):
+        from agent_factory.installation_plan import build_plan, InstallationPlan
+        def legacy_plan(*args, **kwargs):
+            document = build_plan(*args, **kwargs).document()
+            for step in document['steps']:
+                parts = step.pop('disk_budget_components')
+                step['disk_budget_bytes'] = parts['source_download_bytes'] + parts['extraction_bytes']
+            document['disk_budget_bytes'] = sum(step['disk_budget_bytes'] for step in document['steps'])
+            return InstallationPlan(json.dumps(document, sort_keys=True, separators=(',', ':')))
+        # Persist and approve through the old plan shape, without editing any
+        # immutable database rows. The new implementation then reads that DB.
+        with patch('agent_factory.installation_review.build_plan', legacy_plan):
+            self.plan = self.review.prepare(self.mission, 'Founder', command_id=str(uuid.uuid4()))
+            self.approve()
+            historical = self.reserve()
+        with self.assertRaisesRegex(InstallationConflict, 'plan_changed'):
+            self.reserve()
+        self.assertEqual(self.intents.view(self.mission, 'Founder', historical['operation_id']), historical)
+        self.assertEqual(self.count(), 1)
+        fresh = self.review.prepare(self.mission, 'Founder', command_id=str(uuid.uuid4()))
+        self.assertGreater(fresh['plan']['disk_budget_bytes'], self.plan['plan']['disk_budget_bytes'])
+        self.assertNotEqual(fresh['digest'], self.plan['digest'])
+        self.plan = fresh
+        self.approve()
+        self.assertEqual(self.reserve()['state'], 'reserved')
 
     def test_approved_intent_is_durable_bound_and_never_execution_authority(self):
         self.approve(); result = self.reserve()

@@ -273,7 +273,19 @@ def build_plan(
                for step in steps):
             reasons.append("dependency_needs_action")
         transfer = package["download_bytes"] if mutate and not cached else 0
-        space = (package["extraction_budget_bytes"] + transfer) if mutate else 0
+        # The verified ZIP copy, extracted tree and publication copy coexist.
+        # A cached source is already reflected in free space, but its private
+        # verification copy is still new space. Do not confuse network bytes
+        # with peak additional disk use. These are budgets, not measured sizes.
+        disk_components = {
+            "source_download_bytes": transfer,
+            "verification_archive_bytes": package["download_bytes"] if mutate else 0,
+            "extraction_bytes": package["extraction_budget_bytes"] if mutate else 0,
+            "publication_payload_bytes": package["extraction_budget_bytes"] if mutate else 0,
+            "publication_metadata_bytes": 8 * 1024**2 if mutate else 0,
+            "filesystem_headroom_bytes": 64 * 1024**2 if mutate else 0,
+        }
+        space = sum(disk_components.values())
         required_bytes += space
         download_bytes += transfer
         permissions = (["write_workspace"] + (["network"] if transfer else [])
@@ -283,6 +295,7 @@ def build_plan(
                       "permissions": permissions, "archive_reported_cached": cached,
                       "observation": dict(old) if old else None,
                       "download_required_bytes": transfer, "disk_budget_bytes": space,
+                      "disk_budget_components": disk_components,
                       "preserve_existing_installations": True})
     issues = []
     if required_bytes and free_bytes is None:
