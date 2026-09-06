@@ -85,6 +85,7 @@ M0 не забороняє паралельну роботу над незале
 | AF-GC-040 | P1 | M1 | M | Перевірити зрозумілість із користувачами 12–15 років | AF-GC-009, AF-GC-015, AF-GC-022, AF-GC-023, AF-GC-024, AF-GC-025 |
 | AF-GC-041 | P0 | M0 | M | Зберігати ролі та незалежність reviewer у live mission | AF-GC-006 |
 | AF-GC-042 | P0 | M0 | M | Кваліфікувати ролі planning та bootstrap для провайдерів | AF-GC-006 |
+| AF-GC-043 | P0 | M2 | M | Atomically admit qualified workers with scoped attempts and shared capacity | AF-GC-039 |
 
 ## Як читати й виконувати задачі
 
@@ -510,6 +511,17 @@ Child authorization не повинна підміняти всі стадії �
 - Unsupported role показує конкретну доступну альтернативу; negative tests підтверджують, що заборонені ролі лишаються забороненими.
 
 **Перевірка:** Matrix shipped provider profiles × autonomous role IDs; bounded canary для кваліфікованих пар, 0 subprocess для rejected pairs.
+
+### AF-GC-043 — Atomically admit qualified workers with scoped attempts and shared capacity
+
+One admission transaction checks the current qualification, lifecycle, trusted project owner and physical worker capacity, then creates the existing assignment, lease and first attempt.
+
+- Share capacity across logical aliases and projects; worker-supplied capacity is not authority.
+- Bind the exact task, run, stage, attempt, ready worktree and context before launch. Require the stored admission even when optional launch metadata is omitted.
+- Replay one request or start without another attempt or external launch. Retain uncertain capacity after lease expiry, heartbeat loss or a lost start response.
+- Release only with trusted stop evidence for the exact admission and fence; old acknowledgements cannot free newer work. Preserve the unregistered local API.
+
+**Validation:** Independent SQLite connection races, rollback injection, synthetic runtime start/replay, stale qualification and scope denial, affected legacy tests, and independent review. This does not certify a remote host or deployment. See [worker admission](worker-admission.md).
 
 ## Що робимо зі старим беклогом
 
