@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any, Mapping
 
 from .storage import SQLiteStorage
@@ -53,6 +55,96 @@ class ExecutionTelemetryService:
     def __init__(self, storage: SQLiteStorage):
         self.storage = storage
 
+    @contextmanager
+    def _write(self):
+        """Serialize decisions and preserve a caller's enclosing transaction."""
+        db = self.storage.db
+        if not db.in_transaction:
+            with db:
+                db.execute("BEGIN IMMEDIATE")
+                yield
+            return
+        # Upgrade a deferred transaction before reading budget state. A stale
+        # WAL snapshot fails here; it must never authorize from stale totals.
+        db.execute("UPDATE execution_traces SET id=id WHERE 0")
+        db.execute("SAVEPOINT execution_telemetry_write")
+        try:
+            yield
+        except BaseException:
+            db.execute("ROLLBACK TO execution_telemetry_write")
+            db.execute("RELEASE execution_telemetry_write")
+            raise
+        else:
+            db.execute("RELEASE execution_telemetry_write")
+
+    def _outstanding(self, trace_id: int) -> tuple[int, Decimal, int]:
+        """Unused estimates remain held until an explicit immutable closure."""
+        tokens, cost, calls = 0, Decimal(0), 0
+        rows = self.storage.db.execute(
+            """SELECT r.* FROM execution_stage_reservations r
+               LEFT JOIN execution_reservation_closures c ON c.reservation_id=r.id
+               WHERE r.trace_id=? AND r.decision='allowed' AND c.reservation_id IS NULL""",
+            (trace_id,),
+        ).fetchall()
+        for row in rows:
+            samples = self.storage.db.execute(
+                """SELECT tokens,estimated_cost_usd,tool_calls FROM execution_usage_samples
+                   WHERE trace_id=? AND stage_key=?""", (trace_id, row["stage_key"]),
+            ).fetchall()
+            tokens += max(0, row["estimated_tokens"] - sum(s["tokens"] for s in samples))
+            cost += max(Decimal(0), Decimal(str(row["estimated_cost_usd"]))
+                        - sum((Decimal(str(s["estimated_cost_usd"])) for s in samples), Decimal(0)))
+            calls += max(0, row["estimated_tool_calls"] - sum(s["tool_calls"] for s in samples))
+        return tokens, cost, calls
+
+    def settle_stage(self, trace_id: int, stage_key: str, *, reason: str) -> bool:
+        """Close after the trusted host ingested ALL final usage, even if zero."""
+        return self._close_stage(trace_id, stage_key, state="settled", reason=reason)
+
+    def release_stage(
+        self, trace_id: int, stage_key: str, *, reason: str,
+        confirmed_no_effect: bool = False,
+    ) -> bool:
+        """Release only with host evidence of no execution; never on timeout."""
+        if confirmed_no_effect is not True:
+            raise ValueError("Release requires confirmed no effect")
+        return self._close_stage(trace_id, stage_key, state="released", reason=reason)
+
+    def _close_stage(self, trace_id: int, stage_key: str, *, state: str, reason: str) -> bool:
+        if not stage_key.strip() or not reason.strip() or state not in {"settled", "released"}:
+            raise ValueError("Reservation closure requires a known state, stage and reason")
+        with self._write():
+            row = self.storage.db.execute(
+                """SELECT r.*,t.status FROM execution_stage_reservations r
+                   JOIN execution_traces t ON t.id=r.trace_id WHERE r.trace_id=? AND r.stage_key=?""",
+                (trace_id, stage_key),
+            ).fetchone()
+            if not row or row["decision"] != "allowed":
+                raise ValueError("No allowed reservation to close")
+            existing = self.storage.db.execute(
+                "SELECT * FROM execution_reservation_closures WHERE reservation_id=?", (row["id"],),
+            ).fetchone()
+            if existing:
+                if (existing["state"], existing["reason"]) != (state, reason.strip()):
+                    raise ValueError("Reservation already has a different closure")
+                return False
+            if row["status"] not in {"active", "paused"}:
+                raise ValueError("Cannot close reservations of a terminal trace")
+            sample = self.storage.db.execute(
+                "SELECT id FROM execution_usage_samples WHERE trace_id=? AND stage_key=? LIMIT 1",
+                (trace_id, stage_key),
+            ).fetchone()
+            if (state == "settled" and not sample) or (state == "released" and sample):
+                raise ValueError("Settlement requires final usage; release requires no usage")
+            self.storage.db.execute(
+                "INSERT INTO execution_reservation_closures(reservation_id,state,reason) VALUES(?,?,?)",
+                (row["id"], state, reason.strip()),
+            )
+            self.storage._event(f"telemetry.stage.{state}", "execution_trace", trace_id, {
+                "stage_key": stage_key, "reason": reason.strip(),
+            })
+            return True
+
     @staticmethod
     def _state(row) -> TraceState:
         return TraceState(
@@ -73,27 +165,27 @@ class ExecutionTelemetryService:
 
     def create(self, *, task_id: int, run_id: int, budgets: ExecutionBudgets) -> TraceState:
         budgets.validate()
-        run = self.storage.db.execute(
-            "SELECT task_id FROM workflow_runs WHERE id=?", (run_id,)
-        ).fetchone()
-        if not run or int(run["task_id"]) != task_id:
-            raise ValueError("Execution trace task and workflow do not match")
-        existing = self.storage.db.execute(
-            "SELECT * FROM execution_traces WHERE run_id=?", (run_id,)
-        ).fetchone()
-        if existing:
-            expected = (
-                budgets.max_tokens, budgets.max_cost_usd, budgets.max_stages,
-                budgets.max_retries, budgets.max_tool_calls,
-            )
-            actual = tuple(existing[key] for key in (
-                "max_tokens", "max_cost_usd", "max_stages", "max_retries", "max_tool_calls"
-            ))
-            if actual != expected:
-                raise ValueError("Workflow is already bound to a different execution budget")
-            return self._state(existing)
-        root = self.storage._identity("correlation-root")
-        with self.storage.db:
+        with self._write():
+            run = self.storage.db.execute(
+                "SELECT task_id FROM workflow_runs WHERE id=?", (run_id,)
+            ).fetchone()
+            if not run or int(run["task_id"]) != task_id:
+                raise ValueError("Execution trace task and workflow do not match")
+            existing = self.storage.db.execute(
+                "SELECT * FROM execution_traces WHERE run_id=?", (run_id,)
+            ).fetchone()
+            if existing:
+                expected = (
+                    budgets.max_tokens, budgets.max_cost_usd, budgets.max_stages,
+                    budgets.max_retries, budgets.max_tool_calls,
+                )
+                actual = tuple(existing[key] for key in (
+                    "max_tokens", "max_cost_usd", "max_stages", "max_retries", "max_tool_calls"
+                ))
+                if actual != expected:
+                    raise ValueError("Workflow is already bound to a different execution budget")
+                return self._state(existing)
+            root = self.storage._identity("correlation-root")
             cursor = self.storage.db.execute(
                 """INSERT INTO execution_traces(
                        identity,correlation_root,task_id,run_id,max_tokens,max_cost_usd,
@@ -191,27 +283,39 @@ class ExecutionTelemetryService:
             or not math.isfinite(estimated_cost_usd) or estimated_cost_usd < 0
         ):
             raise ValueError("Stage budget estimate is invalid")
-        row = self.storage.db.execute(
-            "SELECT * FROM execution_traces WHERE id=?", (trace_id,)
-        ).fetchone()
-        if not row:
-            raise KeyError(f"Unknown execution trace: {trace_id}")
-        existing = self.storage.db.execute(
-            "SELECT * FROM execution_stage_reservations WHERE trace_id=? AND stage_key=?",
-            (trace_id, stage_key),
-        ).fetchone()
-        if existing:
-            if existing["decision"] == "blocked":
-                raise BudgetExceeded(str(existing["reason"]))
-            return False
-        reasons = []
-        if row["status"] != "active": reasons.append(f"trace is {row['status']}")
-        if int(row["stages_reserved"]) + 1 > int(row["max_stages"]): reasons.append("stage budget exceeded")
-        if int(row["tokens"]) + estimated_tokens > int(row["max_tokens"]): reasons.append("token budget exceeded")
-        if float(row["estimated_cost_usd"]) + estimated_cost_usd > float(row["max_cost_usd"]): reasons.append("cost budget exceeded")
-        if int(row["tool_calls"]) + estimated_tool_calls > int(row["max_tool_calls"]): reasons.append("tool-call budget exceeded")
-        decision, reason = ("blocked", "; ".join(reasons)) if reasons else ("allowed", "within budget")
-        with self.storage.db:
+        with self._write():
+            row = self.storage.db.execute(
+                "SELECT * FROM execution_traces WHERE id=?", (trace_id,)
+            ).fetchone()
+            if not row:
+                raise KeyError(f"Unknown execution trace: {trace_id}")
+            existing = self.storage.db.execute(
+                "SELECT * FROM execution_stage_reservations WHERE trace_id=? AND stage_key=?",
+                (trace_id, stage_key),
+            ).fetchone()
+            if existing:
+                if tuple(existing[k] for k in (
+                    "estimated_tokens", "estimated_cost_usd", "estimated_tool_calls"
+                )) != (estimated_tokens, estimated_cost_usd, estimated_tool_calls):
+                    raise ValueError("Stage key is already bound to a different estimate")
+                if existing["decision"] == "blocked":
+                    raise BudgetExceeded(str(existing["reason"]))
+                return False
+            if row["status"] not in {"active", "paused"}:
+                raise BudgetExceeded(f"trace is {row['status']}")
+            if self.storage.db.execute(
+                "SELECT id FROM execution_usage_samples WHERE trace_id=? AND stage_key=? LIMIT 1",
+                (trace_id, stage_key),
+            ).fetchone():
+                raise ValueError("Cannot reserve a stage that already has usage")
+            pending_tokens, pending_cost, pending_calls = self._outstanding(trace_id)
+            reasons = []
+            if row["status"] != "active": reasons.append(f"trace is {row['status']}")
+            if int(row["stages_reserved"]) + 1 > int(row["max_stages"]): reasons.append("stage budget exceeded")
+            if int(row["tokens"]) + pending_tokens + estimated_tokens > int(row["max_tokens"]): reasons.append("token budget exceeded")
+            if Decimal(str(row["estimated_cost_usd"])) + pending_cost + Decimal(str(estimated_cost_usd)) > Decimal(str(row["max_cost_usd"])): reasons.append("cost budget exceeded")
+            if int(row["tool_calls"]) + pending_calls + estimated_tool_calls > int(row["max_tool_calls"]): reasons.append("tool-call budget exceeded")
+            decision, reason = ("blocked", "; ".join(reasons)) if reasons else ("allowed", "within budget")
             self.storage.db.execute(
                 """INSERT INTO execution_stage_reservations(
                        identity,trace_id,stage_key,estimated_tokens,estimated_cost_usd,
@@ -241,13 +345,15 @@ class ExecutionTelemetryService:
         return True
 
     def record_retry(self, trace_id: int, reason: str) -> bool:
-        row = self.storage.db.execute("SELECT * FROM execution_traces WHERE id=?", (trace_id,)).fetchone()
-        if not row or not reason.strip():
-            raise ValueError("Retry requires a trace and reason")
-        number = int(row["retries"]) + 1
-        allowed = row["status"] == "active" and number <= int(row["max_retries"])
-        decision = "allowed" if allowed else "blocked"
-        with self.storage.db:
+        with self._write():
+            row = self.storage.db.execute("SELECT * FROM execution_traces WHERE id=?", (trace_id,)).fetchone()
+            if not row or not reason.strip():
+                raise ValueError("Retry requires a trace and reason")
+            if row["status"] not in {"active", "paused"}:
+                raise BudgetExceeded(f"trace is {row['status']}")
+            number = int(row["retries"]) + 1
+            allowed = row["status"] == "active" and number <= int(row["max_retries"])
+            decision = "allowed" if allowed else "blocked"
             self.storage.db.execute(
                 "INSERT INTO execution_retry_records(identity,trace_id,retry_number,reason,decision) VALUES(?,?,?,?,?)",
                 (self.storage._identity("execution-retry"), trace_id, number, reason.strip(), decision),
@@ -278,28 +384,28 @@ class ExecutionTelemetryService:
             or not math.isfinite(estimated_cost_usd) or estimated_cost_usd < 0
         ):
             raise ValueError("Execution usage sample is invalid")
-        existing = self.storage.db.execute(
-            "SELECT id FROM execution_usage_samples WHERE trace_id=? AND idempotency_key=?",
-            (trace_id, idempotency_key),
-        ).fetchone()
-        if existing:
-            return self.state(trace_id)
-        row = self.storage.db.execute("SELECT * FROM execution_traces WHERE id=?", (trace_id,)).fetchone()
-        if not row or row["status"] not in {"active", "paused"}:
-            raise ValueError("Usage can only attach to an active or paused trace")
-        totals = {
-            "duration_ms": int(row["duration_ms"]) + duration_ms,
-            "tokens": int(row["tokens"]) + tokens,
-            "estimated_cost_usd": float(row["estimated_cost_usd"]) + estimated_cost_usd,
-            "tool_calls": int(row["tool_calls"]) + tool_calls,
-        }
-        exceeded = (
-            totals["tokens"] > int(row["max_tokens"])
-            or totals["estimated_cost_usd"] > float(row["max_cost_usd"])
-            or totals["tool_calls"] > int(row["max_tool_calls"])
-        )
-        reason = terminal_reason or ("actual usage exceeded budget" if exceeded else row["terminal_reason"])
-        with self.storage.db:
+        with self._write():
+            existing = self.storage.db.execute(
+                "SELECT id FROM execution_usage_samples WHERE trace_id=? AND idempotency_key=?",
+                (trace_id, idempotency_key),
+            ).fetchone()
+            if existing:
+                return self.state(trace_id)
+            row = self.storage.db.execute("SELECT * FROM execution_traces WHERE id=?", (trace_id,)).fetchone()
+            if not row or row["status"] not in {"active", "paused"}:
+                raise ValueError("Usage can only attach to an active or paused trace")
+            if self.storage.db.execute(
+                """SELECT c.reservation_id FROM execution_reservation_closures c
+                   JOIN execution_stage_reservations r ON r.id=c.reservation_id
+                   WHERE r.trace_id=? AND r.stage_key=?""", (trace_id, stage_key),
+            ).fetchone():
+                raise ValueError("Cannot append usage after reservation closure")
+            totals = {
+                "duration_ms": int(row["duration_ms"]) + duration_ms,
+                "tokens": int(row["tokens"]) + tokens,
+                "estimated_cost_usd": float(Decimal(str(row["estimated_cost_usd"])) + Decimal(str(estimated_cost_usd))),
+                "tool_calls": int(row["tool_calls"]) + tool_calls,
+            }
             self.storage.db.execute(
                 """INSERT INTO execution_usage_samples(
                        identity,trace_id,idempotency_key,stage_key,duration_ms,tokens,
@@ -312,6 +418,13 @@ class ExecutionTelemetryService:
                     json.dumps(metadata or {}, sort_keys=True),
                 ),
             )
+            pending_tokens, pending_cost, pending_calls = self._outstanding(trace_id)
+            exceeded = (
+                totals["tokens"] + pending_tokens > int(row["max_tokens"])
+                or Decimal(str(totals["estimated_cost_usd"])) + pending_cost > Decimal(str(row["max_cost_usd"]))
+                or totals["tool_calls"] + pending_calls > int(row["max_tool_calls"])
+            )
+            reason = terminal_reason or ("actual usage and commitments exceeded budget" if exceeded else row["terminal_reason"])
             self.storage._event("telemetry.usage.recorded", "execution_trace", trace_id, {
                 "idempotency_key": idempotency_key, "stage_key": stage_key,
                 "duration_ms": duration_ms, "tokens": tokens,
@@ -331,7 +444,7 @@ class ExecutionTelemetryService:
     def finish(self, trace_id: int, *, succeeded: bool, reason: str) -> TraceState:
         if not reason.strip():
             raise ValueError("Terminal telemetry reason is required")
-        with self.storage.db:
+        with self._write():
             updated = self.storage.db.execute(
                 """UPDATE execution_traces SET status=?,terminal_reason=?,updated_at=CURRENT_TIMESTAMP
                      WHERE id=? AND status IN ('active','paused')""",
