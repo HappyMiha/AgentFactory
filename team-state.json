@@ -2019,21 +2019,11 @@
         "cloud:AF-CLD-006",
         "core:AF-GC-039"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-CLD-021-cb652480",
-      "scopes": [
-        "cloud:contracts/v1/identity-policy.json",
-        "cloud:docs/identity-access.md",
-        "cloud:requirements-identity.txt",
-        "cloud:src/agentfactory_cloud/access.py",
-        "cloud:src/agentfactory_cloud/identity.py",
-        "cloud:src/agentfactory_cloud/identity_api.py",
-        "cloud:src/agentfactory_cloud/identity_store.py",
-        "cloud:tests/test_identity_access.py",
-        "cloud:tests/test_identity_api.py"
-      ],
-      "updated_at": "2026-09-06T01:19:18+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T01:31:44+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/9",
       "resources": [
@@ -2061,7 +2051,9 @@
         }
       ],
       "claim_id": "3c8e2ca3-973b-41f4-a8fd-4dc9d73dd17c",
-      "review_head": "010e9354d2826818fa219da1614d8553ede16ee4"
+      "review_head": "010e9354d2826818fa219da1614d8553ede16ee4",
+      "completed_commit": "8f5ea050e5091bd2b74e3c0310cae941a8480164",
+      "reviewed_head": "010e9354d2826818fa219da1614d8553ede16ee4"
     },
     "cloud:AF-CLD-022": {
       "dependencies": [
@@ -4888,6 +4880,16 @@
       "operation_id": "de0e0d95-d86b-48d3-9eba-4e26a4ca5b4a",
       "at": "2026-09-06T01:19:18+00:00",
       "action": "review",
+      "task": "cloud:AF-CLD-021",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-021-cb652480",
+      "claim_id": "3c8e2ca3-973b-41f4-a8fd-4dc9d73dd17c"
+    },
+    {
+      "operation_id": "3424312d-1565-4b7c-8b36-56bedcb77809",
+      "at": "2026-09-06T01:31:44+00:00",
+      "action": "complete",
       "task": "cloud:AF-CLD-021",
       "worker": "HappyHahahaker",
       "note": "",
