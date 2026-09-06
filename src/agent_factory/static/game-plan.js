@@ -34,3 +34,19 @@ $('compare-latest').onclick=async()=>{if(pending)return;if(dirty)preserveRecover
 $('restore-recovery').onclick=()=>{if(!recoveryDraft||!current.editable||current.revision_id!==current.latest_revision_id)return;fill(recoveryDraft);++editGeneration;dirty=true;recoveryDraft=null;$('recovery').hidden=true;$('confirmed').checked=false;$('notice').textContent='Ваші поля перенесені в нову чернетку. Перевірте їх проти останньої версії та явно збережіть.';};
 $('export-recovery').onclick=()=>{if(!recoveryDraft)return;const url=URL.createObjectURL(new Blob([JSON.stringify(recoveryDraft,null,2)],{type:'application/json'}));const link=el('a','');link.href=url;link.download='game-plan-recovery.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $('latest').onclick=()=>load();window.addEventListener('beforeunload',event=>{if(dirty||pending||recoveryDraft){event.preventDefault();event.returnValue='';}});load();
+
+// Advice may propose fields, but only the existing explicit save creates a revision.
+window.gamePlanAdvice = {
+ capture() {return {token:JSON.stringify([navigationGeneration,editGeneration,current?.revision_id,current?.latest_revision_id]),fields:values(),editable:Boolean(current?.editable && current.revision_id===current.latest_revision_id && !$('fields').disabled && !pending)};},
+ apply(option, token) {
+  const snapshot=this.capture();
+  if(!snapshot.editable || snapshot.token!==token || !option.selectable)return false;
+  const notes=[snapshot.fields.cost_notes,option.selection_note].filter(Boolean).join('\n');
+  if(notes.length>1500){$('notice').textContent='Для пояснення вибору не вистачає місця в нотатках витрат. Скоротіть їх самостійно й повторіть порівняння.';return false;}
+  $('engine').value=option.engine;$('cost_notes').value=notes;
+  ++editGeneration;dirty=true;$('confirmed').checked=false;
+  $('task-note').textContent='Варіант перенесено у форму. Задачі ще відповідають попередній версії.';
+  $('notice').textContent='Вибір додано до ручної чернетки. Перевірте й окремо збережіть план; запуск і витрати не дозволені.';
+  return true;
+ }
+};

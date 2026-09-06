@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>План гри</title><link rel="stylesheet" href="/assets/game-plan.css"><script defer src="/assets/game-plan.js"></script></head>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>План гри</title><link rel="stylesheet" href="/assets/game-plan.css"><script defer src="/assets/game-plan.js"></script><script defer src="/assets/configuration-advice.js"></script></head>
 <body><main><a href="/">← Мої ігри</a><h1>План першої ігрової версії</h1>
 <p>Ручна чернетка з шаблону. Перевірте припущення й збережіть свій план. AI ще не створював і не приймав цей план.</p>
 <p id="notice" role="status" aria-live="polite">Завантаження…</p>
@@ -11,6 +11,7 @@
 <label for="platform">Платформа першої версії</label><select id="platform"><option value="windows">Windows</option><option value="web">Web</option></select>
 <div id="text-fields"></div><label class="confirm"><input type="checkbox" id="confirmed">Зберегти ручну чернетку плану. Це не затверджує витрати або запуск.</label>
 <button type="submit" id="save">Зберегти версію плану</button></fieldset></form>
+<section id="configuration-advice"><h2>Рушій і AI для мого ПК</h2><p>Порівняйте планові варіанти. Перевірка читає локальні характеристики ПК; нічого не встановлює і не запускає модель. Задум і збережений план не змінюються.</p><button type="button" id="compare-configuration">Перевірити ПК і порівняти варіанти</button><p id="advice-status" role="status" aria-live="polite"></p><div id="advice-results"></div></section>
 <section id="recovery" hidden><h2>Ваші незбережені поля</h2><p>Ця копія залишається тут під час порівняння. Остання серверна версія не змінюється. Перенесення у форму потребує окремого натискання й нового збереження.</p><textarea id="recovery-fields" readonly aria-label="Копія незбережених полів"></textarea><button type="button" id="export-recovery">Завантажити копію полів</button><button type="button" id="compare-latest">Відкрити останню для порівняння</button><button type="button" id="restore-recovery" disabled>Перенести мої поля в нову чернетку</button></section>
 <section><h2>Уточнення</h2><p>До трьох запитань за раз. Відповідайте у відповідних полях; можна зберегти незавершену чернетку.</p><ul id="questions"></ul></section>
 <section><h2>Версії</h2><button id="latest" type="button">Відкрити останню збережену версію</button><ul id="history"></ul></section>
