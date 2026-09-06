@@ -253,21 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
-      "scopes": [
-        "core:docs/provider-qualification.md",
-        "core:src/agent_factory/agent_router.py",
-        "core:src/agent_factory/provider_qualification.py",
-        "core:src/agent_factory/workforce.py",
-        "core:tests/test_agent_router.py",
-        "core:tests/test_provider_qualification.py",
-        "core:tests/test_workforce.py"
-      ],
-      "updated_at": "2026-09-06T07:33:10+00:00",
-      "note": "",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/20",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "updated_at": "2026-09-06T07:58:54+00:00",
+      "note": "Merged qualification component preserved; continue incomplete wizard in a fresh scoped attempt.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -288,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03",
-      "review_head": "19781de24d45ff6bc3d58287705f4fbf03be49fa"
+      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5736,6 +5727,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
       "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
+    },
+    {
+      "operation_id": "aab80813-e138-4e83-9af4-bae4d9315ccf",
+      "at": "2026-09-06T07:58:54+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Merged qualification component preserved; continue incomplete wizard in a fresh scoped attempt.",
+      "branch": null,
+      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
     }
   ],
   "migration": {
