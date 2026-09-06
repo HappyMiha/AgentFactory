@@ -265,8 +265,8 @@
         "core:tests/test_provider_qualification.py",
         "core:tests/test_workforce.py"
       ],
-      "updated_at": "2026-09-06T07:16:38+00:00",
-      "note": "Fixed diagnostic-to-routing qualification replacement; 64 tests passed, zero skips. Component acceptance only; whole009 remains incomplete.",
+      "updated_at": "2026-09-06T07:33:10+00:00",
+      "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/20",
       "resources": [
         "shared:provider-connection",
@@ -289,7 +289,7 @@
         "core:AF-GC-025"
       ],
       "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03",
-      "review_head": "aa436c9b51eead2671cc5eeabe8ef39b51f5e79d"
+      "review_head": "19781de24d45ff6bc3d58287705f4fbf03be49fa"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5682,6 +5682,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
       "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
+    },
+    {
+      "operation_id": "e09ff224-f3b7-409a-a2a2-82c887af19a6",
+      "at": "2026-09-06T07:33:10+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
+      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
     }
   ],
   "migration": {
