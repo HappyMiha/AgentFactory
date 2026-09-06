@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-45f21110",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T13:53:46+00:00",
-      "note": "PR34 budget reservation prerequisite merged; whole009 incomplete. Preserve branch; next host composition requires fresh exact scope and authority contract.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/34",
+      "updated_at": "2026-09-06T14:11:15+00:00",
+      "note": "PR34 merged; preserve prior branch and take agreed narrow policy transaction and effect binding prerequisite.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a",
-      "review_head": "e781992d44fdc2aeff24da263a3c46cede3704bd"
+      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6411,6 +6410,16 @@
       "worker": "HappySnowman",
       "note": "PR34 budget reservation prerequisite merged; whole009 incomplete. Preserve branch; next host composition requires fresh exact scope and authority contract.",
       "branch": "agent/HappySnowman/AF-GC-009-45f21110",
+      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
+    },
+    {
+      "operation_id": "95ebae59-589a-4af1-bfec-6b374d025929",
+      "at": "2026-09-06T14:11:15+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR34 merged; preserve prior branch and take agreed narrow policy transaction and effect binding prerequisite.",
+      "branch": null,
       "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
     }
   ],
