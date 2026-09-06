@@ -26,7 +26,7 @@ class EligibilityWebTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/connector-eligibility',headers=self.headers,json={'age':18}).status_code,405)
 
     def test_provider_swap_revocation_and_disconnect_remains_available(self):
-        self.app.state.connector_setup_approval=lambda **scope: approval_fixture(workspace=self.root)
+        self.app.state.connector_setup_approval=lambda **scope: approval_fixture(**(scope | {'provider': 'openai'}))
         self.assertEqual(self.post(provider='anthropic').status_code,403)
         ref=self.post().json()['id']
         self.app.state.connector_setup_approval=None

@@ -74,7 +74,9 @@ workspace, claim, or provider execution gate is rewritten or migrated.
 A separately reviewed host integration can set
 `app.state.connector_setup_approval` to a synchronous in-process resolver. It is
 called with the authenticated `actor`, fixed `local` tenant, specific `provider`
-and absolute `workspace`. It must resolve current independent verification and
+and canonical absolute `workspace` from the app. The resolver must bind this
+supplied workspace exactly, including Windows long-path normalization; it must
+not reconstruct it from a TEMP alias or browser input. It must resolve current independent verification and
 revocation from host authority and return an `AdultSetupApproval` or `None`.
 Never populate it from body/query/header values, a browser age, guardian checkbox,
 local role alone, a copied Cloud identity, or the possession of an API key.
@@ -91,7 +93,9 @@ future/expired/naive timestamps or failing resolver is denied. Every GET/POST
 re-resolves current authority; approvals are not cached by the service. Private
 context is not returned to the browser, stored in this module, or logged.
 Only public decision codes and an expiry deadline are returned. The UI closes
-and clears key entry at expiry or failed refresh; the server rechecks before
+and clears key entry at expiry or failed refresh. Superseded refresh responses
+are discarded, including those pending when a POST denies eligibility; an old
+response cannot reopen entry after a newer denial. The server rechecks before
 reading a secret-bearing body and again for the selected route before storage.
 The existing body bound, authentication/origin/scope/confirmation checks and
 secret response firewall remain in force. Revocation racing an already executing

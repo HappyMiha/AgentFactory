@@ -4,6 +4,8 @@ let busy = false;
 let supported = false;
 let setup = {};
 let expiryTimer;
+let refreshGeneration = 0;
+function invalidateSetup() { refreshGeneration++; setup = {}; updateSetup(); }
 const canSetUp = provider => setup[provider]?.allowed === true && Date.parse(setup[provider].expires_at) > Date.now();
 function updateSetup() {
   clearTimeout(expiryTimer);
@@ -21,10 +23,13 @@ function updateSetup() {
 function say(text) { notice.textContent = text; }
 function failure(status) { return status === 401 ? 'Увійдіть, щоб керувати доступом.' : status === 403 ? 'Потрібні права власника операцій і дозвіл керувати доступом.' : 'Не вдалося виконати дію. Перевірте доступність сховища Windows і повторіть.'; }
 async function refresh() {
+  const generation = ++refreshGeneration;
   try {
     const response = await fetch('/api/credential-connections', {cache:'no-store'});
+    if (generation !== refreshGeneration) return;
     if (!response.ok) { setup = {}; updateSetup(); say(failure(response.status)); return; }
     const data = await response.json();
+    if (generation !== refreshGeneration) return;
     supported = data.supported; setup = data.setup || {}; updateSetup();
     if (!data.supported) say('Збереження ключів підтримується лише у Windows. Незахищеного запасного сховища немає.');
     const list = document.querySelector('#connections'); list.replaceChildren();
@@ -38,7 +43,10 @@ async function refresh() {
       card.append(label, button); list.append(card);
     }
     if (!data.connections.length) list.textContent = 'Збережених підключень ще немає.';
-  } catch { setup = {}; updateSetup(); say('З’єднання втрачено. Повторіть оновлення.'); }
+  } catch {
+    if (generation !== refreshGeneration) return;
+    setup = {}; updateSetup(); say('З’єднання втрачено. Повторіть оновлення.');
+  }
 }
 async function disconnect(id) {
   if (busy) return;
@@ -66,7 +74,7 @@ document.querySelector('#connect').addEventListener('submit', async event => {
     const response = await fetch('/api/credential-connections', {method:'POST',headers:{'Content-Type':'application/json','X-Agent-Factory-Confirm':'true'},body});
     body = '';
     if (!response.ok) {
-      if (response.status === 403) { setup = {}; updateSetup(); }
+      if (response.status === 403) invalidateSetup();
       say(failure(response.status)); return;
     }
     say('Ключ збережено у Windows. Запуск AI потребує окремого дозволу.');

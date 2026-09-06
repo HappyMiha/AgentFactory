@@ -89,3 +89,49 @@ class EligibilityBrowserTests(unittest.TestCase):
         self.page.clock.fast_forward(4000)
         self.assertTrue(self.page.locator('#connect').is_hidden())
         self.assertEqual(self.page.locator('#secret').input_value(),'')
+
+    def _delayed_allowed_refresh(self):
+        held=[]
+        def hold_once(route):
+            if route.request.method=='GET' and not held:
+                response=route.fetch()
+                self.assertTrue(response.json()['setup']['openai']['allowed'])
+                held.append((route,response))
+                self.page.evaluate('window.reviewHeldResponse = true')
+            else:
+                route.continue_()
+        self.page.route('**/api/credential-connections',hold_once)
+        # Retain the real refresh promise so assertions run after the late response
+        # is fully processed, not merely after its network request completes.
+        self.page.evaluate('() => { window.pendingReviewRefresh = refresh(); }')
+        self.page.wait_for_function('window.reviewHeldResponse === true')
+        return held[0]
+
+    def test_late_allowed_refresh_cannot_override_newer_revocation_response(self):
+        self.app.state.connector_setup_approval=lambda **scope: approval_fixture(**scope)
+        self.page.goto(self.url+'/settings/credentials')
+        self.page.locator('#secret').fill(self.secret)
+        route,response=self._delayed_allowed_refresh()
+        self.app.state.connector_setup_approval=None
+        self.page.locator('#refresh').click()
+        self.page.wait_for_function("document.querySelector('#connect').hidden")
+        route.fulfill(response=response)
+        self.page.evaluate('async () => await window.pendingReviewRefresh')
+        self.assertTrue(self.page.locator('#connect').is_hidden())
+        self.assertEqual(self.page.locator('#secret').input_value(),'')
+        self.assertIn('закрите',self.page.locator('#eligibility-notice').inner_text())
+
+    def test_post_denial_invalidates_pending_allowed_refresh(self):
+        self.app.state.connector_setup_approval=lambda **scope: approval_fixture(**scope)
+        self.page.goto(self.url+'/settings/credentials')
+        self.page.locator('#secret').fill(self.secret)
+        route,response=self._delayed_allowed_refresh()
+        self.app.state.connector_setup_approval=None
+        self.page.locator('#confirmed').check();self.page.locator('#save').click()
+        self.page.wait_for_function("document.querySelector('#connect').hidden")
+        self.assertFalse(self.store.values)
+        route.fulfill(response=response)
+        self.page.evaluate('async () => await window.pendingReviewRefresh')
+        self.assertTrue(self.page.locator('#connect').is_hidden())
+        self.assertEqual(self.page.locator('#secret').input_value(),'')
+        self.assertIn('закрите',self.page.locator('#eligibility-notice').inner_text())
