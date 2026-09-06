@@ -7,6 +7,7 @@ import time
 import unittest
 from unittest.mock import patch
 from agent_factory.web import create_app
+from tests.test_connector_eligibility import AT, approval_fixture
 from tests.test_credential_connections import MemoryStore
 try:
     from playwright.sync_api import sync_playwright
@@ -24,18 +25,21 @@ class CredentialBrowserTests(unittest.TestCase):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name);self.store=MemoryStore()
         self.env=patch.dict(os.environ,{'AGENT_FACTORY_API_TOKEN':'','AGENT_FACTORY_API_ACTOR':'Founder','AGENT_FACTORY_API_ROLE':'operations_owner','AGENT_FACTORY_API_SCOPES':'read,write,control','AGENT_FACTORY_API_TENANTS':'local','AGENT_FACTORY_TEMPORAL_ENABLED':'false'})
         self.env.start()
+        self.clock=patch('agent_factory.connector_eligibility.utc_now',return_value=AT);self.clock.start()
         import uvicorn
-        self.server=uvicorn.Server(uvicorn.Config(create_app(self.root,self.root/'core.db',credential_store=self.store),host='127.0.0.1',port=0,log_level='error',access_log=False))
+        self.app=create_app(self.root,self.root/'core.db',credential_store=self.store)
+        self.app.state.connector_setup_approval=lambda **scope: approval_fixture(**scope)
+        self.server=uvicorn.Server(uvicorn.Config(self.app,host='127.0.0.1',port=0,log_level='error',access_log=False))
         self.thread=threading.Thread(target=self.server.run,daemon=True);self.thread.start()
         deadline=time.monotonic()+10
         while not self.server.started and time.monotonic()<deadline:time.sleep(.01)
         if not self.server.started:raise RuntimeError('Server failed to start')
         self.url=f"http://127.0.0.1:{self.server.servers[0].sockets[0].getsockname()[1]}"
-        self.context=self.browser.new_context();self.page=self.context.new_page();self.page.set_default_timeout(7000)
+        self.context=self.browser.new_context();self.page=self.context.new_page();self.page.set_default_timeout(7000);self.page.clock.install(time=AT)
         self.errors=[];self.page.on('pageerror',lambda e:self.errors.append(str(e)))
         self.secret='synthetic-browser-canary-123456'
     def tearDown(self):
-        self.context.close();self.server.should_exit=True;self.thread.join(5);self.env.stop();self.temp.cleanup()
+        self.context.close();self.server.should_exit=True;self.thread.join(5);self.env.stop();self.clock.stop();self.temp.cleanup()
         self.assertFalse(self.thread.is_alive());self.assertEqual(self.errors,[])
     def enter(self):
         self.page.goto(self.url+'/settings/credentials')

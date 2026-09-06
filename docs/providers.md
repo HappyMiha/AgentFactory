@@ -405,3 +405,17 @@ Reduce task scope before increasing the timeout. A timed-out attempt consumes it
 ### Provider returns prose during a workflow
 
 Workflow stages require JSON containing `verdict`, `criteria_evidence`, and `summary`. A valid provider connection can still fail the stage contract when it returns unstructured text.
+
+
+## Account eligibility before setup
+
+Executable health and a reviewed model binding do not establish account or age
+eligibility. See [access for young authors](access-eligibility.md) and the dated
+`defaults/connector-eligibility.json` snapshot for each shipped connector's
+consumer/API distinction, official sources, unknowns and review deadline.
+`/access-guide` offers a browser-local idea download and fixed offline template.
+New key entry in `/settings/credentials` now requires an independent, current,
+scoped adult setup review supplied by the trusted host; it is disabled by default.
+A browser age choice is informational. Deletion of existing connections remains
+available. This gate grants neither provider execution, spending, nor a minor
+cloud route, and does not change the existing CLI/runtime policy gates.

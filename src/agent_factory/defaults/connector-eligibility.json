@@ -1,0 +1,174 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-09-06",
+  "review_due": "2026-10-06",
+  "connectors": [
+    {
+      "id": "deterministic",
+      "title": "Офлайн-шаблон",
+      "checked_at": "2026-09-06",
+      "status": "offline",
+      "requirements": "Акаунт провайдера не потрібен. Це готовий навчальний шаблон, без AI.",
+      "privacy": "Демо працює в браузері без надсилання задуму. Завантажений файл залишається у вас до видалення.",
+      "sources": []
+    },
+    {
+      "id": "codex",
+      "title": "Codex CLI",
+      "checked_at": "2026-09-06",
+      "status": "review_required",
+      "requirements": "Вхід через ChatGPT та ключ API мають різні умови. Мінімальний вік для особистого акаунта не встановлено цим оглядом технічної документації; до перевірки конкретного акаунта вхід не пропонується.",
+      "privacy": "Дані та оплата залежать від способу входу; ключ API використовує правила API-організації. Не передавайте дитині акаунт або ключ дорослого.",
+      "sources": [
+        {
+          "title": "Способи входу та обробка даних",
+          "url": "https://learn.chatgpt.com/docs/auth"
+        }
+      ]
+    },
+    {
+      "id": "openai-api",
+      "title": "OpenAI API",
+      "checked_at": "2026-09-06",
+      "status": "adult_setup_review",
+      "requirements": "Для продукту, яким користуються неповнолітні, потрібні додаткові засоби захисту й дотримання місцевих правил. Перед обробкою персональних даних дітей до 13 років або місцевого віку цифрової згоди потрібен zero data retention. Сам по собі ключ дорослого цього не забезпечує.",
+      "privacy": "Перед передаванням задуму дорослий перевіряє конфігурацію зберігання API-організації. Цей застосунок не підтверджує zero data retention.",
+      "sources": [
+        {
+          "title": "Вимоги API для продуктів для неповнолітніх",
+          "url": "https://developers.openai.com/api/docs/guides/safety-checks/under-18-api-guidance"
+        },
+        {
+          "title": "Окремі правила API-організації",
+          "url": "https://learn.chatgpt.com/docs/auth"
+        }
+      ]
+    },
+    {
+      "id": "claude",
+      "title": "Claude Code / особистий Claude",
+      "checked_at": "2026-09-06",
+      "status": "review_required",
+      "requirements": "Особистий сервіс: від 18 років або вищого місцевого мінімуму згоди. API-продукт для неповнолітніх має окремі вимоги; особистий акаунт дорослого не є таким продуктом.",
+      "privacy": "План і тип договору визначають обробку даних. До перевірки конкретного маршруту не надсилайте задум.",
+      "sources": [
+        {
+          "title": "Умови особистого сервісу",
+          "url": "https://www.anthropic.com/legal/consumer-terms"
+        },
+        {
+          "title": "Правила API-продуктів для дітей",
+          "url": "https://support.claude.com/en/articles/15591275-child-safety-guidance-for-developers"
+        }
+      ]
+    },
+    {
+      "id": "anthropic-api",
+      "title": "Anthropic API",
+      "checked_at": "2026-09-06",
+      "status": "adult_setup_review",
+      "requirements": "Організація, що надає неповнолітнім API-продукт, відповідає за перевірку віку, модерацію, моніторинг, повідомлення про AI та застосовні правила захисту дітей. У цьому випуску такий маршрут ще не схвалено.",
+      "privacy": "API має комерційні умови. Дорослий перевіряє договір, строки зберігання та видалення перед надсиланням даних.",
+      "sources": [
+        {
+          "title": "Комерційні умови",
+          "url": "https://www.anthropic.com/legal/commercial-terms"
+        },
+        {
+          "title": "Рекомендації організаціям для неповнолітніх",
+          "url": "https://support.claude.com/en/articles/9307344-responsible-use-of-anthropic-s-models-guidelines-for-organizations-serving-minors"
+        }
+      ]
+    },
+    {
+      "id": "gemini",
+      "title": "Gemini CLI",
+      "checked_at": "2026-09-06",
+      "status": "review_required",
+      "requirements": "Gemini Developer API: 18+; заборонені клієнти, спрямовані на осіб до 18 років або ймовірно доступні їм. Споживчий вхід Code Assist у Gemini CLI припинився 18.06.2026. Standard/Enterprise та Vertex — окремі договори, без перевіреного тут дитячого маршруту.",
+      "privacy": "Умови залежать від способу входу. Не використовуйте дорослий ключ Developer API як обхід для дитячого продукту.",
+      "sources": [
+        {
+          "title": "Маршрути входу та приватність",
+          "url": "https://geminicli.com/docs/resources/tos-privacy/"
+        },
+        {
+          "title": "Вік та обмеження Developer API",
+          "url": "https://ai.google.dev/gemini-api/terms"
+        },
+        {
+          "title": "Припинення споживчого входу",
+          "url": "https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals"
+        }
+      ]
+    },
+    {
+      "id": "antigravity",
+      "title": "Antigravity",
+      "checked_at": "2026-09-06",
+      "status": "review_required",
+      "requirements": "Особистий сервіс недоступний до 18 років. Умови також обмежують доступ через сторонні інструменти; сумісність нашого конектора потребує окремої перевірки. Вхід не пропонується.",
+      "privacy": "Взаємодії можуть записуватися та використовуватися для покращення сервісу; перевірте налаштування та застосовний договір.",
+      "sources": [
+        {
+          "title": "Вимоги до віку",
+          "url": "https://antigravity.google/docs/faq"
+        },
+        {
+          "title": "Умови, зокрема пункт 6",
+          "url": "https://antigravity.google/terms"
+        }
+      ]
+    },
+    {
+      "id": "ollama",
+      "title": "Ollama",
+      "checked_at": "2026-09-06",
+      "status": "review_required",
+      "requirements": "Поточні умови сервісу: 18+. У розділі приватності є неоднозначне формулювання щодо дітей; воно не є дозволом обійти умови. Локальні моделі й ліцензії ще потребують перевірки перед наданням локального AI.",
+      "privacy": "Локальне виконання, завантаження моделей та хмарний сервіс — різні потоки даних. Цей випуск не запускає локальний AI для дітей.",
+      "sources": [
+        {
+          "title": "Умови сервісу",
+          "url": "https://ollama.com/terms"
+        },
+        {
+          "title": "Приватність і діти",
+          "url": "https://ollama.com/privacy"
+        }
+      ]
+    },
+    {
+      "id": "openclaw",
+      "title": "OpenClaw",
+      "checked_at": "2026-09-06",
+      "status": "health_only",
+      "requirements": "Поточний конектор лише перевіряє наявність інструмента; запуск вимкнений. Окремий віковий дозвіл не встановлено. Потрібна перевірка кожного підключеного провайдера та каналу.",
+      "privacy": "Розташування даних залежить від підключених моделей і каналів. Локальний інструмент не означає локальну обробку всіх даних.",
+      "sources": [
+        {
+          "title": "Офіційний проєкт і підключення",
+          "url": "https://openclaw.ai/"
+        }
+      ]
+    },
+    {
+      "id": "firecrawl",
+      "title": "Firecrawl",
+      "checked_at": "2026-09-06",
+      "status": "review_required",
+      "requirements": "Умови: 18+ або 13+ з явним дозволом батьків чи опікуна, а також належна правоздатність. Для 12 років маршруту немає. Маршрут для неповнолітніх у нашому продукті не схвалено.",
+      "privacy": "Політика не передбачає навмисного збору даних дітей. Персональні дані зберігаються до запиту на видалення з урахуванням законних винятків; можливе передавання у США.",
+      "sources": [
+        {
+          "title": "Умови доступу",
+          "url": "https://www.firecrawl.dev/terms-of-service"
+        },
+        {
+          "title": "Приватність, зберігання та діти",
+          "url": "https://www.firecrawl.dev/privacy-policy"
+        }
+      ]
+    }
+  ]
+}
