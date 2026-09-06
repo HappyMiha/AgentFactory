@@ -271,9 +271,9 @@ session, the approval is consumed once, and replay calls no second driver. Its
 worker qualification is synthetic; no package is published, and the publication
 journal stays reserved. This is not an installed or qualified environment.
 
-The production executor still needs current intent checks at the effect boundary,
-durable publication start, real package publication and recovery integration.
-The request helper does not supply those steps or mark an installation ready.
+The opt-in host executor described below combines current intent checks, durable
+publication start and real package publication. The request helper alone does
+not supply those steps or mark an installation ready.
 
 ## Recheck intent without a new reservation
 
@@ -304,3 +304,55 @@ executor needs explicit accounting for those allocations and partial progress.
 Returned evidence keeps `execution_eligible: false`. Tests cover current and
 historical reads, real two-connection isolation, rollback, stale readers and
 post-approval validation with a synthetic runtime; they do not execute an installer.
+
+## Publish one package from a running host session
+
+`InstallationExecutor(intents, runtime).publish(...)` is an opt-in Windows host
+service. It requires an already admitted, running runtime session, its exact
+immutable launch and a verified staged archive. No browser route or default
+startup calls it. It does not provision a worker, log in, download an archive or
+run an engine executable.
+
+The host passes a saved publication ID and session ID. The service checks the
+canonical publication key and parent scope, current approved intent, current
+worker admission and lease, exact saved runtime start scope, project/worktree
+path, and the matching already-consumed one-use stage approval. An alias journal
+record with the same effect hash cannot create another execution opportunity.
+Emergency stop and current policy still apply; no second approval is consumed.
+
+The reserved-state check and journal start share one SQLite writer transaction,
+which commits before any target directories or temporary package copies are
+created. A mission installation-operation lease then tracks this synchronous
+call. Current authority is checked before file preparation and again immediately
+before the publisher's final rename. A mutable runtime event is recorded before
+filesystem work. Two connections racing the same publication can dispatch only
+one publisher; running, completed or uncertain records are not executable again.
+
+Only private local fixed Windows drives are accepted. Drive-letter network
+mappings, UNC paths, reparse points and existing targets are rejected. Parent
+directories are derived from the saved plan and checked as real directories.
+The existing publisher copies and verifies the exact manifest, then publishes
+the internal `payload/` plus `receipt.json` envelope without overwriting a target.
+
+A verified result completes only the child publication journal record. It does
+not complete the parent installation, mark the engine ready or release runtime
+capacity. An exception after journal start records `unknown` when possible and
+propagates; existing files are preserved. Recovery uses the existing observation
+and reconciliation path, never automatic retry. A process killed before it can
+record uncertainty can leave `running` and an operation lease; the host must
+confirm the stopped process before recovery. Ordinary return or failure closes
+the synchronous operation lease, while journal uncertainty remains unresolved.
+
+The method refuses a caller-owned transaction. Database authority and filesystem
+rename are not one atomic transaction. Cancellation is checked at the boundary;
+copying is not interrupted mid-file. The private workspace must not have hostile
+concurrent writers. The full reviewed disk budget is still required in addition
+to the publisher's actual free-space check, with no inferred staging credit.
+
+Tests publish real small archives on Windows using real SQLite admission,
+approval, journal and operation leases with synthetic worker qualification and
+a counting runtime driver. They cover concurrent callers, lost completion and
+reconciliation, late expiry, existing-file preservation and mapped-drive denial.
+They do not qualify a full Godot installation, process-kill/reboot behavior in a
+disposable VM, provider execution, engine launch, export templates or the product
+progress/recovery interface. Those remain AF-GC-014 acceptance work.
