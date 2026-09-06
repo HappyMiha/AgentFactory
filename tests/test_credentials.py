@@ -155,3 +155,17 @@ class CredentialBrokerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CredentialEscapedMaterialTests(unittest.TestCase):
+    def test_json_escaped_secret_in_argument_keys_and_values_is_rejected(self):
+        with tempfile.TemporaryDirectory() as root:
+            storage=SQLiteStorage(Path(root)/'state.db')
+            try:
+                broker=CredentialBroker(storage); secret='synthetic-quote-"-canary'
+                handle=broker.issue(tenant_id='t',mission_id='m',tool_key='k',operations=('read',),preapproved_operations={'read'},environment_key='API_KEY',secret_value=secret,ttl_seconds=60,actor='Owner')
+                for args in ({'value':secret},{secret:'value'}):
+                    with self.assertRaises(PermissionError):
+                        broker.use(handle,tenant_id='t',mission_id='m',tool_key='k',operation='read',prompt='safe',arguments=args,executor=lambda *args: self.fail('Executor must not run'),actor='Owner')
+                self.assertNotIn(secret,'\n'.join(storage.db.iterdump()))
+            finally:storage.close()
