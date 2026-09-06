@@ -2091,7 +2091,7 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
       "scopes": [
@@ -2105,9 +2105,9 @@
         "cloud:tests/test_protected_objects.py",
         "cloud:tests/test_upload_inspection.py"
       ],
-      "updated_at": "2026-09-06T03:06:06+00:00",
+      "updated_at": "2026-09-06T03:30:18+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/13",
       "resources": [
         "cloud:artifact-storage",
         "shared:asset-provenance"
@@ -2121,7 +2121,8 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
+      "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1",
+      "review_head": "ec2e7fba9e3aa5f81efaab60834f79b41903bd5d"
     },
     "cloud:AF-CLD-024": {
       "dependencies": [
@@ -5081,6 +5082,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
       "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
+    },
+    {
+      "operation_id": "aa506d48-ea71-4a0a-85aa-0fefa13644c0",
+      "at": "2026-09-06T03:30:18+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-023",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
+      "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
     }
   ],
   "migration": {
