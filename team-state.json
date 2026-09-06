@@ -441,9 +441,9 @@
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T16:57:05+00:00",
-      "note": "Add bounded Windows publication executor and actual admitted-session tests; full014 remains incomplete.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/42",
+      "updated_at": "2026-09-06T17:09:53+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/43",
       "resources": [
         "core:environment-bootstrap",
         "core:tool-gateway",
@@ -462,7 +462,7 @@
         "core:AF-GC-013"
       ],
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463",
-      "review_head": "13fc845e99cd7befa82c3b8fb0c00e1c149b44b2"
+      "review_head": "0e23b07091406a469cc5a9b6dc5db63a39ae28e5"
     },
     "core:AF-GC-015": {
       "dependencies": [
@@ -6684,6 +6684,16 @@
       "task": "core:AF-GC-014",
       "worker": "HappyDucky02",
       "note": "Add bounded Windows publication executor and actual admitted-session tests; full014 remains incomplete.",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "a9d9c47a-1a47-4178-b08d-23e9e6004388",
+      "at": "2026-09-06T17:09:53+00:00",
+      "action": "review",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
