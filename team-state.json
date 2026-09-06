@@ -756,28 +756,12 @@
       "dependencies": [
         "core:AF-GC-007"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
-      "scopes": [
-        "core:docs/access-eligibility.md",
-        "core:docs/providers.md",
-        "core:src/agent_factory/connector_eligibility.py",
-        "core:src/agent_factory/credential_web.py",
-        "core:src/agent_factory/defaults/connector-eligibility.json",
-        "core:src/agent_factory/eligibility_web.py",
-        "core:src/agent_factory/static/access-guide.html",
-        "core:src/agent_factory/static/access-guide.js",
-        "core:src/agent_factory/static/credentials.html",
-        "core:src/agent_factory/static/credentials.js",
-        "core:tests/test_connector_eligibility.py",
-        "core:tests/test_credential_browser.py",
-        "core:tests/test_credential_web.py",
-        "core:tests/test_eligibility_browser.py",
-        "core:tests/test_eligibility_web.py"
-      ],
-      "updated_at": "2026-09-06T06:10:27+00:00",
-      "note": "Addressed review: obsolete credential responses discarded; canonical scope fixture. Exact head checks passed; peer re-review requested.",
+      "scopes": [],
+      "updated_at": "2026-09-06T06:29:50+00:00",
+      "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/18",
       "resources": [
         "shared:minor-access",
@@ -797,7 +781,9 @@
         "core:AF-GC-007"
       ],
       "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87",
-      "review_head": "add1b34f8b58fc428413f547b117e6184147eb67"
+      "review_head": "add1b34f8b58fc428413f547b117e6184147eb67",
+      "completed_commit": "6d0623396a3077bc30ad852e9959c11df7d10844",
+      "reviewed_head": "add1b34f8b58fc428413f547b117e6184147eb67"
     },
     "core:AF-GC-026": {
       "dependencies": [
@@ -5383,6 +5369,16 @@
       "task": "core:AF-GC-025",
       "worker": "HappySnowman",
       "note": "Addressed review: obsolete credential responses discarded; canonical scope fixture. Exact head checks passed; peer re-review requested.",
+      "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
+      "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
+    },
+    {
+      "operation_id": "a524c8ee-20d0-4cae-8d84-358a726584a0",
+      "at": "2026-09-06T06:29:50+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-025",
+      "worker": "HappySnowman",
+      "note": "",
       "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
       "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
     }
