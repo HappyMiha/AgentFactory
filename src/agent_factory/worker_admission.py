@@ -183,6 +183,7 @@ class AdmissionRequest:
     expected_lifecycle_version: int
     ttl_seconds: int = 60
     conflict_domains: tuple[str, ...] = ()
+    effect_digest: str | None = None
 
     def __post_init__(self) -> None:
         for name in ("request_id", "tenant_id", "stage_key", "worker_id", "runtime", "provider_id", "role"):
@@ -193,6 +194,14 @@ class AdmissionRequest:
             raise ValueError("Admission TTL cannot exceed one day")
         object.__setattr__(self, "required_capabilities", _set(self.required_capabilities, "capabilities"))
         object.__setattr__(self, "conflict_domains", _set(self.conflict_domains, "conflict domains"))
+        if self.effect_digest is not None:
+            _digest(self.effect_digest)
+
+    def canonical(self) -> dict:
+        document = asdict(self)
+        if self.effect_digest is None:
+            del document["effect_digest"]
+        return document
 
 
 @dataclass(frozen=True)
@@ -456,7 +465,7 @@ class WorkerAdmissionService:
     def admit(self, request: AdmissionRequest, *, now: datetime | None = None) -> AdmissionReceipt:
         if not isinstance(request, AdmissionRequest):
             raise TypeError("An immutable AdmissionRequest is required")
-        document = _json(asdict(request))
+        document = _json(request.canonical())
         digest = hashlib.sha256(document.encode("utf-8")).hexdigest()
         with self._transaction():
             current = _now(now)  # Sample after obtaining the writer lock.
@@ -564,7 +573,19 @@ class WorkerAdmissionService:
             raise RuntimeError("Launch validation must share its runtime reservation transaction")
         row = admission_for_assignment(self.storage, launch.assignment_id)
         if row is None:
+            if getattr(launch, "effect_digest", None) is not None:
+                raise AdmissionDeniedError("Effect-bound launch requires a stored worker admission")
             return None
+        try:
+            document = json.loads(row["request_json"])
+            if not isinstance(document, dict):
+                raise ValueError("Invalid admission request")
+            effect = _digest(document["effect_digest"]) if "effect_digest" in document else None
+            if (hashlib.sha256(_json(document).encode("utf-8")).hexdigest() != row["request_digest"]
+                    or effect != getattr(launch, "effect_digest", None)):
+                raise ValueError("Admission effect differs")
+        except (ValueError, TypeError, KeyError) as error:
+            raise AdmissionDeniedError("Runtime effect does not match its stored admission") from error
         current = _now(now)
         self.storage._assert_fenced_lease(launch.assignment_id, launch.fencing_token, current.isoformat(timespec="microseconds"))
         _authority(self.storage, row, current, starting=True)
