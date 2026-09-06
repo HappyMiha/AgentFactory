@@ -1520,7 +1520,7 @@
         "cloud:AF-CLD-004",
         "core:AF-GC-005"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
       "scopes": [
@@ -1536,9 +1536,9 @@
         "cloud:tests/test_game_brief_web.py",
         "cloud:tests/test_game_briefs.py"
       ],
-      "updated_at": "2026-09-05T23:55:40+00:00",
+      "updated_at": "2026-09-06T00:36:56+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/10",
       "resources": [
         "shared:game-brief",
         "cloud:creator-ui"
@@ -1562,7 +1562,8 @@
           "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
         }
       ],
-      "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5"
+      "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5",
+      "review_head": "19bb9977e9c7edd535f769fb7ca4389849dc2eef"
     },
     "cloud:AF-CLD-008": {
       "dependencies": [
@@ -4752,6 +4753,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-CLD-021-cb652480",
       "claim_id": "3c8e2ca3-973b-41f4-a8fd-4dc9d73dd17c"
+    },
+    {
+      "operation_id": "f1d38637-d19e-4132-bd46-e435e80be73c",
+      "at": "2026-09-06T00:36:56+00:00",
+      "action": "review",
+      "task": "cloud:AF-CLD-007",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
+      "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5"
     }
   ],
   "migration": {
