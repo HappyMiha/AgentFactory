@@ -406,7 +406,7 @@
         "core:tests/test_storage_migrations.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T09:31:38+00:00",
+      "updated_at": "2026-09-06T09:42:48+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/25",
       "resources": [
@@ -426,7 +426,7 @@
         "core:AF-GC-012"
       ],
       "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25",
-      "review_head": "f90585830b20c2fe683d8634dead5650a2e6f93c"
+      "review_head": "7cf427ee13a98397203a51043eb7f9665c8483af"
     },
     "core:AF-GC-014": {
       "dependencies": [
@@ -5927,6 +5927,16 @@
       "note": "PR17 component merged. Whole task awaits accepted current-connection resolver and live execution evidence. Branch preserved.",
       "branch": "agent/HappyHahahaker/AF-CLD-009-4ad10454",
       "claim_id": "c1dab18b-4f70-4f5a-ae9b-a53cf33a7f95"
+    },
+    {
+      "operation_id": "96ba6edc-a738-4779-ba11-b2968ad7883a",
+      "at": "2026-09-06T09:42:48+00:00",
+      "action": "review",
+      "task": "core:AF-GC-013",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
+      "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
     }
   ],
   "migration": {
