@@ -119,3 +119,52 @@ the future executor must regenerate the current binding immediately before the
 effect and must not execute using a stale saved request after plan or host changes.
 Tests exercise the existing one-use policy mechanism with synthetic host IDs;
 they do not claim a qualified installer runtime or actual installation.
+
+## Publishing verified files on Windows
+
+`prepare_publication` creates an immutable expected receipt from verified archive
+staging, the operation identity, request digest and one target directory name.
+The trusted executor must save this exact receipt in its durable operation record
+before publishing. A receipt found inside a target is not independent proof of
+ownership or permission.
+
+`publish_staged` copies and verifies the payload in a private temporary directory
+beside the destination. It flushes file contents and calls the trusted host's
+authorization boundary immediately before publication. Only literal `True`
+permits the rename. The host must recheck the current plan, mission fence and
+real runtime admission, consume the exact policy approval, and durably start the
+existing operation. This component does not implement those host steps or expose
+an application endpoint. A permissive callback in a test is not production
+authorization.
+
+The internal destination contains `payload/` and `receipt.json`. Windows rename
+publishes that complete directory without replacing any existing destination,
+including an empty directory created by a competing process. Existing files
+require observation and reconciliation; this method never repairs or deletes
+them. The original archive staging remains intact until its own context closes.
+The installer must explicitly adopt this internal payload layout before using it
+as the final Godot or export-template location; current catalogue targets are not
+silently changed by this primitive.
+
+This write profile supports a private local Windows volume only. UNC/device paths
+are rejected; the trusted host must also exclude mapped network drives and keep
+all parents inaccessible to untrusted concurrent writers. POSIX writes are denied
+because ordinary POSIX rename can replace an existing empty directory. Read-only
+receipt and payload observation is portable. Neither path checks nor a matching
+receipt establish isolation from a hostile process running as the same user.
+
+`observe_publication` compares the complete envelope with the separately trusted
+receipt and content manifest. It reports `absent`, `matched`, `conflict` or
+`indeterminate`, always with `execution_eligible: false`. After a lost completion
+response, a matching envelope provides evidence for the existing journal's
+reconciliation path; it does not authorize another write or prove the executable
+works. The observer never adopts a different receipt or mutates the target.
+
+Tests use real Windows files, two competing spawned processes, and process
+termination immediately before and after the rename. They also cover empty
+target conflicts, rejected authorization, changed source files, mixed-case paths,
+junction parents, insufficient space and an injected flush failure. A hard kill
+may leave private temporary data. Automatic orphan cleanup, end-to-end journal
+composition, power-loss/reboot guarantees and actual Windows VM installation
+qualification remain open. Publication needs additional space for a second copy
+of the extracted payload; the future plan and executor must budget for it.
