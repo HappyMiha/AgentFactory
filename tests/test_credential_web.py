@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from agent_factory.web import create_app
+from tests.test_connector_eligibility import AT, approval_fixture
 from tests.test_credential_connections import MemoryStore
 
 class CredentialWebTests(unittest.TestCase):
@@ -14,6 +15,9 @@ class CredentialWebTests(unittest.TestCase):
         self.env.start();self.addCleanup(self.env.stop)
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         self.store=MemoryStore();self.app=create_app(self.root,self.root/'core.db',credential_store=self.store)
+        clock=patch('agent_factory.connector_eligibility.utc_now',return_value=AT)
+        clock.start();self.addCleanup(clock.stop)
+        self.app.state.connector_setup_approval=lambda **scope: approval_fixture(**scope)
         self.client=TestClient(self.app,base_url='http://localhost');self.addCleanup(self.client.close)
         self.headers={'Authorization':'Bearer local-synthetic-token','X-Agent-Factory-Confirm':'true'}
         self.secret='synthetic-web-secret-123456'
