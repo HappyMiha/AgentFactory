@@ -2092,21 +2092,11 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
-      "scopes": [
-        "cloud:contracts/v1/protected-objects.json",
-        "cloud:docs/protected-objects.md",
-        "cloud:requirements-objects.txt",
-        "cloud:scripts/qualify_objects.py",
-        "cloud:src/agentfactory_cloud/object_migrations.py",
-        "cloud:src/agentfactory_cloud/protected_objects.py",
-        "cloud:src/agentfactory_cloud/upload_inspection.py",
-        "cloud:tests/test_protected_objects.py",
-        "cloud:tests/test_upload_inspection.py"
-      ],
-      "updated_at": "2026-09-06T03:59:07+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T04:11:57+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/13",
       "resources": [
@@ -2123,7 +2113,9 @@
         "cloud:AF-CLD-022"
       ],
       "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1",
-      "review_head": "1a67f5d1ca3b8197773fb632c8c60cfb7ee892ad"
+      "review_head": "1a67f5d1ca3b8197773fb632c8c60cfb7ee892ad",
+      "completed_commit": "61e877ed79fb553bc2d6b1eae80a5d0774412e4d",
+      "reviewed_head": "1a67f5d1ca3b8197773fb632c8c60cfb7ee892ad"
     },
     "cloud:AF-CLD-024": {
       "dependencies": [
@@ -5143,6 +5135,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
       "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473"
+    },
+    {
+      "operation_id": "e89c98e0-4efb-4a0e-8e33-3611243bce0d",
+      "at": "2026-09-06T04:11:57+00:00",
+      "action": "complete",
+      "task": "cloud:AF-CLD-023",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
+      "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
     }
   ],
   "migration": {
