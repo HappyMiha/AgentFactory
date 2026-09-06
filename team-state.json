@@ -50,9 +50,13 @@
       "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
       "scopes": [
         "core:docs/environment-readiness.md",
+        "core:scripts/check_environment.py",
+        "core:scripts/qualify_provider_roles.py",
         "core:src/agent_factory/coding_delivery.py",
         "core:src/agent_factory/environment.py",
+        "core:src/agent_factory/environment_model_probe.py",
         "core:src/agent_factory/environment_readiness.py",
+        "core:src/agent_factory/local_role_qualification.py",
         "core:src/agent_factory/orchestration/temporal/activities.py",
         "core:src/agent_factory/orchestration/temporal/workflows.py",
         "core:src/agent_factory/static/app.js",
@@ -66,12 +70,13 @@
         "core:tests/test_autonomous_preapproval_workflow.py",
         "core:tests/test_autonomous_stage_identity.py",
         "core:tests/test_environment.py",
+        "core:tests/test_environment_model_probe.py",
         "core:tests/test_environment_readiness.py",
         "core:tests/test_environment_readiness_browser.py",
         "core:tests/test_monitor_web.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-05T23:44:32+00:00",
+      "updated_at": "2026-09-06T00:10:27+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/12",
       "resources": [
@@ -4684,6 +4689,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-007-1dfe75e9",
       "claim_id": "9846a03d-27f0-49ae-80fb-d018fee4c1d5"
+    },
+    {
+      "operation_id": "9baea9e6-347d-4abc-8eb9-d15fb7f5edb2",
+      "at": "2026-09-06T00:10:27+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
+      "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
     }
   ],
   "migration": {
