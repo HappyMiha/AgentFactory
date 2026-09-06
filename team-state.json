@@ -263,7 +263,7 @@
         "core:tests/test_credential_connections.py",
         "core:tests/test_provider_connection_scope.py"
       ],
-      "updated_at": "2026-09-06T10:05:16+00:00",
+      "updated_at": "2026-09-06T10:21:02+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/26",
       "resources": [
@@ -287,7 +287,7 @@
         "core:AF-GC-025"
       ],
       "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4",
-      "review_head": "598721da6e2608a05364b0c25ed861ffcfe20485"
+      "review_head": "cced818ed88948b5ff2b40afe6807b59305c3bed"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6003,6 +6003,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "cc949c24-289c-464c-bc04-2af1b8e9a523",
+      "at": "2026-09-06T10:21:02+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-b387c7d0",
+      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
     }
   ],
   "migration": {
