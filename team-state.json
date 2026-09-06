@@ -359,23 +359,11 @@
         "core:AF-GC-008",
         "core:AF-GC-011"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
-      "scopes": [
-        "core:docs/configuration-advice.md",
-        "core:src/agent_factory/configuration_advice.py",
-        "core:src/agent_factory/configuration_advice_web.py",
-        "core:src/agent_factory/static/configuration-advice.js",
-        "core:src/agent_factory/static/game-plan.html",
-        "core:src/agent_factory/static/game-plan.js",
-        "core:src/agent_factory/web.py",
-        "core:tests/test_configuration_advice.py",
-        "core:tests/test_configuration_advice_browser.py",
-        "core:tests/test_configuration_advice_web.py",
-        "core:tests/test_web.py"
-      ],
-      "updated_at": "2026-09-06T07:52:12+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T08:00:59+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/22",
       "resources": [
@@ -396,7 +384,9 @@
         "core:AF-GC-011"
       ],
       "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151",
-      "review_head": "3bc98f2ec70997327a7e5a1019b8cd9c07221beb"
+      "review_head": "3bc98f2ec70997327a7e5a1019b8cd9c07221beb",
+      "completed_commit": "e6d3504409ab92388a9565e79a9183a9bde4427f",
+      "reviewed_head": "3bc98f2ec70997327a7e5a1019b8cd9c07221beb"
     },
     "core:AF-GC-013": {
       "dependencies": [
@@ -5756,6 +5746,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
       "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
+    },
+    {
+      "operation_id": "52f98ea7-8d7b-4ad7-a102-bb127a7f2b7c",
+      "at": "2026-09-06T08:00:59+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-012",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
+      "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
     }
   ],
   "migration": {
