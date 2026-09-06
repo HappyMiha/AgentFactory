@@ -755,11 +755,27 @@
       "dependencies": [
         "core:AF-GC-007"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
+      "scopes": [
+        "core:docs/access-eligibility.md",
+        "core:docs/providers.md",
+        "core:src/agent_factory/connector_eligibility.py",
+        "core:src/agent_factory/credential_web.py",
+        "core:src/agent_factory/defaults/connector-eligibility.json",
+        "core:src/agent_factory/eligibility_web.py",
+        "core:src/agent_factory/static/access-guide.html",
+        "core:src/agent_factory/static/access-guide.js",
+        "core:src/agent_factory/static/credentials.html",
+        "core:src/agent_factory/static/credentials.js",
+        "core:tests/test_connector_eligibility.py",
+        "core:tests/test_credential_browser.py",
+        "core:tests/test_credential_web.py",
+        "core:tests/test_eligibility_browser.py",
+        "core:tests/test_eligibility_web.py"
+      ],
+      "updated_at": "2026-09-06T05:13:06+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -778,7 +794,8 @@
       "optional": false,
       "source_dependencies": [
         "core:AF-GC-007"
-      ]
+      ],
+      "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
     },
     "core:AF-GC-026": {
       "dependencies": [
@@ -5285,6 +5302,16 @@
       "note": "Inventory component PR14 merged; awaiting accepted Core043 atomic admission and declared server/lab qualification. Full task remains incomplete.",
       "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
       "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
+    },
+    {
+      "operation_id": "8ca2e4c2-2a6d-4018-9193-4e6daaeb0dd1",
+      "at": "2026-09-06T05:13:06+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-025",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
+      "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
     }
   ],
   "migration": {
