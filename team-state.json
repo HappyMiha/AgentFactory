@@ -253,7 +253,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-f181725d",
       "scopes": [
@@ -261,9 +261,9 @@
         "core:src/agent_factory/provider_canary_transport.py",
         "core:tests/test_provider_canary_transport.py"
       ],
-      "updated_at": "2026-09-06T11:33:49+00:00",
-      "note": "Agreed bounded credential-backed provider observation prerequisite; no live spend or full task acceptance.",
-      "pr": null,
+      "updated_at": "2026-09-06T11:43:40+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/29",
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -284,7 +284,8 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
+      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396",
+      "review_head": "bbc33c6d0d296e11c49f1715d0458e0f08646a60"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6133,6 +6134,16 @@
       "task": "core:AF-GC-009",
       "worker": "HappySnowman",
       "note": "Agreed bounded credential-backed provider observation prerequisite; no live spend or full task acceptance.",
+      "branch": "agent/HappySnowman/AF-GC-009-f181725d",
+      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
+    },
+    {
+      "operation_id": "09f0e72c-bb16-41e6-91d4-9a873781293e",
+      "at": "2026-09-06T11:43:40+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-f181725d",
       "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
     }
