@@ -435,9 +435,9 @@
         "core:tests/test_installation_manifest.py",
         "core:tests/test_installation_policy.py"
       ],
-      "updated_at": "2026-09-06T12:39:49+00:00",
+      "updated_at": "2026-09-06T12:51:47+00:00",
       "note": "",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/30",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/32",
       "resources": [
         "core:environment-bootstrap",
         "core:tool-gateway",
@@ -456,7 +456,7 @@
         "core:AF-GC-013"
       ],
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463",
-      "review_head": "2353f3ed4a6e047adb9899835e7e37acfb1f4791"
+      "review_head": "6553e467e72f43398074656145535604a5e892d5"
     },
     "core:AF-GC-015": {
       "dependencies": [
@@ -6250,6 +6250,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-c7430c9a",
       "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
+    },
+    {
+      "operation_id": "9b4bbff4-51ab-4a9e-bed4-f9b47040caae",
+      "at": "2026-09-06T12:51:47+00:00",
+      "action": "review",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
