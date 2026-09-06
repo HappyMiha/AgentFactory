@@ -253,13 +253,13 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-GC-009-c7430c9a",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T12:54:20+00:00",
-      "note": "Arithmetic smoke PR31 merged; whole capability task incomplete. Preserve branch and free scopes pending next agreed increment.",
-      "pr": "https://github.com/HappyMiha/AgentFactory/pull/31",
+      "updated_at": "2026-09-06T13:16:51+00:00",
+      "note": "PR31 component merged; preserve branch and take agreed existing telemetry reservation prerequisite as fresh claim.",
+      "pr": null,
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -280,8 +280,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d",
-      "review_head": "afedfd676db6a440a9d6e26a678d384a3bc502a5"
+      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6288,6 +6287,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "508a03ae-3e7c-407a-80a0-120ed2c414f5",
+      "at": "2026-09-06T13:16:51+00:00",
+      "action": "release",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR31 component merged; preserve branch and take agreed existing telemetry reservation prerequisite as fresh claim.",
+      "branch": null,
+      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
     }
   ],
   "migration": {
