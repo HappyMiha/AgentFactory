@@ -18,6 +18,9 @@ MAX_OUTPUT_TOKENS = 512
 MAX_BODY_BYTES = 65536
 MAX_TEXT_BYTES = 2048
 DEADLINE_SECONDS = 15
+HTTP_TIMEOUT_SECONDS = 10
+MAX_IPC_BYTES = 3500
+STOP_JOIN_SECONDS = 1
 OPERATION = 'provider_canary_observation'
 TOOL = 'openai-responses-canary-v1'
 # Exact across JSON integer consumers; a metadata bound, not a spending limit.
@@ -60,6 +63,73 @@ def _json(value):
 
 def _identifier(value):
     return isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9._:/-]{1,128}', value) is not None
+
+
+def _wire_body(model, prompt):
+    return _json({'model': model, 'input': prompt, 'max_output_tokens': MAX_OUTPUT_TOKENS,
+                  'store': False, 'stream': False, 'tools': []}).encode()
+
+
+def _transport_contract():
+    return {'method': 'POST', 'endpoint': 'https://api.openai.com/v1/responses', 'tool': TOOL,
+            'max_calls': 1, 'max_input_bytes': MAX_INPUT_BYTES, 'max_output_tokens': MAX_OUTPUT_TOKENS,
+            'max_body_bytes': MAX_BODY_BYTES, 'max_text_bytes': MAX_TEXT_BYTES,
+            'max_ipc_bytes': MAX_IPC_BYTES, 'http_timeout_seconds': HTTP_TIMEOUT_SECONDS,
+            'deadline_seconds': DEADLINE_SECONDS, 'deadline_origin': 'after_child_startup',
+            'stop_join_seconds': STOP_JOIN_SECONDS}
+
+
+@dataclass(frozen=True)
+class PreparedCanaryRequest:
+    """Non-authoritative hashes and scope; contains no prompt or credential."""
+    worker_id: str
+    role: str
+    scope: QualificationScope
+    mission_id: str
+    prompt_digest: str
+    body_digest: str
+    request_digest: str
+    transport_snapshot: str
+
+    def __post_init__(self):
+        if type(self.scope) is not QualificationScope or not _identifier(self.mission_id):
+            raise ValueError('Invalid prepared canary scope')
+        for value in (self.worker_id, self.role):
+            if (not isinstance(value, str) or not 0 < len(value) <= 256
+                    or not value.isprintable() or value != value.strip()):
+                raise ValueError('Invalid prepared worker binding')
+        for value in (self.prompt_digest, self.body_digest, self.request_digest):
+            if not isinstance(value, str) or re.fullmatch('[a-f0-9]{64}', value) is None:
+                raise ValueError('Invalid prepared request digest')
+        if type(self.transport_snapshot) is not str or self.transport_snapshot != _json(_transport_contract()):
+            raise ValueError('Prepared transport contract is not current')
+
+    def canonical(self):
+        return asdict(self)
+
+    @property
+    def digest(self):
+        return _digest(_json(self.canonical()))
+
+
+def prepare_canary_request(*, worker_id, role, scope, mission_id, prompt):
+    """Pure preparation from an already resolved scope; no I/O or authority."""
+    if not _identifier(mission_id) or not isinstance(prompt, str) or not 0 < len(prompt.encode()) <= MAX_INPUT_BYTES:
+        raise ValueError('Invalid bounded canary request')
+    if type(scope) is not QualificationScope:
+        raise ValueError('An immutable resolved connection scope is required')
+    if scope.provider != 'openai' or not _identifier(scope.requested_model):
+        raise QualificationDenied('canary_route_unavailable')
+    prompt_digest = _digest(prompt)
+    # Preserve the exact pre-existing transport request hash for legacy callers.
+    request_digest = _digest(_json({'scope': scope.__dict__, 'mission_id': mission_id,
+                                   'prompt_digest': prompt_digest, 'tool': TOOL,
+                                   'max_input_bytes': MAX_INPUT_BYTES,
+                                   'max_output_tokens': MAX_OUTPUT_TOKENS,
+                                   'deadline_seconds': DEADLINE_SECONDS}))
+    return PreparedCanaryRequest(worker_id, role, scope, mission_id, prompt_digest,
+        hashlib.sha256(_wire_body(scope.requested_model, prompt)).hexdigest(), request_digest,
+        _json(_transport_contract()))
 
 
 def _unique(pairs):
@@ -108,11 +178,10 @@ def _decode(status, body):
 
 def _request(secret, model, prompt):
     """Fixed endpoint, verified TLS, no proxy discovery, redirects or retries."""
-    connection = http.client.HTTPSConnection('api.openai.com', timeout=10,
+    connection = http.client.HTTPSConnection('api.openai.com', timeout=HTTP_TIMEOUT_SECONDS,
                                              context=ssl.create_default_context())
     try:
-        body = _json({'model': model, 'input': prompt, 'max_output_tokens': MAX_OUTPUT_TOKENS,
-                      'store': False, 'stream': False, 'tools': []}).encode()
+        body = _wire_body(model, prompt)
         connection.request('POST', '/v1/responses', body=body,
                            headers={'Authorization': 'Bearer ' + secret, 'Content-Type': 'application/json'})
         response = connection.getresponse()
@@ -131,7 +200,7 @@ def _child(pipe, secret, model, prompt):
         except Exception:
             result = {'error': 'network_unavailable'}
         payload = _json(result).encode()
-        if len(payload) > 3500:
+        if len(payload) > MAX_IPC_BYTES:
             payload = b'{"error":"response_too_large"}'
         pipe.send_bytes(payload)
     finally:
@@ -152,15 +221,15 @@ def _bounded_request(secret, model, prompt):
             return {'error': 'request_timeout'}
         if process.exitcode != 0 or not reader.poll():
             return {'error': 'network_unavailable'}
-        return json.loads(reader.recv_bytes(3500))
+        return json.loads(reader.recv_bytes(MAX_IPC_BYTES))
     except (OSError, ValueError, EOFError):
         return {'error': 'network_unavailable'}
     finally:
         if started:
             if process.is_alive():
-                process.terminate(); process.join(1)
+                process.terminate(); process.join(STOP_JOIN_SECONDS)
             if process.is_alive():
-                process.kill(); process.join(1)
+                process.kill(); process.join(STOP_JOIN_SECONDS)
             process.close()
         reader.close(); writer.close()
 
@@ -195,20 +264,24 @@ class ProviderCanaryTransport:
         self.connections, self.broker, self.resolver = connections, broker, resolver
         self.authorize = authorize
 
-    def observe(self, *, worker_id, role, purpose, mission_id, prompt):
+    def prepare(self, *, worker_id, role, purpose, mission_id, prompt):
+        """Resolve current non-secret metadata, then prepare without dispatch."""
         if not _identifier(mission_id) or not isinstance(prompt, str) or not 0 < len(prompt.encode()) <= MAX_INPUT_BYTES:
             raise ValueError('Invalid bounded canary request')
         scope = self.resolver.scope(worker_id=worker_id, role=role, purpose=purpose)
-        if scope.provider != 'openai' or not _identifier(scope.requested_model):
-            raise QualificationDenied('canary_route_unavailable')
+        return prepare_canary_request(worker_id=worker_id, role=role, scope=scope,
+                                      mission_id=mission_id, prompt=prompt)
+
+    def observe(self, *, worker_id, role, purpose, mission_id, prompt, prepared=None):
+        current_request = self.prepare(worker_id=worker_id, role=role, purpose=purpose,
+                                       mission_id=mission_id, prompt=prompt)
+        if prepared is not None and (type(prepared) is not PreparedCanaryRequest or prepared != current_request):
+            raise QualificationDenied('canary_preparation_changed')
+        scope = current_request.scope
         if not callable(self.authorize):
             raise QualificationDenied('canary_authority_required')
         observation = []
-        request_digest = _digest(_json({'scope': scope.__dict__, 'mission_id': mission_id,
-                                       'prompt_digest': _digest(prompt), 'tool': TOOL,
-                                       'max_input_bytes': MAX_INPUT_BYTES,
-                                       'max_output_tokens': MAX_OUTPUT_TOKENS,
-                                       'deadline_seconds': DEADLINE_SECONDS}))
+        request_digest = current_request.request_digest
 
         def execute(environment, arguments):
             # This callback runs while CredentialConnections excludes disconnect.

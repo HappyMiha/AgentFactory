@@ -209,6 +209,41 @@ database migration or automatic reservation, usage ingestion, settlement,
 release, USD estimate, account grant or qualification is introduced. A future
 trusted host must handle missing usage and actual billing uncertainty explicitly.
 
+#### Prepare a request before admission
+
+`prepare_canary_request(worker_id=..., role=..., scope=..., mission_id=...,
+prompt=...)` is a pure function over an already resolved `QualificationScope`.
+It performs no I/O, credential lookup, authorization, reservation or dispatch.
+`ProviderCanaryTransport.prepare(...)` is the convenience wrapper: it first reads
+current non-secret connection metadata through the existing resolver, then calls
+the pure function. That metadata lookup is distinct from the pure boundary.
+
+Both return a frozen `PreparedCanaryRequest` containing the exact worker/role,
+connection/model/configuration scope, mission string, prompt digest, serialized
+HTTP body digest and fixed transport contract. The descriptor stores no prompt
+text or credential. The actual HTTP request uses the same body serializer;
+the descriptor binds the method/endpoint and input/output/response/IPC/time limits.
+Its `canonical()` returns a detached document and `digest` hashes that complete
+document. This digest is distinct from the legacy `request_digest`, whose bytes
+remain unchanged for existing callers and observations.
+
+Pass the descriptor to `observe(..., prompt=original_prompt, prepared=prepared)`.
+Observe resolves current metadata again, reconstructs the descriptor from the
+actual prompt and current transport contract, and rejects changed or stale data
+before credential access, the authority callback or dispatch. This includes a
+different worker/role even when their connection scopes would be identical.
+Omitting `prepared` preserves the existing observe API and its default denial.
+
+Preparation and a matching checksum never grant execution. The existing trusted
+authorizer is still mandatory; a future host must bind the prepared descriptor
+into its exact approval/admission effect and separately establish account and
+budget authority. No such authorizer, account/price evidence, token-cost bound or
+settlement is supplied here. The input limit is bytes, and the child deadline
+still starts after process startup. Preparation cannot turn either into a
+provider billing guarantee. Connection disconnect remains checked at the actual
+credential execution boundary. Tests use synthetic responses and authority
+fixtures only; preparing a request makes no provider call.
+
 `ProviderQualificationService` accepts evidence only from a trusted host
 evaluator. It does not authenticate that evaluator, run its canary, inspect an
 account, verify a provider signature or establish execution permission. Do not
