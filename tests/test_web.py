@@ -285,6 +285,7 @@ class WebHostTests(unittest.TestCase):
                     {
                         "/api/credential-connections",
                         "/api/hardware/scan",
+                        "/api/game-planning/{mission_id}",
                         "/api/games/starts",
                         "/api/games/starts/{ident}/save",
                         "/api/games/starts/{ident}/submit",
