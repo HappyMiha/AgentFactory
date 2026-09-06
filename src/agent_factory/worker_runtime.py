@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
@@ -69,12 +70,21 @@ class RuntimeLaunch:
     mutable: bool = False
     permission_bridge_id: str | None = None
     mission_control: RuntimeMissionControlBinding | None = None
+    effect_digest: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.effect_digest is not None:
+            if (not isinstance(self.effect_digest, str)
+                    or re.fullmatch(r"[a-f0-9]{64}", self.effect_digest) is None):
+                raise ValueError("Runtime effect must be a lowercase SHA-256 digest")
+            if self.mutable is not True:
+                raise ValueError("Effect-bound runtime launch requires mutable approval")
 
     def durable_scope(self) -> dict[str, Any]:
         context_json = json.dumps(
             self.context, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         )
-        return {
+        scope = {
             "assignment_id": self.assignment_id,
             "fencing_token": self.fencing_token,
             "task_id": self.item.id,
@@ -91,6 +101,9 @@ class RuntimeLaunch:
                 asdict(self.mission_control) if self.mission_control else None
             ),
         }
+        if self.effect_digest is not None:
+            scope["effect_digest"] = self.effect_digest
+        return scope
 
 
 @dataclass(frozen=True)
@@ -399,6 +412,7 @@ class WorkerRuntime(ABC):
             if admitted is None:
                 self.storage.db.commit()
                 return None
+            self._mutable_policy_request(launch)  # Check the exact envelope before reserving a start.
             scope = launch.durable_scope()
             digest = hashlib.sha256(json.dumps(
                 {"scope": scope, "agent": asdict(launch.agent), "item": asdict(launch.item),
@@ -431,9 +445,9 @@ class WorkerRuntime(ABC):
             self.storage.db.rollback()
             raise
 
-    def _authorize_mutable_launch(self, launch: RuntimeLaunch) -> None:
+    def _mutable_policy_request(self, launch: RuntimeLaunch) -> PolicyRequest | None:
         if not launch.mutable:
-            return
+            return None
         if launch.binding is None or launch.approval is None:
             raise PermissionError(
                 "Mutable execution requires an exact live-stage approval and binding"
@@ -449,6 +463,7 @@ class WorkerRuntime(ABC):
             runtime_id=self.runtime_id,
             worktree_id=str(binding.worktree_id),
             permissions=tuple(sorted(set(launch.item.permissions))),
+            effect_digest=launch.effect_digest,
         )
         envelope = (
             approval.provider,
@@ -476,6 +491,13 @@ class WorkerRuntime(ABC):
             raise PermissionError(
                 "Execution approval envelope does not match the live runtime scope"
             )
+        return request
+
+    def _authorize_mutable_launch(self, launch: RuntimeLaunch) -> None:
+        request = self._mutable_policy_request(launch)
+        if request is None:
+            return
+        binding, approval = launch.binding, launch.approval
         decision = ControlPlanePolicy(self.storage).authorize(
             request,
             approval_id=approval.gate_id,

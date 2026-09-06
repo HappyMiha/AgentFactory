@@ -121,3 +121,24 @@ Cloud's worker integration must pin an accepted Core revision, implement its
 authenticated project mapping and collect real host and stop evidence before it
 can claim deployment readiness. See backlog item `AF-GC-043`; the existing Cloud
 worker qualification task remains a separate acceptance result.
+
+## Optional exact effect binding
+
+A trusted host may set `AdmissionRequest.effect_digest` to a lowercase SHA-256
+hash of an immutable effect descriptor. Admission persists it in the existing
+immutable `request_json` and binds it through `request_digest`. No new table or
+schema migration is needed. Reusing a request ID with an added, removed or
+changed effect conflicts even if all other admission fields match.
+
+Use `AdmissionRequest.canonical()` when producing its canonical authority
+request. It omits an absent optional effect so historical request hashes and
+saved admissions stay compatible. New launches must carry the identical effect;
+a legacy admission without it cannot be upgraded by changing only the launch or
+approval. Runtime validation also checks the stored request hash before using
+its effect. All current tenant, pool, qualification, stage, worktree and fenced
+lease requirements continue to apply.
+
+Effect-bound execution requires a mutable launch and exact one-use stage policy.
+Admission alone still grants no external effect. Tests use existing runtime.start
+with synthetic tracking drivers and real SQLite; they do not qualify a remote
+executor, provider account, pricing source or installer.
