@@ -253,7 +253,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-90113dc6",
       "scopes": [
@@ -261,9 +261,9 @@
         "core:src/agent_factory/provider_canary_transport.py",
         "core:tests/test_provider_canary_transport.py"
       ],
-      "updated_at": "2026-09-06T16:05:56+00:00",
-      "note": "Agreed bounded provider usage metadata prerequisite; synthetic envelopes only, no live effects.",
-      "pr": null,
+      "updated_at": "2026-09-06T16:13:05+00:00",
+      "note": "",
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/41",
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -284,7 +284,8 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb"
+      "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb",
+      "review_head": "a2bfb79261a20f5ff9c038260064daf200dde370"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6625,6 +6626,16 @@
       "task": "core:AF-GC-009",
       "worker": "HappySnowman",
       "note": "Agreed bounded provider usage metadata prerequisite; synthetic envelopes only, no live effects.",
+      "branch": "agent/HappySnowman/AF-GC-009-90113dc6",
+      "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb"
+    },
+    {
+      "operation_id": "f2528f5d-3928-4239-8b36-b2859791940e",
+      "at": "2026-09-06T16:13:05+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-90113dc6",
       "claim_id": "baf7ad95-4ef0-462e-8d52-2416933036fb"
     }
