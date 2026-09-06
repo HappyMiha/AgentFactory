@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Можливості ПК · AgentFactory</title>
+  <link rel="stylesheet" href="/assets/hardware.css">
+  <script src="/assets/hardware.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">До вмісту</a>
+  <header>
+    <a class="brand" href="/">AgentFactory</a>
+    <nav aria-label="Навігація"><a href="/">Мої ігри</a><a href="/login">Доступ і вихід</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="title">
+      <p class="eyebrow">Ваш робочий простір</p>
+      <h1 id="title">Можливості ПК</h1>
+      <p class="lead">Подивіться, які ресурси є на комп’ютері, де працює AgentFactory.</p>
+      <div class="privacy" id="privacy-note">
+        <strong>Перевірка залишається локальною.</strong>
+        <p>Збираємо технічні характеристики й шукаємо відомі програми. Особисті файли, серійні номери та список сторонніх процесів не читаємо. Нічого не встановлюємо й не запускаємо AI.</p>
+        <p>Звіт живе лише в цій вкладці. Ви самі вирішуєте, чи завантажити його у файл.</p>
+      </div>
+      <div class="actions"><button class="primary" id="scan-pc" type="button" aria-describedby="privacy-note">Перевірити ПК</button><button id="download-report" type="button" disabled>Завантажити JSON</button></div>
+      <p id="status" role="status" aria-live="polite">Натисніть «Перевірити ПК», щоб отримати звіт.</p>
+    </section>
+    <section id="inventory" aria-labelledby="report-title" hidden>
+      <div class="report-heading"><h2 id="report-title">Останній отриманий звіт</h2><p>Час перевірки: <time id="observed-at"></time></p></div>
+      <p class="snapshot-note">Це знімок ресурсів на вказаний час. Він не підтверджує готовність моделі, ігрового рушія або гри.</p>
+      <div id="hardware-cards" class="cards"></div>
+      <section class="software" aria-labelledby="software-title"><h2 id="software-title">Програми й рушії</h2><p>Шукаємо лише відомі команди та стандартні місця встановлення. «Не виявлено» не означає, що програми немає. «Виявлено» не підтверджує її налаштування або готовність до роботи.</p><ul id="software-list"></ul></section>
+      <p id="unknown-note" class="unknown-note" hidden>Частину характеристик не вдалося визначити. «Невідомо» не означає нуль: система або драйвер можуть не надавати ці дані.</p>
+    </section>
+    <aside class="next-step" aria-labelledby="next-title"><h2 id="next-title">Можна продовжити з хмарним AI</h2><p>Навіть якщо відеокарту не вдалося перевірити, ви можете зберегти ідею та налаштувати хмарний AI. Його доступ і можливості перевіряються окремо.</p><a href="/">Повернутися до моїх ігор →</a></aside>
+  </main>
+</body>
+</html>
