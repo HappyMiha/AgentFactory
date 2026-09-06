@@ -391,29 +391,12 @@
         "core:AF-GC-002",
         "core:AF-GC-012"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
-      "scopes": [
-        "core:docs/installation-plans.md",
-        "core:src/agent_factory/installation_plan.py",
-        "core:src/agent_factory/installation_review.py",
-        "core:src/agent_factory/installation_web.py",
-        "core:src/agent_factory/static/game-plan.html",
-        "core:src/agent_factory/static/installation.css",
-        "core:src/agent_factory/static/installation.html",
-        "core:src/agent_factory/static/installation.js",
-        "core:src/agent_factory/storage.py",
-        "core:src/agent_factory/web.py",
-        "core:tests/test_installation_browser.py",
-        "core:tests/test_installation_plan.py",
-        "core:tests/test_installation_review.py",
-        "core:tests/test_installation_web.py",
-        "core:tests/test_storage_migrations.py",
-        "core:tests/test_web.py"
-      ],
-      "updated_at": "2026-09-06T10:07:48+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T10:13:02+00:00",
+      "note": "Accepted initial Godot Windows planning and consent; actual installation and VM qualification remain AF-GC-014.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/25",
       "resources": [
         "core:environment-bootstrap",
@@ -432,7 +415,9 @@
         "core:AF-GC-012"
       ],
       "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25",
-      "review_head": "b9ac998a269fb417bf1a4fbc1c9582284a708966"
+      "review_head": "b9ac998a269fb417bf1a4fbc1c9582284a708966",
+      "completed_commit": "177495833838124c4df6f37466a0011f60dd4d12",
+      "reviewed_head": "b9ac998a269fb417bf1a4fbc1c9582284a708966"
     },
     "core:AF-GC-014": {
       "dependencies": [
@@ -5991,6 +5976,16 @@
       "task": "core:AF-GC-013",
       "worker": "HappyDucky02",
       "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
+      "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
+    },
+    {
+      "operation_id": "31162308-a9b4-470c-952c-46cec109f677",
+      "at": "2026-09-06T10:13:02+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-013",
+      "worker": "HappyDucky02",
+      "note": "Accepted initial Godot Windows planning and consent; actual installation and VM qualification remain AF-GC-014.",
       "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
       "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
     }
