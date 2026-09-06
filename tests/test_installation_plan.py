@@ -46,10 +46,10 @@ class InstallationPlanTests(unittest.TestCase):
     def test_installed_reuse_install_and_explicit_update(self):
         fixtures = [
             (self.observed(), {}, "already_installed"),
-            (self.observed(target="external editor", managed=False), {}, "reuse"),
+            (self.observed(target="other-tools/editor", managed=False), {}, "reuse"),
             (self.observed(version="4.6-stable", target="old-managed"), {}, "install"),
             (self.observed(version="4.6-stable", target="old-managed"), {"updates": ["godot-editor"]}, "update"),
-            (self.observed(version="4.6-stable", target="external editor", managed=False),
+            (self.observed(version="4.6-stable", target="other-tools/editor", managed=False),
              {"updates": ["godot-editor"]}, "install"),
         ]
         for observed, options, expected in fixtures:
@@ -174,6 +174,22 @@ class InstallationPlanTests(unittest.TestCase):
         for requested in ([], "godot-editor", ["godot-editor"] * 65):
             with self.subTest(requested=requested), self.assertRaises(ValueError):
                 self.plan(requested)
+
+    def test_windows_aliases_and_opaque_locations_require_manual_resolution(self):
+        targets = ["./tools/godot-editor/4.7.2-stable", "tools//godot-editor//4.7.2-stable",
+                   "tools/godot-editor./4.7.2-stable", "tools/godot-editor /4.7.2-stable",
+                   "tools/unused/../godot-editor/4.7.2-stable", "tools/godot-editor/4.7.2-stable/",
+                   "C:/tools/godot-editor/4.7.2-stable", "//server/share", "tools/GODOT-~1/4.7.2-stable"]
+        for target in targets:
+            with self.subTest(target=target):
+                for key in ("godot-editor", "other"):
+                    result = self.plan(inventory={key: self.observed(target=target)}).document()
+                    self.assertTrue(result["requires_manual_action"])
+                    self.assertEqual(result["steps"][0]["action"], "manual_action")
+                    self.assertIn("ambiguous_inventory_location", result["steps"][0]["reasons"])
+                    self.assertFalse(result["execution_eligible"])
+        result = self.plan(inventory={"other": self.observed(target="external-editor", location_kind="external_label")}).document()
+        self.assertTrue(result["requires_manual_action"])
 
 
 if __name__ == "__main__":

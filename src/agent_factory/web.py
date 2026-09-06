@@ -28,6 +28,7 @@ from .credential_web import install_routes as install_credential_routes
 from .hardware_web import install_routes as install_hardware_routes
 from .game_planning_web import install_routes as install_game_planning_routes
 from .configuration_advice_web import install_routes as install_configuration_advice_routes
+from .installation_web import install_routes as install_installation_routes
 
 from .application import (
     AgentFactoryService,
@@ -336,6 +337,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
     install_hardware_routes(app, workspace)
     install_game_planning_routes(app, database)
     install_configuration_advice_routes(app)
+    install_installation_routes(app, database, workspace)
 
     @app.get("/auth/session", include_in_schema=False)
     async def session_status(request: Request):
