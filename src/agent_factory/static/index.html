@@ -1,146 +1,16 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Agent Factory · Local Control Center</title>
-  <link rel="stylesheet" href="/assets/styles.css">
-  <script src="/assets/app.js?v=temporal-durable-1" defer></script>
-</head>
-<body>
-  <a class="skip-link" href="#main">Skip to dashboard</a>
-  <div class="shell">
-    <aside class="sidebar" aria-label="Primary navigation">
-      <a class="brand" href="#overview" aria-label="Agent Factory overview">
-        <span class="brand-mark" aria-hidden="true">AF</span>
-        <span><strong>Agent Factory</strong><small>Local Control Center</small></span>
-      </a>
-      <nav>
-        <a class="active" href="#overview">Overview</a>
-        <a href="#monitor">System monitor</a>
-        <a href="#work">Work items</a>
-        <a href="#runs">Workflow runs</a>
-        <a href="#executions">Execution control</a>
-        <a href="#agents">Agents &amp; providers</a>
-        <a href="#reviews">Reviews &amp; approvals</a>
-        <a href="#audit">Audit &amp; settings</a>
-      </nav>
-      <div class="connection"><span id="connection-dot"></span><span id="connection-text">Connecting…</span></div>
-    </aside>
-    <main id="main">
-      <header class="topbar">
-        <div><p class="eyebrow">Development operations</p><h1>Delivery overview</h1></div>
-        <div class="top-actions"><a href="/login">Access &amp; sign out</a><span id="updated">Waiting for data</span><button id="refresh" type="button">Refresh</button></div>
-      </header>
-      <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-      <section id="overview" aria-labelledby="overview-title">
-        <div class="section-heading"><div><p class="eyebrow">Current state</p><h2 id="overview-title">Work pulse</h2></div><p>Live local state. No external mutations.</p></div>
-        <div id="metrics" class="metrics" aria-live="polite">
-          <div class="metric loading"></div><div class="metric loading"></div><div class="metric loading"></div>
-        </div>
-      </section>
-      <section id="executions" class="panel execution-panel" aria-labelledby="executions-title"><div class="panel-head"><div><p class="eyebrow">Control plane</p><h2 id="executions-title">Execution control</h2></div><span id="execution-summary">Loading active executions…</span></div><div id="execution-list" class="execution-list loading-block">Loading sessions, runs, and leases…</div></section>
-      <section id="monitor" class="panel monitor-panel" aria-labelledby="monitor-title">
-        <div class="panel-head"><div><p class="eyebrow">Readiness</p><h2 id="monitor-title">System monitor</h2></div><span id="monitor-checked">Not checked</span></div>
-        <div id="monitor-summary" class="monitor-summary loading-block">Checking system readiness…</div>
-        <div id="monitor-checks" class="monitor-grid"></div>
-        <div id="monitor-blockers" class="monitor-blockers"></div>
-        <details id="environment-panel"><summary>Check an approved development route</summary>
-          <label for="environment-mission">Approved mission</label>
-          <select id="environment-mission"><option value="">Choose a mission</option></select>
-          <button id="environment-check" type="button" disabled>Run actual-state checks</button>
-          <p id="environment-status" role="status">Choose a mission to inspect its current checks. No software is installed or inference started by this action.</p>
-          <div id="environment-checks" class="monitor-grid"></div>
-        </details>
-      </section>
-      <div class="dashboard-grid">
-        <section id="runs" class="panel" aria-labelledby="runs-title"><div class="panel-head"><div><p class="eyebrow">Execution</p><h2 id="runs-title">Recent runs</h2></div><a href="#work">View work</a></div><div id="run-list" class="list loading-block">Loading workflow runs…</div></section>
-        <section id="reviews" class="panel" aria-labelledby="approval-title"><div class="panel-head"><div><p class="eyebrow">Human authority</p><h2 id="approval-title">Pending decisions</h2></div></div><div id="approval-list" class="list loading-block">Loading approvals…</div></section>
-        <section id="agents" class="panel wide" aria-labelledby="provider-title">
-          <div class="panel-head"><div><p class="eyebrow">Runtime</p><h2 id="provider-title">Agents, providers &amp; reviewer routing</h2></div><p class="panel-copy">Changes affect future assignments only.</p></div>
-          <div id="provider-list" class="provider-grid loading-block">Checking providers…</div>
-          <div class="runtime-grid">
-            <section aria-labelledby="agent-catalog-title"><div class="subhead"><h3 id="agent-catalog-title">Agent catalog</h3><span>Enable, disable, or replace a compatible provider</span></div><div id="agent-list" class="agent-list loading-block">Loading agents…</div></section>
-            <section aria-labelledby="routing-title"><div class="subhead"><h3 id="routing-title">Independent reviewer evidence</h3><span>Selected model must differ from every producer</span></div><div id="routing-list" class="routing-list loading-block">Loading reviewer history…</div></section>
-          </div>
-        </section>
-        <section class="panel wide" aria-labelledby="failures-title"><div class="panel-head"><div><p class="eyebrow">Attention</p><h2 id="failures-title">Recent failures</h2></div></div><div id="failure-list" class="list loading-block">Checking the audit stream…</div></section>
-      </div>
-      <section id="work" class="panel work-panel" aria-labelledby="work-title">
-        <div class="panel-head">
-          <div><p class="eyebrow">Backlog</p><h2 id="work-title">Work item controls</h2></div>
-          <p class="panel-copy">Explicit confirmation is required for every local action.</p>
-        </div>
-        <details class="backlog-import"><summary>Upload technical specification</summary><form id="spec-upload-form"><label>Project name<input name="project_name" required placeholder="Windows Mini Game"></label><label>Specification file<input name="specification" type="file" required accept="*/*"></label><button type="submit">Prepare editable preview</button></form><div id="spec-analysis" class="preview-result"><div class="empty">Upload text, Markdown, JSON, or a text-based PDF. Deterministic import preserves the original and prepares an editable proposal. No AI analysis runs; review and confirm the plan before importing.</div></div></details>
-        <details class="backlog-import"><summary>Import a workspace backlog</summary><form id="backlog-import-form"><label>Project name<input name="project_name" required placeholder="Local project"></label><label>Workspace-relative manifest<input name="backlog_path" required value="examples/development-backlog.json"></label><button type="submit">Import backlog</button></form><button id="archive-all-work-items" class="danger" type="button">Archive all work items</button></details>
-        <form id="work-filters" class="filter-grid" aria-label="Filter work items">
-          <label>Project<select id="filter-project" name="project_id"><option value="">All projects</option></select></label>
-          <label>Type<input id="filter-kind" name="kind" placeholder="feature"></label>
-          <label>Status<input id="filter-status" name="status" placeholder="pending"></label>
-          <label>Priority<input id="filter-priority" name="priority" placeholder="high"></label>
-          <label>Dependency<input id="filter-dependency" name="dependency" inputmode="numeric" placeholder="Task ID"></label>
-          <label>Assignee<input id="filter-assignee" name="assignee" placeholder="agent ID"></label>
-          <button type="submit">Apply filters</button>
-          <button id="clear-filters" class="secondary" type="button">Clear</button>
-        </form>
-        <div class="work-grid">
-          <div><p id="work-count" class="result-count">Loading work items...</p><div id="work-list" class="work-list loading-block">Loading backlog...</div></div>
-          <aside id="work-detail" class="detail-pane" aria-live="polite"><div class="empty">Select a work item to inspect its delivery contract</div></aside>
-        </div>
-      </section>
-      <section id="audit" class="panel operations-panel" aria-labelledby="audit-title">
-        <div class="panel-head"><div><p class="eyebrow">Traceability</p><h2 id="audit-title">Audit, settings &amp; GitHub preview</h2></div><p class="panel-copy">Search local evidence and preview external intent without applying it.</p></div>
-        <form id="audit-filters" class="filter-grid audit-filters" aria-label="Filter audit events">
-          <label>From<input name="from_time" type="datetime-local"></label>
-          <label>To<input name="to_time" type="datetime-local"></label>
-          <label>Project<input name="project_id" inputmode="numeric" placeholder="Project ID"></label>
-          <label>Work item<input name="task_id" inputmode="numeric" placeholder="Task ID"></label>
-          <label>Run<input name="run_id" inputmode="numeric" placeholder="Run ID"></label>
-          <label>Agent<input name="agent_id" placeholder="Agent ID"></label>
-          <label>Provider<input name="provider" placeholder="Provider ID"></label>
-          <label>Action<input name="action" placeholder="workflow"></label>
-          <label>Outcome<select name="outcome"><option value="">All outcomes</option><option>success</option><option>failure</option><option>pending</option><option>info</option></select></label>
-          <button type="submit">Search audit</button><button id="clear-audit" class="secondary" type="button">Clear</button>
-        </form>
-        <p id="audit-count" class="result-count">Loading audit trail...</p><div id="audit-list" class="audit-list loading-block">Loading correlated events…</div>
-        <div class="operations-grid">
-          <section aria-labelledby="settings-title"><div class="subhead"><h3 id="settings-title">Allowlisted runtime settings</h3><span>Numeric values only; every version is audited</span></div><div id="settings-list" class="settings-list loading-block">Loading settings…</div></section>
-          <section aria-labelledby="github-title"><div class="subhead"><h3 id="github-title">GitHub sync preview</h3><span>Dry-run only; apply requires the separate existing gate</span></div>
-            <form id="github-preview-form" class="github-form">
-              <label>Repository<input name="repo" required placeholder="owner/repository" pattern="[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"></label>
-              <label>Workspace-relative backlog path<input name="backlog_path" required value="examples/development-backlog.json"></label>
-              <label>Existing issue snapshot (JSON array)<textarea name="existing_issues" rows="5">[]</textarea></label>
-              <button type="submit">Create dry-run preview</button>
-            </form>
-            <div id="github-preview" class="preview-result"><div class="empty">No GitHub preview created</div></div>
-          </section>
-        </div>
-      </section>
-    </main>
-  </div>
-  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
-    <form method="dialog" class="dialog-card">
-      <p class="eyebrow">Guarded command</p>
-      <h2 id="confirm-title">Confirm local mutation</h2>
-      <p id="confirm-summary"></p>
-      <p class="guard-note">This command is recorded in the local audit trail. Provider execution remains simulation-only.</p>
-      <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="confirm-action" value="confirm">Confirm command</button></div>
-    </form>
-  </dialog>
-  <dialog id="run-dialog" aria-labelledby="run-detail-title">
-    <div class="dialog-card run-card">
-      <div class="panel-head"><div><p class="eyebrow">Workflow evidence</p><h2 id="run-detail-title">Run detail</h2></div><button id="close-run" class="secondary" type="button">Close</button></div>
-      <div id="run-detail" class="run-detail" aria-live="polite"></div>
-    </div>
-  </dialog>
-  <dialog id="founder-dialog" aria-labelledby="founder-title">
-    <div class="dialog-card founder-card">
-      <div class="panel-head"><div><p class="eyebrow">Separate human authority</p><h2 id="founder-title">Founder decision</h2></div><button id="close-founder" class="secondary" type="button">Close</button></div>
-      <div id="founder-detail" class="founder-detail" aria-live="polite"></div>
-      <label>Optional decision note<textarea id="founder-note" rows="3" placeholder="Record rationale, conditions, or rejection reason"></textarea></label>
-      <div class="dialog-actions"><button id="founder-reject" class="danger" type="button">Reject evidence</button><button id="founder-approve" type="button">Approve evidence</button></div>
-    </div>
-  </dialog>
-</body>
-</html>
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Мої ігри · AgentFactory</title><link rel="stylesheet" href="/assets/games.css"><script src="/assets/games.js" defer></script></head>
+<body><a class="skip" href="#main">До вмісту</a><header><a class="brand" href="/">AgentFactory</a><span>Локальний робочий простір</span><details><summary>Налаштування й деталі</summary><a href="/operations">Панель оператора</a><a href="/login">Доступ і вихід</a></details></header>
+<main id="main"><p id="notice" role="status" aria-live="polite"></p>
+<section id="home"><div class="heading"><div><p class="eyebrow">Від першої ідеї</p><h1>Мої ігри</h1><p>Збережіть задум. Поверніться до нього, коли будете готові продовжити.</p></div><button id="create-game" class="primary">Створити гру</button></div>
+<form id="game-search"><label>Пошук ваших ідей<input id="game-query" type="search" maxlength="200"></label><button>Знайти</button></form><div id="game-list" class="cards"></div><div class="pager"><button id="games-prev">Назад</button><span id="games-page"></span><button id="games-next">Далі</button></div>
+<details id="existing"><summary>Наявні проєкти Core</summary><form id="mission-search"><label>Пошук проєкту<input id="mission-query" type="search" maxlength="200"></label><button>Знайти</button></form><div id="mission-list" class="cards"></div><div class="pager"><button id="missions-prev">Назад</button><span id="missions-page"></span><button id="missions-next">Далі</button></div></details></section>
+<section id="editor" hidden><button id="back-home" class="quiet">← Мої ігри</button><h1 id="game-title">Нова гра</h1><p id="save-state" role="status"></p><p id="next-action"></p><button id="refresh-project" hidden>Оновити стан проєкту</button><nav id="steps" aria-label="Кроки старту"></nav>
+<div class="step" data-step="0"><p class="eyebrow">Крок 1</p><h2>Яку гру ви хочете?</h2><label>Назва<input id="title" maxlength="160"></label><label>Ваша ідея<textarea id="idea" maxlength="6000" rows="8" placeholder="Наприклад: маленька гра про сад, у якій гравець збирає насіння."></textarea></label><p>Ваші слова зберігаються без переписування. Це ще не дозвіл на створення гри.</p></div>
+<div class="step" data-step="1" hidden><p class="eyebrow">Крок 2</p><h2>Оберіть налаштований AI</h2><label>Локальна модель<select id="model"><option value="">Оберіть модель</option></select></label><p>Це вибір конфігурації. Наявність і готовність моделі перевіряються окремо; цей крок не запускає AI.</p><a href="/operations#agents">Перевірити налаштування моделей</a><p id="model-note"></p></div>
+<div class="step" data-step="2" hidden><p class="eyebrow">Крок 3</p><h2>Підготуйте проєкт</h2><p id="preparation-copy">Збережіть вихідну ідею та обрану модель як чернетку Core. Затвердження плану й перевірки середовища відбуваються окремо.</p><button id="submit-draft" class="primary">Зберегти чернетку проєкту</button><button id="check-environment" hidden>Перевірити середовище</button><p id="environment-state"></p><a href="/operations#monitor">Переглянути стан і необхідні дії</a></div>
+<div class="step" data-step="3" hidden><p class="eyebrow">Крок 4</p><h2>Створення</h2><p id="progress-state"></p><p>Поточний крок інтерфейсу не запускає роботу та не змінює затвердження.</p><a href="/operations#work">Переглянути задачі й рішення</a></div>
+<div class="step" data-step="4" hidden><p class="eyebrow">Крок 5</p><h2>Грати</h2><p>Ще немає перевіреної ігрової версії. Завершена задача або збережений план не підтверджують, що гра працює.</p><button disabled>Грати — недоступно</button></div>
+<div class="actions"><button id="previous-step">Попередній крок</button><button id="save-draft">Зберегти</button><button id="next-step" class="primary">Наступний крок</button></div>
+<details id="history"><summary>Збережені версії ідеї</summary><form id="version-search"><label>Пошук у версіях<input id="version-query" type="search" maxlength="200"></label><button>Знайти</button></form><div id="version-list"></div><div class="pager"><button id="versions-prev">Назад</button><span id="versions-page"></span><button id="versions-next">Далі</button></div><pre id="version-preview" hidden></pre></details>
+<details><summary>Відновлення після конфлікту</summary><button id="reload-draft">Відкрити останню збережену версію</button><pre id="recovery-copy" hidden></pre></details><details><summary>Технічні деталі</summary><pre id="technical"></pre><p>Локальна навігація Core. Редактор GameBrief і планування першої версії належать окремому застосунку Cloud; цей екран їх не дублює.</p></details></section>
+</main><dialog id="confirm" aria-labelledby="confirm-title"><form method="dialog"><h2 id="confirm-title">Зберегти вихідну чернетку?</h2><p>Вибрані ідея та модель стануть незмінним входом Core. Можна переглядати попередні кроки. Це не затверджує план, витрати чи запуск AI.</p><div class="actions"><button value="cancel">Повернутися</button><button value="confirm" class="primary">Зберегти чернетку</button></div></form></dialog></body></html>

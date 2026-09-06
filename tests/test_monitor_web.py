@@ -71,6 +71,19 @@ class MonitorWebTests(unittest.TestCase):
         self.assertEqual(payload["blockers"], ["provider_health_degraded"])
         self.assertEqual(payload["providers"]["ready"], 1)
 
+    def test_provider_cache_invalidates_on_configuration_change(self):
+        path = self.config / "providers.json"
+        path.write_text(json.dumps({"providers": self.providers}), encoding="utf-8")
+        with TestClient(create_app(self.workspace, self.database), base_url="http://localhost") as client:
+            first = client.get("/api/monitor")
+            self.assertEqual(first.status_code, 200); self.assertEqual(first.json()["status"], "ready")
+            self.providers[1]["enabled"] = True
+            path.write_text(json.dumps({"providers": self.providers}), encoding="utf-8")
+            second = client.get("/api/monitor")
+            self.assertEqual(second.status_code, 200)
+            self.assertEqual(second.json()["status"], "degraded")
+            self.assertIn("provider_health_degraded", second.json()["blockers"])
+
     def test_monitor_surfaces_emergency_stop_as_blocker(self):
         storage = SQLiteStorage(self.database)
         try:

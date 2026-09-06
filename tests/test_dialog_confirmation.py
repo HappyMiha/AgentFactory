@@ -35,7 +35,7 @@ class DialogConfirmationTests(unittest.TestCase):
     def setUp(self):
         self.page = self.browser.new_page()
         self.mutations = []
-        html = (STATIC / 'index.html').read_text(encoding='utf-8')
+        html = (STATIC / 'operations.html').read_text(encoding='utf-8')
         dialog = re.search(r'<dialog id="confirm-dialog".*?</dialog>', html, re.S).group()
         fixture = '<button id="launch">Archive</button><p id="notice" hidden></p>' + dialog
         self.page.route('http://fixture.test/', lambda route: route.fulfill(body=fixture, content_type='text/html'))

@@ -265,6 +265,9 @@ class WebHostTests(unittest.TestCase):
                 self.assertEqual(
                     mutation_routes,
                     {
+                        "/api/games/starts",
+                        "/api/games/starts/{ident}/save",
+                        "/api/games/starts/{ident}/submit",
                         "/api/work-items/{task_id}/claim",
                         "/api/work-items/{task_id}/runs",
                         "/api/work-items/{task_id}/archive",
@@ -726,7 +729,7 @@ class WebHostTests(unittest.TestCase):
                 create_app(workspace, workspace / ".agent-factory" / "state.db"),
                 base_url="http://localhost",
             ) as client:
-                page = client.get("/")
+                page = client.get("/operations")
                 self.assertEqual(page.status_code, 200)
                 self.assertIn("Local Control Center", page.text)
                 for target in ("#overview", "#work", "#runs", "#agents", "#reviews", "#audit"):

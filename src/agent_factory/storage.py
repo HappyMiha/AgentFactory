@@ -6510,6 +6510,30 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEFORE DELETE ON environment_readiness_reports
         BEGIN SELECT RAISE(ABORT, 'environment readiness reports are durable'); END;
     """),
+    (74, """
+        CREATE TABLE local_game_drafts(
+            id TEXT PRIMARY KEY, actor TEXT NOT NULL, title TEXT NOT NULL,
+            idea TEXT NOT NULL, model_key TEXT NOT NULL, view_step INTEGER NOT NULL,
+            revision INTEGER NOT NULL, error_code TEXT NOT NULL,
+            creation_json TEXT, mission_id INTEGER REFERENCES autonomous_missions(id),
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        );
+        CREATE INDEX local_game_drafts_actor ON local_game_drafts(actor,updated_at,id);
+        CREATE TABLE local_game_draft_versions(
+            draft_id TEXT NOT NULL REFERENCES local_game_drafts(id),
+            revision INTEGER NOT NULL, document_json TEXT NOT NULL CHECK(json_valid(document_json)),
+            PRIMARY KEY(draft_id,revision)
+        );
+        CREATE TRIGGER local_game_draft_versions_no_update BEFORE UPDATE ON local_game_draft_versions
+        BEGIN SELECT RAISE(ABORT,'local start history is immutable'); END;
+        CREATE TRIGGER local_game_draft_versions_no_delete BEFORE DELETE ON local_game_draft_versions
+        BEGIN SELECT RAISE(ABORT,'local start history is durable'); END;
+        CREATE TABLE local_game_commands(
+            actor TEXT NOT NULL, command_id TEXT NOT NULL, request_digest TEXT NOT NULL,
+            draft_id TEXT NOT NULL REFERENCES local_game_drafts(id),
+            PRIMARY KEY(actor,command_id)
+        );
+    """),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

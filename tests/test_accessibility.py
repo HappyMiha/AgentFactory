@@ -4,7 +4,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-HTML = (ROOT / "src" / "agent_factory" / "static" / "index.html").read_text(
+HTML = (ROOT / "src" / "agent_factory" / "static" / "operations.html").read_text(
     encoding="utf-8"
 )
 CSS = (ROOT / "src" / "agent_factory" / "static" / "styles.css").read_text(
@@ -107,3 +107,17 @@ class LocalControlCenterAccessibilityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class LocalGameAccessibilityTests(unittest.TestCase):
+    def test_local_game_labels_landmarks_and_confirmation_name(self):
+        html = (ROOT / "src/agent_factory/static/index.html").read_text(encoding="utf-8")
+        parser = AccessibilityParser(); parser.feed(html)
+        self.assertIn('<html lang="uk">', html)
+        self.assertEqual(parser.landmarks.count("main"), 1)
+        self.assertIn("nav", parser.landmarks)
+        self.assertEqual(parser.duplicate_ids, set())
+        self.assertEqual(parser.unlabelled_controls, [])
+        self.assertTrue(all(label and label in parser.ids for label in parser.dialog_labels))
+        self.assertNotRegex(html, r'tabindex="[1-9]')
+        self.assertGreaterEqual(contrast('#20372f', '#f4f5ef'), 4.5)
+        self.assertGreaterEqual(contrast('#ffffff', '#25674e'), 4.5)

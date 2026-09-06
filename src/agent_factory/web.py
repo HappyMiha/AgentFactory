@@ -1,6 +1,10 @@
 """Loopback-only FastAPI host for the Local Control Center."""
 
 import sqlite3
+import asyncio
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 import json
 import hashlib
 from contextlib import asynccontextmanager, closing
@@ -14,8 +18,10 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Reques
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
+from .config import config_path_for_workspace
+from .local_games import LocalGames, GameConflict, local_games_lock
 from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
 
@@ -49,6 +55,24 @@ from .orchestration.temporal.client import (
     workflow_snapshot,
 )
 from .orchestration.temporal.settings import TemporalSettings
+
+class GameCreateCommand(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    command_id: str = Field(min_length=36, max_length=36)
+
+
+class GameSaveCommand(GameCreateCommand):
+    expected_revision: StrictInt = Field(ge=1)
+    title: str = Field(min_length=1, max_length=160)
+    idea: str = Field(max_length=6000)
+    model_key: str = Field(max_length=200)
+    view_step: StrictInt = Field(ge=0, le=4)
+
+
+class GameSubmitCommand(GameCreateCommand):
+    expected_revision: StrictInt = Field(ge=1)
+    confirmed: StrictBool = False
+
 
 T = TypeVar("T")
 
@@ -236,6 +260,45 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
     workspace = workspace.expanduser().resolve()
     database = database.expanduser().resolve()
     temporal_settings = TemporalSettings.from_env()
+    probe_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="provider-health")
+    probe_guard = threading.RLock()
+    probe_cache = {"future": None, "key": None, "finished": 0.0}
+
+    def provider_configuration_key():
+        path = config_path_for_workspace("providers", workspace)
+        return (str(path), hashlib.sha256(path.read_bytes()).hexdigest())
+
+    def collect_provider_health():
+        # SQLite connections are created, used and closed in this same worker.
+        with closing(SQLiteStorage(database)) as storage:
+            return AgentFactoryService(storage, workspace=workspace).providers()
+
+    async def provider_snapshot():
+        key = provider_configuration_key()
+        with probe_guard:
+            future = probe_cache["future"]
+            fresh = (probe_cache["key"] == key and
+                     time.monotonic() - probe_cache["finished"] < 5)
+            if future is None or (future.done() and not fresh):
+                future = probe_executor.submit(collect_provider_health)
+                probe_cache.update(future=future, key=key, finished=0.0)
+                def completed(done):
+                    with probe_guard:
+                        if probe_cache["future"] is done:
+                            probe_cache["finished"] = time.monotonic()
+                future.add_done_callback(completed)
+            selected_key = probe_cache["key"]
+        try:
+            # Cancellation/timeout of one HTTP reader must not cancel another's
+            # shared probe or enqueue a second slow CLI batch.
+            result = await asyncio.wait_for(asyncio.shield(asyncio.wrap_future(future)), 10)
+        except TimeoutError:
+            raise HTTPException(503, "provider_health_pending") from None
+        except Exception:
+            raise HTTPException(503, "provider_health_unavailable") from None
+        if selected_key != provider_configuration_key() or selected_key != key:
+            raise HTTPException(503, "provider_configuration_changed")
+        return result
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -243,7 +306,10 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
             app.state.temporal_client = await connect_temporal(
                 temporal_settings, initialize_namespace=True
             )
-        yield
+        try:
+            yield
+        finally:
+            probe_executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(
         title="Agent Factory Local Control Center",
@@ -425,7 +491,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
                 awaiting_approval=sum(item.status == "pending" for item in approvals),
             ),
             runs=runs[-10:][::-1],
-            providers=service.providers(),
+            providers=await provider_snapshot(),
             pending_approvals=[item for item in approvals if item.status == "pending"],
             recent_failures=failures,
             operations=service.operational_state(),
@@ -434,6 +500,70 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
     @app.get("/api/executions", response_model=dict[str, list[dict[str, Any]]])
     async def executions(service: Service) -> dict[str, list[dict[str, Any]]]:
         return service.active_executions()
+
+    def games_call(request, operation):
+        try:
+            # Concurrent first-page reads must not race database migrations.
+            with local_games_lock(database):
+                storage = SQLiteStorage(database)
+            with closing(storage):
+                return operation(LocalGames(storage, workspace), request.state.local_principal.actor)
+        except KeyError:
+            raise HTTPException(404, 'game_not_found') from None
+        except GameConflict as error:
+            raise HTTPException(409, str(error)) from None
+        except ValueError as error:
+            allowed = {'invalid_text', 'invalid_command', 'invalid_version_or_step', 'idea_required',
+                       'model_required', 'model_unavailable', 'provider_catalog_unavailable'}
+            code = str(error) if str(error) in allowed else 'invalid_game_request'
+            raise HTTPException(400, code) from None
+
+    @app.get('/api/games/models')
+    def game_models(request: Request):
+        return games_call(request, lambda games, actor: {'items': games.model_choices()})
+
+    @app.get('/api/games/starts')
+    def game_starts(request: Request, q: str = Query('', max_length=200), offset: Offset = 0, limit: Limit = 20):
+        return games_call(request, lambda games, actor: games.list(actor, q=q, offset=offset, limit=limit))
+
+    @app.post('/api/games/starts')
+    def game_create(request: Request, command: GameCreateCommand):
+        return games_call(request, lambda games, actor: games.create(actor, command.command_id))
+
+    @app.get('/api/games/missions')
+    def game_missions(request: Request, q: str = Query('', max_length=200), offset: Offset = 0, limit: Limit = 20):
+        return games_call(request, lambda games, actor: games.existing(actor, q=q, offset=offset, limit=limit))
+
+    @app.get('/api/games/missions/{mission_id}')
+    def game_mission(mission_id: int, request: Request):
+        return games_call(request, lambda games, actor: games.project(mission_id, actor))
+
+    @app.get('/api/games/starts/{ident}')
+    def game_start(ident: str, request: Request):
+        return games_call(request, lambda games, actor: games.detail(ident, actor))
+
+    @app.post('/api/games/starts/{ident}/save')
+    def game_save(ident: str, request: Request, command: GameSaveCommand):
+        return games_call(request, lambda games, actor: games.save(ident, actor, command.command_id,
+            command.expected_revision, title=command.title, idea=command.idea,
+            model_key=command.model_key, view_step=command.view_step))
+
+    @app.post('/api/games/starts/{ident}/submit')
+    def game_submit(ident: str, request: Request, command: GameSubmitCommand,
+                    confirmed: str | None = Header(default=None, alias='X-Agent-Factory-Confirm')):
+        if command.confirmed is not True or confirmed != 'true':
+            raise HTTPException(400, 'confirmation_required')
+        return games_call(request, lambda games, actor: games.materialize(ident, actor, command.command_id, command.expected_revision))
+
+    @app.get('/api/games/starts/{ident}/versions')
+    def game_versions(ident: str, request: Request, q: str = Query('', max_length=200), offset: Offset = 0, limit: Limit = 20):
+        return games_call(request, lambda games, actor: games.versions(ident, actor, q=q, offset=offset, limit=limit))
+
+    @app.get('/api/work-item-filters')
+    async def work_item_filters(service: Service, project_id: int | None = None):
+        rows = service.work_items(project_id)
+        return {key: sorted({getattr(row, key) for row in rows if getattr(row, key)})
+                for key in ('status', 'kind', 'priority', 'assignee')}
 
     @app.get("/api/environment/missions", response_model=dict)
     def environment_missions(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=200)):
@@ -477,7 +607,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
         ).fetchone()
         current_version = int(migration_row["current_version"])
         latest_version = max(version for version, _ in MIGRATIONS)
-        providers = service.providers()
+        providers = await provider_snapshot()
         agents = service.agents()
         operational = service.operational_state()
         safety = service.storage.policy_state()
@@ -534,8 +664,11 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
         priority: str | None = None,
         dependency: int | None = None,
         assignee: str | None = None,
+        q: str = Query("", max_length=200),
     ) -> Page[WorkItemView]:
         rows = service.work_items(project_id)
+        if q:
+            rows = [item for item in rows if q.casefold() in (item.title + " " + item.description).casefold()]
         if kind is not None:
             rows = [item for item in rows if item.kind == kind]
         if status is not None:
@@ -867,7 +1000,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
     async def providers(
         service: Service, offset: Offset = 0, limit: Limit = 50
     ) -> Page[ProviderView]:
-        return _page(service.providers(), offset, limit)
+        return _page(await provider_snapshot(), offset, limit)
 
     @app.get("/api/reviews", response_model=Page[ReviewView])
     async def reviews(
@@ -965,7 +1098,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
 
     @app.get("/api/integrations", response_model=list[IntegrationStatus])
     async def integrations(service: Service) -> list[IntegrationStatus]:
-        provider_states = service.providers()
+        provider_states = await provider_snapshot()
         unhealthy = sum(item.status not in {"ready", "disabled"} for item in provider_states)
         return [
             IntegrationStatus(
@@ -1003,6 +1136,10 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
             return HumanControlPlaneService(storage).act(**command.model_dump(exclude={"confirmed"}))
         finally:
             storage.close()
+
+    @app.get('/operations', include_in_schema=False)
+    async def operations_shell(request: Request) -> FileResponse:
+        return FileResponse(static_directory / ('operations.html' if request.state.local_principal else 'login.html'))
 
     @app.get("/", include_in_schema=False)
     async def dashboard_shell(request: Request) -> FileResponse:
