@@ -2122,11 +2122,20 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
+      "scopes": [
+        "cloud:contracts/v1/server-workers.json",
+        "cloud:docs/server-workers.md",
+        "cloud:pyproject.toml",
+        "cloud:scripts/qualify_workers.py",
+        "cloud:src/agentfactory_cloud/server_inventory.py",
+        "cloud:src/agentfactory_cloud/worker_fleet.py",
+        "cloud:tests/test_server_inventory.py",
+        "cloud:tests/test_worker_fleet.py"
+      ],
+      "updated_at": "2026-09-06T04:15:14+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -2142,7 +2151,8 @@
       "source_dependencies": [
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
-      ]
+      ],
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
     },
     "cloud:AF-CLD-025": {
       "dependencies": [
@@ -5145,6 +5155,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-CLD-023-69a31017",
       "claim_id": "f3534988-698b-489d-96f7-b2d18342e5b1"
+    },
+    {
+      "operation_id": "eea294d2-4f4a-47a7-a2ed-6d8a112866dc",
+      "at": "2026-09-06T04:15:14+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
     }
   ],
   "migration": {
