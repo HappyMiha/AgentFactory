@@ -425,7 +425,7 @@
         "core:src/agent_factory/installation_archive.py",
         "core:tests/test_installation_archive.py"
       ],
-      "updated_at": "2026-09-06T10:27:48+00:00",
+      "updated_at": "2026-09-06T10:49:00+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/27",
       "resources": [
@@ -446,7 +446,7 @@
         "core:AF-GC-013"
       ],
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463",
-      "review_head": "566872eb8cba34832a9ec22e043c6d12d6b1d2fe"
+      "review_head": "e41872067f21db677a3a02b9fb9782751a16f276"
     },
     "core:AF-GC-015": {
       "dependencies": [
@@ -6038,6 +6038,16 @@
       "note": "Current connection scope component merged; whole task awaits trusted evaluator and live route acceptance. Preserve branch; release active scopes.",
       "branch": "agent/HappySnowman/AF-GC-009-b387c7d0",
       "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
+    },
+    {
+      "operation_id": "4b2ce2f0-68fe-4556-9b0e-17b495aaeb17",
+      "at": "2026-09-06T10:49:00+00:00",
+      "action": "review",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
   ],
   "migration": {
