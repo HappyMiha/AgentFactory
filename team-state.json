@@ -264,7 +264,7 @@
         "core:tests/test_runtime_effects.py",
         "core:tests/test_worker_admission_runtime.py"
       ],
-      "updated_at": "2026-09-06T15:22:55+00:00",
+      "updated_at": "2026-09-06T15:38:47+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/39",
       "resources": [
@@ -288,7 +288,7 @@
         "core:AF-GC-025"
       ],
       "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d",
-      "review_head": "a2473be3bfdd2c76656e94b5db2f13e08a8c09cb"
+      "review_head": "4669f0686de301b9d90678b4f1b7d44a101a2ecb"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6571,6 +6571,16 @@
       "note": "PR38 merged d373fbe after both PC reviews. Reviewing PR39 runtime effects; next installer admission composition. Whole014 incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "73de3f35-12ad-4bcd-b5f1-a30c1b0e627c",
+      "at": "2026-09-06T15:38:47+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-fe373f19",
+      "claim_id": "e0311679-963a-46ff-9574-6cd1d154123d"
     }
   ],
   "migration": {
