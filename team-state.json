@@ -425,8 +425,8 @@
         "core:src/agent_factory/installation_archive.py",
         "core:tests/test_installation_archive.py"
       ],
-      "updated_at": "2026-09-06T10:49:00+00:00",
-      "note": "",
+      "updated_at": "2026-09-06T10:57:53+00:00",
+      "note": "Archive staging component merged and official layouts checked; durable installer, recovery/UI and clean VM acceptance remain.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/27",
       "resources": [
         "core:environment-bootstrap",
@@ -6046,6 +6046,16 @@
       "task": "core:AF-GC-014",
       "worker": "HappyDucky02",
       "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "8fa655d6-a494-4421-ae34-e75f95b14ebe",
+      "at": "2026-09-06T10:57:53+00:00",
+      "action": "heartbeat",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "Archive staging component merged and official layouts checked; durable installer, recovery/UI and clean VM acceptance remain.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
