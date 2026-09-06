@@ -431,7 +431,7 @@
         "core:src/agent_factory/installation_archive.py",
         "core:tests/test_installation_archive.py"
       ],
-      "updated_at": "2026-09-06T10:22:49+00:00",
+      "updated_at": "2026-09-06T10:27:48+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/27",
       "resources": [
@@ -452,7 +452,7 @@
         "core:AF-GC-013"
       ],
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463",
-      "review_head": "0de2cb7e0b7ecdac93de05f87c78406cba298f60"
+      "review_head": "566872eb8cba34832a9ec22e043c6d12d6b1d2fe"
     },
     "core:AF-GC-015": {
       "dependencies": [
@@ -6018,6 +6018,16 @@
     {
       "operation_id": "c6376387-620a-462c-92f4-0b58f3979380",
       "at": "2026-09-06T10:22:49+00:00",
+      "action": "review",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "e15a5920-8c42-4091-8a7d-6a78ac68807b",
+      "at": "2026-09-06T10:27:48+00:00",
       "action": "review",
       "task": "core:AF-GC-014",
       "worker": "HappyDucky02",
