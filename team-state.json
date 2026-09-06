@@ -776,8 +776,8 @@
         "core:tests/test_eligibility_browser.py",
         "core:tests/test_eligibility_web.py"
       ],
-      "updated_at": "2026-09-06T05:42:24+00:00",
-      "note": "",
+      "updated_at": "2026-09-06T06:10:27+00:00",
+      "note": "Addressed review: obsolete credential responses discarded; canonical scope fixture. Exact head checks passed; peer re-review requested.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/18",
       "resources": [
         "shared:minor-access",
@@ -797,7 +797,7 @@
         "core:AF-GC-007"
       ],
       "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87",
-      "review_head": "0abfb85e098d3aa4471b503916e0d815f2e73caf"
+      "review_head": "add1b34f8b58fc428413f547b117e6184147eb67"
     },
     "core:AF-GC-026": {
       "dependencies": [
@@ -5375,6 +5375,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
       "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
+    },
+    {
+      "operation_id": "b4296d80-6c20-49f0-a7c3-d63006f7eccd",
+      "at": "2026-09-06T06:10:27+00:00",
+      "action": "review",
+      "task": "core:AF-GC-025",
+      "worker": "HappySnowman",
+      "note": "Addressed review: obsolete credential responses discarded; canonical scope fixture. Exact head checks passed; peer re-review requested.",
+      "branch": "agent/HappySnowman/AF-GC-025-fc738b9b",
+      "claim_id": "25dfe1df-b7f1-45a9-95e8-70b1e9bf9e87"
     }
   ],
   "migration": {
