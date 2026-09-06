@@ -2130,12 +2130,22 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T07:09:08+00:00",
-      "note": "Accepted Core043 enables a fresh continuation; preserve merged inventory component and historical branch.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
+      "scopes": [
+        "cloud:contracts/v1/server-workers.json",
+        "cloud:docs/game-brief-intake.md",
+        "cloud:docs/server-workers.md",
+        "cloud:pyproject.toml",
+        "cloud:scripts/qualify_workers.py",
+        "cloud:src/agentfactory_cloud/worker_gateway.py",
+        "cloud:src/agentfactory_cloud/worker_gateway_api.py",
+        "cloud:tests/test_worker_gateway.py",
+        "cloud:tests/test_worker_gateway_api.py"
+      ],
+      "updated_at": "2026-09-06T07:09:56+00:00",
+      "note": "Continue after accepted Core043: authenticated admission component and isolated lab fault checks; preserve earlier inventory component history.",
       "pr": null,
       "resources": [
         "core:worker-runtime",
@@ -2151,7 +2161,7 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
+      "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
     },
     "cloud:AF-CLD-025": {
       "dependencies": [
@@ -5577,6 +5587,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DOC-001-51a6f25d",
       "claim_id": "70907554-45d2-4130-9e93-38f98bba6c07"
+    },
+    {
+      "operation_id": "be3da712-b4c4-4a41-b69a-4da35989e12c",
+      "at": "2026-09-06T07:09:56+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "Continue after accepted Core043: authenticated admission component and isolated lab fault checks; preserve earlier inventory component history.",
+      "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
+      "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
     }
   ],
   "migration": {
