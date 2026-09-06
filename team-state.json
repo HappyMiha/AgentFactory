@@ -253,16 +253,12 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-c7430c9a",
-      "scopes": [
-        "core:docs/provider-qualification.md",
-        "core:src/agent_factory/provider_canary_evaluator.py",
-        "core:tests/test_provider_canary_evaluator.py"
-      ],
-      "updated_at": "2026-09-06T12:42:14+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T12:54:20+00:00",
+      "note": "Arithmetic smoke PR31 merged; whole capability task incomplete. Preserve branch and free scopes pending next agreed increment.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/31",
       "resources": [
         "shared:provider-connection",
@@ -6270,6 +6266,16 @@
       "note": "PR32 exact policy binding pushed and checks passed; independent peer review requested. Full installer acceptance remains incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "34977201-925a-406d-a289-fd58592febd7",
+      "at": "2026-09-06T12:54:20+00:00",
+      "action": "block",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Arithmetic smoke PR31 merged; whole capability task incomplete. Preserve branch and free scopes pending next agreed increment.",
+      "branch": "agent/HappySnowman/AF-GC-009-c7430c9a",
+      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
     }
   ],
   "migration": {
