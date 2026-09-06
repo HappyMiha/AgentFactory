@@ -253,7 +253,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
       "scopes": [
@@ -266,9 +266,9 @@
         "core:tests/test_credential_web.py",
         "core:tests/test_provider_connection_catalog.py"
       ],
-      "updated_at": "2026-09-06T07:59:32+00:00",
+      "updated_at": "2026-09-06T08:10:52+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/23",
       "resources": [
         "shared:provider-connection",
         "core:provider-model",
@@ -289,7 +289,8 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027",
+      "review_head": "da376b4a0f78243fa79a92415544079d86311851"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5772,6 +5773,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-013-8d3c500a",
       "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
+    },
+    {
+      "operation_id": "a96b6496-2dd0-4c3a-84d2-b1a32963aba4",
+      "at": "2026-09-06T08:10:52+00:00",
+      "action": "review",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
     }
   ],
   "migration": {
