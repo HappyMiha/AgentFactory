@@ -281,27 +281,11 @@
       "dependencies": [
         "core:AF-GC-039"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
-      "scopes": [
-        "core:docs/local-credentials.md",
-        "core:src/agent_factory/credential_connections.py",
-        "core:src/agent_factory/credential_web.py",
-        "core:src/agent_factory/credentials.py",
-        "core:src/agent_factory/os_credentials.py",
-        "core:src/agent_factory/static/credentials.html",
-        "core:src/agent_factory/static/credentials.js",
-        "core:src/agent_factory/static/index.html",
-        "core:src/agent_factory/web.py",
-        "core:tests/test_credential_browser.py",
-        "core:tests/test_credential_connections.py",
-        "core:tests/test_credential_web.py",
-        "core:tests/test_credentials.py",
-        "core:tests/test_os_credentials.py",
-        "core:tests/test_web.py"
-      ],
-      "updated_at": "2026-09-06T04:24:19+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T04:44:15+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/15",
       "resources": [
@@ -322,7 +306,9 @@
         "core:AF-GC-039"
       ],
       "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222",
-      "review_head": "35d0819b711cb48df1e72b03b9f65988c0fd5055"
+      "review_head": "35d0819b711cb48df1e72b03b9f65988c0fd5055",
+      "completed_commit": "9866a0eb4aae57c799ac336144970428660b3da4",
+      "reviewed_head": "35d0819b711cb48df1e72b03b9f65988c0fd5055"
     },
     "core:AF-GC-011": {
       "dependencies": [
@@ -5188,6 +5174,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-011-ada917bc",
       "claim_id": "9a7e089f-595d-4123-b562-39e2078cf473"
+    },
+    {
+      "operation_id": "0e0b8af7-194d-4bdd-8f3a-07e5ad7a1099",
+      "at": "2026-09-06T04:44:15+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-010",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
+      "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
     }
   ],
   "migration": {
