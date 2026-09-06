@@ -253,19 +253,12 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-45f21110",
-      "scopes": [
-        "core:docs/execution-telemetry.md",
-        "core:src/agent_factory/execution_telemetry.py",
-        "core:src/agent_factory/storage.py",
-        "core:tests/test_execution_reservations.py",
-        "core:tests/test_execution_telemetry.py",
-        "core:tests/test_storage_migrations.py"
-      ],
-      "updated_at": "2026-09-06T13:46:49+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T13:53:46+00:00",
+      "note": "PR34 budget reservation prerequisite merged; whole009 incomplete. Preserve branch; next host composition requires fresh exact scope and authority contract.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/34",
       "resources": [
         "shared:provider-connection",
@@ -6409,6 +6402,16 @@
       "note": "PR35 corrected setup disk budget pushed; 51 tests passed including browser flows. Independent review pending; full installer incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "c0191a29-7a74-4ce8-86fa-6b954bd2dbef",
+      "at": "2026-09-06T13:53:46+00:00",
+      "action": "block",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "PR34 budget reservation prerequisite merged; whole009 incomplete. Preserve branch; next host composition requires fresh exact scope and authority contract.",
+      "branch": "agent/HappySnowman/AF-GC-009-45f21110",
+      "claim_id": "a506b319-a303-4895-956b-e5a021dea54a"
     }
   ],
   "migration": {
