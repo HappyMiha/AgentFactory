@@ -11,6 +11,7 @@ from typing import Any
 
 from .lifecycle import TRANSITIONS, ensure_transition
 from .models import AssignmentLease, Budget, Status, WorkItem
+from .worker_admission import ADMISSION_MIGRATION
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
     (1, """
@@ -6534,6 +6535,7 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
             PRIMARY KEY(actor,command_id)
         );
     """),
+    (75, ADMISSION_MIGRATION),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]
@@ -7653,6 +7655,7 @@ class SQLiteStorage:
         if not reason.strip():
             raise ValueError("Worker lifecycle reason is required")
         with self.db:
+            self._begin_immediate()
             row = self.db.execute(
                 "SELECT state FROM worker_lifecycle WHERE worker_id=?", (worker_id,)
             ).fetchone()
@@ -7771,46 +7774,62 @@ class SQLiteStorage:
         *,
         now: datetime | None = None,
     ) -> int:
-        current = _timestamp(_utc(now))
+        from .worker_admission import admission_for_assignment
+
         self._begin_immediate()
         try:
-            self._expire_scheduler_leases(current)
-            lease = self._assert_fenced_lease(
-                assignment_id, fencing_token, current
-            )
-            ordinal = int(
-                self.db.execute(
-                    "SELECT COALESCE(MAX(ordinal),0)+1 FROM attempts WHERE assignment_id=?",
-                    (assignment_id,),
-                ).fetchone()[0]
-            )
-            cursor = self.db.execute(
-                """INSERT INTO attempts(
-                       identity,assignment_id,ordinal,status,updated_at
-                   ) VALUES(?,?,?,'claimed',?)""",
-                (
-                    self._identity("attempt"),
-                    assignment_id,
-                    ordinal,
-                    current,
-                ),
-            )
-            attempt_id = int(cursor.lastrowid)
-            self._event(
-                "attempt.claimed",
-                "attempt",
-                attempt_id,
-                {
-                    "task_id": int(lease["task_id"]),
-                    "assignment_id": assignment_id,
-                    "fencing_token": fencing_token,
-                    "ordinal": ordinal,
-                },
+            if admission_for_assignment(self, assignment_id) is not None:
+                raise PermissionError("Admitted assignments already have one bound attempt")
+            attempt_id = self._create_assignment_attempt_in_transaction(
+                assignment_id, fencing_token, now=now
             )
             self.db.commit()
         except Exception:
             self.db.rollback()
             raise
+        return attempt_id
+
+    def _create_assignment_attempt_in_transaction(
+        self,
+        assignment_id: int,
+        fencing_token: int,
+        *,
+        now: datetime | None = None,
+    ) -> int:
+        current = _timestamp(_utc(now))
+        self._expire_scheduler_leases(current)
+        lease = self._assert_fenced_lease(
+            assignment_id, fencing_token, current
+        )
+        ordinal = int(
+            self.db.execute(
+                "SELECT COALESCE(MAX(ordinal),0)+1 FROM attempts WHERE assignment_id=?",
+                (assignment_id,),
+            ).fetchone()[0]
+        )
+        cursor = self.db.execute(
+            """INSERT INTO attempts(
+                   identity,assignment_id,ordinal,status,updated_at
+               ) VALUES(?,?,?,'claimed',?)""",
+            (
+                self._identity("attempt"),
+                assignment_id,
+                ordinal,
+                current,
+            ),
+        )
+        attempt_id = int(cursor.lastrowid)
+        self._event(
+            "attempt.claimed",
+            "attempt",
+            attempt_id,
+            {
+                "task_id": int(lease["task_id"]),
+                "assignment_id": assignment_id,
+                "fencing_token": fencing_token,
+                "ordinal": ordinal,
+            },
+        )
         return attempt_id
 
     def store_execution_context_package(
@@ -7843,9 +7862,9 @@ class SQLiteStorage:
         if byte_count != len(encoded) or token_count != (len(encoded) + 3) // 4:
             raise ValueError("Context package size metadata does not match its content")
 
-        current = _timestamp(_utc(now))
         self._begin_immediate()
         try:
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
@@ -7972,9 +7991,9 @@ class SQLiteStorage:
         normalized_tools = tuple(sorted({tool.strip() for tool in allowed_tools if tool.strip()}))
         if not normalized_tools:
             raise ValueError("Hermes requires an explicit non-empty tool allowlist")
-        current = _timestamp(_utc(now))
         self._begin_immediate()
         try:
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
@@ -8263,61 +8282,80 @@ class SQLiteStorage:
         context_digest: str | None = None,
         fencing_token: int | None = None,
     ) -> int:
-        if not runtime.strip():
-            raise ValueError("Runtime identity is required")
-        if (context_digest is None) != (fencing_token is None):
-            raise ValueError("Context digest and fencing token must be supplied together")
+        from .worker_admission import admission_for_assignment
+
         self._begin_immediate()
         try:
-            assignment = self.db.execute(
-                "SELECT task_id,status FROM assignments WHERE id=?",
-                (assignment_id,),
-            ).fetchone()
-            if not assignment:
-                raise KeyError(f"Unknown assignment: {assignment_id}")
-            if str(assignment["status"]) != "active":
-                raise ValueError("Runtime session requires an active assignment")
-            context_package_id = None
-            if context_digest is not None and fencing_token is not None:
-                current = _timestamp(_utc())
-                self._expire_scheduler_leases(current)
-                self._assert_fenced_lease(assignment_id, fencing_token, current)
-                context_package_id = self.assert_execution_context_scope(
-                    context_digest,
-                    task_id=int(assignment["task_id"]),
-                    assignment_id=assignment_id,
-                    fencing_token=fencing_token,
-                )
-            cursor = self.db.execute(
-                """INSERT INTO worker_sessions(
-                       identity,assignment_id,runtime,status,request_json,
-                       context_package_id,context_digest,updated_at
-                   ) VALUES(?,?,?,'starting',?,?,?,CURRENT_TIMESTAMP)""",
-                (
-                    self._identity("worker-session"),
-                    assignment_id,
-                    runtime,
-                    json.dumps(request, sort_keys=True),
-                    context_package_id,
-                    context_digest,
-                ),
-            )
-            session_id = int(cursor.lastrowid)
-            self._event(
-                "runtime.session.created",
-                "worker_session",
-                session_id,
-                {
-                    "task_id": int(assignment["task_id"]),
-                    "assignment_id": assignment_id,
-                    "runtime": runtime,
-                    "context_digest": context_digest,
-                },
+            if admission_for_assignment(self, assignment_id) is not None:
+                raise PermissionError("Admitted assignments require a bound runtime reservation")
+            session_id = self._create_runtime_session_in_transaction(
+                assignment_id=assignment_id, runtime=runtime, request=request,
+                context_digest=context_digest, fencing_token=fencing_token,
             )
             self.db.commit()
         except Exception:
             self.db.rollback()
             raise
+        return session_id
+
+    def _create_runtime_session_in_transaction(
+        self,
+        *,
+        assignment_id: int,
+        runtime: str,
+        request: dict[str, Any],
+        context_digest: str | None = None,
+        fencing_token: int | None = None,
+    ) -> int:
+        if not runtime.strip():
+            raise ValueError("Runtime identity is required")
+        if (context_digest is None) != (fencing_token is None):
+            raise ValueError("Context digest and fencing token must be supplied together")
+        assignment = self.db.execute(
+            "SELECT task_id,status FROM assignments WHERE id=?",
+            (assignment_id,),
+        ).fetchone()
+        if not assignment:
+            raise KeyError(f"Unknown assignment: {assignment_id}")
+        if str(assignment["status"]) != "active":
+            raise ValueError("Runtime session requires an active assignment")
+        context_package_id = None
+        if context_digest is not None and fencing_token is not None:
+            current = _timestamp(_utc())
+            self._expire_scheduler_leases(current)
+            self._assert_fenced_lease(assignment_id, fencing_token, current)
+            context_package_id = self.assert_execution_context_scope(
+                context_digest,
+                task_id=int(assignment["task_id"]),
+                assignment_id=assignment_id,
+                fencing_token=fencing_token,
+            )
+        cursor = self.db.execute(
+            """INSERT INTO worker_sessions(
+                   identity,assignment_id,runtime,status,request_json,
+                   context_package_id,context_digest,updated_at
+               ) VALUES(?,?,?,'starting',?,?,?,CURRENT_TIMESTAMP)""",
+            (
+                self._identity("worker-session"),
+                assignment_id,
+                runtime,
+                json.dumps(request, sort_keys=True),
+                context_package_id,
+                context_digest,
+            ),
+        )
+        session_id = int(cursor.lastrowid)
+        self._event(
+            "runtime.session.created",
+            "worker_session",
+            session_id,
+            {
+                "task_id": int(assignment["task_id"]),
+                "assignment_id": assignment_id,
+                "runtime": runtime,
+                "context_digest": context_digest,
+            },
+        )
         return session_id
 
     def runtime_session(self, session_id: int):
@@ -8328,11 +8366,39 @@ class SQLiteStorage:
             raise KeyError(f"Unknown runtime session: {session_id}")
         return row
 
+    def _assert_admitted_runtime_session(self, session: sqlite3.Row) -> None:
+        from .worker_admission import admission_for_assignment
+
+        admitted = admission_for_assignment(self, int(session["assignment_id"]))
+        if admitted is None:
+            return
+        if admitted["runtime_session_id"] != int(session["id"]):
+            raise PermissionError("Runtime session does not match its admission reservation")
+        self._assert_fenced_lease(
+            int(session["assignment_id"]), int(admitted["fencing_token"]), _timestamp(_utc())
+        )
+
+    def assert_runtime_session_authority(
+        self, session_id: int, *, allowed_states: tuple[str, ...] | None = None
+    ) -> None:
+        self._begin_immediate()
+        try:
+            session = self.runtime_session(session_id)
+            self._assert_admitted_runtime_session(session)
+            if allowed_states is not None and session["status"] not in allowed_states:
+                raise PermissionError("Runtime session state denies this operation")
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+
     def start_runtime_session(self, session_id: int, external_session_id: str) -> None:
         if not external_session_id.strip():
             raise ValueError("External session identity is required")
         with self.db:
+            self._begin_immediate()
             row = self.runtime_session(session_id)
+            self._assert_admitted_runtime_session(row)
             if str(row["status"]) != "starting":
                 raise ValueError("Only a starting runtime session can bind externally")
             self.db.execute(
@@ -8351,7 +8417,9 @@ class SQLiteStorage:
 
     def resume_runtime_session(self, session_id: int) -> None:
         with self.db:
+            self._begin_immediate()
             row = self.runtime_session(session_id)
+            self._assert_admitted_runtime_session(row)
             status = str(row["status"])
             if status == "running":
                 return
@@ -8389,7 +8457,9 @@ class SQLiteStorage:
     def heartbeat_runtime_session(self, session_id: int) -> str:
         heartbeat = datetime.now(timezone.utc).isoformat(timespec="microseconds")
         with self.db:
+            self._begin_immediate()
             row = self.runtime_session(session_id)
+            self._assert_admitted_runtime_session(row)
             if str(row["status"]) != "running":
                 raise ValueError("Only a running runtime session can heartbeat")
             self.db.execute(
@@ -8420,6 +8490,8 @@ class SQLiteStorage:
         with self.db:
             self._begin_immediate()
             session = self.runtime_session(session_id)
+            if mutable or kind in {"artifact", "tool_call"}:
+                self._assert_admitted_runtime_session(session)
             if str(session["status"]) not in {"starting", "running", "suspended"}:
                 raise ValueError("Cannot append events to a terminal runtime session")
             sequence = int(
@@ -8500,7 +8572,10 @@ class SQLiteStorage:
         if status not in {"succeeded", "failed", "cancelled"}:
             raise ValueError("Runtime terminal status is invalid")
         with self.db:
+            self._begin_immediate()
             row = self.runtime_session(session_id)
+            if status == "succeeded":
+                self._assert_admitted_runtime_session(row)
             current = str(row["status"])
             if current in {"succeeded", "failed", "cancelled"}:
                 if current != status:
@@ -8841,6 +8916,42 @@ class SQLiteStorage:
         conflict_action: str = "serialize",
         now: datetime | None = None,
     ) -> AssignmentLease:
+        from .worker_admission import registered_worker
+
+        self._begin_immediate()
+        try:
+            bound_project = self.db.execute(
+                """SELECT 1 FROM worker_admission_projects p
+                     JOIN work_items t ON t.project_id=p.project_id WHERE t.id=?""",
+                (task_id,),
+            ).fetchone()
+            if registered_worker(self, worker) or bound_project:
+                raise PermissionError("Registered workers and projects require WorkerAdmissionService.admit")
+            claim = self._claim_runnable_task_in_transaction(
+                task_id, worker, runtime, ttl_seconds=ttl_seconds,
+                conflict_domains=conflict_domains, conflict_action=conflict_action, now=now,
+            )
+            self.db.commit()
+        except ConflictDomainBusyError:
+            # Preserve the legacy durable conflict event; admission rolls back its whole transaction.
+            self.db.commit()
+            raise
+        except Exception:
+            self.db.rollback()
+            raise
+        return claim
+
+    def _claim_runnable_task_in_transaction(
+        self,
+        task_id: int,
+        worker: str,
+        runtime: str,
+        *,
+        ttl_seconds: int = 60,
+        conflict_domains: list[str] | tuple[str, ...] | None = None,
+        conflict_action: str = "serialize",
+        now: datetime | None = None,
+    ) -> AssignmentLease:
         if not worker.strip() or not runtime.strip():
             raise ValueError("Worker and runtime are required")
         if not 1 <= ttl_seconds <= 86400:
@@ -8852,141 +8963,135 @@ class SQLiteStorage:
         expires_at = _timestamp(instant + timedelta(seconds=ttl_seconds))
         conflict_error: ConflictDomainBusyError | None = None
         claim: AssignmentLease | None = None
-        self._begin_immediate()
-        try:
-            self._assert_dispatch_allowed()
-            self._expire_scheduler_leases(current)
-            row = self.db.execute(
-                "SELECT id,project_id,kind,status,dependencies_json FROM work_items WHERE id=?",
-                (task_id,),
-            ).fetchone()
-            if not row:
-                raise KeyError(f"Unknown task: {task_id}")
-            blockers = self._task_blockers(row, current)
-            if blockers:
-                raise TaskNotRunnableError(
-                    f"Task {task_id} is not runnable: {', '.join(blockers)}"
-                )
-            domains = _normalize_conflict_domains(
-                int(row["project_id"]), conflict_domains
+        self._assert_dispatch_allowed()
+        self._expire_scheduler_leases(current)
+        row = self.db.execute(
+            "SELECT id,project_id,kind,status,dependencies_json FROM work_items WHERE id=?",
+            (task_id,),
+        ).fetchone()
+        if not row:
+            raise KeyError(f"Unknown task: {task_id}")
+        blockers = self._task_blockers(row, current)
+        if blockers:
+            raise TaskNotRunnableError(
+                f"Task {task_id} is not runnable: {', '.join(blockers)}"
             )
-            active_rows = self.db.execute(
-                """SELECT DISTINCT a.id,a.task_id,d.domain
-                     FROM assignments a
-                     JOIN leases l ON l.assignment_id=a.id
-                     JOIN assignment_conflict_domains d ON d.assignment_id=a.id
-                    WHERE a.status='active' AND l.status='active' AND l.expires_at>?
-                    ORDER BY a.id,d.domain""",
-                (current,),
-            ).fetchall()
-            conflicting = tuple(
-                sorted(
-                    {
-                        int(active["id"])
-                        for active in active_rows
-                        if int(active["task_id"]) == task_id
-                        or any(
-                            _domains_overlap(domain, str(active["domain"]))
-                            for domain in domains
-                        )
-                    }
-                )
+        domains = _normalize_conflict_domains(
+            int(row["project_id"]), conflict_domains
+        )
+        active_rows = self.db.execute(
+            """SELECT DISTINCT a.id,a.task_id,d.domain
+                 FROM assignments a
+                 JOIN leases l ON l.assignment_id=a.id
+                 JOIN assignment_conflict_domains d ON d.assignment_id=a.id
+                WHERE a.status='active' AND l.status='active' AND l.expires_at>?
+                ORDER BY a.id,d.domain""",
+            (current,),
+        ).fetchall()
+        conflicting = tuple(
+            sorted(
+                {
+                    int(active["id"])
+                    for active in active_rows
+                    if int(active["task_id"]) == task_id
+                    or any(
+                        _domains_overlap(domain, str(active["domain"]))
+                        for domain in domains
+                    )
+                }
             )
-            if conflicting:
-                conflict = self.db.execute(
-                    """INSERT INTO scheduler_conflicts(
-                           identity,task_id,requested_domains_json,
-                           conflicting_assignment_ids_json,action
-                       ) VALUES(?,?,?,?,?)""",
-                    (
-                        self._identity("scheduler-conflict"),
-                        task_id,
-                        json.dumps(domains),
-                        json.dumps(conflicting),
-                        conflict_action,
-                    ),
-                )
-                conflict_id = int(conflict.lastrowid)
-                self._event(
-                    f"scheduler.conflict.{conflict_action}",
-                    "task",
+        )
+        if conflicting:
+            conflict = self.db.execute(
+                """INSERT INTO scheduler_conflicts(
+                       identity,task_id,requested_domains_json,
+                       conflicting_assignment_ids_json,action
+                   ) VALUES(?,?,?,?,?)""",
+                (
+                    self._identity("scheduler-conflict"),
                     task_id,
-                    {
-                        "task_id": task_id,
-                        "conflict_id": conflict_id,
-                        "domains": list(domains),
-                        "conflicting_assignment_ids": list(conflicting),
-                    },
-                )
-                conflict_error = ConflictDomainBusyError(
-                    conflicting, escalated=conflict_action == "escalate"
-                )
-            else:
-                assignment = self.db.execute(
-                    """INSERT INTO assignments(
-                           identity,task_id,agent_id,runtime,status,updated_at
-                       ) VALUES(?,?,?,?, 'active',?)""",
-                    (
-                        self._identity("assignment"),
-                        task_id,
-                        worker,
-                        runtime,
-                        current,
-                    ),
-                )
-                assignment_id = int(assignment.lastrowid)
-                self.db.executemany(
-                    """INSERT INTO assignment_conflict_domains(assignment_id,domain)
-                       VALUES(?,?)""",
-                    [(assignment_id, domain) for domain in domains],
-                )
-                fencing_token = int(
-                    self.db.execute(
-                        "SELECT COALESCE(MAX(fencing_token),0)+1 FROM leases"
-                    ).fetchone()[0]
-                )
-                lease = self.db.execute(
-                    """INSERT INTO leases(
-                           identity,assignment_id,fencing_token,status,expires_at,updated_at
-                       ) VALUES(?,?,?,'active',?,?)""",
-                    (
-                        self._identity("lease"),
-                        assignment_id,
-                        fencing_token,
-                        expires_at,
-                        current,
-                    ),
-                )
-                lease_id = int(lease.lastrowid)
-                self._event(
-                    "task.claimed",
-                    "task",
+                    json.dumps(domains),
+                    json.dumps(conflicting),
+                    conflict_action,
+                ),
+            )
+            conflict_id = int(conflict.lastrowid)
+            self._event(
+                f"scheduler.conflict.{conflict_action}",
+                "task",
+                task_id,
+                {
+                    "task_id": task_id,
+                    "conflict_id": conflict_id,
+                    "domains": list(domains),
+                    "conflicting_assignment_ids": list(conflicting),
+                },
+            )
+            conflict_error = ConflictDomainBusyError(
+                conflicting, escalated=conflict_action == "escalate"
+            )
+        else:
+            assignment = self.db.execute(
+                """INSERT INTO assignments(
+                       identity,task_id,agent_id,runtime,status,updated_at
+                   ) VALUES(?,?,?,?, 'active',?)""",
+                (
+                    self._identity("assignment"),
                     task_id,
-                    {
-                        "task_id": task_id,
-                        "worker": worker,
-                        "runtime": runtime,
-                        "assignment_id": assignment_id,
-                        "lease_id": lease_id,
-                        "fencing_token": fencing_token,
-                        "expires_at": expires_at,
-                        "conflict_domains": list(domains),
-                    },
-                )
-                claim = AssignmentLease(
-                    task_id=task_id,
-                    assignment_id=assignment_id,
-                    lease_id=lease_id,
-                    worker=worker,
-                    runtime=runtime,
-                    fencing_token=fencing_token,
-                    expires_at=expires_at,
-                    conflict_domains=domains,
-                )
-            self.db.commit()
-        except Exception:
-            self.db.rollback()
-            raise
+                    worker,
+                    runtime,
+                    current,
+                ),
+            )
+            assignment_id = int(assignment.lastrowid)
+            self.db.executemany(
+                """INSERT INTO assignment_conflict_domains(assignment_id,domain)
+                   VALUES(?,?)""",
+                [(assignment_id, domain) for domain in domains],
+            )
+            fencing_token = int(
+                self.db.execute(
+                    "SELECT COALESCE(MAX(fencing_token),0)+1 FROM leases"
+                ).fetchone()[0]
+            )
+            lease = self.db.execute(
+                """INSERT INTO leases(
+                       identity,assignment_id,fencing_token,status,expires_at,updated_at
+                   ) VALUES(?,?,?,'active',?,?)""",
+                (
+                    self._identity("lease"),
+                    assignment_id,
+                    fencing_token,
+                    expires_at,
+                    current,
+                ),
+            )
+            lease_id = int(lease.lastrowid)
+            self._event(
+                "task.claimed",
+                "task",
+                task_id,
+                {
+                    "task_id": task_id,
+                    "worker": worker,
+                    "runtime": runtime,
+                    "assignment_id": assignment_id,
+                    "lease_id": lease_id,
+                    "fencing_token": fencing_token,
+                    "expires_at": expires_at,
+                    "conflict_domains": list(domains),
+                },
+            )
+            claim = AssignmentLease(
+                task_id=task_id,
+                assignment_id=assignment_id,
+                lease_id=lease_id,
+                worker=worker,
+                runtime=runtime,
+                fencing_token=fencing_token,
+                expires_at=expires_at,
+                conflict_domains=domains,
+            )
         if conflict_error:
             raise conflict_error
         if claim is None:  # pragma: no cover - defensive invariant
@@ -9013,15 +9118,18 @@ class SQLiteStorage:
                 f"Assignment {assignment_id} has no active lease for fencing token "
                 f"{fencing_token}"
             )
+        from .worker_admission import guard_lease
+
+        guard_lease(self, assignment_id, fencing_token, current)
         return row
 
     def assert_fenced_lease(
         self, assignment_id: int, fencing_token: int, *, now: datetime | None = None
     ) -> None:
-        current = _timestamp(_utc(now))
         stale: StaleLeaseError | None = None
         self._begin_immediate()
         try:
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             try:
                 self._assert_fenced_lease(assignment_id, fencing_token, current)
@@ -9044,15 +9152,18 @@ class SQLiteStorage:
     ) -> str:
         if not 1 <= ttl_seconds <= 86400:
             raise ValueError("Lease TTL must be between 1 and 86400 seconds")
-        instant = _utc(now)
-        current = _timestamp(instant)
-        expires_at = _timestamp(instant + timedelta(seconds=ttl_seconds))
         with self.db:
             self._begin_immediate()
+            instant = _utc(now)
+            current = _timestamp(instant)
+            expires_at = _timestamp(instant + timedelta(seconds=ttl_seconds))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
             )
+            from .worker_admission import clamp_lease_expiry
+
+            expires_at = clamp_lease_expiry(self, assignment_id, expires_at)
             self.db.execute(
                 """UPDATE leases SET expires_at=?,version=version+1,updated_at=?
                     WHERE id=?""",
@@ -9080,9 +9191,9 @@ class SQLiteStorage:
     ) -> None:
         if outcome not in {"succeeded", "failed", "cancelled"}:
             raise ValueError("Assignment outcome must be succeeded, failed, or cancelled")
-        current = _timestamp(_utc(now))
         with self.db:
             self._begin_immediate()
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
@@ -9121,9 +9232,9 @@ class SQLiteStorage:
 
         if operation not in {"artifact", "commit"}:
             raise ValueError("Fenced operation must be artifact or commit")
-        current = _timestamp(_utc(now))
         with self.db:
             self._begin_immediate()
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
@@ -9152,9 +9263,9 @@ class SQLiteStorage:
         attempt_id: int | None = None,
         now: datetime | None = None,
     ) -> int:
-        current = _timestamp(_utc(now))
         self._begin_immediate()
         try:
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
@@ -10228,9 +10339,9 @@ class SQLiteStorage:
 
         if evidence_kind not in {"test_result", "diff", "review", "summary"}:
             raise ValueError(f"Unknown evidence kind: {evidence_kind}")
-        current = _timestamp(_utc(now))
         with self.db:
             self._begin_immediate()
+            current = _timestamp(_utc(now))
             self._expire_scheduler_leases(current)
             lease = self._assert_fenced_lease(
                 assignment_id, fencing_token, current
@@ -10242,6 +10353,14 @@ class SQLiteStorage:
                 raise KeyError(f"Unknown run: {run_id}")
             if int(run["task_id"]) != int(lease["task_id"]):
                 raise PermissionError("Assignment lease does not own the workflow task")
+            from .worker_admission import admission_for_assignment
+
+            admitted = admission_for_assignment(self, assignment_id)
+            if admitted is not None and (
+                admitted["run_id"] != run_id or admitted["stage_key"] != stage
+                or admitted["provider_id"] != provider
+            ):
+                raise PermissionError("Artifact does not match its admitted run, stage and provider")
             worker = str(lease["agent_id"])
             artifact_id = self._insert_artifact(
                 run_id,
@@ -10702,12 +10821,27 @@ class SQLiteStorage:
             )
 
     def claim_provider_execution(self, gate_id: int, request_hash: str, definition_hash: str):
-        self._assert_dispatch_allowed()
+        from .worker_admission import registered_worker
+
         request_hash = _sha256_snapshot(request_hash, "request_hash")
         definition_hash = _sha256_snapshot(definition_hash, "definition_hash")
         mismatch_error: str | None = None
         attempt_id: int | None = None
         with self.db:
+            self._begin_immediate()
+            self._assert_dispatch_allowed()
+            gate = self.db.execute(
+                "SELECT agent_id,task_id FROM provider_execution_gates WHERE id=?", (gate_id,)
+            ).fetchone()
+            if not gate:
+                raise KeyError(f"Unknown provider gate: {gate_id}")
+            bound_project = self.db.execute(
+                """SELECT 1 FROM worker_admission_projects p
+                     JOIN work_items t ON t.project_id=p.project_id WHERE t.id=?""",
+                (gate["task_id"],),
+            ).fetchone()
+            if registered_worker(self, str(gate["agent_id"])) or bound_project:
+                raise PermissionError("Registered workers and projects require WorkerAdmissionService.admit")
             updated = self.db.execute(
                 """UPDATE provider_execution_gates
                       SET status='claimed'
