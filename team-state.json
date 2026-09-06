@@ -253,12 +253,16 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T11:33:43+00:00",
-      "note": "Preserve merged connection-scope component; agreed bounded evaluator transport continuation uses fresh claim.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-f181725d",
+      "scopes": [
+        "core:docs/provider-qualification.md",
+        "core:src/agent_factory/provider_canary_transport.py",
+        "core:tests/test_provider_canary_transport.py"
+      ],
+      "updated_at": "2026-09-06T11:33:49+00:00",
+      "note": "Agreed bounded credential-backed provider observation prerequisite; no live spend or full task acceptance.",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +284,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
+      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6121,6 +6125,16 @@
       "note": "Preserve merged connection-scope component; agreed bounded evaluator transport continuation uses fresh claim.",
       "branch": null,
       "claim_id": "63e8bcec-2c60-4271-9eeb-8375118badc4"
+    },
+    {
+      "operation_id": "fb78fbaf-b2da-454a-8e7a-1c5335c79fa2",
+      "at": "2026-09-06T11:33:49+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Agreed bounded credential-backed provider observation prerequisite; no live spend or full task acceptance.",
+      "branch": "agent/HappySnowman/AF-GC-009-f181725d",
+      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
     }
   ],
   "migration": {
