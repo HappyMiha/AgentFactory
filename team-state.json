@@ -235,8 +235,8 @@
         "core:tests/test_game_planning_web.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T05:21:53+00:00",
-      "note": "Manual planning facade; 64 Windows tests passed, zero skips. Independent source/plan and authority review requested.",
+      "updated_at": "2026-09-06T06:36:12+00:00",
+      "note": "Explicit combined-replay recovery; current main incorporated; exact Windows tests passed. Final correction review requested.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/17",
       "resources": [
         "shared:game-brief",
@@ -256,7 +256,7 @@
         "core:AF-GC-007"
       ],
       "claim_id": "1b549690-df10-419c-a781-d122938d1532",
-      "review_head": "07454f30f4a44bea54aef6949bfe689bf7bedacf"
+      "review_head": "0814b31420bca45b75d4f255e3ec66a6b9307ee9"
     },
     "core:AF-GC-009": {
       "dependencies": [
@@ -5391,6 +5391,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-043-a9d2598c",
       "claim_id": "ace682dd-6750-4ef8-9efa-4454ef5fc112"
+    },
+    {
+      "operation_id": "a9e5cab2-e9de-46f5-ae30-72b0a1f9db6f",
+      "at": "2026-09-06T06:36:12+00:00",
+      "action": "review",
+      "task": "core:AF-GC-008",
+      "worker": "HappyHahahaker",
+      "note": "Explicit combined-replay recovery; current main incorporated; exact Windows tests passed. Final correction review requested.",
+      "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
+      "claim_id": "1b549690-df10-419c-a781-d122938d1532"
     }
   ],
   "migration": {
