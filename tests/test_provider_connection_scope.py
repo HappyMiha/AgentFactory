@@ -1,4 +1,5 @@
 """Actual SQLite metadata fences with synthetic credentials/evaluator evidence."""
+from contextlib import closing
 from dataclasses import FrozenInstanceError, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -145,7 +146,7 @@ class ProviderConnectionScopeTests(unittest.TestCase):
         try:
             self.assertTrue(entered.wait(5))
             # A separate actual SQLite writer must fail while qualification reads.
-            with sqlite3.connect(self.connections.database, timeout=0) as db:
+            with closing(sqlite3.connect(self.connections.database, timeout=0)) as db:
                 with self.assertRaises(sqlite3.OperationalError): db.execute('BEGIN IMMEDIATE')
             writer.start(); self.assertFalse(disconnected.is_set())
         finally:
