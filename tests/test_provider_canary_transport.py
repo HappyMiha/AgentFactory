@@ -1,6 +1,7 @@
 """Synthetic HTTPS responses and real child/SQLite boundaries; no provider calls."""
 from dataclasses import FrozenInstanceError, asdict, replace
 import json
+import hashlib
 import multiprocessing
 from pathlib import Path
 import tempfile
@@ -154,6 +155,110 @@ class CanaryAdmissionTests(unittest.TestCase):
     def observe(self, client, **changes):
         return client.observe(**({'worker_id': 'worker', 'role': 'Developer', 'purpose': 'coding',
                                   'mission_id': '1', 'prompt': 'Private synthetic canary source'} | changes))
+
+    def prepare(self, client):
+        return client.prepare(worker_id='worker', role='Developer', purpose='coding',
+                              mission_id='1', prompt='Private synthetic canary source')
+
+    def test_pure_preparation_uses_resolved_scope_without_io_and_preserves_old_hash(self):
+        scope = self.resolver.scope(worker_id='worker', role='Developer', purpose='coding')
+        prompt = 'Private synthetic canary source'
+        before = self.storage.db.total_changes
+        with patch.object(self.resolver, 'scope', side_effect=AssertionError('No resolver I/O')), \
+             patch.object(self.store, 'get', side_effect=AssertionError('No secret read')), \
+             patch('builtins.open', side_effect=AssertionError('No file I/O')), \
+             patch.object(transport.http.client, 'HTTPSConnection', side_effect=AssertionError('No network')):
+            prepared = transport.prepare_canary_request(worker_id='worker', role='Developer', scope=scope,
+                                                       mission_id='1', prompt=prompt)
+        old = {'scope': scope.__dict__, 'mission_id': '1', 'prompt_digest': hashlib.sha256(prompt.encode()).hexdigest(),
+               'tool': 'openai-responses-canary-v1', 'max_input_bytes': 4096,
+               'max_output_tokens': 512, 'deadline_seconds': 15}
+        self.assertEqual(prepared.request_digest, hashlib.sha256(json.dumps(old, sort_keys=True,
+            separators=(',', ':'), ensure_ascii=False).encode()).hexdigest())
+        self.assertEqual(self.storage.db.total_changes, before)
+        self.assertNotIn(prompt, repr(prepared))
+        self.assertNotIn(prompt, json.dumps(prepared.canonical()))
+        with self.assertRaises(FrozenInstanceError): prepared.mission_id = '2'
+        snapshot = prepared.canonical(); snapshot['scope']['actor'] = 'Other'
+        self.assertEqual(prepared.scope.actor, 'Owner')
+
+    def test_metadata_preparation_cannot_issue_credentials_reserve_or_authorize(self):
+        def forbidden(**_): raise AssertionError('No authority callback')
+        client = self.client(forbidden)
+        before = '\n'.join(self.storage.db.iterdump())
+        with patch.object(self.store, 'get', side_effect=AssertionError('No secret read')), \
+             patch.object(client.broker, 'issue', side_effect=AssertionError('No credential issuance')), \
+             patch.object(transport, '_bounded_request', side_effect=AssertionError('No dispatch')):
+            prepared = self.prepare(client)
+        self.assertEqual(before, '\n'.join(self.storage.db.iterdump()))
+        self.assertEqual(prepared.scope.connection, self.connection)
+        with patch.object(transport, '_bounded_request', side_effect=AssertionError('No dispatch')):
+            with self.assertRaisesRegex(QualificationDenied, 'canary_authority_required'):
+                self.observe(self.client(), prepared=prepared)
+
+    def test_prepared_body_matches_actual_http_bytes_and_authorized_request(self):
+        calls, grants = [], []
+        class Connection:
+            status = 200
+            def request(self, method, path, **kwargs): calls.append((method, path, kwargs['body']))
+            def getresponse(self): return self
+            def read(self, limit): return json.dumps(response()).encode()
+            def close(self): pass
+        def authorize(**kwargs): grants.append(kwargs); return True
+        client = self.client(authorize)
+        prompt = 'A quoted "line"\nwith Unicode: \u0441\u043d\u0456\u0433'
+        prepared = client.prepare(worker_id='worker', role='Developer', purpose='coding', mission_id='1', prompt=prompt)
+        with patch.object(transport.http.client, 'HTTPSConnection', return_value=Connection()), \
+             patch.object(transport, '_bounded_request', side_effect=transport._request):
+            observed = self.observe(client, prepared=prepared, prompt=prompt)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][:2], ('POST', '/v1/responses'))
+        self.assertEqual(json.loads(calls[0][2]), {'model': 'requested-model', 'input': prompt,
+            'max_output_tokens': 512, 'store': False, 'stream': False, 'tools': []})
+        self.assertEqual(prepared.body_digest, hashlib.sha256(calls[0][2]).hexdigest())
+        self.assertEqual(observed.request_digest, prepared.request_digest)
+        self.assertEqual(grants[0]['request_digest'], prepared.request_digest)
+
+    def test_tampered_preparation_rejects_before_secret_or_authority(self):
+        def forbidden(**_): raise AssertionError('No authority callback')
+        client = self.client(forbidden); prepared = self.prepare(client)
+        variants = [replace(prepared, **{name: 'b'*64}) for name in ('prompt_digest', 'body_digest', 'request_digest')]
+        variants += [replace(prepared, mission_id='2'), replace(prepared, worker_id='other'),
+                     replace(prepared, role='Reviewer'), prepared.canonical()]
+        for changes in ({'actor': 'Other'}, {'tenant': 'other'}, {'connection_generation': 'new-generation'},
+                        {'connection': 'b'*32}, {'requested_model': 'different-model'},
+                        {'configuration_digest': 'b'*64}, {'purpose': 'review'}):
+            variants.append(replace(prepared, scope=replace(prepared.scope, **changes)))
+        with patch.object(self.store, 'get', side_effect=AssertionError('No secret read')), \
+             patch.object(transport, '_bounded_request', side_effect=AssertionError('No dispatch')):
+            for value in variants:
+                with self.subTest(value=value), self.assertRaisesRegex(QualificationDenied, 'canary_preparation_changed'):
+                    self.observe(client, prepared=value)
+            with self.assertRaisesRegex(QualificationDenied, 'canary_preparation_changed'):
+                self.observe(client, prepared=prepared, prompt='Changed prompt')
+
+    def test_old_preparation_rejects_current_scope_or_transport_contract_changes(self):
+        client = self.client(lambda **_: True); prepared = self.prepare(client)
+        with patch.object(self.store, 'get', side_effect=AssertionError('No secret read')), \
+             patch.object(transport, '_bounded_request', side_effect=AssertionError('No dispatch')):
+            with patch.object(self.resolver, 'scope', return_value=replace(prepared.scope, configuration_digest='b'*64)):
+                with self.assertRaisesRegex(QualificationDenied, 'canary_preparation_changed'):
+                    self.observe(client, prepared=prepared)
+            # HTTP timeout is deliberately outside the legacy request digest.
+            with patch.object(transport, 'HTTP_TIMEOUT_SECONDS', 9):
+                current = self.prepare(client)
+                self.assertEqual(current.request_digest, prepared.request_digest)
+                self.assertNotEqual(current.digest, prepared.digest)
+                with self.assertRaisesRegex(QualificationDenied, 'canary_preparation_changed'):
+                    self.observe(client, prepared=prepared)
+        self.connections.disconnect(self.connection, actor='Owner', tenant='local')
+        with patch.object(transport, '_bounded_request', side_effect=AssertionError('No dispatch')):
+            with self.assertRaises(QualificationDenied): self.observe(client, prepared=prepared)
+
+    def test_prepared_and_legacy_observe_return_identical_evidence(self):
+        client = self.client(lambda **_: True); prepared = self.prepare(client)
+        with patch.object(transport, '_bounded_request', return_value={'observed_model': 'observed-model', 'text': 'candidate'}):
+            self.assertEqual(self.observe(client, prepared=prepared), self.observe(client))
 
     def test_usage_is_immutable_bound_in_evidence_and_persisted_without_sensitive_fields(self):
         client = self.client(lambda **_: True)
