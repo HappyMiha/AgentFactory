@@ -161,8 +161,9 @@ requested alias or model-generated text; canonical mapping remains separately
 trusted and is not learned here.
 
 The frozen observation contains in-process text for the future evaluator, the
-current scope, observed identity and a digest. Broker evidence retains only
-identity and hashes, not prompts/generated text; credential echoes are rejected.
+current scope, observed identity, a digest and optional immutable token usage.
+Broker evidence retains only identity, validated counts and hashes, not
+prompts/generated text; credential echoes are rejected.
 Handles are revoked on every exit. Success creates no qualification and does not
 invalidate or renew an earlier qualification: the future evaluator must fence
 stale worker evidence, run its actual purpose-specific suite and publish through
@@ -174,6 +175,39 @@ and [Responses creation](https://developers.openai.com/api/reference/resources/r
 The tests use synthetic HTTPS envelopes and credentials, actual spawned child
 termination and real SQLite/broker records. No provider account, live budget or
 actual model capability was qualified by these tests.
+
+#### Provider-reported token metadata
+
+For the OpenAI Responses route, `CanaryObservation.usage` is either a frozen
+`CanaryTokenUsage` or `None` (unknown). The three aggregate envelope fields
+`usage.input_tokens`, `usage.output_tokens` and `usage.total_tokens` must all be
+nonnegative integers, excluding booleans, fractions and numeric strings. Each
+must be at most `2**53 - 1`, and the total must equal input plus output. This is
+an exact JSON interoperability bound, not a provider quota or spending limit.
+Valid counts above the requested output cap are retained without truncation.
+
+These fields follow the [OpenAI Responses schema](https://developers.openai.com/api/reference/cli/resources/responses/methods/create)
+(checked 2026-09-06). Cached/reasoning breakdowns are not added to aggregate
+counts. This component does not retain or validate those breakdowns; it cannot
+price them. Other metadata is discarded, and Chat Completions field names such
+as `prompt_tokens`/`completion_tokens` are not substituted for this route.
+Generated text never supplies usage.
+
+Missing, null, partial, inconsistent or malformed aggregate counts remain
+unknown; the otherwise valid text observation can still reach the evaluator.
+An explicit valid all-zero tuple is distinct from unknown and still does not
+prove that a request incurred no charge. Errors, incomplete responses and lost
+responses retain the existing denial/uncertainty behavior. No usage is inferred
+from text length, request limits, timeouts or a failed response.
+
+Validated usage is checked again after child IPC and included in both the
+observation digest and the existing broker evidence. Changing usage changes
+that digest; it does not change the pre-call request digest. Without valid
+usage, the optional wire/evidence field is omitted, preserving legacy hashes;
+the original five-argument observation constructor defaults to unknown. No
+database migration or automatic reservation, usage ingestion, settlement,
+release, USD estimate, account grant or qualification is introduced. A future
+trusted host must handle missing usage and actual billing uncertainty explicitly.
 
 `ProviderQualificationService` accepts evidence only from a trusted host
 evaluator. It does not authenticate that evaluator, run its canary, inspect an

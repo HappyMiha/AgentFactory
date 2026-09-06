@@ -1,5 +1,5 @@
 """Synthetic HTTPS responses and real child/SQLite boundaries; no provider calls."""
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, asdict, replace
 import json
 import multiprocessing
 from pathlib import Path
@@ -27,6 +27,13 @@ def observation_child(pipe, *_):
     pipe.close()
 
 
+def usage_child(pipe, *_):
+    # Exercise the production child encoder/size/secret checks with synthetic HTTPS.
+    payload = response() | {'usage': {'input_tokens': 12, 'output_tokens': 5, 'total_tokens': 17}}
+    with patch.object(transport, '_request', return_value=transport._decode(200, json.dumps(payload).encode())):
+        transport._child(pipe, 'synthetic-key', 'fixture', 'fixture')
+
+
 def response(text='candidate', model='observed-model'):
     return {'model': model, 'status': 'completed', 'output': [
         {'type': 'message', 'role': 'assistant', 'status': 'completed',
@@ -34,6 +41,55 @@ def response(text='candidate', model='observed-model'):
 
 
 class CanaryWireTests(unittest.TestCase):
+    def test_responses_usage_maps_aggregate_counts_without_double_counting_details(self):
+        usage = {'input_tokens': 12, 'output_tokens': 5, 'total_tokens': 17,
+                 'input_tokens_details': {'cached_tokens': 9},
+                 'output_tokens_details': {'reasoning_tokens': 3}, 'private_extra': 'discard me'}
+        parsed = transport._decode(200, json.dumps(response() | {'usage': usage}).encode())
+        self.assertEqual(parsed['usage'], {'input_tokens': 12, 'output_tokens': 5, 'total_tokens': 17})
+        self.assertNotIn('discard me', json.dumps(parsed))
+        # Even valid reported counts beyond the requested cap must not be truncated.
+        usage = {'input_tokens': 0, 'output_tokens': 513, 'total_tokens': 513}
+        self.assertEqual(transport._decode(200, json.dumps(response() | {'usage': usage}).encode())['usage'], usage)
+
+    def test_missing_partial_malformed_and_wrong_provider_usage_stays_unknown(self):
+        valid = {'input_tokens': 12, 'output_tokens': 5, 'total_tokens': 17}
+        variants = [None, {}, [], '17', {'prompt_tokens': 12, 'completion_tokens': 5, 'total_tokens': 17}]
+        variants += [{k: v for k, v in valid.items() if k != missing} for missing in valid]
+        for name in valid:
+            variants += [valid | {name: value} for value in
+                         (True, False, -1, 1.0, '12', None, [], {}, transport.MAX_USAGE_TOKENS+1)]
+        variants += [valid | {'total_tokens': 18},
+                     {'input_tokens': transport.MAX_USAGE_TOKENS, 'output_tokens': 1,
+                      'total_tokens': transport.MAX_USAGE_TOKENS+1}]
+        for usage in variants:
+            with self.subTest(usage=usage):
+                parsed = transport._decode(200, json.dumps(response() | {'usage': usage}).encode())
+                self.assertEqual(parsed, {'observed_model': 'observed-model', 'text': 'candidate'})
+        # Generated text cannot become envelope usage.
+        parsed = transport._decode(200, json.dumps(response(json.dumps(valid))).encode())
+        self.assertNotIn('usage', parsed)
+
+    def test_reported_zero_and_exact_integer_boundary_are_distinct_from_unknown(self):
+        for count in (0, transport.MAX_USAGE_TOKENS):
+            usage = {'input_tokens': count, 'output_tokens': 0, 'total_tokens': count}
+            self.assertEqual(transport._decode(200, json.dumps(response() | {'usage': usage}).encode())['usage'], usage)
+        self.assertIsNone(transport._reported_usage(None))
+
+    def test_usage_metadata_is_frozen_and_validated_for_host_callers(self):
+        usage = transport.CanaryTokenUsage(12, 5, 17)
+        with self.assertRaises(FrozenInstanceError): usage.total_tokens = 0
+        for values in ((True, 0, 1), (-1, 1, 0), (1, 2, 4), (0, 1.0, 1),
+                       (transport.MAX_USAGE_TOKENS, 1, transport.MAX_USAGE_TOKENS+1)):
+            with self.assertRaises(ValueError): transport.CanaryTokenUsage(*values)
+        with self.assertRaisesRegex(ValueError, 'immutable'):
+            transport.CanaryObservation(None, 'model', 'text', 'request', 'observation', asdict(usage))
+
+    def test_actual_spawn_preserves_usage_through_production_child_encoder(self):
+        with patch.object(transport, '_child', usage_child):
+            result = transport._bounded_request('synthetic-key', 'fixture', 'fixture')
+        self.assertEqual(result['usage'], {'input_tokens': 12, 'output_tokens': 5, 'total_tokens': 17})
+
     def test_only_provider_envelope_supplies_identity_and_completed_text(self):
         payload = response('{"model":"invented-by-generated-text"}')
         parsed = transport._decode(200, json.dumps(payload).encode())
@@ -98,6 +154,42 @@ class CanaryAdmissionTests(unittest.TestCase):
     def observe(self, client, **changes):
         return client.observe(**({'worker_id': 'worker', 'role': 'Developer', 'purpose': 'coding',
                                   'mission_id': '1', 'prompt': 'Private synthetic canary source'} | changes))
+
+    def test_usage_is_immutable_bound_in_evidence_and_persisted_without_sensitive_fields(self):
+        client = self.client(lambda **_: True)
+        wire = {'observed_model': 'observed-model', 'text': 'private synthetic candidate',
+                'usage': {'input_tokens': 12, 'output_tokens': 5, 'total_tokens': 17}}
+        with patch.object(transport, '_bounded_request', return_value=wire):
+            first = self.observe(client)
+        self.assertEqual(first.usage, transport.CanaryTokenUsage(12, 5, 17))
+        expected = transport._digest(transport._json({'request_digest': first.request_digest, 'result': wire}))
+        self.assertEqual(first.observation_digest, expected)
+        wire['usage']['input_tokens'] = 13; wire['usage']['total_tokens'] = 18
+        self.assertEqual(first.usage.input_tokens, 12)
+        with patch.object(transport, '_bounded_request', return_value=wire):
+            second = self.observe(client)
+        self.assertEqual(first.request_digest, second.request_digest)
+        self.assertNotEqual(first.observation_digest, second.observation_digest)
+        dump = '\n'.join(self.storage.db.iterdump())
+        self.assertIn(first.observation_digest, dump)
+        self.assertIn('input_tokens', dump)
+        for private in ('private synthetic candidate', 'Private synthetic canary source', 'synthetic-private-key-for-fixture'):
+            self.assertNotIn(private, dump)
+        for table in ('execution_usage_samples', 'execution_stage_reservations', 'execution_reservation_closures', 'worker_qualifications'):
+            self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM '+table).fetchone()[0], 0)
+
+    def test_unknown_usage_keeps_legacy_observation_hash_and_does_not_infer_zero(self):
+        client = self.client(lambda **_: True)
+        legacy = {'observed_model': 'observed-model', 'text': 'candidate'}
+        for extra in ({}, {'usage': None}, {'usage': {'input_tokens': True, 'output_tokens': 0, 'total_tokens': 1}}):
+            with patch.object(transport, '_bounded_request', return_value=legacy | extra):
+                result = self.observe(client)
+            self.assertIsNone(result.usage)
+            self.assertEqual(result.observation_digest, transport._digest(transport._json(
+                {'request_digest': result.request_digest, 'result': legacy})))
+            old = transport.CanaryObservation(result.scope, result.observed_model, result.text,
+                                             result.request_digest, result.observation_digest)
+            self.assertEqual(old, result)
 
     def test_default_denial_and_per_call_authority_prevent_network(self):
         with patch.object(transport, '_bounded_request', side_effect=AssertionError('network forbidden')):
