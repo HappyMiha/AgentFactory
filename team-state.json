@@ -441,8 +441,8 @@
         "core:tests/test_installation_publication.py",
         "core:tests/test_installation_review.py"
       ],
-      "updated_at": "2026-09-06T17:09:53+00:00",
-      "note": "",
+      "updated_at": "2026-09-06T17:12:33+00:00",
+      "note": "PR43 exact0e23b07 pushed: actual Windows admitted publication, recovery and concurrency tests. 85tests83pass2skip, CI green; peer review pending.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/43",
       "resources": [
         "core:environment-bootstrap",
@@ -6694,6 +6694,16 @@
       "task": "core:AF-GC-014",
       "worker": "HappyDucky02",
       "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
+      "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "453aa378-f497-41c3-b39f-aa56e468da77",
+      "at": "2026-09-06T17:12:33+00:00",
+      "action": "heartbeat",
+      "task": "core:AF-GC-014",
+      "worker": "HappyDucky02",
+      "note": "PR43 exact0e23b07 pushed: actual Windows admitted publication, recovery and concurrency tests. 85tests83pass2skip, CI green; peer review pending.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
     }
