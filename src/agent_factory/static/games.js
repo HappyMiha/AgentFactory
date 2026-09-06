@@ -48,6 +48,8 @@ function render(fill=true){
  const statuses={pending:'очікують',ready:'готові до роботи',running:'в роботі',in_progress:'в роботі',blocked:'заблоковані',done:'завершені',completed:'завершені',failed:'з помилкою',archived:'в архіві',awaiting_review:'очікують перевірки'};
  $('progress-state').textContent=project?`${phase(project.phase)}. Задачі: ${Object.entries(project.task_counts).map(([key,value])=>`${statuses[key]||'інший стан'}: ${value}`).join(', ')||'ще немає'}. Остання зміна проєкту: ${project.updated_at}. Час завершення невідомий.`:'Проєкт ще не передано Core. Поверніться до підготовки.';
  $('preparation-copy').textContent=project?'Вихідна чернетка збережена. Для виконання потрібні затверджений план і актуальний звіт середовища. Перегляньте поточний прогрес на кроці «Створення».':'Збережіть вихідну ідею та обрану модель як чернетку Core. Це не затверджує план або запуск.';
+ const previousPlanLink=$('plan-link');if(previousPlanLink)previousPlanLink.remove();
+ if(project){const link=element('a','Відкрити чернетку плану гри');link.id='plan-link';link.href='/planning/'+encodeURIComponent(project.mission_id);$('preparation-copy').after(link);}
  $('environment-state').textContent='';
  $('next-action').textContent=project?(project.next_action==='approve_plan'?'Наступна дія: підготуйте й затвердьте план у Core.':'Наступна дія: перевірте актуальний стан середовища.'): 'Наступна дія: збережіть ідею, оберіть модель і підготуйте проєкт.';
  if(current&&current.error_code)note(current.error_code);
