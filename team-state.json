@@ -3645,13 +3645,10 @@
     },
     "core:AF-DOC-001": {
       "title": "Document Temporal commercial suitability and Unreal planning links",
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DOC-001-51a6f25d",
-      "scopes": [
-        "core:README.md",
-        "core:docs/architecture/temporal-commercial-decision.md"
-      ],
+      "scopes": [],
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/21",
       "dependencies": [],
       "source_dependencies": [],
@@ -3673,10 +3670,12 @@
         "Preserve existing implementation dependencies, task IDs and peer ownership.",
         "Documentation only; no Temporal replacement or Unreal execution."
       ],
-      "updated_at": "2026-09-06T07:21:23+00:00",
+      "updated_at": "2026-09-06T07:28:08+00:00",
       "note": "",
       "claim_id": "70907554-45d2-4130-9e93-38f98bba6c07",
-      "review_head": "0c432f7b58b0ca7c5a745ed4328532cdebcc69a3"
+      "review_head": "0c432f7b58b0ca7c5a745ed4328532cdebcc69a3",
+      "completed_commit": "651a6d2e354c8030da966c32d1d03c921e7c745c",
+      "reviewed_head": "0c432f7b58b0ca7c5a745ed4328532cdebcc69a3"
     },
     "cloud:AF-DOC-001": {
       "title": "Publish Unreal and gameplay AI plan and update product description",
@@ -5659,6 +5658,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
       "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
+    },
+    {
+      "operation_id": "6f375113-af43-4760-b2c3-7873c03b4035",
+      "at": "2026-09-06T07:28:08+00:00",
+      "action": "complete",
+      "task": "core:AF-DOC-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DOC-001-51a6f25d",
+      "claim_id": "70907554-45d2-4130-9e93-38f98bba6c07"
     }
   ],
   "migration": {
