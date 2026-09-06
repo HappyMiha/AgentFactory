@@ -29,7 +29,7 @@
     el('access').textContent = canDecide ? '' : 'Для збереження рішення потрібен вхід власника з правом погодження. Перегляд плану доступний.';
     if (review) {
       const plan = review.plan;
-      el('summary').textContent = `Завантаження: ${bytes(plan.download_required_bytes)}. Запланований запас місця: ${bytes(plan.disk_budget_bytes)}. Це ліміт для розпакування, а не виміряний розмір установлених програм.`;
+      el('summary').textContent = `Завантаження: ${bytes(plan.download_required_bytes)}. Запланований запас місця: ${bytes(plan.disk_budget_bytes)}. Місце потрібне також для тимчасових копій під час перевірки та встановлення.`;
       el('expires').textContent = expired() ? 'Час перегляду минув. Складіть новий план.' : 'Перегляньте до ' + new Date(review.expires_at).toLocaleTimeString('uk-UA') + '.';
       const changeLabels = new Set((review.changed_fields || []).map(path => {
         if (path === 'context.project') return 'Збережена версія задуму або плану гри.';
