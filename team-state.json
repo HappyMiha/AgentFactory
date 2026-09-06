@@ -253,21 +253,12 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
-      "scopes": [
-        "core:docs/provider-connections.md",
-        "core:src/agent_factory/credential_web.py",
-        "core:src/agent_factory/provider_connection_catalog.py",
-        "core:src/agent_factory/static/credentials.html",
-        "core:src/agent_factory/static/credentials.js",
-        "core:tests/test_credential_browser.py",
-        "core:tests/test_credential_web.py",
-        "core:tests/test_provider_connection_catalog.py"
-      ],
-      "updated_at": "2026-09-06T08:10:52+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T08:40:56+00:00",
+      "note": "Both components merged; release active scopes for installation integration while full provider qualification remains pending.",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/23",
       "resources": [
         "shared:provider-connection",
@@ -5812,6 +5803,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-013-8d3c500a",
       "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
+    },
+    {
+      "operation_id": "30e10ce9-ac15-477e-8050-0970b0a72f18",
+      "at": "2026-09-06T08:40:56+00:00",
+      "action": "block",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Both components merged; release active scopes for installation integration while full provider qualification remains pending.",
+      "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
+      "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
     }
   ],
   "migration": {
