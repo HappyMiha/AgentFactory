@@ -265,12 +265,20 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
+      "scopes": [
+        "core:docs/provider-qualification.md",
+        "core:src/agent_factory/agent_router.py",
+        "core:src/agent_factory/provider_qualification.py",
+        "core:src/agent_factory/workforce.py",
+        "core:tests/test_agent_router.py",
+        "core:tests/test_provider_qualification.py",
+        "core:tests/test_workforce.py"
+      ],
+      "updated_at": "2026-09-06T06:41:33+00:00",
+      "note": "Initial Core purpose-bound qualification contract; existing evidence and routing authority. Whole wizard and live qualification remain incomplete.",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -291,7 +299,8 @@
         "core:AF-GC-007",
         "core:AF-GC-010",
         "core:AF-GC-025"
-      ]
+      ],
+      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -5401,6 +5410,16 @@
       "note": "Explicit combined-replay recovery; current main incorporated; exact Windows tests passed. Final correction review requested.",
       "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
       "claim_id": "1b549690-df10-419c-a781-d122938d1532"
+    },
+    {
+      "operation_id": "491d2b9f-fc9b-4df8-bdf7-88830bdff02f",
+      "at": "2026-09-06T06:41:33+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Initial Core purpose-bound qualification contract; existing evidence and routing authority. Whole wizard and live qualification remain incomplete.",
+      "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
+      "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
     }
   ],
   "migration": {
