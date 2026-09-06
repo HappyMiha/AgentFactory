@@ -66,6 +66,12 @@ class InstallationManifestTests(unittest.TestCase):
             with self.assertRaises(ArchiveRejected): manifest_for_stage(staged)
         self.assert_clean()
 
+    def test_empty_directory_stage_tamper_cannot_borrow_archive_identity(self):
+        with self.stage(self.archive()) as staged:
+            (staged.directory/'extra').mkdir()
+            with self.assertRaises(ArchiveRejected): manifest_for_stage(staged)
+        self.assert_clean()
+
     def test_read_failure_and_mid_read_mutation_are_indeterminate(self):
         with self.stage(self.archive()) as staged:
             manifest=manifest_for_stage(staged)

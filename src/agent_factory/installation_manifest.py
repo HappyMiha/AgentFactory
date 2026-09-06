@@ -115,7 +115,8 @@ def manifest_for_stage(staged):
         raise ValueError('Expected a supported verified stage')
     files, paths, total = _scan(staged.directory, staged.extracted_bytes)
     if (total != staged.extracted_bytes or [item['path'] for item in files] != sorted(staged.files)
-            or [(item['path'],item['sha256']) for item in files] != sorted(staged.file_digests)):
+            or [(item['path'],item['sha256']) for item in files] != sorted(staged.file_digests)
+            or paths != list(staged.entry_paths)):
         raise ArchiveRejected('Staged inventory changed')
     return InstallationManifest(_json({'schema_version':1,'package_id':staged.package_id,
         'archive_sha256':staged.sha256,'files':files,'paths':paths,'total_bytes':total}))

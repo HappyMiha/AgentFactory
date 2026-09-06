@@ -30,6 +30,7 @@ class StagedArchive:
     files: tuple[str, ...]
     extracted_bytes: int
     file_digests: tuple[tuple[str, str], ...]
+    entry_paths: tuple[str, ...]
 
 
 _CHUNK = 1024 * 1024
@@ -222,4 +223,6 @@ def stage_verified_zip(source, *, catalog, package_id, staging_parent):
                     digests.append((name, digest.hexdigest()))
         except (zipfile.BadZipFile, NotImplementedError, EOFError) as error:
             raise ArchiveRejected('Corrupt or unsupported ZIP content') from error
-        yield StagedArchive(package_id, package['sha256'], content, tuple(names), total, tuple(digests))
+        paths = tuple(sorted({'/'.join(name.split('/')[:n]).casefold()
+            for _, name, _ in entries for n in range(1, len(name.split('/')) + 1)}))
+        yield StagedArchive(package_id, package['sha256'], content, tuple(names), total, tuple(digests), paths)
