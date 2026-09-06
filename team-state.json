@@ -1611,28 +1611,12 @@
         "core:AF-GC-041",
         "core:AF-GC-042"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-CLD-009-4ad10454",
-      "scopes": [
-        "cloud:docs/game-brief-intake.md",
-        "cloud:docs/game-teams.md",
-        "cloud:docs/upstream-capability-map.json",
-        "cloud:docs/upstream-capability-map.md",
-        "cloud:pyproject.toml",
-        "cloud:src/agentfactory_cloud/brief_web.py",
-        "cloud:src/agentfactory_cloud/game_team.py",
-        "cloud:src/agentfactory_cloud/game_team_web.py",
-        "cloud:src/agentfactory_cloud/static/game-team.html",
-        "cloud:src/agentfactory_cloud/static/game-team.js",
-        "cloud:src/agentfactory_cloud/static/scope.html",
-        "cloud:src/agentfactory_cloud/static/scope.js",
-        "cloud:tests/test_game_team.py",
-        "cloud:tests/test_game_team_browser.py",
-        "cloud:tests/test_game_team_web.py"
-      ],
-      "updated_at": "2026-09-06T09:26:46+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T09:41:31+00:00",
+      "note": "PR17 component merged. Whole task awaits accepted current-connection resolver and live execution evidence. Branch preserved.",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/17",
       "resources": [
         "core:provider-model",
@@ -5933,6 +5917,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
       "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
+    },
+    {
+      "operation_id": "785b9fdc-044e-4a63-9306-047de6d6648e",
+      "at": "2026-09-06T09:41:31+00:00",
+      "action": "block",
+      "task": "cloud:AF-CLD-009",
+      "worker": "HappyHahahaker",
+      "note": "PR17 component merged. Whole task awaits accepted current-connection resolver and live execution evidence. Branch preserved.",
+      "branch": "agent/HappyHahahaker/AF-CLD-009-4ad10454",
+      "claim_id": "c1dab18b-4f70-4f5a-ae9b-a53cf33a7f95"
     }
   ],
   "migration": {
