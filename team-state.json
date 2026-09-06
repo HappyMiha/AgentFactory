@@ -3679,18 +3679,10 @@
     },
     "cloud:AF-DOC-001": {
       "title": "Publish Unreal and gameplay AI plan and update product description",
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
-      "scopes": [
-        "cloud:README.md",
-        "cloud:docs/backlog.md",
-        "cloud:docs/core-cloud-boundary.md",
-        "cloud:docs/product-description.md",
-        "cloud:docs/roadmap.md",
-        "cloud:docs/unreal-gameplay-plan.md",
-        "cloud:examples/agentfactory-cloud-backlog.json"
-      ],
+      "scopes": [],
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/15",
       "dependencies": [],
       "source_dependencies": [],
@@ -3723,9 +3715,11 @@
         "Documentation only; no Temporal replacement or Unreal execution."
       ],
       "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb",
-      "updated_at": "2026-09-06T07:21:52+00:00",
+      "updated_at": "2026-09-06T07:29:16+00:00",
       "note": "",
-      "review_head": "792d081f5718c96bbafe2af7ec14c85345b1cfeb"
+      "review_head": "792d081f5718c96bbafe2af7ec14c85345b1cfeb",
+      "completed_commit": "720c79b3530cf2dddfd8b0351094a0763f757a63",
+      "reviewed_head": "792d081f5718c96bbafe2af7ec14c85345b1cfeb"
     }
   },
   "events": [
@@ -5668,6 +5662,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DOC-001-51a6f25d",
       "claim_id": "70907554-45d2-4130-9e93-38f98bba6c07"
+    },
+    {
+      "operation_id": "9f600395-1410-4a70-b7e3-b4831ccf458e",
+      "at": "2026-09-06T07:29:16+00:00",
+      "action": "complete",
+      "task": "cloud:AF-DOC-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
+      "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb"
     }
   ],
   "migration": {
