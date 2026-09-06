@@ -151,10 +151,18 @@ class InstallationPlanTests(unittest.TestCase):
 
     def test_unrelated_software_is_not_updated_or_included(self):
         original = self.plan()
-        other = self.plan(inventory={"unrelated": self.observed()})
+        other = self.plan(inventory={"unrelated": self.observed(target="unrelated-folder")})
         self.assertEqual(original.digest, other.digest)
         with self.assertRaises(ValueError):
             self.plan(updates=["unrelated"])
+
+    def test_other_package_target_collision_checks_windows_case_and_ancestors(self):
+        for target in (self.editor["target"].upper().replace("/", "\\"),
+                       "tools/godot-editor", self.editor["target"] + "/child"):
+            with self.subTest(target=target):
+                document = self.plan(inventory={"another-package": self.observed(target=target)}).document()
+                self.assertIn("target_conflict", document["steps"][0]["reasons"])
+                self.assertIn("dependency_needs_action", document["steps"][1]["reasons"])
 
     def test_invalid_or_unbounded_observations_are_not_coerced(self):
         for changes in ({"free_bytes": True}, {"free_bytes": -1}, {"offline": "false"},

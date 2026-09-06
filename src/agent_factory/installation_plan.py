@@ -224,13 +224,19 @@ def build_plan(
     steps = []
     required_bytes = 0
     download_bytes = 0
+
+    def location(value: str) -> str:
+        # Comparison only. These caller labels are never resolved or executed.
+        value = value.replace("\\", "/").rstrip("/")
+        return value.casefold() if platform.startswith("windows-") else value
+
     for key in ordered:
         package = catalog["packages"][key]
         old = inventory.get(key)
         exact = bool(old and old["version"] == package["version"] and old["sha256"] == package["sha256"])
         action = "install"
         if exact:
-            action = "already_installed" if old["target"] == package["target"] else "reuse"
+            action = "already_installed" if location(old["target"]) == location(package["target"]) else "reuse"
         elif old and old["managed"] and key in updates:
             action = "update"
         reasons = []
@@ -239,7 +245,10 @@ def build_plan(
         if package["platform"] != platform:
             reasons.append("unsupported_platform")
         if mutate:
-            if old and old["target"] == package["target"]:
+            target = location(package["target"])
+            occupied = [location(observation["target"]) for observation in inventory.values()]
+            if any(target == path or target.startswith(path + "/") or path.startswith(target + "/")
+                   for path in occupied):
                 reasons.append("target_conflict")
             if package["requires_admin"] and not admin_available:
                 reasons.append("administrator_unavailable")
