@@ -385,12 +385,29 @@
         "core:AF-GC-002",
         "core:AF-GC-012"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T08:48:39+00:00",
-      "note": "PR24 contract merged after independent review. Whole013 incomplete; preserve branch and reclaim UI/consent increment.",
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
+      "scopes": [
+        "core:docs/installation-plans.md",
+        "core:src/agent_factory/installation_plan.py",
+        "core:src/agent_factory/installation_review.py",
+        "core:src/agent_factory/installation_web.py",
+        "core:src/agent_factory/static/game-plan.html",
+        "core:src/agent_factory/static/installation.css",
+        "core:src/agent_factory/static/installation.html",
+        "core:src/agent_factory/static/installation.js",
+        "core:src/agent_factory/storage.py",
+        "core:src/agent_factory/web.py",
+        "core:tests/test_installation_browser.py",
+        "core:tests/test_installation_plan.py",
+        "core:tests/test_installation_review.py",
+        "core:tests/test_installation_web.py",
+        "core:tests/test_storage_migrations.py",
+        "core:tests/test_web.py"
+      ],
+      "updated_at": "2026-09-06T08:49:27+00:00",
+      "note": "Continue merged PR24 with normal installation review and persisted digest-bound decisions; no installer.",
       "pr": null,
       "resources": [
         "core:environment-bootstrap",
@@ -408,7 +425,7 @@
         "core:AF-GC-002",
         "core:AF-GC-012"
       ],
-      "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
+      "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
     },
     "core:AF-GC-014": {
       "dependencies": [
@@ -5827,6 +5844,16 @@
       "note": "PR24 contract merged after independent review. Whole013 incomplete; preserve branch and reclaim UI/consent increment.",
       "branch": null,
       "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
+    },
+    {
+      "operation_id": "ce93b28a-54fc-4842-8beb-e5deaf684567",
+      "at": "2026-09-06T08:49:27+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-013",
+      "worker": "HappyDucky02",
+      "note": "Continue merged PR24 with normal installation review and persisted digest-bound decisions; no installer.",
+      "branch": "agent/HappyDucky02/AF-GC-013-875522a9",
+      "claim_id": "31948ee8-9f96-4569-a3f1-d7d585e19c25"
     }
   ],
   "migration": {
