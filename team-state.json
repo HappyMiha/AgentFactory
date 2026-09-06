@@ -394,7 +394,7 @@
         "core:src/agent_factory/installation_plan.py",
         "core:tests/test_installation_plan.py"
       ],
-      "updated_at": "2026-09-06T08:40:45+00:00",
+      "updated_at": "2026-09-06T08:45:07+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/24",
       "resources": [
@@ -414,7 +414,7 @@
         "core:AF-GC-012"
       ],
       "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1",
-      "review_head": "c28d76b10dbcc390d97e83a231fe8d7e2583530d"
+      "review_head": "243f750af9075d8c7620ea60622062ecaa90b5b2"
     },
     "core:AF-GC-014": {
       "dependencies": [
@@ -5813,6 +5813,16 @@
       "note": "Both components merged; release active scopes for installation integration while full provider qualification remains pending.",
       "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
       "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
+    },
+    {
+      "operation_id": "8ba7a283-d48b-4261-beea-ee5b038ff5fe",
+      "at": "2026-09-06T08:45:07+00:00",
+      "action": "review",
+      "task": "core:AF-GC-013",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-GC-013-8d3c500a",
+      "claim_id": "e201f789-7b51-44d8-bd55-fcb04159ffa1"
     }
   ],
   "migration": {
