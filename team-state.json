@@ -2017,12 +2017,22 @@
         "cloud:AF-CLD-006",
         "core:AF-GC-039"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
-      "note": "",
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-CLD-021-cb652480",
+      "scopes": [
+        "cloud:contracts/v1/identity-policy.json",
+        "cloud:docs/identity-access.md",
+        "cloud:requirements-identity.txt",
+        "cloud:src/agentfactory_cloud/access.py",
+        "cloud:src/agentfactory_cloud/identity.py",
+        "cloud:src/agentfactory_cloud/identity_api.py",
+        "cloud:src/agentfactory_cloud/identity_store.py",
+        "cloud:tests/test_identity_access.py",
+        "cloud:tests/test_identity_api.py"
+      ],
+      "updated_at": "2026-09-06T00:12:36+00:00",
+      "note": "Coordinator agreed independent identity/session/tenant modules; mount into control plane only after accepted integration, minors remain gated",
       "pr": null,
       "resources": [
         "shared:minor-access",
@@ -2047,7 +2057,8 @@
           "condition": "always",
           "rule": "Use the original acceptance criteria and a reviewed upstream commit. Do not duplicate Core capability implementation in Cloud."
         }
-      ]
+      ],
+      "claim_id": "3c8e2ca3-973b-41f4-a8fd-4dc9d73dd17c"
     },
     "cloud:AF-CLD-022": {
       "dependencies": [
@@ -4699,6 +4710,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-002-fae6a0f4",
       "claim_id": "9fbf8f9a-bf9b-4090-9080-f05d1cac3bc4"
+    },
+    {
+      "operation_id": "a046fece-440f-48a9-820d-113dde72db63",
+      "at": "2026-09-06T00:12:36+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-021",
+      "worker": "HappyHahahaker",
+      "note": "Coordinator agreed independent identity/session/tenant modules; mount into control plane only after accepted integration, minors remain gated",
+      "branch": "agent/HappyHahahaker/AF-CLD-021-cb652480",
+      "claim_id": "3c8e2ca3-973b-41f4-a8fd-4dc9d73dd17c"
     }
   ],
   "migration": {
