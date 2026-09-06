@@ -45,16 +45,11 @@
     },
     "core:AF-GC-002": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-002-6412aa16",
-      "scopes": [
-        "core:docs/environment-readiness.md",
-        "core:src/agent_factory/environment_model_probe.py",
-        "core:tests/test_autonomous_preapproval_workflow.py",
-        "core:tests/test_environment_model_probe.py"
-      ],
-      "updated_at": "2026-09-06T00:49:47+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T01:13:38+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/13",
       "resources": [
@@ -73,7 +68,9 @@
       "optional": false,
       "source_dependencies": [],
       "claim_id": "37ecae5f-84c8-468c-b09d-180e9f822e88",
-      "review_head": "7c3354a9a072c755a44b2a3c72b41ce9afaa36d2"
+      "review_head": "7c3354a9a072c755a44b2a3c72b41ce9afaa36d2",
+      "completed_commit": "2ab4a587f1421da2a4520548f8d661adbc656fea",
+      "reviewed_head": "7c3354a9a072c755a44b2a3c72b41ce9afaa36d2"
     },
     "core:AF-GC-003": {
       "dependencies": [],
@@ -4822,6 +4819,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-008-1beacacc",
       "claim_id": "29acb938-eee8-4555-a3c7-6d1cc6383afb"
+    },
+    {
+      "operation_id": "a8dd19b7-8a4a-439f-ab41-bf1017ebc16d",
+      "at": "2026-09-06T01:13:38+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-002",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-002-6412aa16",
+      "claim_id": "37ecae5f-84c8-468c-b09d-180e9f822e88"
     }
   ],
   "migration": {
