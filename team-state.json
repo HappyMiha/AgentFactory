@@ -182,34 +182,11 @@
         "core:AF-GC-003",
         "core:AF-GC-004"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
-      "scopes": [
-        "core:docs/local-games.md",
-        "core:src/agent_factory/local_games.py",
-        "core:src/agent_factory/static/app.js",
-        "core:src/agent_factory/static/games.css",
-        "core:src/agent_factory/static/games.js",
-        "core:src/agent_factory/static/index.html",
-        "core:src/agent_factory/static/operations.html",
-        "core:src/agent_factory/static/styles.css",
-        "core:src/agent_factory/storage.py",
-        "core:src/agent_factory/web.py",
-        "core:tests/test_accessibility.py",
-        "core:tests/test_agent_drafts.py",
-        "core:tests/test_control_plane_web.py",
-        "core:tests/test_dialog_confirmation.py",
-        "core:tests/test_environment_readiness_browser.py",
-        "core:tests/test_http_auth.py",
-        "core:tests/test_http_auth_browser.py",
-        "core:tests/test_local_games.py",
-        "core:tests/test_local_games_browser.py",
-        "core:tests/test_monitor_web.py",
-        "core:tests/test_specification_preview.py",
-        "core:tests/test_web.py"
-      ],
-      "updated_at": "2026-09-06T02:57:30+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T03:05:05+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/14",
       "resources": [
@@ -231,7 +208,9 @@
         "core:AF-GC-004"
       ],
       "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22",
-      "review_head": "bc465c62404c83942aee9876b132b4e6e382d9e3"
+      "review_head": "bc465c62404c83942aee9876b132b4e6e382d9e3",
+      "completed_commit": "538349dc5e6ec76f002d62f617f5fe3c5c414ed7",
+      "reviewed_head": "bc465c62404c83942aee9876b132b4e6e382d9e3"
     },
     "core:AF-GC-008": {
       "dependencies": [
@@ -4997,6 +4976,16 @@
       "operation_id": "8c915e67-bc83-4824-a11f-4cb7bbd14615",
       "at": "2026-09-06T02:57:30+00:00",
       "action": "review",
+      "task": "core:AF-GC-007",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
+      "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22"
+    },
+    {
+      "operation_id": "8e650714-f74b-474c-89d4-91755b038986",
+      "at": "2026-09-06T03:05:05+00:00",
+      "action": "complete",
       "task": "core:AF-GC-007",
       "worker": "HappySnowman",
       "note": "",
