@@ -356,3 +356,27 @@ reconciliation, late expiry, existing-file preservation and mapped-drive denial.
 They do not qualify a full Godot installation, process-kill/reboot behavior in a
 disposable VM, provider execution, engine launch, export templates or the product
 progress/recovery interface. Those remain AF-GC-014 acceptance work.
+
+## Locate a verified published payload
+
+`InstallationPublicationJournal.read_payload(mission, actor, publication_id)`
+returns the recorded package/version, archive hash, relative `payload/` path,
+verified file manifest and receipt digest. It accepts only canonical publications
+whose parent scope matches and whose journal is `completed` or `reconciled`.
+An unknown result must be reconciled first, even when the files appear present.
+Canonical key and parent-scope validation is shared by all publication readers
+and the executor; an alias record cannot stand in for the planned publication.
+
+Every call checks the recorded host/workspace and hashes the actual payload
+against the externally saved receipt. A completed status alone, missing files,
+modified content or an unreadable/link target cannot produce a verified result.
+The returned paths are relative to the trusted workspace and the file manifest
+is detached from journal evidence. The method writes no state or journal events.
+
+This is historical artifact discovery, so an expired installation approval does
+not hide intact published files. The response reports `publication_verified: true`,
+`engine_qualified: false` and `execution_eligible: false`. It does not update the
+installation planner's inventory, choose an executable, launch the engine or
+renew any permission. Consumers must recheck current authority and file integrity
+at their own use boundary; discovery does not lock the filesystem against later
+changes. Engine/template path selection and partial-install planning remain open.

@@ -83,6 +83,11 @@ class InstallationPublicationJournal:
         receipt = _receipt(request['receipt'])
         document = receipt.document()
         manifest = document['manifest']
+        parent = self.journal.get(request['intent_id'])
+        fields = ('mission_version', 'backlog_revision_id', 'execution_epoch_id', 'checkpoint_id', 'control_fencing_token')
+        if (operation.operation_key != f"installation-publication:{parent.identity}:{manifest['package_id']}"
+                or any(getattr(operation, field) != getattr(parent, field) for field in fields)):
+            raise InstallationConflict('publication_journal_scope_mismatch')
         step = self._step(intent, manifest['package_id'])
         if (request['relative_target'] != step['target']
                 or document['target_name'] != _path(step['target']).split('/')[-1]
@@ -122,6 +127,25 @@ class InstallationPublicationJournal:
             return observe_publication(parent, receipt)
         except (OSError, ArchiveRejected, KeyError, ValueError):
             return {'state': 'indeterminate', 'execution_eligible': False}
+
+    def read_payload(self, mission, actor, operation_id):
+        """Resolve verified published files, without granting engine execution.
+
+        This is a read-only snapshot. Consumers must recheck authority and file
+        integrity at their own use boundary; these relative paths are not grants.
+        """
+        operation, intent, receipt = self._record(mission, actor, operation_id)
+        if operation.latest_event.lifecycle.value not in {'completed', 'reconciled'}:
+            raise InstallationConflict('publication_not_completed')
+        if self.observe(mission, actor, operation_id)['state'] != 'matched':
+            raise InstallationConflict('publication_payload_not_verified')
+        manifest = receipt.document()['manifest']
+        step = self._step(intent, manifest['package_id'])
+        return {'publication_id': operation.id, 'package_id': manifest['package_id'],
+                'version': step['version'], 'archive_sha256': manifest['archive_sha256'],
+                'relative_payload': operation.request['relative_target'] + '/payload',
+                'files': manifest['files'], 'receipt_digest': receipt.digest,
+                'publication_verified': True, 'engine_qualified': False, 'execution_eligible': False}
 
     def reconcile_unknown(self, mission, actor, operation_id, *, event_key):
         """Adopt proven file publication; never grant retry or whole setup success."""
