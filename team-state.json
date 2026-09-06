@@ -2129,24 +2129,12 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "review",
+      "status": "blocked",
       "owner": "HappySnowman",
       "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
-      "scopes": [
-        "cloud:contracts/v1/server-workers.json",
-        "cloud:docs/game-brief-intake.md",
-        "cloud:docs/server-workers.md",
-        "cloud:docs/upstream-capability-map.json",
-        "cloud:docs/upstream-capability-map.md",
-        "cloud:pyproject.toml",
-        "cloud:scripts/qualify_workers.py",
-        "cloud:src/agentfactory_cloud/worker_gateway.py",
-        "cloud:src/agentfactory_cloud/worker_gateway_api.py",
-        "cloud:tests/test_worker_gateway.py",
-        "cloud:tests/test_worker_gateway_api.py"
-      ],
-      "updated_at": "2026-09-06T07:41:54+00:00",
-      "note": "",
+      "scopes": [],
+      "updated_at": "2026-09-06T08:11:26+00:00",
+      "note": "Merged inventory and admission components preserved; remote host, sandbox and launcher qualification still pending.",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/16",
       "resources": [
         "core:worker-runtime",
@@ -5783,6 +5771,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-a2967dfe",
       "claim_id": "a9601393-a6b4-4e35-86cd-1537ddaef027"
+    },
+    {
+      "operation_id": "f55222c5-7122-4d65-a6c3-c87a36495fdb",
+      "at": "2026-09-06T08:11:26+00:00",
+      "action": "block",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "Merged inventory and admission components preserved; remote host, sandbox and launcher qualification still pending.",
+      "branch": "agent/HappySnowman/AF-CLD-024-6ebb89e4",
+      "claim_id": "972c329d-648c-4968-9a8a-15059dc04865"
     }
   ],
   "migration": {
