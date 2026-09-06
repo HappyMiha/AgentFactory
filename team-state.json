@@ -3563,6 +3563,51 @@
       "review_head": "7c258ba5cad1cc5ce1bd3bc636bca5df8b28557e",
       "completed_commit": "db69157942a3246c079aee27a5111b1b7c5cd2c9",
       "reviewed_head": "7c258ba5cad1cc5ce1bd3bc636bca5df8b28557e"
+    },
+    "core:AF-GC-043": {
+      "title": "Atomically admit qualified workers with scoped attempts and shared capacity",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [
+        "core:AF-GC-039"
+      ],
+      "source_dependencies": [
+        "core:AF-GC-039"
+      ],
+      "resources": [
+        "core:worker-runtime"
+      ],
+      "required_scopes": [
+        "core:docs/worker-admission.md",
+        "core:examples/game-creator-backlog.json",
+        "core:docs/game-creator-backlog.uk.md"
+      ],
+      "scope_hints": [
+        "core:src/agent_factory/storage.py",
+        "core:src/agent_factory/worker_admission.py",
+        "core:src/agent_factory/worker_runtime.py",
+        "core:tests/test_worker_admission.py"
+      ],
+      "priority": "P0",
+      "milestone": "m2",
+      "optional": false,
+      "catalogue_reviewers": [
+        "HappyDucky02",
+        "HappySnowman",
+        "HappyHahahaker"
+      ],
+      "acceptance_summary": [
+        "Reuse existing Core assignment, lease, attempt and fencing authority in one transaction.",
+        "Require current qualification, lifecycle and trusted shared worker capacity.",
+        "Bind trusted tenant, project, run, task, stage, attempt and worktree before execution.",
+        "Retain uncertain capacity until trusted stop reconciliation; lease expiry is not process termination.",
+        "Preserve local API compatibility and prove concurrency, rollback, stale denial and replay behavior."
+      ],
+      "updated_at": "2026-09-06T04:54:47+00:00",
+      "note": "Three-worker reviewed additive prerequisite for Cloud024; no existing claims or dependencies changed."
     }
   },
   "events": [
@@ -5205,6 +5250,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
       "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
+    },
+    {
+      "operation_id": "3116ce22-092b-47c9-b25f-1a2b09a1abe1",
+      "at": "2026-09-06T04:54:47+00:00",
+      "action": "catalogue-add",
+      "task": "core:AF-GC-043",
+      "worker": "HappyDucky02",
+      "note": "Three-worker reviewed additive prerequisite for Cloud024; no existing claims or dependencies changed.",
+      "branch": null,
+      "claim_id": null
     }
   ],
   "migration": {
