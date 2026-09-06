@@ -217,26 +217,12 @@
         "core:AF-GC-005",
         "core:AF-GC-007"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
-      "scopes": [
-        "core:docs/game-planning.md",
-        "core:examples/game-planning-fixtures.json",
-        "core:src/agent_factory/game_planning.py",
-        "core:src/agent_factory/game_planning_web.py",
-        "core:src/agent_factory/static/game-plan.css",
-        "core:src/agent_factory/static/game-plan.html",
-        "core:src/agent_factory/static/game-plan.js",
-        "core:src/agent_factory/static/games.js",
-        "core:src/agent_factory/web.py",
-        "core:tests/test_game_planning.py",
-        "core:tests/test_game_planning_browser.py",
-        "core:tests/test_game_planning_web.py",
-        "core:tests/test_web.py"
-      ],
-      "updated_at": "2026-09-06T06:58:24+00:00",
-      "note": "Accepted Core043 main incorporated; 79 Windows tests passed, zero skips. Final recovery and integration review requested.",
+      "scopes": [],
+      "updated_at": "2026-09-06T07:13:59+00:00",
+      "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory/pull/17",
       "resources": [
         "shared:game-brief",
@@ -256,7 +242,9 @@
         "core:AF-GC-007"
       ],
       "claim_id": "1b549690-df10-419c-a781-d122938d1532",
-      "review_head": "b38b237bb9351627e5636d7d2ebec21d07e8e766"
+      "review_head": "b38b237bb9351627e5636d7d2ebec21d07e8e766",
+      "completed_commit": "19350633cbeb7c2c1f9e2c545764eeb8c423bd06",
+      "reviewed_head": "b38b237bb9351627e5636d7d2ebec21d07e8e766"
     },
     "core:AF-GC-009": {
       "dependencies": [
@@ -5608,6 +5596,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
       "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb"
+    },
+    {
+      "operation_id": "c9c30914-6bc8-4e7d-906e-328d650ea1d2",
+      "at": "2026-09-06T07:13:59+00:00",
+      "action": "complete",
+      "task": "core:AF-GC-008",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-008-b44ac8a2",
+      "claim_id": "1b549690-df10-419c-a781-d122938d1532"
     }
   ],
   "migration": {
