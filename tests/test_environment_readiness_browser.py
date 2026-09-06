@@ -32,7 +32,7 @@ class EnvironmentReadinessBrowserTests(unittest.TestCase):
                                    'qualified': False, 'mode': 'unknown', 'ready': False,
                                    'detail': 'No qualification receipt.', 'next_action': 'Run the trusted verifier.'}]}
         self.page.route('http://fixture.test/api/**', self.respond)
-        html = re.search(r'<details id="environment-panel".*?</details>', (STATIC/'index.html').read_text(), re.S).group()
+        html = re.search(r'<details id="environment-panel".*?</details>', (STATIC/'operations.html').read_text(), re.S).group()
         self.page.route('http://fixture.test/', lambda r: r.fulfill(body=html,content_type='text/html'))
         self.page.goto('http://fixture.test/')
         source=(STATIC/'app.js').read_text()

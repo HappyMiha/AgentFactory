@@ -14,8 +14,9 @@ from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Reques
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
+from .local_games import LocalGames, GameConflict, local_games_lock
 from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
 
@@ -49,6 +50,24 @@ from .orchestration.temporal.client import (
     workflow_snapshot,
 )
 from .orchestration.temporal.settings import TemporalSettings
+
+class GameCreateCommand(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    command_id: str = Field(min_length=36, max_length=36)
+
+
+class GameSaveCommand(GameCreateCommand):
+    expected_revision: StrictInt = Field(ge=1)
+    title: str = Field(min_length=1, max_length=160)
+    idea: str = Field(max_length=6000)
+    model_key: str = Field(max_length=200)
+    view_step: StrictInt = Field(ge=0, le=4)
+
+
+class GameSubmitCommand(GameCreateCommand):
+    expected_revision: StrictInt = Field(ge=1)
+    confirmed: bool = False
+
 
 T = TypeVar("T")
 
@@ -435,6 +454,70 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
     async def executions(service: Service) -> dict[str, list[dict[str, Any]]]:
         return service.active_executions()
 
+    def games_call(request, operation):
+        try:
+            # Concurrent first-page reads must not race database migrations.
+            with local_games_lock(database):
+                storage = SQLiteStorage(database)
+            with closing(storage):
+                return operation(LocalGames(storage, workspace), request.state.local_principal.actor)
+        except KeyError:
+            raise HTTPException(404, 'game_not_found') from None
+        except GameConflict as error:
+            raise HTTPException(409, str(error)) from None
+        except ValueError as error:
+            allowed = {'invalid_text', 'invalid_command', 'invalid_version_or_step', 'idea_required',
+                       'model_required', 'model_unavailable', 'provider_catalog_unavailable'}
+            code = str(error) if str(error) in allowed else 'invalid_game_request'
+            raise HTTPException(400, code) from None
+
+    @app.get('/api/games/models')
+    def game_models(request: Request):
+        return games_call(request, lambda games, actor: {'items': games.model_choices()})
+
+    @app.get('/api/games/starts')
+    def game_starts(request: Request, q: str = Query('', max_length=200), offset: Offset = 0, limit: Limit = 20):
+        return games_call(request, lambda games, actor: games.list(actor, q=q, offset=offset, limit=limit))
+
+    @app.post('/api/games/starts')
+    def game_create(request: Request, command: GameCreateCommand):
+        return games_call(request, lambda games, actor: games.create(actor, command.command_id))
+
+    @app.get('/api/games/missions')
+    def game_missions(request: Request, q: str = Query('', max_length=200), offset: Offset = 0, limit: Limit = 20):
+        return games_call(request, lambda games, actor: games.existing(actor, q=q, offset=offset, limit=limit))
+
+    @app.get('/api/games/missions/{mission_id}')
+    def game_mission(mission_id: int, request: Request):
+        return games_call(request, lambda games, actor: games.project(mission_id, actor))
+
+    @app.get('/api/games/starts/{ident}')
+    def game_start(ident: str, request: Request):
+        return games_call(request, lambda games, actor: games.detail(ident, actor))
+
+    @app.post('/api/games/starts/{ident}/save')
+    def game_save(ident: str, request: Request, command: GameSaveCommand):
+        return games_call(request, lambda games, actor: games.save(ident, actor, command.command_id,
+            command.expected_revision, title=command.title, idea=command.idea,
+            model_key=command.model_key, view_step=command.view_step))
+
+    @app.post('/api/games/starts/{ident}/submit')
+    def game_submit(ident: str, request: Request, command: GameSubmitCommand,
+                    confirmed: str | None = Header(default=None, alias='X-Agent-Factory-Confirm')):
+        if command.confirmed is not True or confirmed != 'true':
+            raise HTTPException(400, 'confirmation_required')
+        return games_call(request, lambda games, actor: games.materialize(ident, actor, command.command_id, command.expected_revision))
+
+    @app.get('/api/games/starts/{ident}/versions')
+    def game_versions(ident: str, request: Request, q: str = Query('', max_length=200), offset: Offset = 0, limit: Limit = 20):
+        return games_call(request, lambda games, actor: games.versions(ident, actor, q=q, offset=offset, limit=limit))
+
+    @app.get('/api/work-item-filters')
+    async def work_item_filters(service: Service, project_id: int | None = None):
+        rows = service.work_items(project_id)
+        return {key: sorted({getattr(row, key) for row in rows if getattr(row, key)})
+                for key in ('status', 'kind', 'priority', 'assignee')}
+
     @app.get("/api/environment/missions", response_model=dict)
     def environment_missions(offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=200)):
         with closing(SQLiteStorage(database)) as storage:
@@ -534,8 +617,11 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
         priority: str | None = None,
         dependency: int | None = None,
         assignee: str | None = None,
+        q: str = Query("", max_length=200),
     ) -> Page[WorkItemView]:
         rows = service.work_items(project_id)
+        if q:
+            rows = [item for item in rows if q.casefold() in (item.title + " " + item.description).casefold()]
         if kind is not None:
             rows = [item for item in rows if item.kind == kind]
         if status is not None:
@@ -1003,6 +1089,10 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None) -> F
             return HumanControlPlaneService(storage).act(**command.model_dump(exclude={"confirmed"}))
         finally:
             storage.close()
+
+    @app.get('/operations', include_in_schema=False)
+    async def operations_shell(request: Request) -> FileResponse:
+        return FileResponse(static_directory / ('operations.html' if request.state.local_principal else 'login.html'))
 
     @app.get("/", include_in_schema=False)
     async def dashboard_shell(request: Request) -> FileResponse:

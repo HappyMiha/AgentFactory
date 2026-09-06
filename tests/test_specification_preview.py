@@ -32,7 +32,7 @@ class SpecificationPreviewTests(unittest.TestCase):
         self.imports = []
         self.fail_import = False
         self.requirement = "Кіт збирає монети та має три життя."
-        html = (STATIC / "index.html").read_text(encoding="utf-8")
+        html = (STATIC / "operations.html").read_text(encoding="utf-8")
         upload = re.search(r'<details class="backlog-import"><summary>Upload technical specification.*?</details>', html, re.S).group()
         dialog = re.search(r'<dialog id="confirm-dialog".*?</dialog>', html, re.S).group()
         fixture = upload + dialog + '<p id="notice" hidden></p>'

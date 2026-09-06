@@ -1,4 +1,4 @@
-const state = { lastSuccess: null, timer: null, selectedTask: null, projectsLoaded: false, settingsLoaded: false, refreshSeconds: 5, auditPageSize: 50, founderPackets: [], selectedGate: null };
+const state = { workOffset: 0, workGeneration: 0, lastSuccess: null, timer: null, selectedTask: null, projectsLoaded: false, settingsLoaded: false, refreshSeconds: 5, auditPageSize: 50, founderPackets: [], selectedGate: null };
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
 
@@ -279,14 +279,39 @@ function filterQuery() {
 
 async function loadProjects() {
   if (state.projectsLoaded) return;
-  const data = await fetchJson("/api/projects?limit=200");
-  $("filter-project").insertAdjacentHTML("beforeend", data.items.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join(""));
+  const projects = [];
+  let offset = 0;
+  while (true) {
+    const data = await fetchJson(`/api/projects?limit=200&offset=${offset}`);
+    projects.push(...data.items); offset += data.items.length;
+    if (!data.items.length || offset >= data.total) break;
+  }
+  $("filter-project").insertAdjacentHTML("beforeend", projects.map((project) => `<option value="${project.id}">${escapeHtml(project.name)}</option>`).join(""));
   state.projectsLoaded = true;
 }
 
+async function loadWorkFilters() {
+  const project = $("filter-project").value;
+  const data = await fetchJson(`/api/work-item-filters${project ? `?project_id=${encodeURIComponent(project)}` : ""}`);
+  if (project !== $("filter-project").value) return;
+  for (const key of ["kind", "status", "priority", "assignee"]) {
+    const select = $("filter-" + key), previous = select.value;
+    if (JSON.stringify(Array.from(select.options).slice(1).map(option => option.value)) !== JSON.stringify(data[key])) {
+      select.innerHTML = '<option value="">All</option>' + data[key].map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");
+      if (data[key].includes(previous)) select.value = previous;
+    }
+  }
+}
+
 async function loadWork() {
-  const query = filterQuery();
-  const data = await fetchJson(`/api/work-items?limit=200${query ? `&${query}` : ""}`);
+  const generation = ++state.workGeneration;
+  const query = filterQuery(), offset = state.workOffset;
+  const data = await fetchJson(`/api/work-items?limit=50&offset=${offset}${query ? `&${query}` : ""}`);
+  if (generation <= (state.completedWorkGeneration || 0) || query !== filterQuery() || offset !== state.workOffset) return;
+  state.completedWorkGeneration = generation;
+  $("work-prev").disabled = state.workOffset === 0;
+  $("work-next").disabled = state.workOffset + data.items.length >= data.total;
+  $("work-page").textContent = data.total ? `${state.workOffset + 1}–${state.workOffset + data.items.length} of ${data.total}` : "0 results";
   $("work-count").textContent = `${data.total} work item${data.total === 1 ? "" : "s"}`;
   $("work-list").classList.remove("loading-block");
   $("work-list").innerHTML = data.items.length ? data.items.map((item) => `
@@ -597,6 +622,7 @@ async function refresh() {
       fetchJson("/api/reviews?limit=200"),
       fetchJson("/api/founder-decisions"),
       loadProjects(),
+      loadWorkFilters(),
       loadWork(),
       loadAudit(),
       loadSettings()
@@ -623,12 +649,12 @@ $("environment-panel").addEventListener("toggle", () => { if ($("environment-pan
 $("environment-mission").addEventListener("change", () => loadEnvironmentReport());
 $("environment-check").addEventListener("click", () => loadEnvironmentReport(true));
 $("refresh").addEventListener("click", refresh);
-$("work-filters").addEventListener("submit", (event) => { event.preventDefault(); loadWork().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
+$("work-filters").addEventListener("submit", (event) => { event.preventDefault(); state.workOffset = 0; loadWork().catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("backlog-import-form").addEventListener("submit", (event) => { handleBacklogImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("archive-all-work-items").addEventListener("click", () => { guardedCommand("/api/work-items/archive-all", { reason: "Bulk archive from Local Control Center" }, "Archive all active work items; active runs and leases will block this operation").then((result) => { if (result) { $("notice").hidden = false; $("notice").textContent = `Archived ${result.count} work item(s)`; refresh(); } }).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("spec-upload-form").addEventListener("submit", (event) => { handleSpecificationUpload(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("spec-analysis").addEventListener("submit", (event) => { handleSpecificationImport(event).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
-$("clear-filters").addEventListener("click", () => { $("work-filters").reset(); loadWork(); });
+$("clear-filters").addEventListener("click", () => { $("work-filters").reset(); state.workOffset = 0; loadWorkFilters(); loadWork(); });
 $("work-list").addEventListener("click", (event) => { const row = event.target.closest("[data-task-id]"); if (row) selectWorkItem(row.dataset.taskId).catch((error) => { $("work-detail").innerHTML = empty(error.message); }); });
 $("work-detail").addEventListener("click", (event) => { const action = event.target.closest("[data-command],[data-review],[data-run-id]"); if (!action) return; if (action.dataset.runId) showRun(action.dataset.runId); else handleWorkAction(action).catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }); });
 $("run-list").addEventListener("click", (event) => { const row = event.target.closest("[data-run-id]"); if (row) showRun(row.dataset.runId); });
@@ -654,3 +680,9 @@ $("close-founder").addEventListener("click", () => $("founder-dialog").close());
 $("founder-approve").addEventListener("click", () => handleFounderDecision("approved").catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }));
 $("founder-reject").addEventListener("click", () => handleFounderDecision("rejected").catch((error) => { $("notice").hidden = false; $("notice").textContent = error.message; }));
 refresh(); state.timer = window.setInterval(refresh, 5000);
+
+$("filter-project").addEventListener("change", () => loadWorkFilters().catch(error => { $("notice").textContent = error.message; }));
+for (const [id, delta] of [["work-prev", -50], ["work-next", 50]]) $(id).addEventListener("click", () => {
+  state.workOffset = Math.max(0, state.workOffset + delta);
+  loadWork().catch(error => { $("notice").hidden = false; $("notice").textContent = error.message; });
+});

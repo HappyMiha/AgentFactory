@@ -63,6 +63,8 @@ class LocalAccessBrowserTests(unittest.TestCase):
         self.page.goto(self.url+'/')
         self.page.locator('#token').fill('synthetic-browser-access')
         self.page.get_by_role('button',name='Sign in',exact=True).click()
+        self.page.get_by_role('heading',name='Мої ігри').wait_for()
+        self.page.goto(self.url+'/operations')
         self.page.get_by_role('heading',name='Delivery overview').wait_for()
 
     def test_login_http_only_cookie_and_logout_replay(self):

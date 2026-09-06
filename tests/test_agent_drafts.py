@@ -39,7 +39,7 @@ class AgentDraftTests(unittest.TestCase):
         self.posts = []
         self.fail_save = False
         self.removed = False
-        html = (STATIC / 'index.html').read_text(encoding='utf-8')
+        html = (STATIC / 'operations.html').read_text(encoding='utf-8')
         dialog = re.search(r'<dialog id="confirm-dialog".*?</dialog>', html, re.S).group()
         fixture = dialog + '<div id="agent-list"></div><div id="routing-list"></div><button id="refresh">Refresh</button><p id="notice" hidden></p><span id="connection-dot"></span><span id="connection-text"></span><span id="updated"></span>'
         self.page.route('http://fixture.test/', lambda route: route.fulfill(body=fixture, content_type='text/html; charset=utf-8'))
@@ -52,7 +52,7 @@ class AgentDraftTests(unittest.TestCase):
         action = source[source.index('async function handleAgentAction'):source.index('async function handleSettingAction')]
         refresh = source[source.index('async function refresh()'):source.index('$("execution-list").addEventListener')]
         events = source[source.index('$("agent-list").addEventListener("click"'):source.index('$("audit-filters").addEventListener')]
-        stubs = 'function renderDashboard() {} function renderMonitor() {} function renderExecutions() {} function renderFounderInbox() {} async function loadProjects() {} async function loadWork() {} async function loadAudit() {} async function loadSettings() {}'
+        stubs = 'function renderDashboard() {} function renderMonitor() {} function renderExecutions() {} function renderFounderInbox() {} async function loadProjects() {} async function loadWorkFilters() {} async function loadWork() {} async function loadAudit() {} async function loadSettings() {}'
         self.page.add_script_tag(content=common + editors + confirmation + action + refresh + stubs + events)
         self.page.evaluate('refresh()')
         self.model = self.page.locator('.agent-model')
