@@ -2105,6 +2105,7 @@
       "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
       "scopes": [
         "cloud:contracts/v1/server-workers.json",
+        "cloud:docs/game-brief-intake.md",
         "cloud:docs/server-workers.md",
         "cloud:pyproject.toml",
         "cloud:scripts/qualify_workers.py",
@@ -2113,7 +2114,7 @@
         "cloud:tests/test_server_inventory.py",
         "cloud:tests/test_worker_fleet.py"
       ],
-      "updated_at": "2026-09-06T04:23:28+00:00",
+      "updated_at": "2026-09-06T04:45:13+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/14",
       "resources": [
@@ -5184,6 +5185,16 @@
       "note": "",
       "branch": "agent/HappyHahahaker/AF-GC-010-98146cfb",
       "claim_id": "2072c5ac-61bb-4ff1-949b-1f3576ce4222"
+    },
+    {
+      "operation_id": "777cd931-6c0a-4e0a-bb93-4358642f5244",
+      "at": "2026-09-06T04:45:13+00:00",
+      "action": "rescope",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
     }
   ],
   "migration": {
