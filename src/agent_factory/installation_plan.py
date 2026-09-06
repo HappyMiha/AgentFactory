@@ -210,8 +210,12 @@ def build_plan(
         raise ValueError("Invalid inventory")
     for key, observed in inventory.items():
         _identifier(key)
-        if not isinstance(observed, Mapping) or set(observed) != {"version", "sha256", "target", "managed"}:
+        if (not isinstance(observed, Mapping)
+                or not {"version", "sha256", "target", "managed"} <= set(observed)
+                or set(observed) - {"version", "sha256", "target", "managed", "location_kind"}):
             raise ValueError("Invalid installed package observation")
+        if observed.get("location_kind", "workspace_relative") not in {"workspace_relative", "external_label"}:
+            raise ValueError("Invalid installation location kind")
         _identifier(observed["version"])
         _sha(observed["sha256"])
         # An opaque location label, never an executable path from the caller.
@@ -225,10 +229,18 @@ def build_plan(
     required_bytes = 0
     download_bytes = 0
 
-    def location(value: str) -> str:
-        # Comparison only. These caller labels are never resolved or executed.
-        value = value.replace("\\", "/").rstrip("/")
-        return value.casefold() if platform.startswith("windows-") else value
+    def location(value: str) -> str | None:
+        # Only canonical workspace-relative syntax can participate in comparison.
+        # Do not guess the meaning of dot/space aliases, absolute paths or labels.
+        if platform.startswith("windows-"):
+            value = value.replace("\\", "/").casefold()
+        try:
+            return _path(value)
+        except ValueError:
+            return None
+
+    occupied = [location(item["target"]) if item.get("location_kind", "workspace_relative") == "workspace_relative"
+                else None for item in inventory.values()]
 
     for key in ordered:
         package = catalog["packages"][key]
@@ -240,15 +252,16 @@ def build_plan(
         elif old and old["managed"] and key in updates:
             action = "update"
         reasons = []
+        if None in occupied:
+            reasons.append("ambiguous_inventory_location")
         mutate = action in {"install", "update"}
         cached = package["sha256"] in cache
         if package["platform"] != platform:
             reasons.append("unsupported_platform")
         if mutate:
             target = location(package["target"])
-            occupied = [location(observation["target"]) for observation in inventory.values()]
             if any(target == path or target.startswith(path + "/") or path.startswith(target + "/")
-                   for path in occupied):
+                   for path in occupied if path is not None):
                 reasons.append("target_conflict")
             if package["requires_admin"] and not admin_available:
                 reasons.append("administrator_unavailable")
