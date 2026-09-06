@@ -253,12 +253,16 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": "2026-09-06T12:22:48+00:00",
-      "note": "Preserve accepted transport PR29; coordinator agreed versioned arithmetic-only smoke evaluator continuation.",
+      "status": "claimed",
+      "owner": "HappySnowman",
+      "branch": "agent/HappySnowman/AF-GC-009-c7430c9a",
+      "scopes": [
+        "core:docs/provider-qualification.md",
+        "core:src/agent_factory/provider_canary_evaluator.py",
+        "core:tests/test_provider_canary_evaluator.py"
+      ],
+      "updated_at": "2026-09-06T12:22:54+00:00",
+      "note": "Agreed bounded arithmetic smoke evaluator; no general coding/review qualification or live spend.",
       "pr": null,
       "resources": [
         "shared:provider-connection",
@@ -280,7 +284,7 @@
         "core:AF-GC-010",
         "core:AF-GC-025"
       ],
-      "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
+      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
     },
     "core:AF-GC-010": {
       "dependencies": [
@@ -6203,6 +6207,16 @@
       "note": "Preserve accepted transport PR29; coordinator agreed versioned arithmetic-only smoke evaluator continuation.",
       "branch": null,
       "claim_id": "b6d47047-7128-4f73-9515-403fecd12396"
+    },
+    {
+      "operation_id": "0fd848e3-46a2-430a-b518-dfec8ddd03cb",
+      "at": "2026-09-06T12:22:54+00:00",
+      "action": "claim",
+      "task": "core:AF-GC-009",
+      "worker": "HappySnowman",
+      "note": "Agreed bounded arithmetic smoke evaluator; no general coding/review qualification or live spend.",
+      "branch": "agent/HappySnowman/AF-GC-009-c7430c9a",
+      "claim_id": "4136de48-49b9-4e55-8289-7abe90d85b4d"
     }
   ],
   "migration": {
