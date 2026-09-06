@@ -62,9 +62,9 @@ class AdmissionDriver(RuntimeDriver):
 
 
 class WorkerAdmissionRuntimeTests(AdmissionFixture):
-    def launch_fixture(self, *, mutable=True):
+    def launch_fixture(self, *, mutable=True, effect_digest=None):
         self.configure()
-        request = self.request(mutable=mutable)
+        request = replace(self.request(mutable=mutable), effect_digest=effect_digest)
         receipt = self.service.admit(request)
         worktree = self.storage.create_managed_worktree(
             assignment_id=receipt.assignment_id, fencing_token=receipt.fencing_token,
@@ -87,12 +87,14 @@ class WorkerAdmissionRuntimeTests(AdmissionFixture):
             binding=RuntimeBinding(request.run_id, request.stage_key, receipt.attempt_id,
                                    worktree, ('read_file', 'write_file') if mutable else ('read_file',)),
             mutable=mutable, permission_bridge_id='synthetic-bridge' if mutable else None,
+            effect_digest=effect_digest,
         )
         if mutable:
             policy = PolicyRequest(
                 mission_id=request.project_id, task_id=request.task_id, run_id=request.run_id,
                 stage_id=request.stage_key, worker_id=request.worker_id, runtime_id=request.runtime,
                 worktree_id=str(worktree), permissions=tuple(sorted(launch.item.permissions)),
+                effect_digest=effect_digest,
             )
             live = LiveStageExecution(self.storage)
             gate = live.request_approval(policy, requested_by='synthetic-owner')
