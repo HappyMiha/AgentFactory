@@ -96,3 +96,26 @@ from untrusted concurrent writers; this is not same-user process isolation.
 Even a `matched` directory returns `execution_eligible: false` and still needs
 an owned publication receipt and actual executable postconditions before setup
 can be considered successful. Automatic publication and repair remain future work.
+
+## Exact execution-policy request
+
+`InstallationPolicyBinding` derives an existing `PolicyRequest` from a current
+reserved installation intent and trusted host task/worker/runtime/worktree IDs.
+It rechecks the owner, actual task project and current intent before returning a
+request. The policy contract calls the project ID `mission_id`; this helper uses
+the autonomous mission's actual `project_id`, not its separate primary key.
+
+The request uses no workflow run and binds the immutable operation identity and
+full request digest into its installation stage ID. A changed intent therefore
+cannot consume the previous intent's exact approval. Permissions are limited to
+`tool_use` and `worktree_write`; network access or a broader operation would need
+a separate reviewed request. Existing policy and approval storage are unchanged.
+
+Constructing this request does not register a worker, establish runtime admission,
+request or decide an approval, consume it, or start installation. The host must
+obtain the actual execution identities from current trusted configuration and
+use the existing approval/admission paths. A returned request is a snapshot:
+the future executor must regenerate the current binding immediately before the
+effect and must not execute using a stale saved request after plan or host changes.
+Tests exercise the existing one-use policy mechanism with synthetic host IDs;
+they do not claim a qualified installer runtime or actual installation.
