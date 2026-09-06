@@ -2208,11 +2208,24 @@
         "cloud:AF-CLD-004",
         "cloud:AF-CLD-021"
       ],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
-      "updated_at": null,
+      "status": "claimed",
+      "owner": "HappyHahahaker",
+      "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
+      "scopes": [
+        "cloud:docs/connection-guidance.md",
+        "cloud:docs/upstream-capability-map.json",
+        "cloud:docs/upstream-capability-map.md",
+        "cloud:src/agentfactory_cloud/brief_web.py",
+        "cloud:src/agentfactory_cloud/connection_guidance.py",
+        "cloud:src/agentfactory_cloud/connection_guidance_web.py",
+        "cloud:src/agentfactory_cloud/static/connections.html",
+        "cloud:src/agentfactory_cloud/static/connections.js",
+        "cloud:src/agentfactory_cloud/static/game-team.html",
+        "cloud:tests/test_connection_guidance.py",
+        "cloud:tests/test_connection_guidance_browser.py",
+        "cloud:tests/test_connection_guidance_web.py"
+      ],
+      "updated_at": "2026-09-06T10:58:30+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -2227,7 +2240,8 @@
       "source_dependencies": [
         "cloud:AF-CLD-004",
         "cloud:AF-CLD-021"
-      ]
+      ],
+      "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
     },
     "cloud:AF-CLD-028": {
       "dependencies": [
@@ -6058,6 +6072,16 @@
       "note": "Archive staging component merged and official layouts checked; durable installer, recovery/UI and clean VM acceptance remain.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "d78a24da-0695-4505-b854-b92ec6f366a5",
+      "at": "2026-09-06T10:58:30+00:00",
+      "action": "claim",
+      "task": "cloud:AF-CLD-027",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-027-0fd2526f",
+      "claim_id": "62001864-5d69-4488-8d80-f7ab6e4e34bc"
     }
   ],
   "migration": {
