@@ -359,7 +359,7 @@
         "core:AF-GC-008",
         "core:AF-GC-011"
       ],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
       "scopes": [
@@ -375,9 +375,9 @@
         "core:tests/test_configuration_advice_web.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T07:32:05+00:00",
+      "updated_at": "2026-09-06T07:34:27+00:00",
       "note": "",
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/22",
       "resources": [
         "core:environment",
         "core:planning",
@@ -395,7 +395,8 @@
         "core:AF-GC-008",
         "core:AF-GC-011"
       ],
-      "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
+      "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151",
+      "review_head": "f8f15d3d287ada4be51bd76d55aad8c00820bd5e"
     },
     "core:AF-GC-013": {
       "dependencies": [
@@ -5692,6 +5693,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-009-c85f25f5",
       "claim_id": "9b11a3b8-4405-41d3-b319-6a2eb4f84c03"
+    },
+    {
+      "operation_id": "c735ba8c-018a-4681-8d54-313ae7f1cfc5",
+      "at": "2026-09-06T07:34:27+00:00",
+      "action": "review",
+      "task": "core:AF-GC-012",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-GC-012-707c53e6",
+      "claim_id": "c8005ff4-3d1e-4f58-8c0d-f39cb7235151"
     }
   ],
   "migration": {
