@@ -147,6 +147,18 @@ class InstallationLivePolicyTests(unittest.TestCase):
         self.assertEqual(row['request_digest'], request.digest)
         self.assertEqual(row['run_id'], self.run)
 
+    def test_prebound_effect_must_match_before_current_intent_reservation(self):
+        expected = self.request()
+        matching = replace(self.launch, effect_digest=self.publication['request_digest'])
+        self.assertEqual(self.request(launch=matching), expected)
+        before = self.storage.db.total_changes
+        with patch.object(self.binding, 'request', side_effect=AssertionError('Must reject before reserving intent')):
+            with self.assertRaisesRegex(InstallationConflict, 'publication_launch_effect_mismatch'):
+                self.request(launch=replace(self.launch, effect_digest='b'*64))
+        self.assertEqual(self.storage.db.total_changes, before)
+        self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM scoped_execution_approvals').fetchone()[0], 0)
+        self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM worker_sessions').fetchone()[0], 0)
+
     def test_wrong_live_scope_or_permissions_cannot_prepare_effect_request(self):
         variants = [replace(self.launch, binding=replace(self.launch.binding, run_id=self.run+999)),
                     replace(self.launch, binding=replace(self.launch.binding, stage_id='missing')),
@@ -181,6 +193,68 @@ class InstallationLivePolicyTests(unittest.TestCase):
         self.fixture.now -= timedelta(hours=1)
         self.fixture.intents.journal.mark_unknown(self.publication['operation_id'], event_key='unknown', evidence={})
         with self.assertRaisesRegex(InstallationConflict, 'publication_not_reserved'): self.request()
+
+
+
+
+class InstallationAdmittedPolicyTests(unittest.TestCase):
+    def setUp(self):
+        from test_installation_journal import InstallationJournalTests
+        self.fixture = InstallationJournalTests()
+        self.fixture.setUp(); self.addCleanup(self.fixture.doCleanups)
+        self.storage = self.fixture.storage
+        with self.fixture.archive.stage(self.fixture.catalog) as staged:
+            self.publication = self.fixture.prepare(staged)
+        self.binding = InstallationPolicyBinding(self.fixture.intents)
+
+    def request(self, *, launch):
+        return self.binding.publication_request(self.fixture.mission, 'Founder',
+            publication_id=self.publication['operation_id'], launch=launch, runtime_id='direct-cli')
+
+    def admitted_publication_launch(self):
+        from agent_factory.worker_admission import WorkerAdmissionService
+        from test_worker_admission_runtime import WorkerAdmissionRuntimeTests
+        admitted = WorkerAdmissionRuntimeTests()
+        admitted.storage = self.storage; admitted.root = self.fixture.root
+        admitted.counter = 0; admitted.qualifications = {}
+        admitted.service = WorkerAdmissionService(self.storage)
+        task = admitted.task
+        create_task = self.storage.create_task
+        create_worktree = self.storage.create_managed_worktree
+        project = AutonomousMissionService(self.storage).get(self.fixture.mission).project_id
+        # Synthetic qualification and driver only. The saved publication digest
+        # exists before admission; the managed path belongs to its actual project.
+        with patch.object(admitted, 'task', side_effect=lambda **kw: task(**(kw | {'project_id': project}))), \
+             patch.object(self.storage, 'create_task', side_effect=lambda item:
+                          create_task(replace(item, permissions=['read_project', 'tool_use', 'worktree_write']))), \
+             patch.object(self.storage, 'create_managed_worktree', side_effect=lambda **kw:
+                          create_worktree(**(kw | {'path': str(self.fixture.root)}))):
+            return admitted.launch_fixture(effect_digest=self.publication['request_digest'])
+
+    def test_saved_publication_reaches_admitted_runtime_once_without_publishing(self):
+        import json
+        from agent_factory.worker_runtime import DirectCLIWorkerRuntime
+        from test_worker_admission_runtime import AdmissionDriver
+        admission, receipt, launch = self.admitted_publication_launch()
+        request = self.request(launch=launch)
+        self.assertEqual(request.effect_digest, admission.effect_digest)
+        self.assertEqual(request.digest, launch.approval.request_digest)
+        driver = AdmissionDriver()
+        runtime = DirectCLIWorkerRuntime(self.storage, driver)
+        session = runtime.start(launch)
+        self.assertEqual(runtime.start(launch).id, session.id)
+        self.assertEqual(len(driver.starts), 1)
+        stored = json.loads(self.storage.runtime_session(session.id)['request_json'])
+        self.assertEqual(stored['effect_digest'], self.publication['request_digest'])
+        row = self.storage.db.execute('SELECT runtime_session_id FROM worker_admissions WHERE id=?',
+                                      (receipt.admission_id,)).fetchone()
+        self.assertEqual(row[0], session.id)
+        self.assertEqual(self.storage.db.execute('SELECT COUNT(*) FROM stage_approval_consumptions').fetchone()[0], 1)
+        self.assertEqual(self.fixture.publications.view(self.fixture.mission, 'Founder',
+            self.publication['operation_id'])['state'], 'reserved')
+        self.assertFalse((self.fixture.root/self.publication['relative_target']).exists())
+        with self.assertRaisesRegex(InstallationConflict, 'already_approved'):
+            self.request(launch=launch)
 
 
 if __name__=='__main__': unittest.main()
