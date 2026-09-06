@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from agent_factory.adapters import HEALTH_DIMENSIONS
 from agent_factory.agent_router import AgentRouter, RoutingCandidate
@@ -260,6 +261,28 @@ class ProviderQualificationTests(unittest.TestCase):
         with self.assertRaises(QualificationDenied):
             WorkforceComposer(self.storage, qualification_service=self.service).compose(
                 composition_key='cross-tenant', mission_key='fixture', pools=(first, second), budget=10)
+
+    def replacement_during_resolution(self):
+        original = self.service.resolve
+        replaced = False
+        def resolve(**kwargs):
+            nonlocal replaced
+            if not replaced:
+                replaced = True
+                self.record()
+            return original(**kwargs)
+        return patch.object(self.service, 'resolve', side_effect=resolve)
+
+    def test_routing_does_not_mix_old_qualification_id_with_new_evidence(self):
+        self.record()
+        with self.replacement_during_resolution(), self.assertRaises(RuntimeError):
+            self.route({'worker-a': self.scope()})
+
+    def test_workforce_does_not_mix_old_qualification_id_with_new_evidence(self):
+        self.record()
+        with self.replacement_during_resolution():
+            result = self.compose(self.pool({'worker-a': self.scope()}))
+        self.assertNotEqual(result.status, 'ready')
 
 
 if __name__ == '__main__':

@@ -192,6 +192,8 @@ class AgentRouter:
                 reasons = [reason for reason in reasons if reason != "producer_model_conflict"]
                 try:
                     receipt = self.purpose_receipt(candidate, qualification_role, qualification_scopes, producer_receipt)
+                    if qualification is None or receipt.qualification_id != qualification["id"]:
+                        raise QualificationDenied("qualification_changed_during_selection")
                     snapshot.update(model_identity=receipt.canonical_model,
                         requested_model=candidate.model_identity, effective_model=receipt.effective_model,
                         qualification_evidence_digest=receipt.evidence_digest,

@@ -229,6 +229,8 @@ class WorkforceComposer:
             try:
                 receipt = self.router.purpose_receipt(routing, pool.qualification_role,
                     dict(pool.qualification_scopes), pool.producer_receipt)
+                if qualification is None or receipt.qualification_id != qualification["id"]:
+                    raise QualificationDenied("qualification_changed_during_selection")
                 snapshot.update(model_identity=receipt.canonical_model,
                     requested_model=routing.model_identity, effective_model=receipt.effective_model,
                     qualification_evidence_digest=receipt.evidence_digest,
