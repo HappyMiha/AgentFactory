@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>План гри</title><link rel="stylesheet" href="/assets/game-plan.css"><script defer src="/assets/game-plan.js"></script></head>
+<body><main><a href="/">← Мої ігри</a><h1>План першої ігрової версії</h1>
+<p>Ручна чернетка з шаблону. Перевірте припущення й збережіть свій план. AI ще не створював і не приймав цей план.</p>
+<p id="notice" role="status" aria-live="polite">Завантаження…</p>
+<section><h2>Початковий задум</h2><p id="source-label"></p><pre id="source"></pre></section>
+<form id="plan"><fieldset id="fields" disabled><legend>Малий ігровий результат</legend>
+<label for="genre">Жанр</label><select id="genre"><option value="collector">Збирання предметів зверху</option><option value="platformer">Платформер</option><option value="puzzle">Головоломка</option></select>
+<button id="use-template" type="button">Заповнити поля шаблоном обраного жанру</button><p>Ця дія замінює поля форми. Початковий задум залишається незмінним.</p>
+<label for="engine">Рушій</label><select id="engine"><option value="godot">Godot</option><option value="unity">Unity</option><option value="unreal">Unreal Engine</option></select>
+<label for="platform">Платформа першої версії</label><select id="platform"><option value="windows">Windows</option><option value="web">Web</option></select>
+<div id="text-fields"></div><label class="confirm"><input type="checkbox" id="confirmed">Зберегти ручну чернетку плану. Це не затверджує витрати або запуск.</label>
+<button type="submit" id="save">Зберегти версію плану</button></fieldset></form>
+<section id="recovery" hidden><h2>Ваші незбережені поля</h2><p>Ця копія залишається тут під час порівняння. Остання серверна версія не змінюється. Перенесення у форму потребує окремого натискання й нового збереження.</p><textarea id="recovery-fields" readonly aria-label="Копія незбережених полів"></textarea><button type="button" id="export-recovery">Завантажити копію полів</button><button type="button" id="compare-latest">Відкрити останню для порівняння</button><button type="button" id="restore-recovery" disabled>Перенести мої поля в нову чернетку</button></section>
+<section><h2>Уточнення</h2><p>До трьох запитань за раз. Відповідайте у відповідних полях; можна зберегти незавершену чернетку.</p><ul id="questions"></ul></section>
+<section><h2>Версії</h2><button id="latest" type="button">Відкрити останню збережену версію</button><ul id="history"></ul></section>
+<section><h2>Задачі та перевірки</h2><p id="task-note">Задачі відповідають показаній версії. Після редагування збережіть нову версію для оновлення задач.</p><div id="tasks"></div></section>
+<p>Виконання ще не дозволено. Далі потрібні перевірка плану, погодження меж і кваліфікація середовища в наявному процесі Core.</p><a href="/operations">Панель оператора</a>
+</main></body></html>
