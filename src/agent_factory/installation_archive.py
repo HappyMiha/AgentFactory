@@ -48,12 +48,32 @@ def _private_parent(parent):
     return parent
 
 
+@contextmanager
+def _regular_source(source):
+    # Check before opening: a FIFO can otherwise wait forever for a writer.
+    # O_NONBLOCK also closes the POSIX check/open race; fstat still checks the
+    # opened descriptor. The caller's private-host trust boundary remains.
+    expected = os.lstat(source)
+    if (not stat.S_ISREG(expected.st_mode)
+            or getattr(expected, 'st_file_attributes', 0) & 0x400):
+        raise ArchiveRejected('Expected a regular archive file without links')
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    descriptor = os.open(source, flags)
+    try:
+        actual = os.fstat(descriptor)
+        if (not stat.S_ISREG(actual.st_mode)
+                or (actual.st_dev, actual.st_ino) != (expected.st_dev, expected.st_ino)):
+            raise ArchiveRejected('Archive source changed while opening')
+        with os.fdopen(descriptor, 'rb', closefd=False) as handle:
+            yield handle
+    finally:
+        os.close(descriptor)
+
+
 def _copy_verified(source, destination, package):
     digest = hashlib.sha256()
     remaining = package['download_bytes']
-    with open(source, 'rb') as src, destination.open('xb') as dst:
-        if not stat.S_ISREG(os.fstat(src.fileno()).st_mode):
-            raise ArchiveRejected('Expected a regular archive file')
+    with _regular_source(source) as src, destination.open('xb') as dst:
         while True:
             chunk = src.read(min(_CHUNK, remaining + 1))
             if not chunk:

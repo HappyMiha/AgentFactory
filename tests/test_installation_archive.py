@@ -1,9 +1,13 @@
 """Real disposable archives, filesystem failures and untouched-neighbour checks."""
 from contextlib import contextmanager
 import hashlib
+import json
+import os
 from pathlib import Path
 import stat
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -211,6 +215,68 @@ class InstallationArchiveTests(unittest.TestCase):
                 catalog = self.archive(((info, b'x'),))
                 with self.assertRaises(ArchiveRejected), self.stage(catalog): pass
                 self.assert_clean()
+
+    def test_nonregular_source_is_rejected_before_opening(self):
+        catalog = self.archive()
+        self.source.unlink(); self.source.mkdir()
+        actual_open = os.open
+        def reject_source(path, *args, **kwargs):
+            if Path(path) == self.source: raise AssertionError('opened special source')
+            return actual_open(path, *args, **kwargs)
+        with patch('agent_factory.installation_archive.os.open', reject_source):
+            with self.assertRaises(ArchiveRejected), self.stage(catalog): pass
+        self.assert_clean()
+
+    def test_changed_descriptor_is_rejected_and_closed(self):
+        catalog = self.archive()
+        other = self.root/'other.zip'; other.write_bytes(self.source.read_bytes())
+        actual_open = os.open
+        descriptors = []
+        def switched_open(source, flags, *args, **kwargs):
+            if Path(source) != self.source:
+                return actual_open(source, flags, *args, **kwargs)
+            descriptor = actual_open(other, flags, *args, **kwargs)
+            descriptors.append(descriptor)
+            return descriptor
+        with patch('agent_factory.installation_archive.os.open', switched_open):
+            with self.assertRaises(ArchiveRejected), self.stage(catalog): pass
+        for descriptor in descriptors:
+            with self.assertRaises(OSError): os.fstat(descriptor)
+        self.assert_clean()
+
+    @unittest.skipUnless(hasattr(os, 'mkfifo'), 'POSIX FIFO is unavailable on this platform')
+    def test_actual_fifo_and_check_open_swap_reject_without_waiting(self):
+        catalog = self.archive()
+        fifo = self.root/'pipe'; os.mkfifo(fifo)
+        # Run in a separate process so a regression has a bounded timeout and
+        # cannot hang the suite. Also substitute a FIFO after a regular lstat.
+        program = '''
+import json, os, sys
+from pathlib import Path
+from unittest.mock import patch
+from agent_factory.installation_archive import ArchiveRejected, stage_verified_zip
+source, fifo, parent, catalog = sys.argv[1:]
+catalog = json.loads(catalog)
+def check(path):
+    try:
+        with stage_verified_zip(path, catalog=catalog, package_id='godot-editor', staging_parent=parent):
+            raise AssertionError('Special source accepted')
+    except ArchiveRejected:
+        pass
+check(fifo)
+actual_open = os.open
+def swap(path, flags, *args, **kwargs):
+    if Path(path) != Path(source):
+        return actual_open(path, flags, *args, **kwargs)
+    return actual_open(fifo, flags, *args, **kwargs)
+with patch('agent_factory.installation_archive.os.open', swap):
+    check(source)
+assert sorted(p.name for p in Path(parent).iterdir()) == ['existing.txt']
+'''
+        result = subprocess.run([sys.executable, '-c', program, str(self.source), str(fifo),
+                                 str(self.parent), json.dumps(catalog)], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assert_clean()
 
 
 if __name__ == '__main__': unittest.main()

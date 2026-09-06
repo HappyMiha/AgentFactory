@@ -11,6 +11,13 @@ The first profile supports ordinary single-volume ZIP files with ASCII paths and
 stored or deflated entries. ZIP64 and other layouts require a separately reviewed
 profile. Actual Godot archives still need qualification against these bounds.
 
+Source files must be regular files without links. This is checked before opening
+to avoid waiting on a FIFO. On POSIX the open also uses nonblocking/no-follow
+flags; the opened descriptor must still be regular and match the observed file.
+The FIFO regression runs in a bounded subprocess on POSIX and is explicitly
+skipped on Windows, which has no `mkfifo` API. Independent Linux execution is
+required for that regression; Windows checks are not substitute evidence.
+
 The result exists only inside the caller's context. Leaving it, including after
 a normal exception, removes only that new temporary directory. Existing package
 targets and unrelated files are untouched. A hard process kill can leave staging
