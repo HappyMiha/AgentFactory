@@ -8,6 +8,7 @@ from contextlib import contextmanager
 import hashlib
 from pathlib import Path
 import sqlite3
+from types import MappingProxyType
 import uuid
 from .credentials import CredentialBroker
 from .os_credentials import WindowsCredentialStore
@@ -58,6 +59,24 @@ class CredentialConnections:
         self._owner(actor, tenant)
         with self._db() as db:
             return [self._view(r) for r in db.execute("SELECT * FROM connections WHERE actor=? AND tenant=? ORDER BY created_at,id", (actor, tenant))]
+
+    @contextmanager
+    def current_metadata(self, reference, *, actor, tenant):
+        """Serialize a short trusted metadata read with local disconnect.
+
+        No secret is read and active metadata does not prove provider access.
+        Do not invoke connection operations or network work inside this context:
+        they need their own transaction and existing execution authority.
+        """
+        self._owner(actor, tenant)
+        with self._db() as db:
+            row = self._row(db, reference, actor, tenant)
+            if row['status'] != 'active':
+                raise PermissionError("Connection is unavailable")
+            # Every connect creates a new UUID; revoked references never reactivate.
+            # A copied database at another location must not reuse its generation.
+            generation = hashlib.sha256((str(self.database) + '\0' + row['id']).encode()).hexdigest()
+            yield MappingProxyType(self._view(row) | {'generation': generation})
 
     def connect(self, *, actor, tenant, provider, secret):
         self._owner(actor, tenant)

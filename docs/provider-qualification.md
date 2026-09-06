@@ -6,6 +6,58 @@ immutable `worker_qualifications`, lifecycle, routing and workforce records.
 There is no new database, migration, HTTP endpoint or Cloud qualification store.
 The connection wizard and real provider qualification remain unfinished.
 
+## Current local connection scope
+
+`ProviderConnectionScopeResolver` connects the qualification reader to the
+existing `CredentialConnections` metadata store. Trusted host configuration
+supplies immutable `ProviderConnectionBinding` records for each worker, role and
+purpose, including actor, tenant, connection reference, provider, requested model
+and configuration digest. No HTTP route accepts these records or installs this
+resolver automatically. Changing host configuration requires a new resolver;
+bindings are copied and duplicate keys are rejected.
+
+`scope(worker_id=..., role=..., purpose=...)` reads a local active connection and
+returns a scope snapshot for a separately trusted evaluator. It does not read the
+secret or establish a qualification. `resolve(...)` supplies the current scope to
+the existing Core qualification service; `revalidate(receipt)` checks the current
+binding and connection before revalidating the exact immutable Core receipt.
+Missing or pending connections, another actor/tenant, provider mismatch, local
+disconnect, reconnect and configuration changes fail closed. Core's existing
+latest-record, expiry, identity and worker-lifecycle checks still apply.
+
+The opaque connection generation derives from the canonical local metadata
+database location and the connection UUID. Every connect creates a fresh UUID;
+revoked references never reactivate. Restart at the same database preserves the
+generation, while moving/copying the database or reconnecting invalidates earlier
+scopes. This is a local metadata generation, not a provider account generation or
+a secret fingerprint. Out-of-band database rollback, provider-side key rotation,
+deleted OS credentials, expired subscriptions, quota and model access still need
+the trusted host's actual credential/provider evaluation and revocation policy.
+
+Connection metadata reads and Core qualification reads are serialized with local
+disconnect through the existing metadata SQLite writer transaction. A read
+already in progress may finish before disconnect returns; later reads reject.
+The resolver performs no network calls or credential execution inside that
+transaction. Its return value is a snapshot, not a lease: consumers must resolve
+or revalidate again at their fallback, retry and admission boundaries. Do not
+cache it as proof of continuing access, nor invoke connection operations from
+inside `current_metadata(...)`; they need their own transaction. Actual execution
+still goes through the existing mission policy and `CredentialConnections.execute`
+broker, which independently serializes local disconnect with admission.
+
+This component does not change Core routing automatically, run a canary, issue
+account authority or bind a producer artifact. A host/Cloud consumer must install
+the trusted resolver explicitly and retain Core's canonical-model independence
+checks. Direct calls to the lower-level qualification service still require a
+trusted current scope; browser-provided scopes remain invalid authority.
+
+`test_provider_connection_scope` uses real local SQLite files with synthetic
+credentials and evaluator records to verify generation, restart, cross-owner
+denial, disconnect/reconnect, config changes, copied databases, receipt replacement,
+lifecycle, expiry and a concurrent disconnect. It also confirms that active
+metadata alone creates no qualification and that the resolver never reads secrets.
+These tests are not live provider or native credential-store qualification.
+
 ## Trusted host boundary
 
 `ProviderQualificationService` accepts evidence only from a trusted host
