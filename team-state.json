@@ -2130,13 +2130,13 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "status": "blocked",
-      "owner": "HappySnowman",
-      "branch": "agent/HappySnowman/AF-CLD-024-768ea2b2",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
       "scopes": [],
-      "updated_at": "2026-09-06T05:04:23+00:00",
-      "note": "Inventory component PR14 merged; awaiting accepted Core043 atomic admission and declared server/lab qualification. Full task remains incomplete.",
-      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/14",
+      "updated_at": "2026-09-06T07:09:08+00:00",
+      "note": "Accepted Core043 enables a fresh continuation; preserve merged inventory component and historical branch.",
+      "pr": null,
       "resources": [
         "core:worker-runtime",
         "cloud:worker-fleet",
@@ -2151,8 +2151,7 @@
         "cloud:AF-CLD-021",
         "cloud:AF-CLD-022"
       ],
-      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc",
-      "review_head": "825fae74f07e7ebd7773a761ef1ecee17ed13cae"
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
     },
     "cloud:AF-CLD-025": {
       "dependencies": [
@@ -5557,6 +5556,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DOC-001-92bdf80c",
       "claim_id": "df29c38a-ae86-4c65-b6d2-2670f16216fb"
+    },
+    {
+      "operation_id": "2f7968a1-071e-41ca-a4b7-79b12653d604",
+      "at": "2026-09-06T07:09:08+00:00",
+      "action": "release",
+      "task": "cloud:AF-CLD-024",
+      "worker": "HappySnowman",
+      "note": "Accepted Core043 enables a fresh continuation; preserve merged inventory component and historical branch.",
+      "branch": null,
+      "claim_id": "8141c35e-0dd5-4133-81a1-fec3174bd3dc"
     }
   ],
   "migration": {
