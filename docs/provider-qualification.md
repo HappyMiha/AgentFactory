@@ -60,6 +60,68 @@ These tests are not live provider or native credential-store qualification.
 
 ## Trusted host boundary
 
+### Arithmetic smoke evaluator
+
+`ProviderCanaryEvaluator` joins the accepted observation transport to a small,
+versioned deterministic grading suite: `arithmetic-expression-smoke.v1`. It asks
+for an expression summing integers from 1 through n for n in 0..100 and compares
+nine fixed cases with independently computed expected integers. The requested
+prompt, provider observation, candidate digest and grading evidence remain
+distinct. A correct result says only that this particular arithmetic smoke test
+passed. It does not establish general coding skill, independent review, a
+producer/reviewer pair or game readiness. This class never calls a qualification
+writer or returns the purpose-specific qualification check set.
+
+The host supplies the actual matching worker assignment/fencing token, its
+mission context and a fresh empty worktree through the existing `SandboxPolicy`
+and `SandboxManager`. The transport and sandbox must share Core storage. The
+evaluator checks current lease ownership, bounded canonical policy and the empty
+worktree before asking the provider, before grading and after grading. The
+transport's separate atomic account/policy/budget authorizer remains mandatory;
+the host must bind that mission authorization to this assignment. Observations
+are rechecked against the current connection before a passing report. A report
+is historical evidence, never a lease or execution permission.
+
+Only the existing Linux Bubblewrap backend is supported by this initial profile.
+Windows and other unsupported backends deny before a provider request; they do
+not silently use an unenforced test backend. Merely finding Bubblewrap does not
+prove a grading run succeeded: the actual sandbox result must succeed without
+timeout, output overflow, changed files or loss of process containment.
+
+Generated text is **not executed as Python**. Both the parent and fixed isolated
+runner parse only a 256-byte ASCII expression. The grammar permits `n`, integer
+constants up to 1000, parentheses, unary plus/minus and `+ - * // %`. Imports,
+calls, attributes, loops, comprehensions, powers, shifts, other names and all
+non-integer constants are rejected. AST size is at most 32 nodes and depth 8;
+intermediate absolute values are at most 1,000,000. One multiplication can
+temporarily reach at most 10^12 (40 bits) before rejection. There is no recursion
+or allocation construct under candidate control beyond those fixed bounds.
+
+The trusted runner uses Python `-I -S`, sets a 64 MiB address-space limit and a
+one-second CPU limit before parsing, and interprets the validated arithmetic AST
+without `eval`, `exec` or compilation of candidate text. Existing sandbox policy
+adds at most five seconds of execution time and at most 2048 captured characters;
+existing process cleanup can take additional bounded joins. The smoke worktree
+must stay empty. The existing Bubblewrap profile exposes host paths read-only;
+this is not host-read isolation and must never be used here for unrestricted
+generated code. The tiny fixed interpreter gives candidate data no file, network,
+import or process operation.
+
+Frozen evidence contains bounded status/reason, suite version, provider-observed
+identity and request/observation/candidate/grader/sandbox hashes, without candidate
+source or filesystem paths. Every result retains `execution_eligible: false` and
+empty `qualified_capabilities`, including success. Existing worker qualifications
+are not renewed, replaced or invalidated. A future full evaluator still needs
+actual account authority, stronger capability suites, independent-model evidence
+and a reviewed lifecycle/qualification publication contract.
+
+Tests use synthetic model responses and credentials with actual SQLite leases,
+broker evidence and Linux Bubblewrap grading. They cover a correct expression,
+a known wrong control, forbidden syntax/resource growth, late lease expiry and
+disconnect, nonempty/out-of-scope worktrees and Windows denial. Linux execution
+tests are explicitly skipped on other systems; those skips are not sandbox or
+model acceptance. No live provider account or spend was used during development.
+
 ### Bounded observation transport prerequisite
 
 `ProviderCanaryTransport` can make one credential-backed OpenAI Responses request
