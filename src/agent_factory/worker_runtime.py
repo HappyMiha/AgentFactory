@@ -18,6 +18,7 @@ from .control_plane import (
 from .policy import ControlPlanePolicy, PolicyOutcome, PolicyRequest
 from .providers import Provider
 from .storage import SQLiteStorage
+from .worker_admission import WorkerAdmissionService, admission_for_assignment
 
 
 class FallbackForbiddenError(PermissionError):
@@ -284,10 +285,21 @@ class WorkerRuntime(ABC):
             raise TypeError("Runtime mission control binding must be an object")
         return RuntimeMissionControlBinding(**value)
 
+    def _runtime_session_row(self, session_id: int):
+        """Bind the selected adapter without requiring a live lease to stop it."""
+        row = self.storage.runtime_session(session_id)
+        admitted = admission_for_assignment(self.storage, int(row["assignment_id"]))
+        if admitted is not None and (
+            row["runtime"] != self.runtime_id or admitted["runtime"] != self.runtime_id
+            or admitted["runtime_session_id"] != session_id
+        ):
+            raise PermissionError("Selected runtime does not own the admitted session")
+        return row
+
     def _session_control_binding(
         self, session_id: int
     ) -> RuntimeMissionControlBinding | None:
-        row = self.storage.runtime_session(session_id)
+        row = self._runtime_session_row(session_id)
         request = json.loads(row["request_json"])
         return self._control_binding(request.get("mission_control"))
 
@@ -330,6 +342,8 @@ class WorkerRuntime(ABC):
     ) -> MissionOperationLease | None:
         """Fence every tool turn inside a long-lived multi-tool worker session."""
 
+        self._runtime_session_row(session_id)
+        self.storage.assert_runtime_session_authority(session_id, allowed_states=("running",))
         binding = mission_control or self._session_control_binding(session_id)
         return self._begin_control_operation(
             binding,
@@ -369,6 +383,53 @@ class WorkerRuntime(ABC):
             assignment_id=launch.assignment_id,
             fencing_token=launch.fencing_token,
         )
+        WorkerAdmissionService(self.storage).validate_launch(launch, self.runtime_id)
+
+    def _reserve_admitted_launch(self, launch: RuntimeLaunch) -> tuple[int, bool] | None:
+        """Commit one start reservation before an external side effect.
+
+        A stored starting session can mean an accepted call with a lost response.
+        Returning that session is deliberately different from retrying the driver.
+        """
+        self.storage._begin_immediate()
+        try:
+            admitted = WorkerAdmissionService(self.storage).validate_launch_in_transaction(
+                launch, self.runtime_id
+            )
+            if admitted is None:
+                self.storage.db.commit()
+                return None
+            scope = launch.durable_scope()
+            digest = hashlib.sha256(json.dumps(
+                {"scope": scope, "agent": asdict(launch.agent), "item": asdict(launch.item),
+                 "approval": asdict(launch.approval) if launch.approval else None},
+                sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            ).encode("utf-8")).hexdigest()
+            existing_id = admitted["runtime_session_id"]
+            if existing_id is not None:
+                session = self.storage.runtime_session(int(existing_id))
+                request = json.loads(session["request_json"])
+                if request.get("admission_start_digest") != digest:
+                    raise PermissionError("Admission already reserved a different runtime launch")
+                self.storage.db.commit()
+                return int(existing_id), False
+            session_id = self.storage._create_runtime_session_in_transaction(
+                assignment_id=launch.assignment_id, runtime=self.runtime_id,
+                request={**scope, "admission_start_digest": digest},
+                context_digest=launch.context_digest, fencing_token=launch.fencing_token,
+            )
+            changed = self.storage.db.execute(
+                """UPDATE worker_admissions SET runtime_session_id=?
+                     WHERE assignment_id=? AND runtime_session_id IS NULL""",
+                (session_id, launch.assignment_id),
+            ).rowcount
+            if changed != 1:
+                raise RuntimeError("Admission start reservation lost its assignment")
+            self.storage.db.commit()
+            return session_id, True
+        except Exception:
+            self.storage.db.rollback()
+            raise
 
     def _authorize_mutable_launch(self, launch: RuntimeLaunch) -> None:
         if not launch.mutable:
@@ -437,29 +498,36 @@ class WorkerRuntime(ABC):
 
     def start(self, launch: RuntimeLaunch) -> RuntimeSession:
         self._validate_launch(launch)
-        self._authorize_mutable_launch(launch)
-        control_lease = self._begin_control_operation(
-            launch.mission_control,
-            operation_id=(
-                f"runtime:{self.runtime_id}:assignment:{launch.assignment_id}:"
-                f"start:{launch.context_digest}"
-            ),
-            kind=MissionOperationKind.COMMAND,
-            request={
-                "runtime": self.runtime_id,
-                "operation": "start",
-                "assignment_id": launch.assignment_id,
-            },
-        )
-        session_id: int | None = None
+        reservation = self._reserve_admitted_launch(launch)
+        if reservation is not None and not reservation[1]:
+            return self.session(reservation[0])
+        session_id: int | None = reservation[0] if reservation else None
+        control_lease = None
         try:
-            session_id = self.storage.create_runtime_session(
-                assignment_id=launch.assignment_id,
-                runtime=self.runtime_id,
-                request=launch.durable_scope(),
-                context_digest=launch.context_digest,
-                fencing_token=launch.fencing_token,
+            self._authorize_mutable_launch(launch)
+            control_lease = self._begin_control_operation(
+                launch.mission_control,
+                operation_id=(
+                    f"runtime:{self.runtime_id}:assignment:{launch.assignment_id}:"
+                    f"start:{launch.context_digest}"
+                ),
+                kind=MissionOperationKind.COMMAND,
+                request={
+                    "runtime": self.runtime_id,
+                    "operation": "start",
+                    "assignment_id": launch.assignment_id,
+                },
             )
+            if session_id is None:
+                session_id = self.storage.create_runtime_session(
+                    assignment_id=launch.assignment_id,
+                    runtime=self.runtime_id,
+                    request=launch.durable_scope(),
+                    context_digest=launch.context_digest,
+                    fencing_token=launch.fencing_token,
+                )
+            # Recheck policy after approval/control-plane operations and before dispatch.
+            WorkerAdmissionService(self.storage).validate_launch(launch, self.runtime_id)
             external_id = self.driver.start(
                 launch, control_session_id=session_id
             )
@@ -478,14 +546,15 @@ class WorkerRuntime(ABC):
                     kind="error",
                     payload={"error_type": type(exc).__name__},
                 )
-                self.storage.finalize_runtime_session(
-                    session_id,
-                    status="failed",
-                    result={
-                        "status": "failed",
-                        "error_type": type(exc).__name__,
-                    },
-                )
+                if reservation is None:
+                    self.storage.finalize_runtime_session(
+                        session_id,
+                        status="failed",
+                        result={
+                            "status": "failed",
+                            "error_type": type(exc).__name__,
+                        },
+                    )
             raise
         finally:
             self._finish_control_operation(
@@ -496,7 +565,7 @@ class WorkerRuntime(ABC):
         return self.session(session_id)
 
     def session(self, session_id: int) -> RuntimeSession:
-        row = self.storage.runtime_session(session_id)
+        row = self._runtime_session_row(session_id)
         return RuntimeSession(
             id=int(row["id"]),
             identity=str(row["identity"]),
@@ -526,6 +595,9 @@ class WorkerRuntime(ABC):
         session = self.session(session_id)
         if not session.external_session_id:
             raise ValueError("Runtime session has no external identity")
+        self.storage.assert_runtime_session_authority(
+            session_id, allowed_states=("running", "suspended")
+        )
         row = self.storage.runtime_session(session_id)
         lease = self._begin_control_operation(
             mission_control or self._session_control_binding(session_id),
@@ -534,6 +606,9 @@ class WorkerRuntime(ABC):
             request={"runtime": self.runtime_id, "operation": "resume"},
         )
         try:
+            self.storage.assert_runtime_session_authority(
+                session_id, allowed_states=("running", "suspended")
+            )
             self.driver.resume(session.external_session_id)
             self.storage.resume_runtime_session(session_id)
         finally:
@@ -546,6 +621,7 @@ class WorkerRuntime(ABC):
         session = self.session(session_id)
         if not session.external_session_id:
             raise ValueError("Runtime session has no external identity")
+        self.storage.assert_runtime_session_authority(session_id, allowed_states=("running",))
         row = self.storage.runtime_session(session_id)
         lease = self._begin_control_operation(
             self._session_control_binding(session_id),
@@ -554,6 +630,7 @@ class WorkerRuntime(ABC):
             request={"runtime": self.runtime_id, "operation": "heartbeat"},
         )
         try:
+            self.storage.assert_runtime_session_authority(session_id, allowed_states=("running",))
             self.driver.heartbeat(session.external_session_id)
             heartbeat = self.storage.heartbeat_runtime_session(session_id)
             self.storage.append_runtime_event(
@@ -665,6 +742,7 @@ class WorkerRuntime(ABC):
         )
 
     def assert_fallback_allowed(self, session_id: int) -> None:
+        self._runtime_session_row(session_id)
         if not self.storage.runtime_fallback_allowed(session_id):
             raise FallbackForbiddenError(
                 "Runtime fallback is forbidden after the first mutable action"

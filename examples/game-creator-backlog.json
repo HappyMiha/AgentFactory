@@ -2366,6 +2366,59 @@
         "status:proposed",
         "product:game-creator"
       ]
+    },
+    {
+      "stable_id": "AF-GC-043",
+      "kind": "task",
+      "title": "Atomically admit qualified workers with scoped attempts and shared capacity",
+      "description": "Reserve qualified worker capacity and one exact execution scope before starting work. Keep uncertain processes occupied until trusted stop reconciliation.",
+      "parent_id": "AF-GC-E2",
+      "dependencies": [
+        "AF-GC-039"
+      ],
+      "priority": "P0",
+      "assigned_role": "runtime-engineer",
+      "acceptance_criteria": [
+        "Current qualification, lifecycle, trusted tenant/project binding and versioned physical worker pool policy are checked in one transaction with the existing assignment, lease and first attempt.",
+        "Logical aliases share capacity across projects and tenants. Expired or released leases do not free an unconfirmed external process slot.",
+        "The runtime requires the exact run, stage, attempt, ready worktree and context; registered workers cannot bypass admission through the legacy claim API.",
+        "Identical requests and runtime starts replay existing results without another attempt, approval consumption or external start. Changed scope fails.",
+        "Only trusted stop evidence for the exact admission and fence releases its capacity. Existing unregistered local callers retain their behavior."
+      ],
+      "validation_method": [
+        "Independent SQLite connections race for shared capacity and one runtime start; injected transaction failures prove rollback.",
+        "Synthetic drivers cover uncertain start responses, expiry, stale scope, lifecycle and policy denial, retained capacity and old stop acknowledgement replay.",
+        "Run affected existing scheduler, runtime, worktree, qualification and mission control tests. Independent real-PC review records the tested commit and limits."
+      ],
+      "required_components": [
+        "src/agent_factory/worker_admission.py",
+        "src/agent_factory/storage.py",
+        "src/agent_factory/worker_runtime.py"
+      ],
+      "required_infrastructure": [
+        "Temporary local SQLite databases and synthetic runtime drivers; real remote host qualification belongs to the Cloud consumer."
+      ],
+      "expected_artifacts": [
+        "Admission service and migration, runtime enforcement, focused tests, and docs/worker-admission.md."
+      ],
+      "definition_of_done": [
+        "Acceptance tests pass at the reviewed commit; the documented trust boundary and recovery limits are independently reviewed.",
+        "The protected PR is merged and the owning worker updates the shared task register; deployment readiness remains a separate gate."
+      ],
+      "source_references": [
+        "docs/worker-admission.md",
+        "docs/team-workflow.md"
+      ],
+      "review_notes": [
+        "Additive prerequisite agreed by all three workers for Cloud worker admission. Existing stable IDs, dependencies and engine milestones remain intact."
+      ],
+      "labels": [
+        "priority:p0",
+        "milestone:m2",
+        "size:m",
+        "status:proposed",
+        "product:game-creator"
+      ]
     }
   ]
 }
