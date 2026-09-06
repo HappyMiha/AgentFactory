@@ -196,6 +196,7 @@
         "core:src/agent_factory/static/styles.css",
         "core:src/agent_factory/storage.py",
         "core:src/agent_factory/web.py",
+        "core:tests/test_accessibility.py",
         "core:tests/test_agent_drafts.py",
         "core:tests/test_control_plane_web.py",
         "core:tests/test_dialog_confirmation.py",
@@ -208,7 +209,7 @@
         "core:tests/test_specification_preview.py",
         "core:tests/test_web.py"
       ],
-      "updated_at": "2026-09-06T01:19:04+00:00",
+      "updated_at": "2026-09-06T01:46:28+00:00",
       "note": "",
       "pr": null,
       "resources": [
@@ -4906,6 +4907,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-CLD-008-1beacacc",
       "claim_id": "29acb938-eee8-4555-a3c7-6d1cc6383afb"
+    },
+    {
+      "operation_id": "60c31f3c-087e-4c21-84e9-e90ae47f2e31",
+      "at": "2026-09-06T01:46:28+00:00",
+      "action": "rescope",
+      "task": "core:AF-GC-007",
+      "worker": "HappySnowman",
+      "note": "",
+      "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
+      "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22"
     }
   ],
   "migration": {
