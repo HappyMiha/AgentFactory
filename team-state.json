@@ -2053,18 +2053,11 @@
         "cloud:AF-CLD-002",
         "cloud:AF-CLD-021"
       ],
-      "status": "review",
+      "status": "done",
       "owner": "HappyHahahaker",
       "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
-      "scopes": [
-        "cloud:contracts/v1/hosted-storage.json",
-        "cloud:docs/hosted-storage.md",
-        "cloud:requirements-postgres.txt",
-        "cloud:src/agentfactory_cloud/hosted_store.py",
-        "cloud:src/agentfactory_cloud/storage_migrations",
-        "cloud:tests/test_hosted_store.py"
-      ],
-      "updated_at": "2026-09-06T02:27:45+00:00",
+      "scopes": [],
+      "updated_at": "2026-09-06T02:48:05+00:00",
       "note": "",
       "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/12",
       "resources": [
@@ -2081,7 +2074,9 @@
         "cloud:AF-CLD-021"
       ],
       "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a",
-      "review_head": "62aca7994c6012ae0e70389638c427f3802771f4"
+      "review_head": "62aca7994c6012ae0e70389638c427f3802771f4",
+      "completed_commit": "4521e2f9a696bcc75632e687cd92bf23583b0140",
+      "reviewed_head": "62aca7994c6012ae0e70389638c427f3802771f4"
     },
     "cloud:AF-CLD-023": {
       "dependencies": [
@@ -4987,6 +4982,16 @@
       "note": "",
       "branch": "agent/HappySnowman/AF-GC-007-6de0a71a",
       "claim_id": "06141faa-2e82-4930-92ff-6b4f1ca7fd22"
+    },
+    {
+      "operation_id": "e7849cef-d0d6-4323-b506-21829e145374",
+      "at": "2026-09-06T02:48:05+00:00",
+      "action": "complete",
+      "task": "cloud:AF-CLD-022",
+      "worker": "HappyHahahaker",
+      "note": "",
+      "branch": "agent/HappyHahahaker/AF-CLD-022-9b3b16ea",
+      "claim_id": "e24d809c-6bcc-4299-b7e5-0a4116a3ed0a"
     }
   ],
   "migration": {
