@@ -12,6 +12,7 @@ from typing import Any
 from .agent_router import AgentRouter, ROUTING_STRATEGIES, RoutingCandidate
 from .roles import RoleDefinition, RoleRegistry
 from .storage import SQLiteStorage
+from .provider_qualification import QualificationDenied, QualificationReceipt, QualificationScope
 
 
 POOL_STRATEGIES = ("singleton", "fixed", "elastic", "strengthened")
@@ -45,6 +46,8 @@ class RolePoolRequirement:
     require_model_independence: bool = False
     require_provider_diversity: bool = False
     pinned_agent_id: str | None = None
+    qualification_scopes: tuple[tuple[str, QualificationScope], ...] = ()
+    producer_receipt: QualificationReceipt | None = None
 
     def __post_init__(self):
         if not IDENTIFIER.fullmatch(self.key):
@@ -74,6 +77,14 @@ class RolePoolRequirement:
         if len(self.candidates) > 16:
             raise ValueError("Role pools are bounded to sixteen candidates")
         agent_ids = [candidate.routing.agent_id for candidate in self.candidates]
+        if self.qualification_scopes:
+            keys = [key for key, _ in self.qualification_scopes]
+            if len(keys) != len(set(keys)) or set(keys) != set(agent_ids):
+                raise ValueError("Every pool candidate requires one qualification scope")
+            if len({(s.actor, s.tenant, s.purpose) for _, s in self.qualification_scopes}) != 1:
+                raise ValueError("Pool candidates must share actor, tenant and purpose")
+        elif self.producer_receipt is not None:
+            raise ValueError("Producer receipts require purpose-bound qualifications")
         if len(agent_ids) != len(set(agent_ids)):
             raise ValueError("Role pool candidates must have unique agent IDs")
         if self.routing_strategy == "pinned" and not self.pinned_agent_id:
@@ -94,10 +105,10 @@ class WorkforceComposition:
 
 
 class WorkforceComposer:
-    def __init__(self, storage: SQLiteStorage):
+    def __init__(self, storage: SQLiteStorage, *, qualification_service=None):
         self.storage = storage
         self.roles = RoleRegistry(storage)
-        self.router = AgentRouter(storage)
+        self.router = AgentRouter(storage, qualification_service=qualification_service)
 
     @staticmethod
     def _json(value: Any) -> str:
@@ -203,7 +214,7 @@ class WorkforceComposer:
             reasons.append("capability_mismatch")
         if candidate.capacity == 0:
             reasons.append("capacity_exhausted")
-        return {
+        snapshot = {
             "agent_id": routing.agent_id,
             "provider_id": routing.provider_id,
             "model_identity": routing.model_identity,
@@ -214,6 +225,18 @@ class WorkforceComposer:
             "capabilities": sorted(capabilities), "capacity": candidate.capacity,
             "estimated_cost": routing.cost, "eligible": not reasons, "reasons": reasons,
         }
+        if pool.qualification_scopes:
+            try:
+                receipt = self.router.purpose_receipt(routing, pool.qualification_role,
+                    dict(pool.qualification_scopes), pool.producer_receipt)
+                snapshot.update(model_identity=receipt.canonical_model,
+                    requested_model=routing.model_identity, effective_model=receipt.effective_model,
+                    qualification_evidence_digest=receipt.evidence_digest,
+                    identity_registry=receipt.registry_digest)
+            except QualificationDenied as error:
+                reasons.append(str(error))
+            snapshot["eligible"] = not reasons
+        return snapshot
 
     @staticmethod
     def _gap(pool_key: str, kind: str, detail: str, *, human: bool = False) -> dict[str, Any]:
@@ -285,10 +308,24 @@ class WorkforceComposer:
             raise ValueError("Workforce budget cannot be negative")
         if len({pool.key for pool in pools}) != len(pools):
             raise ValueError("Role pool keys must be unique")
+        if self.router.qualification_service is not None and any(not p.qualification_scopes for p in pools):
+            raise QualificationDenied("purpose_bound_scopes_required")
+        if self.router.qualification_service is not None and len({
+            (scope.actor, scope.tenant) for pool in pools for _, scope in pool.qualification_scopes
+        }) != 1:
+            raise QualificationDenied("composition_scope_mismatch")
         approved_exception_review_ids = tuple(sorted(approved_exception_review_ids))
+        pool_requests = []
+        for pool in pools:
+            document = asdict(pool)
+            if not pool.qualification_scopes:
+                # Preserve historical request identities for the legacy profile.
+                document.pop("qualification_scopes")
+                document.pop("producer_receipt")
+            pool_requests.append(document)
         request = json.loads(self._json({
             "composition_key": composition_key, "mission_key": mission_key,
-            "budget": budget, "pools": [asdict(pool) for pool in pools],
+            "budget": budget, "pools": pool_requests,
             "approved_exception_review_ids": list(approved_exception_review_ids),
         }))
         existing = self.storage.db.execute(
@@ -297,7 +334,14 @@ class WorkforceComposer:
         if existing:
             if json.loads(existing["request_json"]) != request:
                 raise ValueError("Composition key is already bound to another request")
-            return self._result(existing)
+            previous = self._result(existing)
+            for pool in pools:
+                if pool.qualification_scopes:
+                    old = next(p for p in previous.pools if p["pool_key"] == pool.key)
+                    current = [self._qualification_snapshot(pool, c) for c in pool.candidates]
+                    if current != old["qualifications"]:
+                        raise QualificationDenied("composition_qualification_changed")
+            return previous
 
         exception_map = self._exception_map(mission_key, approved_exception_review_ids)
         gaps: list[dict[str, Any]] = []
@@ -378,11 +422,14 @@ class WorkforceComposer:
                     required_capabilities=set(pool.required_capabilities),
                     candidates=tuple(candidate.routing for candidate in available),
                     strategy=pool.routing_strategy, pinned_agent_id=pool.pinned_agent_id,
+                    qualification_scopes={c.routing.agent_id: dict(pool.qualification_scopes)[c.routing.agent_id]
+                        for c in available} if pool.qualification_scopes else None,
+                    producer_receipt=pool.producer_receipt,
                 )
                 ordered = list(decision.fallback_chain)
                 base_options = list(itertools.combinations(ordered, pool.minimum_replicas))
                 independent_options = [option for option in base_options if len({
-                    candidate_index[(pool.key, agent_id)].routing.model_identity
+                    next(snapshot["model_identity"] for snapshot in diagnostics if snapshot["agent_id"] == agent_id)
                     for agent_id in option
                 }) == len(option)]
                 diverse_options = [option for option in base_options if len({

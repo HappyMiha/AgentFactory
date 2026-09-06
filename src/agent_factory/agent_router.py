@@ -9,6 +9,7 @@ from typing import Any
 
 from .roles import RoleRegistry
 from .storage import SQLiteStorage
+from .provider_qualification import ProviderQualificationService, QualificationDenied, QualificationReceipt, QualificationScope
 
 
 ROUTING_STRATEGIES = (
@@ -52,8 +53,29 @@ class RoutingDecision:
 
 
 class AgentRouter:
-    def __init__(self, storage: SQLiteStorage):
+    def __init__(self, storage: SQLiteStorage, *, qualification_service: ProviderQualificationService | None = None):
         self.storage = storage
+        if qualification_service is not None and qualification_service.storage is not storage:
+            raise ValueError("Qualification and routing must share Core storage")
+        self.qualification_service = qualification_service
+
+    def purpose_receipt(self, candidate, role, scopes, producer_receipt=None):
+        if self.qualification_service is None:
+            raise QualificationDenied("trusted_qualification_service_required")
+        scope = scopes.get(candidate.agent_id)
+        if scope is None or scope.provider != candidate.provider_id or scope.requested_model != candidate.model_identity:
+            raise QualificationDenied("qualification_scope_mismatch")
+        receipt = self.qualification_service.resolve(worker_id=candidate.agent_id, role=role, scope=scope)
+        if scope.purpose == "review":
+            if producer_receipt is None:
+                raise QualificationDenied("producer_qualification_required")
+            producer = self.qualification_service.revalidate(producer_receipt)
+            if (producer.scope.purpose != "coding" or producer.scope.actor != scope.actor
+                    or producer.scope.tenant != scope.tenant):
+                raise QualificationDenied("producer_scope_mismatch")
+            if producer.canonical_model == receipt.canonical_model:
+                raise QualificationDenied("producer_model_conflict")
+        return receipt
 
     @staticmethod
     def _best_key(item: dict[str, Any]):
@@ -89,11 +111,24 @@ class AgentRouter:
         producer_provider: str | None = None,
         pinned_agent_id: str | None = None,
         require_independence: bool = False,
+        qualification_scopes: dict[str, QualificationScope] | None = None,
+        producer_receipt: QualificationReceipt | None = None,
     ) -> RoutingDecision:
         if strategy not in ROUTING_STRATEGIES:
             raise ValueError(f"Unknown routing strategy: {strategy}")
         if not decision_key.strip() or not candidates:
             raise ValueError("Routing decision key and candidates are required")
+        if qualification_scopes is not None:
+            if set(qualification_scopes) != {c.agent_id for c in candidates}:
+                raise ValueError("Every routing candidate requires a qualification scope")
+            if len({(s.actor, s.tenant, s.purpose) for s in qualification_scopes.values()}) != 1:
+                raise ValueError("Routing candidates must share actor, tenant and purpose")
+            if self.qualification_service is None:
+                raise QualificationDenied("trusted_qualification_service_required")
+        elif self.qualification_service is not None:
+            raise QualificationDenied("purpose_bound_scopes_required")
+        elif producer_receipt is not None:
+            raise ValueError("Producer receipts require purpose-bound routing")
         RoleRegistry(self.storage).resolve(role_id, role_version)
         request = {
             "decision_key": decision_key, "role_id": role_id, "role_version": role_version,
@@ -103,13 +138,18 @@ class AgentRouter:
             "pinned_agent_id": pinned_agent_id, "require_independence": require_independence,
             "candidates": [asdict(candidate) for candidate in candidates],
         }
+        if qualification_scopes is not None:
+            request.update(qualification_scopes={k: asdict(v) for k, v in qualification_scopes.items()},
+                producer_receipt=asdict(producer_receipt) if producer_receipt else None,
+                identity_registry=self.qualification_service.identities.digest)
         existing = self.storage.db.execute(
             "SELECT * FROM agent_routing_decisions WHERE decision_key=?", (decision_key,)
         ).fetchone()
         if existing:
             if json.loads(existing["request_json"]) != request:
                 raise ValueError("Routing decision key is already bound to another request")
-            return self._result(existing)
+            if qualification_scopes is None:
+                return self._result(existing)
         eligible: list[dict[str, Any]] = []
         excluded: list[dict[str, Any]] = []
         seen: set[str] = set()
@@ -146,12 +186,32 @@ class AgentRouter:
                 "qualification_current": bool(qualification["current"]) if qualification else False,
                 "model_independent": independent,
             }
+            if qualification_scopes is not None:
+                # In this explicit profile, historical model labels cannot grant
+                # capability or independence, including to fallback candidates.
+                reasons = [reason for reason in reasons if reason != "producer_model_conflict"]
+                try:
+                    receipt = self.purpose_receipt(candidate, qualification_role, qualification_scopes, producer_receipt)
+                    snapshot.update(model_identity=receipt.canonical_model,
+                        requested_model=candidate.model_identity, effective_model=receipt.effective_model,
+                        qualification_evidence_digest=receipt.evidence_digest,
+                        identity_registry=receipt.registry_digest,
+                        model_independent=receipt.scope.purpose == "review" or not require_independence)
+                    if require_independence and receipt.scope.purpose != "review":
+                        reasons.append("independence_requires_review_purpose")
+                except QualificationDenied as error:
+                    reasons.append(str(error))
             if reasons:
                 excluded.append({**snapshot, "reasons": reasons})
             else:
                 eligible.append(snapshot)
         if not eligible:
             raise RuntimeError("No eligible qualified routing candidate")
+        if existing:
+            if (json.loads(existing["eligible_json"]) != eligible
+                    or json.loads(existing["excluded_json"]) != excluded):
+                raise QualificationDenied("routing_qualification_changed")
+            return self._result(existing)
 
         best = sorted(eligible, key=self._best_key)
         if strategy == "pinned":
