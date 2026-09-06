@@ -37,7 +37,7 @@ toolchain and service requirements; Core does not infer them from prose.
 The built-in verifiers run fixed read-only Git, Python, Node and Godot version
 commands, and test read/write/rename using only a private temporary directory in
 the approved workspace. They never run commands supplied by a plan, install
-software, start services, download a model or invoke inference. A discovered
+software, start services or download a model. Ordinary checks never invoke inference. A discovered
 executable whose probe fails remains installed but unqualified. Unknown selected
 tools/services/models produce blockers with a next action.
 
@@ -94,15 +94,63 @@ actual current state, exact identity, permission and qualification, enforce thei
 own bounded I/O, and sanitize diagnostics. Register only operator-reviewed code;
 this mapping is not accepted from HTTP requests or generated project files.
 
-No production model/service verifier is shipped in this change. In their absence,
-the default autonomous route correctly remains blocked. Core042's seven-role
-Ollama smoke JSON Lines are not a trusted persisted qualification receipt: they
-lack a versioned receipt/expiry and mission binding. Neither those lines nor a Bus
-message are promoted to READY. A reviewed receipt/verifier integration is required
-before a real model route can qualify; this guard must not be weakened to make a
-demonstration pass.
+The bundled Ollama production collector supports `local:qwen2.5-coder:7b` and
+`local:qwen2.5-coder:14b`, one selected model per route, with `ollama` as the only
+approved provider. Selected roles must belong to the five autonomous planning
+roles, Environment Bootstrap, or Developer. The effective workspace provider
+configuration must match the bundled profile exactly. Custom overrides, other
+models/providers/roles, and unknown services remain blocked. The optional service
+`selected-local-model-runtime` is qualified by the same actual daemon checks.
+A Git/Python route can use `tools: ["git", "python"]`, `services: []`; this does
+not certify an engine or game build.
+
+On the execution host, with its existing approved mission and database, run:
+
+```bash
+python scripts/check_environment.py --database /path/to/state.db --mission-id 123 --run-live
+```
+
+The packaged equivalent is `python -m agent_factory.environment_model_probe` with
+the same arguments. `--run-live` explicitly authorizes seven API and seven CLI
+synthetic local inference requests. Both use the fixed `127.0.0.1:11434` daemon;
+remote/custom `OLLAMA_HOST`, proxies and redirects are rejected. The collector
+reuses Core042's reviewed producer, now in `local_role_qualification.py`; the
+original `scripts/qualify_provider_roles.py` command remains available. Each API
+request has a 96-token output limit, each request a maximum 60-second timeout,
+CLI output is capped at 16,384 combined characters and its JSON at 1,024
+characters. A shared 240-second budget prevents additional requests after expiry.
+CLI has no hard token limit. No downloads or service starts occur. Requests contain
+only synthetic role contracts, never mission source. Mission authority, policy,
+role/model bindings, pause/stop fences and the provider profile are revalidated
+before every new request. An in-flight request remains bounded by its timeout.
+
+A successful report includes a versioned immutable qualification record with the
+current approval/plan/epoch binding, provider profile digest, installed model
+digest, start/finish times and all seven role results. Only the collector's own
+fresh return value is accepted; there is no uploaded/stdout/Bus receipt input.
+Before use, the gate checks the current mission authority and reads the local
+model inventory again, without inference. Model replacement/removal, provider
+configuration changes, expiry, or loss of authority invalidate the receipt.
+A failed fresh run supersedes prior success and exposes only a sanitized error
+class. Inspect the report through the normal UI/API after the command. The normal
+**Run actual-state checks** action still runs without inference and therefore
+produces an unqualified model result; it does not silently reuse an earlier
+canary. Rerun the explicit command to obtain a new live qualification.
+
+This qualifies only the selected local role-contract route and its readiness
+transition. It does not prove end-to-end planning accuracy, code quality, game
+playability, hosted deployment, or owner product acceptance.
 
 Tests execute real local Git/Python/filesystem checks and Chromium UI interactions.
 Their injected model observations and browser responses are explicitly synthetic.
 They test the gate and orchestration contract, not actual model qualification,
 engine builds, game playability, a minor pilot or owner product acceptance.
+
+For the opt-in actual local integration check, set
+`AGENTFACTORY_LIVE_ENVIRONMENT_TESTS=1` and run
+`python -m unittest tests.test_environment_model_probe.LiveEnvironmentRouteTests`.
+It creates an isolated Git/Python route and a synthetic planning/approval fixture,
+then uses the real installed 7b model (all fourteen inference requests), durable
+receipt verification and DEVELOPMENT transition. It does not inject model probes.
+The normal suite skips this test; an installed Ollama daemon/model is required.
+Reported evidence omits workspace paths and does not certify planning or a game.

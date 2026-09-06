@@ -69,7 +69,8 @@ def run_git(repository: Path, *arguments: str) -> str:
 
 
 class AutonomousPreapprovalFixture:
-    def create_fixture(self) -> None:
+    def create_fixture(self, *, provider_id="local", model=None, capability=None) -> None:
+        self.fixture_provider_id = provider_id
         self.temporary = tempfile.TemporaryDirectory()
         self.workspace = Path(self.temporary.name).resolve()
         self.repository = self.workspace / "repository"
@@ -95,7 +96,7 @@ class AutonomousPreapprovalFixture:
         self.database = self.workspace / "state.db"
         self.storage = SQLiteStorage(self.database)
         self.capabilities = {
-            "local": ProviderCapabilities(
+            provider_id: capability or ProviderCapabilities(
                 execution_location=ExecutionLocation.LOCAL,
                 location_declared=True,
                 text_generation=True,
@@ -115,12 +116,12 @@ class AutonomousPreapprovalFixture:
             mission_key="AFM-TEMPORAL-PREAPPROVAL",
             configuration=AutonomousMissionConfiguration(
                 repository_path=str(self.repository),
-                default_model="local-planner",
+                default_model=model or "local-planner",
                 role_models={
-                    "Developer": "local-coder",
-                    "Environment Bootstrap": "local-coder",
+                    "Developer": model or "local-coder",
+                    "Environment Bootstrap": model or "local-coder",
                 },
-                local_provider_ids=("local",),
+                local_provider_ids=(provider_id,),
             ),
             source_name="specification.md",
         )
@@ -150,7 +151,7 @@ class AutonomousPreapprovalFixture:
             proposal_key=f"temporal-proposal-{sequence}",
             actor="Founder",
             command_id=f"temporal-manifest-{sequence}",
-            default_provider_id="local",
+            default_provider_id=self.fixture_provider_id,
         )
         authorization = self.authorizations.grant_planning_authority(
             mission.id,
@@ -160,7 +161,7 @@ class AutonomousPreapprovalFixture:
                 assignment.role_id: assignment.model
                 for assignment in manifest.assignments
             },
-            provider_ids=("local",),
+            provider_ids=(self.fixture_provider_id,),
             actor="Founder",
             command_id=f"temporal-planning-authorization-{sequence}",
             reason="Explicit bounded local planning request",

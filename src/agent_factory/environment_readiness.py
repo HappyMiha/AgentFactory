@@ -170,16 +170,35 @@ class EnvironmentReadiness:
                                    next_action='Repair the selected tool and rerun checks.')
             return Observation(True, True, True, 'live', 'Actual version command passed.',
                                'Continue with the selected route.', hashlib.sha256(version).hexdigest())
+        from .environment_model_probe import NEXT_ACTION
         return Observation(detail='Selected service/model has no verified current qualification.',
-                           next_action='Register its trusted actual-state verifier and rerun checks.')
+                           next_action=NEXT_ACTION)
 
-    def assess(self, approval_id):
+    def assess(self, approval_id, *, run_live=False):
         binding, requirements = self.context(approval_id)
         started = self.clock()
         checks = []
+        qualification = None
+        qualification_error = None
+        if run_live is True:
+            from .environment_model_probe import collect
+            try:
+                qualification = collect(self, approval_id, binding, requirements)
+            except Exception as error:
+                # A failed fresh run must supersede any earlier successful receipt.
+                qualification_error = type(error).__name__
         for key, requirement in requirements.items():
             try:
-                observed = self.observe(key, requirement)
+                if qualification and (key.startswith('model:') or key == 'service:selected-local-model-runtime'):
+                    observed = Observation(True, True, True, 'live',
+                        'Fresh seven-role local API/CLI qualification passed; synthetic contract scope only.',
+                        'Continue with the selected route.',
+                        requirement.get('model', qualification['model_digest']), 'ollama')
+                elif run_live is True and key.startswith('model:'):
+                    from .environment_model_probe import NEXT_ACTION
+                    observed = Observation(detail=f'Local qualification failed ({qualification_error}).', next_action=NEXT_ACTION)
+                else:
+                    observed = self.observe(key, requirement)
                 if not isinstance(observed, Observation):
                     raise ValueError('Invalid observation')
                 if (any(type(getattr(observed, field)) is not bool for field in ('installed', 'authenticated', 'qualified'))
@@ -198,6 +217,9 @@ class EnvironmentReadiness:
                                        next_action='Repair the selected probe and rerun checks.')
             checks.append({'key': key, 'requirement': requirement,
                            **asdict(observed), 'ready': observed.ready})
+        # Do not publish success after plan changes during a probe.
+        if self.context(approval_id) != (binding, requirements):
+            raise EnvironmentNotReady('Approved route changed during checks; rerun for the current plan.')
         # A long-running check cannot produce evidence already outside its validity window.
         expires = started + timedelta(seconds=300)
         ready = all(row['ready'] for row in checks) and self.clock() < expires
@@ -206,6 +228,8 @@ class EnvironmentReadiness:
                   'checked_at': started.isoformat(), 'expires_at': expires.isoformat(),
                   'next_action': 'Start the approved development route.' if ready else
                   next((c['next_action'] for c in checks if not c['ready']), 'Rerun expired checks.')}
+        if qualification:
+            report['model_qualification'] = qualification
         with self.storage.db:
             cursor = self.storage.db.execute('INSERT INTO environment_readiness_reports '
                 '(approval_id,report_json,report_digest,created_at) VALUES(?,?,?,?)',
@@ -225,6 +249,12 @@ class EnvironmentReadiness:
             raise EnvironmentNotReady('Environment evidence belongs to a different plan/profile; rerun checks.')
         if not timestamp(report['checked_at']) <= self.clock() < timestamp(report['expires_at']):
             raise EnvironmentNotReady('Environment checks expired; rerun actual-state checks.')
+        if 'model_qualification' in report:
+            from .environment_model_probe import verify_receipt
+            try:
+                verify_receipt(self, approval_id, report, requirements)
+            except Exception as error:
+                raise EnvironmentNotReady(f'Current local qualification is invalid ({type(error).__name__}); rerun explicit live checks.') from None
         return {'id': row['id'], **report}
 
     def require_ready(self, approval_id):
