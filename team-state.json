@@ -3814,21 +3814,10 @@
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
-      "scopes": [
-        "cloud:.github/workflows/autodeploy.yml",
-        "cloud:README.md",
-        "cloud:docs/autodeploy.md",
-        "cloud:pyproject.toml",
-        "cloud:scripts/autodeploy.py",
-        "cloud:src/agentfactory_cloud/brief_web.py",
-        "cloud:src/agentfactory_cloud/static/brief.html",
-        "cloud:src/agentfactory_cloud/static/brief.js",
-        "cloud:tests/test_autodeploy.py",
-        "cloud:tests/test_email_auth_integration.py"
-      ],
+      "scopes": [],
       "pr": "https://github.com/HappyMiha/Lokiravia/pull/21",
       "resources": [],
       "required_scopes": [
@@ -3840,10 +3829,12 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:32:15+00:00",
-      "note": "",
+      "updated_at": "2026-09-08T21:36:03+00:00",
+      "note": "Merged shared identity client and deployment controller fixes with passing checks.",
       "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da",
-      "review_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0"
+      "review_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0",
+      "completed_commit": "4342252cfed5743a9c028f141372adb2ae79395d",
+      "reviewed_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0"
     }
   },
   "events": [
@@ -7146,6 +7137,16 @@
       "note": "Merged shared identity and host deployment implementation; stream-preserving gateway smoke passed. Public identity hostname activation awaits confirmation.",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
       "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
+    },
+    {
+      "operation_id": "43c85fc5-51a3-4107-8b23-0f7d0d0ba2c4",
+      "at": "2026-09-08T21:36:03+00:00",
+      "action": "complete",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "Merged shared identity client and deployment controller fixes with passing checks.",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
+      "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
     }
   ],
   "migration": {
