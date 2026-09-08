@@ -3727,7 +3727,7 @@
     },
     "core:AF-BRAND-001": {
       "title": "Rebrand AgentFactory as Lokvetia Core",
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
       "scopes": [
@@ -3805,7 +3805,7 @@
         "core:tests/test_team_coordination.py",
         "core:tests/test_web.py"
       ],
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory/pull/46",
       "dependencies": [],
       "source_dependencies": [],
       "resources": [
@@ -3823,9 +3823,10 @@
         "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
         "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
       ],
-      "updated_at": "2026-09-08T13:05:29+00:00",
-      "note": "Mark generated operator PDF as binary so Git handles its rebrand correctly.",
-      "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
+      "updated_at": "2026-09-08T13:09:48+00:00",
+      "note": "",
+      "claim_id": "8111c798-b82f-487f-a092-1a812518b785",
+      "review_head": "49410d4c6135020c067e8a9b45001219743205c3"
     },
     "cloud:AF-BRAND-001": {
       "title": "Rebrand AgentFactory Cloud as Lokiravia",
@@ -7008,6 +7009,16 @@
       "task": "core:AF-BRAND-001",
       "worker": "HappyDucky02",
       "note": "Mark generated operator PDF as binary so Git handles its rebrand correctly.",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
+      "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
+    },
+    {
+      "operation_id": "490fb59e-6c78-45e7-bc26-95c466cdbf85",
+      "at": "2026-09-08T13:09:48+00:00",
+      "action": "review",
+      "task": "core:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "",
       "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
       "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
     }
