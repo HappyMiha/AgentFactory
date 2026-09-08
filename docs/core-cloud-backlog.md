@@ -2,7 +2,7 @@
 
 Status: proposed plan. This file assigns work and explains dependencies. It is not another implementation backlog and does not create competing task IDs.
 
-Core is maintained in this repository. The canonical Cloud specification, roadmap, and `AF-CLD-*` manifest belong to [HappyMiha/AgentFactory-Cloud](https://github.com/HappyMiha/AgentFactory-Cloud). See [Core and Cloud boundaries](core-cloud-boundaries.md) for the product and architecture decisions.
+Core is maintained in this repository. The canonical Cloud specification, roadmap, and `AF-CLD-*` manifest belong to [HappyMiha/Lokvetia Core-Cloud](https://github.com/HappyMiha/AgentFactory-Cloud). See [Core and Cloud boundaries](core-cloud-boundaries.md) for the product and architecture decisions.
 
 ## Sources and current evidence
 

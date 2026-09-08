@@ -1,8 +1,8 @@
 # Temporal integration analysis
 
-## Current AgentFactory execution model
+## Current Lokvetia Core execution model
 
-AgentFactory is a Python 3.11+ package. Its operator backend is FastAPI (`agent_factory.web`) and the same `AgentFactoryService` application layer is also used by the argparse CLI. The browser UI is a small static HTML/CSS/JavaScript Local Control Center served by FastAPI.
+Lokvetia Core is a Python 3.11+ package. Its operator backend is FastAPI (`agent_factory.web`) and the same `AgentFactoryService` application layer is also used by the argparse CLI. The browser UI is a small static HTML/CSS/JavaScript Local Control Center served by FastAPI.
 
 The domain model is already established: SQLite stores projects, `WorkItem` backlog records, workflow runs, stages, artifacts, reviews, approval gates, assignments, fenced leases, attempts, worker sessions, worktrees, engineering-loop iterations, audit events, and idempotency records. `WorkflowEngine.run()` currently loads the reviewed workflow JSON, iterates its stages synchronously, selects agents/reviewers, invokes `AgentRuntime`, persists artifacts, and finally creates a Founder approval gate. Consequently an HTTP workflow-start request blocks until that loop finishes and the Python process owns the in-memory call stack.
 
@@ -22,7 +22,7 @@ Configuration resolves from an explicit config directory, workspace `.agent-fact
 
 ## Proposed Temporal execution model
 
-With `TEMPORAL_ENABLED=true`, the API creates the existing SQLite workflow run, assigns job ID `run-{run_id}`, then starts one `AgentFactoryJobWorkflow` using stable ID `agentfactory-job-{job_id}` and returns immediately. Temporal is authoritative for the live orchestration state: current phase/stage, retries, pause/resume, cancellation, timers, and completed activity sequence. SQLite remains authoritative for AgentFactory domain state, artifacts, large logs, approvals, backlog, and audit history.
+With `TEMPORAL_ENABLED=true`, the API creates the existing SQLite workflow run, assigns job ID `run-{run_id}`, then starts one `AgentFactoryJobWorkflow` using stable ID `agentfactory-job-{job_id}` and returns immediately. Temporal is authoritative for the live orchestration state: current phase/stage, retries, pause/resume, cancellation, timers, and completed activity sequence. SQLite remains authoritative for Lokvetia Core domain state, artifacts, large logs, approvals, backlog, and audit history.
 
 The workflow loads project/workflow context through an activity, then schedules one activity per reviewed stage. Workflow code performs only deterministic branching, repair-limit accounting, pause waits, signal handling, and status/query updates. Provider calls, subprocesses, filesystem access, SQLite writes, validation, and final approval creation occur only in activities. Activity payloads contain identifiers and bounded summaries; full provider output stays in the existing artifact/evidence stores.
 
@@ -45,4 +45,4 @@ The migration feature flag is strict: disabled preserves the synchronous engine;
 - The existing run UI/API is augmented with Temporal workflow ID, status, current phase/task, attempt, progress, controls, and a Temporal UI link.
 - Local Docker development gains a pinned PostgreSQL-backed Temporal stack and PowerShell lifecycle/health scripts.
 
-Temporal does not replace SQLite or the AgentFactory backlog. It replaces the continuously running Python call stack as the durable orchestration backbone.
+Temporal does not replace SQLite or the Lokvetia Core backlog. It replaces the continuously running Python call stack as the durable orchestration backbone.

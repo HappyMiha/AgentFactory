@@ -98,7 +98,7 @@
         return;
       }
       if (!response.ok) {
-        const messages = {403: 'Немає дозволу на цю перевірку. Перевірте доступ до AgentFactory.', 409: 'На цьому комп’ютері вже триває перевірка. Спробуйте ще раз після її завершення.'};
+        const messages = {403: 'Немає дозволу на цю перевірку. Перевірте доступ до Lokvetia Core.', 409: 'На цьому комп’ютері вже триває перевірка. Спробуйте ще раз після її завершення.'};
         throw new Error(messages[response.status] || 'Перевірка зараз недоступна. Спробуйте ще раз.');
       }
       const report = await response.json();
@@ -117,7 +117,7 @@
   byId('download-report').addEventListener('click', () => {
     if (!latestReport) return;
     const url = URL.createObjectURL(new Blob([JSON.stringify(latestReport, null, 2)], {type: 'application/json'}));
-    const link = element('a'); link.href = url; link.download = 'agentfactory-hardware.json';
+    const link = element('a'); link.href = url; link.download = 'lokvetia-core-hardware.json';
     document.body.append(link); link.click(); link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   });

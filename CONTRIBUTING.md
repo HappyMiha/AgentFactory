@@ -1,4 +1,4 @@
-# Contributing to Agent Factory
+# Contributing to Lokvetia Core
 
 Thank you for helping build a dependable, provider-neutral orchestration layer.
 
@@ -86,4 +86,4 @@ Never rewrite a released migration. Add a new migration and prove upgrade compat
 - [ ] Approval, audit, and dry-run guarantees remain intact.
 - [ ] The wheel and Docker image build successfully when relevant.
 
-Unless explicitly stated otherwise, any contribution intentionally submitted for inclusion in Agent Factory is provided under the [Apache License 2.0](LICENSE), without additional terms or conditions. By submitting a contribution, you confirm that you have the right to provide it under that license.
+Unless explicitly stated otherwise, any contribution intentionally submitted for inclusion in Lokvetia Core is provided under the [Apache License 2.0](LICENSE), without additional terms or conditions. By submitting a contribution, you confirm that you have the right to provide it under that license.

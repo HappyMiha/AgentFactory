@@ -2,7 +2,7 @@
 
 > **Planning update — 5 September 2026:** start with the English [Core and Cloud roadmap](core-cloud-roadmap.md) and [backlog ownership map](core-cloud-backlog.md). Core is the reusable open-source foundation; the separate [Cloud repository](https://github.com/HappyMiha/AgentFactory-Cloud) owns the 67-task consumer product plan. The [42-task AF-GC manifest](../examples/game-creator-backlog.json) remains the upstream game-creation plan. This document preserves AF-001–AF-057 and their historical component delivery claims, which do not prove a beginner journey, engine integration, or clean-machine game creation. See the [current audit summary](product-audit-2026-09-05.md).
 
-This roadmap converts the remaining requirements in *Agent Factory Technical Specification v1.0* (2 August 2026) into an ordered delivery backlog. It is deliberately based on the current repository rather than treating the specification as a greenfield design.
+This roadmap converts the remaining requirements in *Lokvetia Core Technical Specification v1.0* (2 August 2026) into an ordered delivery backlog. It is deliberately based on the current repository rather than treating the specification as a greenfield design.
 
 The importable source of the issue list is [`examples/development-backlog.json`](../examples/development-backlog.json). Stable IDs in that file are permanent. Titles, descriptions, priorities, dependencies, and implementation choices may evolve without changing those IDs. Completion claims and evidence are tracked separately in the [2026-08-11 implementation audit](implementation-audit-2026-08-11.md); the manifest describes required outcomes and must not be treated as proof that they exist.
 
@@ -50,7 +50,7 @@ DONE  AF-026 -> AF-035
 NOW   complete
 ```
 
-Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. AgentFactory is the sole worktree authority: managed Hermes sessions receive an AF-048 worktree and do not invoke Hermes worktree creation. Mutable Hermes execution uses ACP stdio and its permission bridge; Hermes one-shot mode is restricted to qualification or read-only work because it bypasses interactive approvals. `AF-049` Codex is the first required writable implementation worker. `AF-050` Claude Code is P1 and supplies a compatible alternative after the first vertical slice is proven. The local independent-verdict subset of AF-020 is P0 because AF-053 cannot satisfy its review requirement without it.
+Core worktree isolation moves from AF-025 into AF-048 and AF-017 is P0. Lokvetia Core is the sole worktree authority: managed Hermes sessions receive an AF-048 worktree and do not invoke Hermes worktree creation. Mutable Hermes execution uses ACP stdio and its permission bridge; Hermes one-shot mode is restricted to qualification or read-only work because it bypasses interactive approvals. `AF-049` Codex is the first required writable implementation worker. `AF-050` Claude Code is P1 and supplies a compatible alternative after the first vertical slice is proven. The local independent-verdict subset of AF-020 is P0 because AF-053 cannot satisfy its review requirement without it.
 
 ### Milestones
 
@@ -88,7 +88,7 @@ The earlier evidence and gap for every task are recorded in the [implementation 
 
 ## R0.2 — Local Control Center MVP
 
-**Target:** make the current local Agent Factory observable and operable from one lightweight Windows web interface while preserving the existing CLI behavior, provider gates, independent reviews, founder approval, and GitHub dry-run defaults.
+**Target:** make the current local Lokvetia Core observable and operable from one lightweight Windows web interface while preserving the existing CLI behavior, provider gates, independent reviews, founder approval, and GitHub dry-run defaults.
 
 | ID | Priority | Deliverable | Depends on | Specification trace |
 |---|---:|---|---|---|

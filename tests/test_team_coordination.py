@@ -212,6 +212,34 @@ class TeamCoordinationTests(unittest.TestCase):
         with self.assertRaisesRegex(team.TeamError, "task's GitHub"):
             team.pr_details(url, "cloud:AF-CLD-001", "team/alice/cloud-af-cld-001")
 
+    def test_complete_after_repository_rename_preserves_registered_pr_and_claim(self):
+        self.claim()
+        legacy = "https://github.com/HappyMiha/AgentFactory/pull/42"
+        renamed = "https://github.com/HappyMiha/Lokvetia-Core/pull/42"
+        other = "https://github.com/HappyMiha/Lokvetia-Core/pull/43"
+        data = {"state": "OPEN", "mergedAt": None, "mergeCommit": {"oid": "c" * 40},
+                "baseRefName": "main", "headRefName": "team/alice/core-af-gc-001",
+                "headRefOid": "a" * 40, "url": legacy}
+        original_claim = self.token()
+        real_run = team.run
+        def gh(args, *pargs, **kwargs):
+            if args[0] == "gh":
+                return subprocess.CompletedProcess(args, 0, json.dumps(data), "")
+            return real_run(args, *pargs, **kwargs)
+        with mock.patch.object(team, "run", side_effect=gh):
+            self.transition("review", "core:AF-GC-001", "alice", pr=legacy)
+            data.update(state="MERGED", mergedAt="2026-09-08T12:00:00Z", url=other)
+            with self.assertRaisesRegex(team.TeamError, "registered review PR"):
+                self.transition("complete", "core:AF-GC-001", "alice", pr=other)
+            data["url"] = renamed
+            self.transition("complete", "core:AF-GC-001", "alice", pr=renamed)
+        done = self.registry.read()["tasks"]["core:AF-GC-001"]
+        self.assertEqual(done["status"], "done")
+        self.assertEqual(done["pr"], legacy)
+        self.assertEqual(done["claim_id"], original_claim)
+        self.assertEqual(done["completed_commit"], "c" * 40)
+        self.assertEqual(done["reviewed_head"], "a" * 40)
+
     def test_preflight_accepts_claimed_paths_and_rejects_wrong_owner(self):
         path, bare, branch = self.checkout()
         self.claim()
@@ -445,6 +473,88 @@ class TeamCoordinationTests(unittest.TestCase):
             results = list(pool.map(submit, ["alice", "bob"]))
         self.assertEqual(sum(results), 1)
         self.assertEqual(len(self.registry.read()["events"]), 1)
+
+
+class RepositoryRenameTests(unittest.TestCase):
+    aliases = {
+        "core": ("HappyMiha/AgentFactory", "HappyMiha/Lokvetia-Core"),
+        "cloud": ("HappyMiha/AgentFactory-Cloud", "HappyMiha/Lokiravia"),
+    }
+
+    def test_old_and_new_origins_resolve_over_https_and_ssh(self):
+        for repo, aliases in self.aliases.items():
+            for alias in aliases:
+                for prefix in ("https://github.com/", "git@github.com:", "ssh://git@github.com/"):
+                    for suffix in ("", ".git", ".git/"):
+                        remote = prefix + alias + suffix
+                        with self.subTest(remote=remote), mock.patch.object(team, "git", return_value=remote):
+                            self.assertEqual(team.repository(Path("."), None), repo)
+        with mock.patch.object(team, "git", return_value="https://GITHUB.COM/happymiha/lokiravia.git"):
+            self.assertEqual(team.repository(Path("."), None), "cloud")
+
+    def test_origin_identity_requires_exact_github_host_and_known_repository(self):
+        for remote in (
+            "https://example.com/HappyMiha/Lokvetia-Core.git",
+            "https://github.com.example.com/HappyMiha/Lokvetia-Core.git",
+            "https://github.com/AnotherOwner/Lokvetia-Core.git",
+            "https://github.com/FakeHappyMiha/Lokvetia-Core.git",
+            "https://github.com/HappyMiha/Lokvetia-Core-copy.git",
+            "https://github.com/HappyMiha/Lokiravia.git?unexpected=yes",
+            "https://github.com/extra/HappyMiha/AgentFactory.git",
+        ):
+            with self.subTest(remote=remote), mock.patch.object(team, "git", return_value=remote):
+                with self.assertRaisesRegex(team.TeamError, "Cannot infer repository"):
+                    team.repository(Path("."), None)
+        with mock.patch.object(team, "git") as git:
+            self.assertEqual(team.repository(Path("."), "core"), "core")
+            git.assert_not_called()
+
+    def test_pr_evidence_accepts_only_equivalent_old_and_new_identities(self):
+        for repo, aliases in self.aliases.items():
+            key = "core:AF-GC-001" if repo == "core" else "cloud:AF-CLD-001"
+            branch = team.branch_for(key, "alice")
+            for requested in aliases:
+                for returned in aliases:
+                    url = f"https://github.com/{requested}/pull/42"
+                    data = {"url": f"https://github.com/{returned}/pull/42", "baseRefName": "main",
+                            "headRefName": branch, "headRefOid": "a" * 40}
+                    with self.subTest(requested=requested, returned=returned), mock.patch.object(
+                        team, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps(data), "")
+                    ):
+                        self.assertEqual(team.pr_details(url, key, branch), data)
+
+    def test_renamed_pr_keeps_number_repository_branch_base_and_head_checks(self):
+        url = "https://github.com/HappyMiha/AgentFactory/pull/42"
+        branch = "team/alice/core-af-gc-001"
+        valid = {"url": "https://github.com/HappyMiha/Lokvetia-Core/pull/42", "baseRefName": "main",
+                 "headRefName": branch, "headRefOid": "a" * 40}
+        for field, wrong in (
+            ("url", "https://github.com/HappyMiha/Lokvetia-Core/pull/43"),
+            ("url", "https://github.com/HappyMiha/Lokiravia/pull/42"),
+            ("url", "https://example.com/HappyMiha/Lokvetia-Core/pull/42"),
+            ("url", "https://github.com/AnotherOwner/Lokvetia-Core/pull/42"),
+            ("baseRefName", "dev"), ("headRefName", "team/alice/another-task"), ("headRefOid", "main"),
+        ):
+            with self.subTest(field=field, wrong=wrong), mock.patch.object(
+                team, "run", return_value=subprocess.CompletedProcess([], 0, json.dumps({**valid, field: wrong}), "")
+            ):
+                with self.assertRaises(team.TeamError):
+                    team.pr_details(url, "core:AF-GC-001", branch)
+
+    def test_pr_input_rejects_unrelated_urls_without_calling_github(self):
+        for url in (
+            "https://github.com/HappyMiha/Lokiravia/pull/42",
+            "https://github.com/AnotherOwner/Lokvetia-Core/pull/42",
+            "https://github.com.example.com/HappyMiha/Lokvetia-Core/pull/42",
+            "https://github.com/HappyMiha/Lokvetia-Core/pull/42?different=yes",
+            "https://github.com/HappyMiha/Lokvetia-Core/pull/42#comment",
+            "https://github.com/HappyMiha/Lokvetia-Core/pull/0",
+            "https://github.com/HappyMiha/Lokvetia-Core/pull/042",
+        ):
+            with self.subTest(url=url), mock.patch.object(team, "run") as run:
+                with self.assertRaisesRegex(team.TeamError, "task's GitHub"):
+                    team.pr_details(url, "core:AF-GC-001", "team/alice/core-af-gc-001")
+                run.assert_not_called()
 
 
 if __name__ == "__main__":

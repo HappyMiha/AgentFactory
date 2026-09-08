@@ -16,7 +16,7 @@ Optional:
 - one or more supported provider CLIs;
 - Docker Desktop, Docker Engine, or a compatible container runtime for the simulation image.
 
-Provider subscriptions and API billing are external to Agent Factory.
+Provider subscriptions and API billing are external to Lokvetia Core.
 
 ## 2. Install on Windows
 
@@ -29,7 +29,7 @@ winget install --id Git.Git --exact --source winget
 winget install --id Python.Python.3.12 --exact --source winget
 ```
 
-Close and reopen PowerShell so the newly installed commands are visible, then verify and install Agent Factory. Replace `<repository-url>` with the clone URL supplied by the publisher.
+Close and reopen PowerShell so the newly installed commands are visible, then verify and install Lokvetia Core. Replace `<repository-url>` with the clone URL supplied by the publisher.
 
 ```powershell
 git --version
@@ -58,7 +58,7 @@ gh auth login
 gh repo clone OWNER/REPOSITORY AgentFactory
 ```
 
-Use the repository identifier supplied by the publisher. The browser-based GitHub flow stores authentication outside Agent Factory.
+Use the repository identifier supplied by the publisher. The browser-based GitHub flow stores authentication outside Lokvetia Core.
 
 ## 3. Install on macOS or Linux
 

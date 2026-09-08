@@ -1,4 +1,4 @@
-"""Command-line interface for the standalone Agent Factory."""
+"""Lokvetia Core CLI, including the compatible agent-factory entry point."""
 
 from __future__ import annotations
 
@@ -26,9 +26,10 @@ def _version() -> str:
 
 
 def parser() -> argparse.ArgumentParser:
+    executable = Path(sys.argv[0]).stem
     command = argparse.ArgumentParser(
-        prog="agent-factory",
-        description="Provider-neutral orchestration for traceable, human-approved agent delivery.",
+        prog=executable if executable in {"lokvetia", "agent-factory"} else "lokvetia",
+        description="Lokvetia Core: provider-neutral orchestration for traceable, human-approved agent delivery.",
     )
     command.add_argument("--version", action="version", version=f"%(prog)s {_version()}")
     command.add_argument(

@@ -1,6 +1,6 @@
 # Local Control Center
 
-The Local Control Center is a loopback-only, single-operator interface over the same application services used by the Agent Factory CLI. It combines the read API, live dashboard, backlog inspection, and guarded workflow controls without creating a second orchestration path.
+The Local Control Center is a loopback-only, single-operator interface over the same application services used by the Lokvetia Core CLI. It combines the read API, live dashboard, backlog inspection, and guarded workflow controls without creating a second orchestration path.
 
 ## Start the local API
 

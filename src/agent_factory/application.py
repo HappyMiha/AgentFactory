@@ -1970,8 +1970,10 @@ class AgentFactoryService:
         )
 
     def seed_example(self) -> tuple[int, int]:
-        change = self.create_project(
-            "Agent Factory Demo",
+        # A demo name is also an existing lookup key. Reuse pre-rebrand state.
+        previous = self.storage.find_project("Lokvetia Core Demo") or self.storage.find_project("Agent Factory Demo")
+        change = ProjectChange(int(previous["id"]), False) if previous else self.create_project(
+            "Lokvetia Core Demo",
             "A neutral example that demonstrates a complete evidence and approval chain.",
         )
         existing = self.storage.db.execute(

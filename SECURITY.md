@@ -1,6 +1,6 @@
 # Security Policy
 
-Agent Factory launches third-party AI CLIs and can prepare changes for external systems. Its approval and execution boundaries therefore deserve the same care as a deployment tool.
+Lokvetia Core launches third-party AI CLIs and can prepare changes for external systems. Its approval and execution boundaries therefore deserve the same care as a deployment tool.
 
 ## Supported versions
 
@@ -47,7 +47,7 @@ The implemented controls include:
 - Output is truncated for persistence, but streaming memory limits are not complete.
 - Local database administrators can alter SQLite files; the audit stream is not cryptographically tamper-evident.
 - Windows process cleanup does not yet use a Job Object.
-- Provider CLIs maintain their own authentication state outside Agent Factory.
+- Provider CLIs maintain their own authentication state outside Lokvetia Core.
 - The Docker image is designed for deterministic simulation and does not bundle external providers.
 
 ## Safe deployment guidance
@@ -63,7 +63,7 @@ The implemented controls include:
 
 ## Out of scope
 
-Reports about model quality, hallucination, provider availability, provider billing, or an upstream CLI without an Agent Factory boundary bypass should be sent to that provider. A model response that is merely incorrect is not itself a security vulnerability.
+Reports about model quality, hallucination, provider availability, provider billing, or an upstream CLI without an Lokvetia Core boundary bypass should be sent to that provider. A model response that is merely incorrect is not itself a security vulnerability.
 
 ## Local HTTP access
 

@@ -1,6 +1,6 @@
 # Signed pack SDK and lifecycle
 
-AF-024 provides data-driven extension contracts for domain, capability, connector, policy, evaluation, and UI packs without editing Agent Factory core.
+AF-024 provides data-driven extension contracts for domain, capability, connector, policy, evaluation, and UI packs without editing Lokvetia Core core.
 
 Every manifest declares identity, semantic version, core compatibility interval, permissions, dependencies, migrations, evaluation tests, and HMAC-SHA-256 signature metadata. The signature covers canonical manifest and payload content. Signing material stays in process memory; SQLite retains only the fingerprint and approval of a named human administrator.
 

@@ -1,3 +1,5 @@
+> Brand update, 8 September 2026: AgentFactory Core is now **Lokvetia Core**; AgentFactory Cloud is **Lokiravia**. Historical findings and identifiers below are retained as recorded. See the [brand migration](brand/migration.md).
+
 # Implementation audit — 2026-08-11
 
 This audit compares the repository through the AF-027 OpenTelemetry/cost-ledger, AF-050 Claude-worker, and AF-057 local-recovery slices with the acceptance criteria in the [canonical implementation backlog](../examples/development-backlog.json) and the readable [development roadmap](development-roadmap.md). It records product implementation status, not just the presence of a similarly named class, table, issue, or commit.

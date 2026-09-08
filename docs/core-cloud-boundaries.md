@@ -1,4 +1,4 @@
-# AgentFactory Core and Cloud
+# Lokvetia Core and Cloud
 
 Status: proposed plan. This document defines ownership and integration. It does not claim that a product, hosted service, game builder, marketplace, or deployment is complete.
 
@@ -6,8 +6,8 @@ There are exactly two projects:
 
 | Project | Purpose | Source of truth |
 |---|---|---|
-| AgentFactory Core | Open-source software for planning and running controlled AI work, locally or on managed workers. | This repository: `HappyMiha/AgentFactory`. |
-| AgentFactory Cloud | A commercial creator and player product built on Core: discover a game, play it, remix it with AI, create a version, and publish it. | The product specification, roadmap, and `AF-CLD-*` backlog in [HappyMiha/AgentFactory-Cloud](https://github.com/HappyMiha/AgentFactory-Cloud). |
+| Lokvetia Core | Open-source software for planning and running controlled AI work, locally or on managed workers. | This repository: `HappyMiha/AgentFactory`. |
+| Lokiravia | A commercial creator and player product built on Core: discover a game, play it, remix it with AI, create a version, and publish it. | The product specification, roadmap, and `AF-CLD-*` backlog in [HappyMiha/Lokvetia Core-Cloud](https://github.com/HappyMiha/AgentFactory-Cloud). |
 
 Game creation is the first domain pack on Core. “Games”, “Game Studio”, and “Marketplace” describe capabilities inside these two projects. They are not additional repositories or independent control systems.
 

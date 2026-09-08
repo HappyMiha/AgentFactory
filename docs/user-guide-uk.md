@@ -1,8 +1,10 @@
-# Agent Factory: повний посібник оператора
+# Lokvetia Core: повний посібник оператора
 
-Версія посібника: 18 серпня 2026 року. Команди перевірено на Windows PowerShell у поточному репозиторії.
+Редакція бренду: 8 вересня 2026 року. Lokvetia Core - нова назва AgentFactory Core. Команди `lokvetia` та `lokvetia-temporal-worker` доступні поряд із сумісними `agent-factory` та `agent-factory-temporal-worker`. Шляхи даних, імпорти й налаштування не змінюються.
 
-Agent Factory координує спеціалізованих AI-агентів, зберігає проєкти, backlog, запуски, артефакти, рев'ю та аудит у SQLite, а Temporal забезпечує довговічне виконання. Реальна мутація коду, provider-виклик, GitHub-операція і фінальне прийняття залишаються окремими контрольованими діями.
+Операційний матеріал і знімки інтерфейсу збережено з редакції 18 серпня 2026 року; історичні знімки можуть містити попередню назву. Поточний стан можливостей дивіться в README. Ця редакція оновлює бренд і не заявляє нову перевірку всіх описаних функцій.
+
+Lokvetia Core координує спеціалізованих AI-агентів, зберігає проєкти, backlog, запуски, артефакти, рев'ю та аудит у SQLite, а Temporal забезпечує довговічне виконання. Реальна мутація коду, provider-виклик, GitHub-операція і фінальне прийняття залишаються окремими контрольованими діями.
 
 ## 1. Що вже працює і де межі
 
@@ -284,7 +286,7 @@ Workflow продовжується з durable history. Не запускайт�
 .\infra\temporal\reset.ps1 -Force
 ```
 
-Reset Temporal не замінює backup AgentFactory SQLite і не видаляє project workspace.
+Reset Temporal не замінює backup Lokvetia Core SQLite і не видаляє project workspace.
 
 ## 14. Troubleshooting
 
@@ -322,7 +324,7 @@ $env:TEMPORAL_ENABLED = "true"
 ## 16. Пов'язані документи
 
 - `docs/development/temporal.md` - детальний запуск і durability-сценарії.
-- `docs/architecture/temporal-integration-analysis.md` - межі AgentFactory/Temporal.
+- `docs/architecture/temporal-integration-analysis.md` - межі Lokvetia Core/Temporal.
 - `docs/architecture.md` - загальна архітектура та security boundaries.
 - `docs/local-control-center.md` - API/UI операції.
 - `docs/implementation/temporal-integration-report.md` - версії, файли та виконані тести.
