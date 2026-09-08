@@ -3828,10 +3828,42 @@
     },
     "cloud:AF-BRAND-001": {
       "title": "Rebrand AgentFactory Cloud as Lokiravia",
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
+      "scopes": [
+        "cloud:CONTRIBUTING.md",
+        "cloud:README.md",
+        "cloud:docs/backlog.md",
+        "cloud:docs/brand",
+        "cloud:docs/core-cloud-boundary.md",
+        "cloud:docs/game-brief-intake.md",
+        "cloud:docs/planning-notes.md",
+        "cloud:docs/product-description.md",
+        "cloud:docs/roadmap.md",
+        "cloud:docs/team-migration.md",
+        "cloud:docs/team-workflow.md",
+        "cloud:docs/unreal-gameplay-plan.md",
+        "cloud:docs/upstream-capability-map.md",
+        "cloud:examples/agentfactory-cloud-backlog.json",
+        "cloud:prototypes/creator-operator/index.html",
+        "cloud:prototypes/creator-operator/style.css",
+        "cloud:pyproject.toml",
+        "cloud:scripts/team.py",
+        "cloud:scripts/validate_upstream_map.py",
+        "cloud:src/agentfactory_cloud/brief_web.py",
+        "cloud:src/agentfactory_cloud/static/brand-mark.svg",
+        "cloud:src/agentfactory_cloud/static/brand-wordmark.svg",
+        "cloud:src/agentfactory_cloud/static/brand.css",
+        "cloud:src/agentfactory_cloud/static/brief.html",
+        "cloud:src/agentfactory_cloud/static/connections.html",
+        "cloud:src/agentfactory_cloud/static/game-team.html",
+        "cloud:src/agentfactory_cloud/static/scope.html",
+        "cloud:tests/test_branding.py",
+        "cloud:tests/test_game_brief_web.py",
+        "cloud:tests/test_team_coordination.py",
+        "cloud:tests/test_upstream_map.py"
+      ],
       "pr": null,
       "dependencies": [],
       "source_dependencies": [],
@@ -3850,8 +3882,9 @@
         "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
         "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
       ],
-      "updated_at": "2026-09-08T12:44:45+00:00",
-      "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved."
+      "updated_at": "2026-09-08T12:46:30+00:00",
+      "note": "Implement owner-requested rebrand while preserving runtime compatibility and active peer scopes.",
+      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
     }
   },
   "events": [
@@ -6934,6 +6967,16 @@
       "note": "Implement owner-requested rebrand while preserving runtime compatibility and active peer scopes.",
       "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
       "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
+    },
+    {
+      "operation_id": "b479049b-80c8-4f66-9c77-424273561f8d",
+      "at": "2026-09-08T12:46:30+00:00",
+      "action": "claim",
+      "task": "cloud:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "Implement owner-requested rebrand while preserving runtime compatibility and active peer scopes.",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
+      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
     }
   ],
   "migration": {
