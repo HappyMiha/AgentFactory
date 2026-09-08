@@ -3789,17 +3789,10 @@
     },
     "core:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-539fff83",
-      "scopes": [
-        "core:.github/workflows/autodeploy.yml",
-        "core:README.md",
-        "core:docs/autodeploy.md",
-        "core:docs/deploy-dashboard.html",
-        "core:scripts/autodeploy.py",
-        "core:tests/test_autodeploy.py"
-      ],
+      "scopes": [],
       "pr": "https://github.com/HappyMiha/Lokvetia-Core/pull/49",
       "resources": [],
       "required_scopes": [
@@ -3812,11 +3805,11 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:45:49+00:00",
-      "note": "",
+      "updated_at": "2026-09-08T21:52:13+00:00",
+      "note": "Merged immutable image fix; Core and identity main rollouts and stream continuity passed. Public identity route awaits confirmation.",
       "claim_id": "073da7bc-49c7-44a2-9221-554a7b0fba52",
-      "completed_commit": "f68b96613afa54f6ffbd9a7ffad17107f3e8cae4",
-      "reviewed_head": "17b8c9b3d8ff252774d62927b0c387cf419fc687",
+      "completed_commit": "c22954f144702fdf7a3da16cf58176baa345f7c4",
+      "reviewed_head": "45fe074218fb416bb23dbb8af7d9bb1d5b4306db",
       "review_head": "45fe074218fb416bb23dbb8af7d9bb1d5b4306db"
     },
     "cloud:AF-DEPLOY-001": {
@@ -7234,6 +7227,16 @@
       "note": "Merged matching immutable deployment image controller and regression tests with passing CI.",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
       "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa"
+    },
+    {
+      "operation_id": "d180d33a-1223-430d-8482-34612f4e6e06",
+      "at": "2026-09-08T21:52:13+00:00",
+      "action": "complete",
+      "task": "core:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "Merged immutable image fix; Core and identity main rollouts and stream continuity passed. Public identity route awaits confirmation.",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-539fff83",
+      "claim_id": "073da7bc-49c7-44a2-9221-554a7b0fba52"
     }
   ],
   "migration": {
