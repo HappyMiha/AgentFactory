@@ -3810,7 +3810,7 @@
         "core:tests/test_autodeploy.py",
         "core:tests/test_email_auth.py"
       ],
-      "pr": "https://github.com/HappyMiha/Lokvetia-Core/pull/47",
+      "pr": "https://github.com/HappyMiha/Lokvetia-Core/pull/48",
       "resources": [],
       "required_scopes": [
         "core:README.md",
@@ -3822,10 +3822,10 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:00:48+00:00",
+      "updated_at": "2026-09-08T21:30:12+00:00",
       "note": "",
       "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967",
-      "review_head": "9a75d3182c5b625312207cd41d643aa80d447e43"
+      "review_head": "17b8c9b3d8ff252774d62927b0c387cf419fc687"
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
@@ -7131,6 +7131,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
       "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
+    },
+    {
+      "operation_id": "17f14f3e-ad12-4184-81eb-db19d1e122ad",
+      "at": "2026-09-08T21:30:12+00:00",
+      "action": "review",
+      "task": "core:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
+      "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
     }
   ],
   "migration": {
