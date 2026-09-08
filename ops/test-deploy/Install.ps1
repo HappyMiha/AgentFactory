@@ -58,7 +58,7 @@ if ($ConfigureOnly) { Write-Output 'Private configuration created. No applicatio
 if ($LASTEXITCODE -ne 0) {
     & docker volume create lokvetia-identity-data | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not create identity data volume' }
-    & docker run --rm --network none --user 0 --mount type=volume,source=lokvetia-identity-data,target=/data --entrypoint python lokvetia-core:test-e74cb1a -c "import os;os.chown('/data',10001,10001)"
+    & docker run --rm --network none --user 0 --mount type=volume,source=lokvetia-identity-data,target=/data,volume-nocopy --entrypoint python lokvetia-core:test-e74cb1a -c "import os;os.chown('/data',10001,10001)"
     if ($LASTEXITCODE -ne 0) { throw 'Could not initialize new identity volume' }
 }
 if ($StartGateway) {

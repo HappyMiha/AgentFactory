@@ -146,7 +146,7 @@ class Controller:
             '--label', 'lokvetia.deploy.project=' + p['id'], '--read-only', '--init', '--cap-drop', 'ALL',
             '--security-opt', 'no-new-privileges:true', '--memory', p.get('memory', '1g'), '--cpus', '2',
             '--tmpfs', '/tmp:size=128m,mode=1777', '--network', 'none' if shadow else self.config['network'],
-            '--mount', 'type=volume,source=' + volume + ',target=/data',
+            '--mount', 'type=volume,source=' + volume + ',target=/data,volume-nocopy',
             '--mount', 'type=bind,source=' + str(Path(p['access_token_file']).resolve()) + ',target=/run/secrets/access_token,readonly',
             '--env', 'TEST_PUBLIC_HOST=' + p['host'], '--env', 'TEMPORAL_ENABLED=false']
         if not shadow:
@@ -221,7 +221,9 @@ class Controller:
             self.report(p, 'backup')
             command(['docker', 'volume', 'inspect', p['volume']], timeout=30)
             result = command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
-                '--security-opt', 'no-new-privileges:true', '--mount', 'type=volume,source=' + p['volume'] + ',target=/source,readonly',
+                # SQLite opens databases mode=ro; WAL readers still need shared-memory sidecars.
+                # Never let Docker seed an empty data volume from the image's /source tree.
+                '--security-opt', 'no-new-privileges:true', '--mount', 'type=volume,source=' + p['volume'] + ',target=/source,volume-nocopy',
                 '--mount', 'type=bind,source=' + str(backup) + ',target=/backup', '--entrypoint', 'python', image,
                 '/app/snapshot.py', '/source', '/backup/data'])
             manifest = json.loads(result)
