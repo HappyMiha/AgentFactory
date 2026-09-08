@@ -3821,11 +3821,17 @@
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
-      "scopes": [],
-      "pr": "https://github.com/HappyMiha/Lokiravia/pull/21",
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
+      "scopes": [
+        "cloud:.github/workflows/autodeploy.yml",
+        "cloud:README.md",
+        "cloud:docs/autodeploy.md",
+        "cloud:scripts/autodeploy.py",
+        "cloud:tests/test_autodeploy.py"
+      ],
+      "pr": null,
       "resources": [],
       "required_scopes": [
         "cloud:README.md",
@@ -3836,10 +3842,9 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:46:47+00:00",
-      "note": "Reopen the same completed deployment task to mirror immutable image archive fixes; preserve prior PR history.",
-      "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da",
-      "review_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0",
+      "updated_at": "2026-09-08T21:46:53+00:00",
+      "note": "",
+      "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa",
       "completed_commit": "4342252cfed5743a9c028f141372adb2ae79395d",
       "reviewed_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0"
     }
@@ -7204,6 +7209,16 @@
       "note": "Reopen the same completed deployment task to mirror immutable image archive fixes; preserve prior PR history.",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
       "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
+    },
+    {
+      "operation_id": "ab4d5fa9-92da-4298-9236-6208194c41fc",
+      "at": "2026-09-08T21:46:53+00:00",
+      "action": "claim",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
+      "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa"
     }
   ],
   "migration": {
