@@ -3821,16 +3821,10 @@
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "review",
+      "status": "done",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
-      "scopes": [
-        "cloud:.github/workflows/autodeploy.yml",
-        "cloud:README.md",
-        "cloud:docs/autodeploy.md",
-        "cloud:scripts/autodeploy.py",
-        "cloud:tests/test_autodeploy.py"
-      ],
+      "scopes": [],
       "pr": "https://github.com/HappyMiha/Lokiravia/pull/22",
       "resources": [],
       "required_scopes": [
@@ -3842,11 +3836,11 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:49:44+00:00",
-      "note": "",
+      "updated_at": "2026-09-08T21:51:39+00:00",
+      "note": "Merged matching immutable deployment image controller and regression tests with passing CI.",
       "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa",
-      "completed_commit": "4342252cfed5743a9c028f141372adb2ae79395d",
-      "reviewed_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0",
+      "completed_commit": "3d42cf9606d1100ebe0887306300b5fa4aaaea5e",
+      "reviewed_head": "379344919a1e2e685aa774317e395459e65f697b",
       "review_head": "379344919a1e2e685aa774317e395459e65f697b"
     }
   },
@@ -7228,6 +7222,16 @@
       "task": "cloud:AF-DEPLOY-001",
       "worker": "HappyDucky02",
       "note": "",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
+      "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa"
+    },
+    {
+      "operation_id": "98956933-db44-4507-a53f-512603cc03cd",
+      "at": "2026-09-08T21:51:39+00:00",
+      "action": "complete",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "Merged matching immutable deployment image controller and regression tests with passing CI.",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
       "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa"
     }
