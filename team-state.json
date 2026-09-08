@@ -3861,6 +3861,7 @@
         "cloud:src/agentfactory_cloud/static/game-team.html",
         "cloud:src/agentfactory_cloud/static/scope.html",
         "cloud:tests/test_branding.py",
+        "cloud:tests/test_connection_guidance.py",
         "cloud:tests/test_game_brief_web.py",
         "cloud:tests/test_team_coordination.py",
         "cloud:tests/test_upstream_map.py"
@@ -3883,7 +3884,7 @@
         "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
         "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
       ],
-      "updated_at": "2026-09-08T12:59:55+00:00",
+      "updated_at": "2026-09-08T13:01:13+00:00",
       "note": "Add one presentation-only compatibility mapping for guidance from the pinned pre-rebrand Core.",
       "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
     }
@@ -6982,6 +6983,16 @@
     {
       "operation_id": "67be0f05-e80d-4f1b-b5fc-ab1ca6c5a828",
       "at": "2026-09-08T12:59:55+00:00",
+      "action": "rescope",
+      "task": "cloud:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "Add one presentation-only compatibility mapping for guidance from the pinned pre-rebrand Core.",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
+      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
+    },
+    {
+      "operation_id": "8008af99-eeb3-49bc-bbd1-5ab5d13452f1",
+      "at": "2026-09-08T13:01:13+00:00",
       "action": "rescope",
       "task": "cloud:AF-BRAND-001",
       "worker": "HappyDucky02",
