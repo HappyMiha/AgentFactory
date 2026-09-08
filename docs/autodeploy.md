@@ -85,4 +85,3 @@ Data-volume mounts disable Docker image copy-up (`volume-nocopy`), including emp
 
 ### Immutable release images
 Each service and deployment attempt receives a unique image tag. If Docker Desktop loses an older untagged manifest while its container is still running, backup can snapshot only a read-only container root filesystem with --pause=false. Mounted client data and secrets are excluded; an adjacent JSON record identifies the original container and recovery image. Mutable root filesystems fail closed instead of being snapshotted during writes.
-
