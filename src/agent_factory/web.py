@@ -24,6 +24,7 @@ from .config import config_path_for_workspace
 from .local_games import LocalGames, GameConflict, local_games_lock
 from .environment_readiness import EnvironmentReadiness, EnvironmentNotReady
 from .http_auth import COOKIE, LocalAccess, LocalHTTPBoundary
+from .sso import SsoAccess, access_for_workspace, install_routes as install_sso_routes
 from .credential_web import install_routes as install_credential_routes
 from .hardware_web import install_routes as install_hardware_routes
 from .game_planning_web import install_routes as install_game_planning_routes
@@ -325,7 +326,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         lifespan=lifespan,
     )
     static_directory = Path(__file__).resolve().parent / "static"
-    access = LocalAccess()
+    access = access_for_workspace(workspace)
     app.state.local_access = access
 
     def access_error(status: int, code: str) -> JSONResponse:
@@ -333,6 +334,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
                             headers={"Cache-Control": "no-store"})
 
     app.add_middleware(LocalHTTPBoundary, access=access)
+    install_sso_routes(app, access)
     install_credential_routes(app, workspace, store=credential_store)
     install_hardware_routes(app, workspace)
     install_game_planning_routes(app, database)
@@ -382,6 +384,9 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
 
     @app.get("/login", include_in_schema=False)
     async def login_shell():
+        if isinstance(access, SsoAccess):
+            from starlette.responses import RedirectResponse
+            return RedirectResponse('/auth/sso/start', status_code=303)
         return FileResponse(static_directory / "login.html")
 
     app.mount("/assets", StaticFiles(directory=static_directory), name="assets")
@@ -1149,10 +1154,14 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
 
     @app.get('/operations', include_in_schema=False)
     async def operations_shell(request: Request) -> FileResponse:
+        if request.state.local_principal is None and isinstance(access, SsoAccess):
+            return await login_shell()
         return FileResponse(static_directory / ('operations.html' if request.state.local_principal else 'login.html'))
 
     @app.get("/", include_in_schema=False)
     async def dashboard_shell(request: Request) -> FileResponse:
+        if request.state.local_principal is None and isinstance(access, SsoAccess):
+            return await login_shell()
         return FileResponse(static_directory / ("index.html" if request.state.local_principal else "login.html"))
 
     return app

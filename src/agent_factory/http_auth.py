@@ -188,7 +188,9 @@ class LocalHTTPBoundary:
         except ValueError:
             await deny(503, "local_access_unavailable")
             return
-        principal = self.access.authenticate(policy, request.headers.get("authorization"), request.cookies.get(COOKIE))
+        from starlette.concurrency import run_in_threadpool
+        principal = await run_in_threadpool(self.access.authenticate, policy,
+                                           request.headers.get("authorization"), request.cookies.get(COOKIE))
         request.state.local_policy = policy
         request.state.local_principal = principal
         path = scope["path"]
