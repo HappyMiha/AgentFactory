@@ -3789,7 +3789,7 @@
     },
     "core:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
       "scopes": [
@@ -3810,7 +3810,7 @@
         "core:tests/test_autodeploy.py",
         "core:tests/test_email_auth.py"
       ],
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/Lokvetia-Core/pull/47",
       "resources": [],
       "required_scopes": [
         "core:README.md",
@@ -3822,9 +3822,10 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T20:30:40+00:00",
-      "note": "Owner clarified central SSO identity service, one account and organization portal for both related applications.",
-      "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
+      "updated_at": "2026-09-08T21:00:48+00:00",
+      "note": "",
+      "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967",
+      "review_head": "9a75d3182c5b625312207cd41d643aa80d447e43"
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
@@ -7107,6 +7108,16 @@
       "task": "core:AF-DEPLOY-001",
       "worker": "HappyDucky02",
       "note": "Owner clarified central SSO identity service, one account and organization portal for both related applications.",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
+      "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
+    },
+    {
+      "operation_id": "a0b68e09-c109-464f-ad0d-4c7923d40f83",
+      "at": "2026-09-08T21:00:48+00:00",
+      "action": "review",
+      "task": "core:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
       "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
     }
