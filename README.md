@@ -1,14 +1,36 @@
-# AgentFactory Core
+# Lokvetia Core
 
-**Coordinate specialist AI agents as one traceable, human-controlled delivery system.**
+<p><img src="src/agent_factory/static/brand-wordmark.svg" alt="Lokvetia Core" width="360"></p>
 
-AgentFactory Core is an open-source foundation for teams of AI agents. It turns a work item into a reviewable sequence of planning, coding, checks, and evidence across interchangeable providers. It records permissions, budgets, versions, and results so a person can understand and control the work.
+**AI teams. Human direction.**
+
+[Lokvetia](https://lokvetia.com) · [Lokiravia game creation](https://github.com/HappyMiha/Lokiravia) · [Brand and migration](docs/brand/migration.md)
+
+Formerly **AgentFactory Core**. Lokvetia is the family brand; **Lokiravia** is the separate game creation product. The domain is the brand address, not a claim that a hosted service has launched. Existing installations, Python imports, configuration and stored state remain compatible.
+
+Coordinate specialist AI agents as one traceable, human-controlled delivery system.
+
+Lokvetia Core is an open-source foundation for teams of AI agents. It turns a work item into a reviewable sequence of planning, coding, checks, and evidence across interchangeable providers. It records permissions, budgets, versions, and results so a person can understand and control the work.
 
 The factory is project-neutral. Bring your own repository, requirements, roles, workflows, acceptance criteria, and provider accounts.
 
 > **Alpha:** the deterministic simulation, guarded single-provider execution, local orchestration state, and dry-run GitHub planning are usable today. Full unattended multi-stage live execution, native HTTP providers, and a hosted control plane are not yet complete.
 
-> **Planning update — 5 September 2026:** there are two projects. This repository remains the public, Apache-2.0 **Core**. [AgentFactory Cloud](https://github.com/HappyMiha/AgentFactory-Cloud) is a separate public repository for the commercial product plan: creating, playing, remixing, and publishing games. No Cloud application or game pipeline is claimed as delivered by this update.
+## Start locally
+
+With Python 3.11+ and this repository checked out, activate a virtual environment and run:
+
+```sh
+python -m pip install -e ".[web]"
+lokvetia --help
+lokvetia --workspace . web --open
+```
+
+The local interface opens at `http://127.0.0.1:8765`. For the offline demonstration, run `lokvetia --workspace . demo`. Existing `agent-factory` commands remain supported and share the same data. See [installation instructions](docs/getting-started.md) and [compatibility](docs/brand/migration.md).
+
+## Product family and scope
+
+> **Planning update — 5 September 2026:** there are two projects. This repository remains the public, Apache-2.0 **Core**. [Lokiravia](https://github.com/HappyMiha/AgentFactory-Cloud) is a separate public repository for the commercial product plan: creating, playing, remixing, and publishing games. No Cloud application or game pipeline is claimed as delivered by this update.
 
 **Developing from three computers:** read the [team workflow](docs/team-workflow.md) and [live task register](https://github.com/HappyMiha/AgentFactory/blob/team-state/team-state.json). HappyDucky02, HappySnowman, and HappyHahahaker use owned branches, atomic task claims, checks before push, and pull requests into `main`.
 
@@ -20,7 +42,7 @@ The [Unreal and Gameplay AI plan](https://github.com/HappyMiha/AgentFactory-Clou
 
 The existing [42-task AF-GC manifest](examples/game-creator-backlog.json), [detailed Ukrainian backlog](docs/game-creator-backlog.uk.md), and older AF/AF-AMM IDs remain stable upstream references. A backlog entry or component test is not proof of the full creator journey.
 
-## Why Agent Factory
+## Why Lokvetia Core
 
 - **Provider independence.** Replace a provider without rewriting the role or workflow.
 - **Typed role contracts.** Versioned roles declare provider-neutral inputs, outputs, evidence, tools, permissions, limits, and incompatible duties; workflows reference roles rather than agents.
@@ -149,7 +171,7 @@ The Local Control Center can be installed and opened on Windows with `python -m 
 
 For the commercial product, the recommendation is to retain Temporal for durable development jobs and keep it outside the first shipped game's NPC loop. The [commercial-use and architecture review](docs/architecture/temporal-commercial-decision.md) explains the MIT licenses, self-hosted versus managed service, current dependency and replacement tradeoffs.
 
-Temporal can durably orchestrate AgentFactory delivery runs while the Worker remains on the Windows host with access to the existing local CLI and project environment. Start the loopback-only PostgreSQL-backed development stack with `.\infra\temporal\start.ps1`, enable it with `$env:TEMPORAL_ENABLED = "true"`, then run the Local Control Center and `agent-factory-temporal-worker` in separate PowerShell windows. Autonomous parents continue as new at configured safe boundaries; typed Search Attributes and memo identify every retained run, while the immutable SQLite run ledger remains authoritative after the default seven-day Temporal retention window. Normal stops preserve Workflow history; only `reset.ps1` deletes the named database volume.
+Temporal can durably orchestrate Lokvetia Core delivery runs while the Worker remains on the Windows host with access to the existing local CLI and project environment. Start the loopback-only PostgreSQL-backed development stack with `.\infra\temporal\start.ps1`, enable it with `$env:TEMPORAL_ENABLED = "true"`, then run the Local Control Center and `agent-factory-temporal-worker` in separate PowerShell windows. Autonomous parents continue as new at configured safe boundaries; typed Search Attributes and memo identify every retained run, while the immutable SQLite run ledger remains authoritative after the default seven-day Temporal retention window. Normal stops preserve Workflow history; only `reset.ps1` deletes the named database volume.
 
 See [Temporal development](docs/development/temporal.md) for setup and troubleshooting, and [Temporal Worker versioning](docs/development/temporal-worker-versioning.md) for the required patch, replay, deployment, and rollback procedure. The current architecture and migration boundaries are recorded in [the integration analysis](docs/architecture/temporal-integration-analysis.md).
 
@@ -197,7 +219,7 @@ docker compose build
 docker compose run --rm agent-factory demo
 ```
 
-State persists in the named `agent-factory-data` volume. The container is read-only apart from `/data` and temporary storage. To use real provider CLIs, run Agent Factory on the host or build a private image that installs and authenticates each required CLI.
+State persists in the named `agent-factory-data` volume. The container is read-only apart from `/data` and temporary storage. To use real provider CLIs, run Lokvetia Core on the host or build a private image that installs and authenticates each required CLI.
 
 ## First project and work item
 
@@ -258,11 +280,11 @@ agent-factory approvals approve 1 --note "Evidence reviewed"
 | `openclaw` | Disabled | Health probe only until a no-tools execution profile is available. |
 | `firecrawl` | Read-only web research | Bounded public-web evidence gathering by the dedicated `Web Researcher` role. |
 
-Antigravity CLI 1.1.9 requires its non-interactive prompt as a process argument. Agent Factory excludes that prompt from retained command metadata, but local process inspection may still see it while the provider runs. Use Antigravity only for non-secret work-item content.
+Antigravity CLI 1.1.9 requires its non-interactive prompt as a process argument. Lokvetia Core excludes that prompt from retained command metadata, but local process inspection may still see it while the provider runs. Use Antigravity only for non-secret work-item content.
 
 The Firecrawl adapter has no project-reading or code-writing permission. It runs `firecrawl agent` with a five-credit ceiling, requires a one-use provider gate, and returns web evidence as an untrusted artifact for human or independent-agent review.
 
-Provider authentication belongs to each CLI's own profile or operating-system keyring. Never put credentials in work-item or provider prompts. Agent Factory applies scoped credential injection and recursive redaction at governed execution boundaries; generic provider output still requires review before external publication. See [Provider setup](docs/providers.md).
+Provider authentication belongs to each CLI's own profile or operating-system keyring. Never put credentials in work-item or provider prompts. Lokvetia Core applies scoped credential injection and recursive redaction at governed execution boundaries; generic provider output still requires review before external publication. See [Provider setup](docs/providers.md).
 
 ## CLI map
 
@@ -284,7 +306,7 @@ agent-factory demo
 
 ## Safety model
 
-Agent Factory treats every provider response and imported backlog as untrusted input.
+Lokvetia Core treats every provider response and imported backlog as untrusted input.
 
 - Real providers cannot run without a matching one-time human gate.
 - Provider commands use fixed configuration, `shell=false`, a repository-scoped working directory, and bounded execution.
@@ -353,4 +375,4 @@ The repository CI runs Python 3.11 and 3.12 tests on Windows, Ubuntu, and macOS,
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Security reports belong in private GitHub Security Advisories as described in [SECURITY.md](SECURITY.md).
 
-Copyright 2026 HappyMiha. Agent Factory is licensed under the [Apache License 2.0](LICENSE).
+Copyright 2026 HappyMiha. Lokvetia Core is licensed under the [Apache License 2.0](LICENSE).

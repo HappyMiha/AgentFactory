@@ -317,7 +317,7 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
             probe_executor.shutdown(wait=False, cancel_futures=True)
 
     app = FastAPI(
-        title="Agent Factory Local Control Center",
+        title="Lokvetia Core — Local Control Center",
         version="0.1.0",
         docs_url="/api/docs",
         redoc_url=None,

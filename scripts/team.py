@@ -24,6 +24,12 @@ import uuid
 
 DEFAULT_REGISTRY = "https://github.com/HappyMiha/AgentFactory.git"
 REPOSITORIES = {"core": "HappyMiha/AgentFactory", "cloud": "HappyMiha/AgentFactory-Cloud"}
+# Both names identify the same repositories across the GitHub rename. Keep the
+# operational defaults above until cutover; never reuse the old GitHub names.
+REPOSITORY_ALIASES = {
+    "core": {"HappyMiha/AgentFactory", "HappyMiha/Lokvetia-Core"},
+    "cloud": {"HappyMiha/AgentFactory-Cloud", "HappyMiha/Lokiravia"},
+}
 ACTIVE = {"claimed", "review"}
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 KEY = re.compile(r"^(core|cloud):(AF-[A-Z]+-[0-9]+|TEAM-SETUP)$")
@@ -270,16 +276,31 @@ def own(task: dict[str, Any], worker: str, allowed: set[str]) -> None:
         raise TeamError("Only the current owner can perform this action in the current state.")
 
 
-def pr_details(url: str, key: str, branch: str) -> dict[str, Any]:
-    repo = REPOSITORIES[key.split(":", 1)[0]]
-    if not re.fullmatch(r"https://github\.com/" + re.escape(repo) + r"/pull/[1-9][0-9]*", url):
+def repository_alias(slug: str) -> str | None:
+    for name, aliases in REPOSITORY_ALIASES.items():
+        if slug.casefold() in {alias.casefold() for alias in aliases}:
+            return name
+    return None
+
+
+def pr_identity(url: str | None, repo: str) -> tuple[str, str]:
+    """Compare exact PR identities while accepting only reviewed rename aliases."""
+    match = re.fullmatch(r"https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/pull/([1-9][0-9]*)",
+                         url, re.IGNORECASE | re.ASCII) if isinstance(url, str) else None
+    if not match or repository_alias(match[1]) != repo:
         raise TeamError("PR URL must identify the task's GitHub repository.")
+    return repo, match[2]
+
+
+def pr_details(url: str, key: str, branch: str) -> dict[str, Any]:
+    repo = key.split(":", 1)[0]
+    expected = pr_identity(url, repo)
     result = run(["gh", "pr", "view", url, "--json", "state,mergedAt,mergeCommit,baseRefName,headRefName,headRefOid,url"])
     try:
         data = json.loads(result.stdout)
     except ValueError as exc:
         raise TeamError("GitHub returned invalid PR evidence.") from exc
-    if data.get("url", "").casefold() != url.casefold() or data.get("baseRefName") != "main" or data.get("headRefName") != branch:
+    if pr_identity(data.get("url", ""), repo) != expected or data.get("baseRefName") != "main" or data.get("headRefName") != branch:
         raise TeamError("PR must target main from the exact claimed branch in the task repository.")
     if not re.fullmatch(r"[0-9a-f]{40,64}", data.get("headRefOid", "")):
         raise TeamError("PR evidence is missing its head commit.")
@@ -317,7 +338,8 @@ def transition(registry: Registry, action: str, key: str, worker: str, note: str
                     raise TeamError("Review requires an open pull request.")
                 task.update(status="review", pr=pr, review_head=evidence["headRefOid"])
             else:
-                if task["status"] != "review" or task.get("pr") != pr:
+                repo = key.split(":", 1)[0]
+                if task["status"] != "review" or pr_identity(task.get("pr"), repo) != pr_identity(pr, repo):
                     raise TeamError("Complete requires the registered review PR.")
                 if evidence["state"] != "MERGED" or not evidence.get("mergedAt") or evidence["headRefOid"] != task.get("review_head"):
                     raise TeamError("PR is not merged at the reviewed head; refresh review after changes and merge first.")
@@ -334,9 +356,10 @@ def repository(cwd: Path, explicit: str | None) -> str:
     if explicit:
         return explicit
     remote = git("remote", "get-url", "origin", cwd=cwd)
-    for name, expected in REPOSITORIES.items():
-        if remote.rstrip("/").removesuffix(".git").casefold().endswith(expected.casefold()):
-            return name
+    match = re.fullmatch(r"(?:https://github\.com/|ssh://git@github\.com/|git@github\.com:)"
+                         r"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?", remote, re.IGNORECASE | re.ASCII)
+    if match and (name := repository_alias(match[1])):
+        return name
     raise TeamError("Cannot infer repository; use --repo core or --repo cloud for local test remotes.")
 
 

@@ -4,11 +4,11 @@
 
 Status: **approved for implementation planning, with the interpretations in this document treated as required safety and durability constraints**.
 
-This review compares the user-provided *AgentFactory Autonomous Mission Mode — Implementation Specification* (sections 1–43) with the repository at commit `9377642`. The executable implementation plan is the validator-compatible [Autonomous Mission backlog](../examples/autonomous-mission-backlog.json). This document and that manifest describe required work; neither is evidence that the feature is already implemented. The legacy manifest retains schema-v1-compatible items plus `agentfactory.rich-backlog/v1` extension fields. At that baseline, persistence of rich fields was planned in AF-AMM-002; the current implementation supports persisted rich contracts and schema-v2 features.
+This review compares the user-provided *Lokvetia Core Autonomous Mission Mode — Implementation Specification* (sections 1–43) with the repository at commit `9377642`. The executable implementation plan is the validator-compatible [Autonomous Mission backlog](../examples/autonomous-mission-backlog.json). This document and that manifest describe required work; neither is evidence that the feature is already implemented. The legacy manifest retains schema-v1-compatible items plus `agentfactory.rich-backlog/v1` extension fields. At that baseline, persistence of rich fields was planned in AF-AMM-002; the current implementation supports persisted rich contracts and schema-v2 features.
 
 ## Executive assessment
 
-Autonomous Mission Mode fits the existing AgentFactory architecture, but it is a new orchestration and authorization layer rather than a configuration switch on the current job workflow. The repository already contains most of the lower-level building blocks: mission intake, Factory Blueprints, immutable approvals, durable stages, leases, managed worktrees, context packages, typed memory, engineering loops, validators, reviewers, evidence, audit, recovery inspection, application services, REST/CLI/UI surfaces, and a Temporal worker.
+Autonomous Mission Mode fits the existing Lokvetia Core architecture, but it is a new orchestration and authorization layer rather than a configuration switch on the current job workflow. The repository already contains most of the lower-level building blocks: mission intake, Factory Blueprints, immutable approvals, durable stages, leases, managed worktrees, context packages, typed memory, engineering loops, validators, reviewers, evidence, audit, recovery inspection, application services, REST/CLI/UI surfaces, and a Temporal worker.
 
 The material gaps are:
 
@@ -53,7 +53,7 @@ A mission has two durable dimensions:
 
 Pausing or stopping must not erase the phase from which execution resumes. `COMPLETED` is terminal. `PAUSED` and `STOPPED` are resumable dispositions. A separate explicit revocation/retirement action, not `stop`, ends autonomous authorization.
 
-### 2. Temporal and AgentFactory have distinct authority
+### 2. Temporal and Lokvetia Core have distinct authority
 
 Temporal owns orchestration history, timers, signal ordering, safe-boundary scheduling, child-workflow coordination, and the continue-as-new chain. SQLite owns mission domain records, immutable backlog revisions, approvals, authorization, epochs, checkpoints, evidence, activity, manifests, and audit. Git owns project content. Services and containers are derived runtime state that must be reconciled against the environment/service manifest.
 
@@ -61,7 +61,7 @@ Workflow history must contain identifiers and bounded summaries, not source tree
 
 ### 3. Temporal is a prerequisite, not mission bootstrap output
 
-`AutonomousMissionWorkflow` cannot bootstrap the Temporal server on which it is already running. CLI/Control Center startup and the optional Windows long-run profile must establish Temporal, its PostgreSQL store, the AgentFactory worker, and the local backend before a mission starts. Mission environment bootstrap may prepare project-specific databases and services, including a separate Temporal deployment if the target project itself needs one.
+`AutonomousMissionWorkflow` cannot bootstrap the Temporal server on which it is already running. CLI/Control Center startup and the optional Windows long-run profile must establish Temporal, its PostgreSQL store, the Lokvetia Core worker, and the local backend before a mission starts. Mission environment bootstrap may prepare project-specific databases and services, including a separate Temporal deployment if the target project itself needs one.
 
 ### 4. Backlog approval grants a bounded capability, not blanket machine authority
 
@@ -69,7 +69,7 @@ Approval binds the exact mission, backlog revision and digest, local role/model 
 
 - local inference through providers explicitly marked `LOCAL`;
 - allowlisted project-scoped tools and bootstrap operations;
-- deterministic builds, tests, service control, and Git commits on AgentFactory-owned epoch branches.
+- deterministic builds, tests, service control, and Git commits on Lokvetia Core-owned epoch branches.
 
 It does not implicitly authorize remote LLM APIs, arbitrary network egress, protected-branch merge, GitHub mutation, publication, secret access, unrestricted shell execution, or machine-global modification. Existing gates remain authoritative for those actions unless a future separately reviewed policy adds them.
 
@@ -89,7 +89,7 @@ The autonomous loop may commit accepted work and integrate item branches into `a
 
 A restartable code checkpoint must reference a committed Git SHA. Dirty or partially applied tool state is evidence, not a valid restart point. Environment-only checkpoints bind the authoritative base SHA plus versioned environment/service manifests. A checkpoint record is immutable and later records are never deleted; an epoch marks later history as superseded only in projections.
 
-Host-sensitive environment details belong in the AgentFactory artifact/state store by default and are not automatically committed into the target repository.
+Host-sensitive environment details belong in the Lokvetia Core artifact/state store by default and are not automatically committed into the target repository.
 
 ### 8. Pause and stop require a mission-wide scheduling fence
 
@@ -211,7 +211,7 @@ Implementation is not complete when only the parent Workflow exists. The release
 4. one installed local model can plan, implement through controlled tools, validate, review in a fresh logical context, commit, and checkpoint;
 5. multiple configured local models serialize through one durable GPU lane;
 6. pause, stop/continue, retry, checkpoint restart, and backlog-change restart pass race and replay tests;
-7. AgentFactory/Worker/Temporal/PostgreSQL/Docker/Ollama/project-service restarts recover without duplicating accepted work;
+7. Lokvetia Core/Worker/Temporal/PostgreSQL/Docker/Ollama/project-service restarts recover without duplicating accepted work;
 8. continue-as-new and worker-upgrade replay tests cover a multi-run logical mission;
 9. UI and CLI execute the same application services and expose persisted rather than ephemeral activity;
 10. the full user-provided end-to-end scenario reaches `COMPLETED` with repository, active backlog, validation, architecture, checkpoints, manifests, and audit evidence.

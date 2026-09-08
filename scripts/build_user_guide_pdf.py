@@ -62,7 +62,7 @@ def footer(canvas, doc):
     canvas.line(18 * mm, 15 * mm, 192 * mm, 15 * mm)
     canvas.setFont(BODY_FONT, 7.5)
     canvas.setFillColor(MUTED)
-    canvas.drawString(18 * mm, 10 * mm, "Agent Factory - повний посібник оператора")
+    canvas.drawString(18 * mm, 10 * mm, "Lokvetia Core - повний посібник оператора")
     canvas.drawRightString(192 * mm, 10 * mm, f"Сторінка {doc.page}")
     canvas.restoreState()
 
@@ -182,7 +182,7 @@ def build_story() -> list:
     headings = [line[3:] for line in lines if line.startswith("## ")]
     story: list = [
         Spacer(1, 28 * mm),
-        paragraph("AGENT FACTORY", "GuideTitle"),
+        paragraph("LOKVETIA CORE", "GuideTitle"),
         paragraph("Повний посібник оператора", "GuideTitle"),
         paragraph(
             "Запуск, конфігурація, нові проєкти, людська й агентна верифікація, "
@@ -192,7 +192,8 @@ def build_story() -> list:
         Spacer(1, 5 * mm),
         Table(
             [
-                [paragraph("Актуальність", "GuideSmall"), paragraph("18 серпня 2026", "GuideSmall")],
+                [paragraph("Редакція бренду", "GuideSmall"), paragraph("8 вересня 2026", "GuideSmall")],
+                [paragraph("Операційний матеріал", "GuideSmall"), paragraph("18 серпня 2026; історичні знімки інтерфейсу", "GuideSmall")],
                 [paragraph("Основна платформа", "GuideSmall"), paragraph("Windows + PowerShell + Docker Desktop", "GuideSmall")],
                 [paragraph("Безпечна межа", "GuideSmall"), paragraph("Агенти не можуть final approve, merge, push або release", "GuideSmall")],
             ],
@@ -272,8 +273,8 @@ def build() -> None:
         str(OUT), pagesize=A4,
         leftMargin=18 * mm, rightMargin=18 * mm,
         topMargin=16 * mm, bottomMargin=19 * mm,
-        title="Agent Factory - повний посібник оператора",
-        author="Agent Factory",
+        title="Lokvetia Core - повний посібник оператора",
+        author="Lokvetia",
         subject="Durable local agent orchestration with Temporal",
     )
     frame = Frame(document.leftMargin, document.bottomMargin, document.width, document.height, id="main")

@@ -215,7 +215,7 @@ agy --version
 agy
 ```
 
-On the first interactive launch, Antigravity attempts to use its operating-system secure-keyring session and otherwise starts Google's browser sign-in flow. Complete authentication outside Agent Factory. On a remote terminal, follow the URL-and-code flow shown by Antigravity, but never copy its URL, code, tokens, account details, or authentication output into work items, logs, Issues, or artifacts. Use `/logout` in the interactive CLI when the session must be removed.
+On the first interactive launch, Antigravity attempts to use its operating-system secure-keyring session and otherwise starts Google's browser sign-in flow. Complete authentication outside Lokvetia Core. On a remote terminal, follow the URL-and-code flow shown by Antigravity, but never copy its URL, code, tokens, account details, or authentication output into work items, logs, Issues, or artifacts. Use `/logout` in the interactive CLI when the session must be removed.
 
 The shipped contract, verified against Antigravity CLI 1.1.9, is equivalent to:
 
@@ -225,7 +225,7 @@ agy --output-format text --mode plan --sandbox --disable-slash-commands --print 
 
 These controls are complementary: `--mode plan` limits the agent to plan-oriented, read-only tooling, while `--sandbox` enables operating-system terminal restrictions. `--print` makes the call non-interactive, and slash-command expansion is disabled.
 
-Antigravity currently requires `prompt_transport: argument`. Agent Factory excludes the appended prompt from its own command metadata, but the task prompt is still part of the child-process command line and may be visible to local process inspection and operating-system diagnostics. Treat prompts as non-secret work-item content. Do not put credentials, private authentication material, or unnecessary sensitive data in them. Revalidate the fixed flags and a bounded live canary before adopting a newer CLI release.
+Antigravity currently requires `prompt_transport: argument`. Lokvetia Core excludes the appended prompt from its own command metadata, but the task prompt is still part of the child-process command line and may be visible to local process inspection and operating-system diagnostics. Treat prompts as non-secret work-item content. Do not put credentials, private authentication material, or unnecessary sensitive data in them. Revalidate the fixed flags and a bounded live canary before adopting a newer CLI release.
 
 After authentication and `providers status`, use the same one-use gate as every real provider:
 
@@ -293,7 +293,7 @@ The reviewed execution contract is:
 firecrawl agent --wait --json --max-credits 5 <provider-prompt>
 ```
 
-The prompt is a process argument because the Firecrawl agent command has no stdin prompt mode. Agent Factory excludes prompt contents from retained command metadata, but local process inspection can see them during execution. Never put credentials or private project data in a Firecrawl task.
+The prompt is a process argument because the Firecrawl agent command has no stdin prompt mode. Lokvetia Core excludes prompt contents from retained command metadata, but local process inspection can see them during execution. Never put credentials or private project data in a Firecrawl task.
 
 Every call still requires a gate scoped to the exact provider, agent, and work item:
 
@@ -303,7 +303,7 @@ agent-factory providers approve 1 --note "Bounded public-web research; maximum f
 agent-factory providers invoke 1
 ```
 
-Retrieved pages are untrusted input. The role instructions require source URLs and forbid forms, target-site authentication, access-control bypass, and browser actions with external side effects. Firecrawl authentication remains in Firecrawl's own profile and is not passed through Agent Factory's subprocess environment.
+Retrieved pages are untrusted input. The role instructions require source URLs and forbid forms, target-site authentication, access-control bypass, and browser actions with external side effects. Firecrawl authentication remains in Firecrawl's own profile and is not passed through Lokvetia Core's subprocess environment.
 
 ## Review provider status
 
@@ -378,7 +378,7 @@ Consequences:
 - do not put credentials in provider arguments;
 - do not include authentication output in artifacts or Issues;
 - do not mount broad credential directories into Docker;
-- re-authenticate the provider interactively outside Agent Factory when needed.
+- re-authenticate the provider interactively outside Lokvetia Core when needed.
 
 Successful stdout and failure diagnostics can enter retained execution results and artifacts. Sensitive environment-variable names are filtered, but comprehensive value-aware redaction of provider output is not implemented. Review artifacts before publishing or attaching them to external systems.
 

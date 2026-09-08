@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">Lokvetia Core</title>
+  <desc id="desc">An open geometric L and a precise square, connected by a shared grid.</desc>
+  <rect width="64" height="64" rx="16" fill="#102C35"/>
+  <path d="M17 15h10v29h22v10H17V15Z" fill="#6FE1C7"/>
+  <path d="M37 15h12v12H37V15Z" fill="#F5F9F8"/>
+</svg>

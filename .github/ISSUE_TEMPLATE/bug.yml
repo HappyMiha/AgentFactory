@@ -1,5 +1,5 @@
 name: Bug report
-description: Report reproducible behavior that violates an Agent Factory contract.
+description: Report reproducible behavior that violates an Lokvetia Core contract.
 title: "[Bug] "
 labels: ["type:bug", "status:triage"]
 body:

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-08 — Lokvetia Core
+
+- Adopted Lokvetia Core and the Lokiravia product family identity across the interface, documentation and package metadata.
+- Added `lokvetia` and `lokvetia-temporal-worker` entry points while retaining existing commands and stored state.
+- Added explicit old/new GitHub repository aliases for coordination and PR evidence.
+- See [migration and compatibility](docs/brand/migration.md).
+
 ## Unreleased
 
 - Added a Local Control Center System monitor with `/api/monitor` readiness checks for database integrity, migrations, providers, agents, runtime, and emergency-stop safety.

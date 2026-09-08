@@ -1,0 +1,157 @@
+/* Lokvetia Core: precise, local, and under human authority.
+   Page classes keep branding independent of existing behavior and layout. */
+.brand-core {
+  --brand-ink: #102c35;
+  --brand-muted: #50666b;
+  --brand-accent: #176b5c;
+  --brand-line: #d5e1df;
+  --brand-paper: #f3f7f6;
+  --brand-focus: #a66216;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  color: var(--brand-ink);
+  background: var(--brand-paper);
+  -webkit-font-smoothing: antialiased;
+}
+.brand-core .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+  min-width: 0;
+  color: var(--brand-ink);
+  text-decoration: none;
+  font-size: 1.2rem;
+  font-weight: 750;
+  letter-spacing: -.04em;
+  line-height: 1.2;
+}
+.brand-core .brand-symbol { display: block; width: 40px; height: 40px; flex: 0 0 40px; }
+.brand-core .brand-name { display: block; }
+.brand-core .brand-name small {
+  display: block;
+  margin-top: .3rem;
+  font-size: .65rem;
+  font-weight: 450;
+  letter-spacing: .01em;
+  color: var(--brand-muted);
+}
+.brand-core h1, .brand-core h2, .brand-core h3 { color: var(--brand-ink); }
+.brand-core h1 { letter-spacing: -.045em; }
+.brand-core .eyebrow { color: var(--brand-accent); font-size: .72rem; font-weight: 700; letter-spacing: .13em; }
+.brand-core a { text-underline-offset: .2em; }
+.brand-core :is(a, button, input, textarea, select, summary):focus-visible {
+  outline: 3px solid var(--brand-focus);
+  outline-offset: 3px;
+}
+.brand-core input:is([type="checkbox"], [type="radio"]) {
+  display: inline-block;
+  width: auto;
+  margin: .25em .55em .25em 0;
+  accent-color: var(--brand-accent);
+  vertical-align: middle;
+}
+.brand-core button { transition: background-color 150ms ease, border-color 150ms ease; }
+.brand-core button:disabled { cursor: not-allowed; }
+.brand-core .brand-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .65rem 1.2rem;
+  margin: 3rem 0 0;
+  padding: 1.25rem 0 0;
+  border-top: 1px solid var(--brand-line);
+  color: var(--brand-muted);
+  font-size: .75rem;
+  line-height: 1.5;
+}
+.brand-core .brand-footer a, .brand-core .brand-domain { color: var(--brand-accent); }
+.brand-core:not(.brand-dark) > header,
+.brand-core .brand-page-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.15rem max(1.2rem, calc((100vw - 1120px) / 2));
+  max-width: none;
+  background: #fff;
+  border-bottom: 1px solid var(--brand-line);
+}
+.brand-core > header > span { color: var(--brand-muted); font-size: .82rem; }
+.brand-core:not(.brand-dark) p { color: var(--brand-muted); }
+.brand-core:not(.brand-dark) a:not(.brand) { color: var(--brand-accent); }
+.brand-core:not(.brand-dark) button {
+  color: var(--brand-ink);
+  background: #fff;
+  border-color: #a8bfba;
+}
+.brand-core:not(.brand-dark) button:not(:disabled):hover { background: #e9f3f0; border-color: var(--brand-accent); }
+.brand-core:not(.brand-dark) button.primary,
+.brand-core.page-login button[type="submit"] {
+  color: #fff;
+  background: var(--brand-accent);
+  border-color: var(--brand-accent);
+}
+.brand-core:not(.brand-dark) button.primary:not(:disabled):hover,
+.brand-core.page-login button[type="submit"]:hover { background: #115346; }
+.brand-core:not(.brand-dark) :is(input, textarea, select) { color: var(--brand-ink); border-color: #a8bfba; }
+.brand-core:not(.brand-dark) :is(.card, .step, .software) { border-color: var(--brand-line); box-shadow: 0 3px 14px #102c3504; }
+.brand-core:not(.brand-dark) .privacy { background: #e5f0ec; border-color: #c6dcd3; }
+.brand-core:not(.brand-dark) pre { color: var(--brand-ink); background: #e7efed; }
+.brand-core:not(.brand-dark) #steps button[aria-current="step"] { background: #d8ece4; border-color: var(--brand-accent); }
+.brand-core.page-index .heading { padding: .5rem 0 1rem; }
+.brand-core.page-index .heading h1 { margin-top: .5rem; }
+.brand-core.page-index header details[open] { background: #fff; padding: .5rem .8rem; border-radius: .7rem; }
+.brand-core.page-credentials #connect { display: grid; max-width: 46rem; align-items: start; }
+.brand-core.page-credentials #connect button { justify-self: start; }
+.brand-core.page-login { min-height: 100vh; padding: 1px 1rem; background: linear-gradient(145deg, #e7f1ee, #f5f8f7 60%); }
+.brand-core.page-login main { margin: 9vh auto; padding: 2rem; border: 1px solid var(--brand-line); box-shadow: 0 18px 60px #102c350b; }
+.brand-core.page-login main > .brand { margin-bottom: 1.8rem; }
+.brand-core.page-login h1 { margin-top: .5rem; font-size: 2rem; }
+.brand-core.page-login input, .brand-core.page-login button { border: 1px solid #a8bfba; border-radius: .6rem; }
+.brand-core.page-login .brand-footer { display: block; margin-top: 2rem; }
+.brand-core.page-login .brand-footer > a { display: inline-block; margin-top: .7rem; }
+
+/* The existing control center and review screens remain dark. */
+.brand-core.brand-dark {
+  --brand-ink: #edf6f3;
+  --brand-muted: #a2b8b4;
+  --brand-accent: #80dcc1;
+  --brand-line: #2c454b;
+  --brand-focus: #f0c778;
+  --bg: #0b1b22;
+  --surface: #12272f;
+  --surface2: #18343c;
+  --line: #2c454b;
+  --text: #edf6f3;
+  --muted: #a2b8b4;
+  --blue: #80dcc1;
+  --mint: #80dcc1;
+  background: #0b1b22;
+  color: var(--brand-ink);
+  color-scheme: dark;
+}
+.brand-dark .brand-page-header { background: #10252d; border-color: var(--brand-line); }
+.brand-dark .brand-page-header > span { color: var(--brand-muted); }
+.brand-dark .brand-symbol { border: 1px solid #ffffff16; border-radius: 11px; }
+.brand-dark.page-operations .sidebar { background: #0d2028; }
+.brand-dark.page-operations .sidebar .brand { font-size: 1rem; }
+.brand-dark.page-operations .sidebar .brand strong { font-size: 1rem; white-space: nowrap; }
+.brand-dark.page-operations .sidebar .brand small { font-size: .65rem; }
+.brand-dark.page-operations .sidebar nav a.active { background: #80dcc112; color: #9fe8d4; border-color: #80dcc132; }
+.brand-dark.page-operations .brand-domain { margin-top: 1.8rem; font-size: .72rem; text-decoration: none; }
+.brand-dark.page-operations .panel { background: #12272f; }
+.brand-dark.page-operations .topbar { border-bottom-color: var(--brand-line); }
+.brand-dark:is(.page-game-plan, .page-installation) a { color: var(--brand-accent); }
+.brand-dark:is(.page-game-plan, .page-installation) :is(section, fieldset, article) { border-color: var(--brand-line); }
+.brand-dark:is(.page-game-plan, .page-installation) :is(select, textarea, article) { background: #12272f; color: var(--brand-ink); }
+.brand-dark:is(.page-game-plan, .page-installation) button { background: #1b3d45; border-color: #53786f; color: var(--brand-ink); }
+.brand-dark:is(.page-game-plan, .page-installation) button:not(:disabled):hover { background: #25544f; }
+@media (max-width: 620px) {
+  .brand-core:not(.brand-dark) > header, .brand-core .brand-page-header { padding: 1rem 1.2rem; flex-wrap: wrap; gap: .7rem 1rem; }
+  .brand-core .brand { font-size: 1.05rem; }
+  .brand-core .brand-symbol { width: 36px; height: 36px; flex-basis: 36px; }
+  .brand-core .brand-page-header > span { display: none; }
+  .brand-core.page-login main { margin: 4vh auto; padding: 1.5rem; }
+  .brand-core .brand-footer { margin-top: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-core *, .brand-core *::before, .brand-core *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

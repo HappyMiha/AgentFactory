@@ -6,7 +6,7 @@
 
 ## Context
 
-Agent Factory needs a persistent coding loop with tool use, skills, sessions, and subagents. Hermes can supply that execution behavior, but treating it as the orchestrator would create a second authority for scheduling, policy, approvals, evidence, and terminal state. That would weaken the existing one-use gates, independent evidence, founder decision, and audit model.
+Lokvetia Core needs a persistent coding loop with tool use, skills, sessions, and subagents. Hermes can supply that execution behavior, but treating it as the orchestrator would create a second authority for scheduling, policy, approvals, evidence, and terminal state. That would weaken the existing one-use gates, independent evidence, founder decision, and audit model.
 
 ## Decision
 

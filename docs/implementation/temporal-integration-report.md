@@ -2,7 +2,7 @@
 
 ## 1. What was changed
 
-AgentFactory now has an optional Temporal-backed delivery path controlled by `TEMPORAL_ENABLED`. When enabled, the existing API/application start path creates the existing SQLite run, starts a stable `AgentFactoryJobWorkflow`, records the Temporal identity, and returns without waiting for all stages. A Windows-host Worker executes side effects as Activities and reuses the existing AgentFactory registry, runtime, reviewer router, workflow contracts, SQLite artifacts, approvals, and process supervisor.
+Lokvetia Core now has an optional Temporal-backed delivery path controlled by `TEMPORAL_ENABLED`. When enabled, the existing API/application start path creates the existing SQLite run, starts a stable `AgentFactoryJobWorkflow`, records the Temporal identity, and returns without waiting for all stages. A Windows-host Worker executes side effects as Activities and reuses the existing Lokvetia Core registry, runtime, reviewer router, workflow contracts, SQLite artifacts, approvals, and process supervisor.
 
 The integration includes a pinned local PostgreSQL/Temporal/UI Compose stack, idempotent namespace bootstrap, PowerShell lifecycle and health commands, centralized timeout/retry policies, structured Activity results, activity heartbeats, cancellation-aware process-tree cleanup, pause/resume/cancel Signals, status/progress/current-task Queries, a bounded repair loop, safe-boundary continue-as-new, mission-wide run visibility/audit, explicit Worker build/versioning policy, a deterministic demo Workflow, API/UI controls, and SDK plus real-Docker durability coverage.
 
@@ -14,7 +14,7 @@ FastAPI or the CLI called `AgentFactoryService.run_workflow()`, which called `Wo
 
 ## 3. Architecture after
 
-The product/domain boundary remains AgentFactory: projects, work items/backlog, agents, policies, provider gates, evidence, artifacts, approvals, and SQLite. Temporal is the durable orchestration boundary: Workflow history, completed stage sequence, Activity scheduling/retry, timers, live orchestration state, Signals, cancellation, and recovery.
+The product/domain boundary remains Lokvetia Core: projects, work items/backlog, agents, policies, provider gates, evidence, artifacts, approvals, and SQLite. Temporal is the durable orchestration boundary: Workflow history, completed stage sequence, Activity scheduling/retry, timers, live orchestration state, Signals, cancellation, and recovery.
 
 `AgentFactoryJobWorkflow` contains deterministic orchestration only. The additive `AutonomousMissionWorkflow` is the stable, long-lived parent for an opt-in Autonomous Mission; its history contains identifiers and bounded summaries only. Before approval it waits without polling or side effects. After approval, when execution is enabled, it advances authorized environment phases, starts one deterministic dependency-ready child at a time, and waits for both the child result and its SQLite checkpoint reconciliation before scheduling the next item. Typed control Signals persist through an Activity into the mission-wide SQLite fence before the parent or active child changes query state. Every local inference and multi-tool worker turn reacquires the current token, while stop/retry leases converge at an explicit safe boundary. Owner-authorized checkpoint/revision handoff Signals independently reload their immutable command, supersede the active child only after that boundary, append exactly one replacement epoch, renew epoch-scoped authority, and carry the persisted result back into the same parent state. After an accepted mutation reaches a safe boundary, configured history thresholds, Temporal recommendation, or a Worker Deployment target change may continue the parent as a new run. Schema-v2 carry-over omits display summaries and role/model data; every run republishes identity visibility and appends immutable build/chain evidence to SQLite before doing mission work. `AgentFactoryActivities` performs workspace/config reads, SQLite reads and writes, agent execution, review routing, artifact persistence, validation, standard final-gate creation, and autonomous evidence finalization. Long-running runtime calls execute in a host thread with Temporal heartbeats and a cancellation event. CLI processes are placed in their own process group; cancellation first requests graceful group termination and then uses bounded forceful tree cleanup.
 
@@ -109,7 +109,7 @@ Equivalent module command:
 & .\.venv\Scripts\python.exe -m agent_factory.orchestration.temporal.worker
 ```
 
-## 11. How to run AgentFactory
+## 11. How to run Lokvetia Core
 
 Install and start the existing Local Control Center in a separate PowerShell window:
 
@@ -127,7 +127,7 @@ Start a reviewed delivery job in the UI, through `POST /api/work-items/{task_id}
 
 ## 12. How to open Temporal UI
 
-Open <http://localhost:8080>. AgentFactory's run detail links to the selected Workflow where the UI route is supported.
+Open <http://localhost:8080>. Lokvetia Core's run detail links to the selected Workflow where the UI route is supported.
 
 ## 13. Tests executed
 
@@ -176,10 +176,10 @@ docker volume inspect agentfactory-temporal-postgresql-data --format '{{.Name}}'
 
 - Phase one durably migrates the reviewed generic delivery stage loop. Specialized engineering-loop, writable-worker, GitHub-plan, and control-plane session state machines retain their existing persistence/orchestration until migrated deliberately.
 - Existing live provider and writable Codex/Claude/Hermes authorization gates remain fail-closed. Temporal does not mint approvals, bypass sandbox/worktree policy, push Git changes, or approve final evidence. The currently exposed web start command remains simulation-only.
-- Git, Docker, validator, and writable-worker services are reused when reached through existing AgentFactory services; they are not exposed as a broad unrestricted Temporal command surface.
+- Git, Docker, validator, and writable-worker services are reused when reached through existing Lokvetia Core services; they are not exposed as a broad unrestricted Temporal command surface.
 - Status is queried on demand by the Local Control Center rather than streamed. Closed Workflow details remain available in Temporal UI and SQLite domain state.
 - This is a single-node localhost development deployment without production HA, TLS, authentication, Prometheus, or Grafana.
-- The demo Activity bounds direct command output to 20,000 characters. Real stage output remains in AgentFactory artifacts; a future external artifact store may be appropriate for very large binary/log payloads.
+- The demo Activity bounds direct command output to 20,000 characters. Real stage output remains in Lokvetia Core artifacts; a future external artifact store may be appropriate for very large binary/log payloads.
 
 ## 16. Recommended next steps
 
@@ -187,4 +187,4 @@ docker volume inspect agentfactory-temporal-postgresql-data --format '{{.Name}}'
 2. Add narrow typed Activities for the exact reviewed validator, Git commit, Docker, and GitHub plan operations as those paths enter the Temporal Workflow; retain stable idempotency keys for every mutation.
 3. Project closed Workflow status and retry metadata into the existing event stream for richer UI timelines without copying full Temporal history.
 4. Add a manual approval wait Signal when the current Founder workflow is intentionally moved inside Temporal; do not poll for human input.
-5. Add production deployment/security design separately if AgentFactory moves beyond loopback development: TLS, authentication/authorization, backup/restore, metrics, and HA sizing.
+5. Add production deployment/security design separately if Lokvetia Core moves beyond loopback development: TLS, authentication/authorization, backup/restore, metrics, and HA sizing.

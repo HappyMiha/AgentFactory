@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agent-factory-orchestrator"
 version = "0.1.0"
-description = "A provider-neutral, human-controlled orchestration factory for AI agents"
+description = "Lokvetia Core: provider-neutral AI agent orchestration under human control"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
@@ -25,8 +25,17 @@ classifiers = [
 dependencies = ["temporalio==1.31.0"]
 
 [project.scripts]
+lokvetia = "agent_factory.cli:main"
+lokvetia-temporal-worker = "agent_factory.orchestration.temporal.worker:main"
 agent-factory = "agent_factory.cli:main"
 agent-factory-temporal-worker = "agent_factory.orchestration.temporal.worker:main"
+
+[project.urls]
+Homepage = "https://lokvetia.com"
+Repository = "https://github.com/HappyMiha/Lokvetia-Core"
+Documentation = "https://github.com/HappyMiha/Lokvetia-Core/tree/main/docs"
+Issues = "https://github.com/HappyMiha/Lokvetia-Core/issues"
+"Game creation with Lokiravia" = "https://github.com/HappyMiha/Lokiravia"
 
 [project.optional-dependencies]
 dev = ["build>=1.2", "httpx2>=2.10,<3"]

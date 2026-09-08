@@ -1,3 +1,5 @@
+> Brand update, 8 September 2026: AgentFactory Core is now **Lokvetia Core**; AgentFactory Cloud is **Lokiravia**. Historical findings and identifiers below are retained as recorded. See the [brand migration](brand/migration.md).
+
 # Аудит AgentFactory для створення ігор користувачами 12+
 
 Дата: **5 вересня 2026 року**. Базовий commit: `03bb23b8f58e64f1fc0e4a14ecb4ff1fe27ec32d`.

@@ -64,7 +64,7 @@ Expected output is `ok`.
 
 ## Restore
 
-1. Stop all Agent Factory processes using the database.
+1. Stop all Lokvetia Core processes using the database.
 2. Preserve the failed database and its WAL companions for investigation.
 3. Verify the backup with `PRAGMA integrity_check`.
 4. Copy the verified backup to a new state path.

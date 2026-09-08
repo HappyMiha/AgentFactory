@@ -1,6 +1,6 @@
 # Managed Git worktrees
 
-`AF-048` makes AgentFactory the sole authority that creates and removes task worktrees. AF-AMM-019 extends that same `WorktreeManager` authority to Autonomous Mission epoch worktrees. A scheduler assignment plus its live fencing token is the task-attempt authority; an immutable execution epoch plus its exact approved/checkpoint base is the epoch authority. Workers and managed Hermes sessions receive resulting paths and never run `git worktree add` themselves.
+`AF-048` makes Lokvetia Core the sole authority that creates and removes task worktrees. AF-AMM-019 extends that same `WorktreeManager` authority to Autonomous Mission epoch worktrees. A scheduler assignment plus its live fencing token is the task-attempt authority; an immutable execution epoch plus its exact approved/checkpoint base is the epoch authority. Workers and managed Hermes sessions receive resulting paths and never run `git worktree add` themselves.
 
 ## Provisioning
 

@@ -1,10 +1,10 @@
-# Temporal in a commercial AgentFactory
+# Temporal in a commercial Lokvetia Core
 
 Date: 6 September 2026. Status: architecture recommendation for review. This document changes no runtime, dependency, deployment or service subscription.
 
 ## Recommendation
 
-Keep Temporal for durable development and hosted job workflows. Keep AgentFactory's task ownership, permissions, budgets, worker admission and release decisions in Core. Use the existing local mode where a durable service is unnecessary. Do not write a replacement workflow engine simply because Cloud will be a commercial product.
+Keep Temporal for durable development and hosted job workflows. Keep Lokvetia Core's task ownership, permissions, budgets, worker admission and release decisions in Core. Use the existing local mode where a durable service is unnecessary. Do not write a replacement workflow engine simply because Cloud will be a commercial product.
 
 For the proposed Unreal path, Temporal can coordinate long build, test, approval and recovery steps. It should not become a dependency of the first shipped game or schedule NPC movement and every frame. Gameplay AI needs its own asynchronous, game-owned decisions, memory and save/load boundary. A future always-on world service may evaluate durable jobs separately.
 
@@ -27,11 +27,11 @@ At reviewed Cloud commit `9f61c179177090696f3cb564e5021fe5df8cecd5`, Temporal is
 
 ## Commercial use and cost
 
-The inspected [Temporal Server 1.31.2 license](https://github.com/temporalio/temporal/blob/v1.31.2/LICENSE) and [Python SDK 1.31.0 license](https://github.com/temporalio/sdk-python/blob/1.31.0/LICENSE) are MIT. They permit commercial use, modification and distribution, including integration into proprietary products, subject to their notice conditions. They do not require AgentFactory Cloud's application source to become public. Preserve the copyright and license notices when distributing covered software.
+The inspected [Temporal Server 1.31.2 license](https://github.com/temporalio/temporal/blob/v1.31.2/LICENSE) and [Python SDK 1.31.0 license](https://github.com/temporalio/sdk-python/blob/1.31.0/LICENSE) are MIT. They permit commercial use, modification and distribution, including integration into proprietary products, subject to their notice conditions. They do not require Lokiravia's application source to become public. Preserve the copyright and license notices when distributing covered software.
 
 That finding applies to these components. Keep an inventory of the exact shipped dependencies, container images and notices; their transitive components, trademarks and any hosted service agreement need their own treatment. Core remains Apache-2.0 and Cloud's own license choice remains separate.
 
-| Option | What AgentFactory pays for | Decision |
+| Option | What Lokvetia Core pays for | Decision |
 | --- | --- | --- |
 | Self-hosted open-source Temporal | Machines, database, backups, upgrades, monitoring and operator time; no MIT software license fee | Suitable candidate for a qualified private deployment. Account for operations rather than calling the whole service free. |
 | Temporal Cloud | Managed service usage and plan charges, plus our own application workers | Optional later operating choice. It is not required to use the SDK or self-hosted server. No subscription is created by this review. |
@@ -43,7 +43,7 @@ Temporal documents both [self-hosting](https://docs.temporal.io/self-hosted-guid
 
 Temporal reconstructs workflow state from a durable event history after a worker fails. Activities can be retried, so our external effects still need idempotency and reconciliation. A timeout is not proof that a remote build or model request stopped. [Event history](https://docs.temporal.io/encyclopedia/event-history), [Activity idempotency](https://docs.temporal.io/activity-definition#idempotency).
 
-AgentFactory already has a domain journal. That is useful business authority, but it does not by itself replace distributed timers, signals, task delivery, child workflow recovery, history replay and compatible worker upgrades. Moving these responsibilities into a new engine would require preserving existing mission histories, pause/stop semantics, unknown operations and all external-effect boundaries. A queue plus retry loop would not establish equivalent behavior.
+Lokvetia Core already has a domain journal. That is useful business authority, but it does not by itself replace distributed timers, signals, task delivery, child workflow recovery, history replay and compatible worker upgrades. Moving these responsibilities into a new engine would require preserving existing mission histories, pause/stop semantics, unknown operations and all external-effect boundaries. A queue plus retry loop would not establish equivalent behavior.
 
 An alternative should be considered only after a measured problem: unacceptable operating cost, an unsupported deployment requirement, a material licensing change in a selected version, or a workload that cannot meet its limits. Compare alternatives with the same crash/replay/cancellation tests and an explicit migration plan. Reusing MIT-licensed code is possible subject to its terms; maintaining a fork still leaves us responsible for its distributed-system behavior.
 
