@@ -3844,7 +3844,7 @@
         "cloud:tests/test_autodeploy.py",
         "cloud:tests/test_email_auth_integration.py"
       ],
-      "pr": "https://github.com/HappyMiha/Lokiravia/pull/20",
+      "pr": "https://github.com/HappyMiha/Lokiravia/pull/21",
       "resources": [],
       "required_scopes": [
         "cloud:README.md",
@@ -3855,10 +3855,10 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:22:22+00:00",
+      "updated_at": "2026-09-08T21:32:15+00:00",
       "note": "",
       "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da",
-      "review_head": "b643bdabbb06933b1f864b68e102789103d22cab"
+      "review_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0"
     }
   },
   "events": [
@@ -7141,6 +7141,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
       "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
+    },
+    {
+      "operation_id": "7961173d-fd17-447b-9519-0e7703818bc6",
+      "at": "2026-09-08T21:32:15+00:00",
+      "action": "review",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
+      "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
     }
   ],
   "migration": {
