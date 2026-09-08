@@ -69,6 +69,29 @@ def command(args, *, cwd=None, input=None, timeout=900):
 def compatible(before, after):
     return all(after.get(path) == signature for path, signature in before.items())
 
+def release_image(p, attempt):
+    repository = 'lokiravia' if p['service'] == 'lokiravia' else 'lokvetia-core'
+    return repository + ':release-' + p['id'] + '-' + attempt
+
+def archive_image(container, inspected, archive):
+    if archive.exists():
+        return
+    partial = archive.with_suffix('.partial')
+    metadata = dict(source_container=container, source_image=inspected['Image'], method='image-save')
+    try:
+        command(['docker', 'image', 'save', '--output', str(partial), inspected['Image']])
+    except DeployError as error:
+        if 'no such image' not in str(error).lower() or not inspected.get('HostConfig', {}).get('ReadonlyRootfs'):
+            raise
+        # Docker Desktop may lose an untagged manifest while its container still runs.
+        # The root filesystem is immutable; mounts are excluded, and the process is not paused.
+        recovery = 'lokvetia-recovery:' + uuid.uuid4().hex
+        metadata.update(method='read-only-container-snapshot', recovery_tag=recovery,
+                        recovery_image=command(['docker', 'commit', '--pause=false', container, recovery]))
+        command(['docker', 'image', 'save', '--output', str(partial), recovery])
+    atomic_json(archive.with_suffix('.json'), metadata)
+    os.replace(partial, archive)
+
 class Controller:
     def __init__(self, config):
         self.config = config
@@ -208,13 +231,10 @@ class Controller:
                 inspected = json.loads(command(['docker', 'inspect', previous['container']]))[0]
                 archive = self.root / 'image-backups' / (inspected['Image'].split(':')[-1] + '.tar')
                 archive.parent.mkdir(exist_ok=True)
-                if not archive.exists():
-                    partial = archive.with_suffix('.partial')
-                    command(['docker', 'image', 'save', '--output', str(partial), inspected['Image']])
-                    os.replace(partial, archive)
+                archive_image(previous['container'], inspected, archive)
                 self.status['projects'][p['id']]['image_backup'] = str(archive)
             self.report(p, 'build')
-            image = ('lokvetia-core' if p['service'] != 'lokiravia' else 'lokiravia') + ':release-' + sha[:12]
+            image = release_image(p, attempt)
             dockerfile = self.bundle / ('Dockerfile.cloud' if p['service'] == 'lokiravia' else 'Dockerfile.core')
             command(['docker', 'build', '--label', 'org.opencontainers.image.revision=' + sha, '--build-context', 'runtime=' + str(self.bundle),
                      '--file', str(dockerfile), '--tag', image, str(checkout)], timeout=1800)

@@ -82,3 +82,7 @@ operator task; stopping only the controller does not stop applications or worker
 
 ### SQLite WAL and empty-volume safety
 Data-volume mounts disable Docker image copy-up (`volume-nocopy`), including empty identity storage. The snapshot helper opens source databases using SQLite `mode=ro`; its source mount permits SQLite shared-memory sidecar maintenance required for WAL readers. It does not restore or write application database contents. Container-wide read-only filesystems must not be confused with read-only SQLite database handles.
+
+### Immutable release images
+Each service and deployment attempt receives a unique image tag. If Docker Desktop loses an older untagged manifest while its container is still running, backup can snapshot only a read-only container root filesystem with --pause=false. Mounted client data and secrets are excluded; an adjacent JSON record identifies the original container and recovery image. Mutable root filesystems fail closed instead of being snapshotted during writes.
+
