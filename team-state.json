@@ -3852,6 +3852,7 @@
         "cloud:scripts/team.py",
         "cloud:scripts/validate_upstream_map.py",
         "cloud:src/agentfactory_cloud/brief_web.py",
+        "cloud:src/agentfactory_cloud/connection_guidance.py",
         "cloud:src/agentfactory_cloud/static/brand-mark.svg",
         "cloud:src/agentfactory_cloud/static/brand-wordmark.svg",
         "cloud:src/agentfactory_cloud/static/brand.css",
@@ -3882,8 +3883,8 @@
         "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
         "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
       ],
-      "updated_at": "2026-09-08T12:46:30+00:00",
-      "note": "Implement owner-requested rebrand while preserving runtime compatibility and active peer scopes.",
+      "updated_at": "2026-09-08T12:59:55+00:00",
+      "note": "Add one presentation-only compatibility mapping for guidance from the pinned pre-rebrand Core.",
       "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
     }
   },
@@ -6975,6 +6976,16 @@
       "task": "cloud:AF-BRAND-001",
       "worker": "HappyDucky02",
       "note": "Implement owner-requested rebrand while preserving runtime compatibility and active peer scopes.",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
+      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
+    },
+    {
+      "operation_id": "67be0f05-e80d-4f1b-b5fc-ab1ca6c5a828",
+      "at": "2026-09-08T12:59:55+00:00",
+      "action": "rescope",
+      "task": "cloud:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "Add one presentation-only compatibility mapping for guidance from the pinned pre-rebrand Core.",
       "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
       "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
     }
