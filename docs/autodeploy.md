@@ -79,3 +79,6 @@ Do not change existing application ports or stop their containers during onboard
 
 The source controller is versioned in Git. Updating the controller itself is an
 operator task; stopping only the controller does not stop applications or workers.
+
+### SQLite WAL and empty-volume safety
+Data-volume mounts disable Docker image copy-up (`volume-nocopy`), including empty identity storage. The snapshot helper opens source databases using SQLite `mode=ro`; its source mount permits SQLite shared-memory sidecar maintenance required for WAL readers. It does not restore or write application database contents. Container-wide read-only filesystems must not be confused with read-only SQLite database handles.
