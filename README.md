@@ -6,6 +6,8 @@
 
 [Lokvetia](https://lokvetia.com) · [Lokiravia game creation](https://github.com/HappyMiha/Lokiravia) · [Brand and migration](docs/brand/migration.md)
 
+**Моніторинг деплою:** [Deployment dashboard](docs/deploy-dashboard.html) · [Автодеплой і rollback](docs/autodeploy.md)
+
 Formerly **AgentFactory Core**. Lokvetia is the family brand; **Lokiravia** is the separate game creation product. The domain is the brand address, not a claim that a hosted service has launched. Existing installations, Python imports, configuration and stored state remain compatible.
 
 Coordinate specialist AI agents as one traceable, human-controlled delivery system.

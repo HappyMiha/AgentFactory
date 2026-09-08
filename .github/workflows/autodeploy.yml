@@ -1,0 +1,140 @@
+name: Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: lokvetia-core-autodeploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_PROJECT_NAME: Lokvetia Core
+      DEPLOY_ENVIRONMENT: production-core
+      DEPLOY_STATE_FILE: .github/autodeploy/state.json
+      DEPLOY_BACKUP_ROOT: .github/autodeploy/backups
+      DEPLOY_DATA_PATHS: ${{ vars.DEPLOY_DATA_PATHS }}
+      DEPLOY_PREPARE_COMMAND: ${{ vars.DEPLOY_PREPARE_COMMAND }}
+      DEPLOY_ACTIVATE_COMMAND: ${{ vars.DEPLOY_ACTIVATE_COMMAND }}
+      DEPLOY_HEALTH_COMMAND: ${{ vars.DEPLOY_HEALTH_COMMAND }}
+      DEPLOY_ROLLBACK_COMMAND: ${{ vars.DEPLOY_ROLLBACK_COMMAND }}
+      DEPLOY_RELEASE_NOTES_COMMAND: ${{ vars.DEPLOY_RELEASE_NOTES_COMMAND }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Create deployment record
+        id: deployment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(gh api \
+            -X POST /repos/${{ github.repository }}/deployments \
+            -f ref="${{ github.sha }}" \
+            -f environment="${DEPLOY_ENVIRONMENT}" \
+            -f auto_merge="false" \
+            -F required_contexts='[]' \
+            -f description="Auto deploy from ${{ github.sha }}")"
+          echo "$payload" | jq -r '.id'
+          deployment_id="$(echo "$payload" | jq -r '.id')"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+          echo "log_url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+      - name: Mark deployment in progress
+        if: ${{ steps.deployment.outputs.deployment_id != '' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            -X POST /repos/${{ github.repository }}/deployments/${{ steps.deployment.outputs.deployment_id }}/statuses \
+            -f state="in_progress" \
+            -f environment="${DEPLOY_ENVIRONMENT}" \
+            -f environment_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f log_url="${{ steps.deployment.outputs.log_url }}" \
+            -f description="Deployment started"
+
+      - name: Run deployment with backup and rollback
+        id: runner
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_STATE_FILE: ${{ env.DEPLOY_STATE_FILE }}
+          DEPLOY_BACKUP_ROOT: ${{ env.DEPLOY_BACKUP_ROOT }}
+          DEPLOY_DATA_PATHS: ${{ env.DEPLOY_DATA_PATHS }}
+          DEPLOY_PREPARE_COMMAND: ${{ env.DEPLOY_PREPARE_COMMAND }}
+          DEPLOY_ACTIVATE_COMMAND: ${{ env.DEPLOY_ACTIVATE_COMMAND }}
+          DEPLOY_HEALTH_COMMAND: ${{ env.DEPLOY_HEALTH_COMMAND }}
+          DEPLOY_ROLLBACK_COMMAND: ${{ env.DEPLOY_ROLLBACK_COMMAND }}
+          DEPLOY_RELEASE_NOTES_COMMAND: ${{ env.DEPLOY_RELEASE_NOTES_COMMAND }}
+        run: |
+          python scripts/autodeploy.py \
+            --project-name "${DEPLOY_PROJECT_NAME}" \
+            --state-file "${DEPLOY_STATE_FILE}" \
+            --backup-root "${DEPLOY_BACKUP_ROOT}" \
+            --data-paths "${DEPLOY_DATA_PATHS}" | tee deploy-summary.json
+
+      - name: Mark deployment success
+        if: steps.runner.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_ENVIRONMENT: ${{ env.DEPLOY_ENVIRONMENT }}
+        run: |
+          description="$(python - <<'PY'
+import json
+from pathlib import Path
+summary = json.loads(Path("deploy-summary.json").read_text(encoding="utf-8"))
+print((summary.get("release_notes", "") or "").replace("\n", " ")[:120])
+PY
+)"
+          [ -n "$description" ] || description="Deployment completed"
+          gh api \
+            -X POST /repos/${{ github.repository }}/deployments/${{ steps.deployment.outputs.deployment_id }}/statuses \
+            -f state="success" \
+            -f environment="${DEPLOY_ENVIRONMENT}" \
+            -f environment_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f log_url="${{ steps.deployment.outputs.log_url }}" \
+            -f description="$description"
+
+      - name: Mark deployment failure
+        if: steps.runner.outcome == 'failure'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DEPLOY_ENVIRONMENT: ${{ env.DEPLOY_ENVIRONMENT }}
+        run: |
+          description="$(python - <<'PY'
+import json
+from pathlib import Path
+summary = json.loads(Path("deploy-summary.json").read_text(encoding="utf-8"))
+print((summary.get("error", summary.get("status", "")) or "").replace("\n", " ")[:240])
+PY
+)"
+          [ -n "$description" ] || description="Deployment failed"
+          gh api \
+            -X POST /repos/${{ github.repository }}/deployments/${{ steps.deployment.outputs.deployment_id }}/statuses \
+            -f state="failure" \
+            -f environment="${DEPLOY_ENVIRONMENT}" \
+            -f environment_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            -f log_url="${{ steps.deployment.outputs.log_url }}" \
+            -f description="$description"
+
+      - name: Fail job if deployment failed
+        if: steps.runner.outcome == 'failure'
+        run: exit 1

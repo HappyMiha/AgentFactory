@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployment dashboard</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --text: #eef2ff;
+      --card: #151d33;
+      --good: #2dd4bf;
+      --warn: #f59e0b;
+      --bad: #f97316;
+      --muted: #b3bdd6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: linear-gradient(180deg, #0b1020, #0f1b3d);
+      color: var(--text);
+      padding: 24px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 28px;
+    }
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .notice {
+      padding: 10px 14px;
+      border-radius: 10px;
+      margin: 12px 0;
+      display: none;
+      background: #1e293b;
+      border: 1px solid #2d3a57;
+    }
+    .notice.active { display: block; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #29324d; vertical-align: top; }
+    th { text-transform: uppercase; font-size: 12px; color: #c6d0ef; letter-spacing: 0.05em; }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .success { background: rgba(45, 212, 191, 0.15); color: var(--good); border: 1px solid rgba(45, 212, 191, 0.35); }
+    .failure { background: rgba(249, 115, 22, 0.15); color: var(--bad); border: 1px solid rgba(249, 115, 22, 0.35); }
+    .progress { background: rgba(245, 158, 11, 0.12); color: var(--warn); border: 1px solid rgba(245, 158, 11, 0.35); }
+    .muted { color: var(--muted); font-size: 13px; }
+    .grid { display: flex; gap: 10px; flex-wrap: wrap; }
+    .chip {
+      background: #1e293b;
+      border: 1px solid #29324d;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 0 0 10px;
+      font-size: 14px;
+    }
+    .release-box {
+      background: #111a33;
+      border: 1px solid #2a3659;
+      border-radius: 12px;
+      padding: 14px;
+      white-space: pre-wrap;
+      min-height: 82px;
+      color: #e4eaff;
+      margin-top: 8px;
+    }
+    code { color: #a7f3d0; }
+    a { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <h1>Deployment dashboard</h1>
+  <p class="subtitle">Стан деплою для <strong>Lokvetia Core</strong> та <strong>Lokiravia</strong>, поточний прогрес, помилки і release notes.</p>
+
+  <div class="grid">
+    <div class="chip" id="nowDeploying">Завантаження поточного статусу...</div>
+    <div class="chip" id="refreshInfo">Оновлення: </div>
+  </div>
+
+  <div class="notice" id="githubNotice"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Проєкт</th>
+        <th>Commit</th>
+        <th>Стан</th>
+        <th>Результат</th>
+        <th>Помилка</th>
+        <th>Release notes</th>
+      </tr>
+    </thead>
+    <tbody id="rows">
+      <tr><td colspan="6" class="muted">Завантаження...</td></tr>
+    </tbody>
+  </table>
+
+  <p class="subtitle" style="margin-top: 14px">
+    Щоб збільшити ліміт API на GitHub API, відкрийте консоль і виконайте:
+    <code>localStorage.setItem('GH_TOKEN', 'ghp_...')</code> на цій сторінці.
+  </p>
+
+  <script>
+    const repos = [
+      { title: "Lokvetia Core", owner: "HappyMiha", repo: "Lokvetia-Core" },
+      { title: "Lokiravia", owner: "HappyMiha", repo: "Lokiravia" }
+    ];
+    const nowDeploying = document.getElementById("nowDeploying");
+    const refreshInfo = document.getElementById("refreshInfo");
+    const rows = document.getElementById("rows");
+    const notice = document.getElementById("githubNotice");
+
+    function githubHeaders() {
+      const headers = { "Accept": "application/vnd.github+json" };
+      const token = localStorage.getItem("GH_TOKEN");
+      if (token) headers.Authorization = `token ${token}`;
+      return headers;
+    }
+
+    function formatState(statusObj) {
+      if (!statusObj) return "unknown";
+      if (statusObj.state === "in_progress" || statusObj.state === "queued" || statusObj.state === "pending") {
+        return "in_progress";
+      }
+      if (statusObj.state === "success") return "success";
+      if (statusObj.state === "failure" || statusObj.state === "error") return "failure";
+      return statusObj.state || "unknown";
+    }
+
+    function makeBadge(label, css) {
+      return `<span class="badge ${css}">${label}</span>`;
+    }
+
+    function shortenCommit(commit) {
+      if (!commit) return "—";
+      return commit.slice(0, 7);
+    }
+
+    function extractReleaseNotes(releasePayload, state, description, commitPayload) {
+      if (state === "success" && description) {
+        return description;
+      }
+      if (state === "failure" || state === "error") {
+        return "Deployment failed; see description.";
+      }
+      if (!releasePayload || releasePayload.message) {
+        if (commitPayload && commitPayload.commit && commitPayload.commit.message) {
+          return commitPayload.commit.message;
+        }
+        return "release notes unavailable";
+      }
+      return (releasePayload.body || "").trim() || "no notes";
+    }
+
+    async function loadJson(url) {
+      const response = await fetch(url, { headers: githubHeaders() });
+      if (!response.ok) {
+        const text = await response.text();
+        const error = new Error(`HTTP ${response.status}`);
+        error.responseText = text;
+        throw error;
+      }
+      return response.json();
+    }
+
+    async function loadProject(project) {
+      const base = `https://api.github.com/repos/${project.owner}/${project.repo}`;
+      const [deployments, release] = await Promise.all([
+        loadJson(`${base}/deployments?per_page=5`),
+        loadJson(`${base}/releases/latest`).catch(() => null)
+      ]);
+      const latest = Array.isArray(deployments) ? deployments[0] : null;
+      const statusUrl = latest ? `${base}/deployments/${latest.id}/statuses?per_page=6` : null;
+      const statusList = statusUrl ? await loadJson(statusUrl) : [];
+      const active = Array.isArray(statusList) ? statusList.find((s) => s.state === "in_progress") : null;
+      const latestStatus = Array.isArray(statusList) && statusList.length > 0 ? statusList[0] : null;
+      const resultState = active || latestStatus || {};
+      const stateLabel = active ? "in_progress" : (resultState.state || "unknown");
+      const releaseNotes = extractReleaseNotes(
+        release,
+        stateLabel,
+        (resultState.description || "").trim(),
+        latest ? await loadJson(`${base}/commits/${latest.sha}`).catch(() => null) : null
+      );
+
+      return {
+        project: project.title,
+        repo: `${project.owner}/${project.repo}`,
+        commit: latest ? latest.sha : "",
+        status: stateLabel,
+        result: resultState.description || (active ? "Running" : "No status yet"),
+        error: (stateLabel === "failure" || stateLabel === "error") ? (resultState.description || "failure") : "",
+        releaseNotes: `${releaseNotes}`.slice(0, 1200),
+        isProgress: !!active,
+        latestStatusLink: resultState.log_url || ""
+      };
+    }
+
+    async function render() {
+      refreshInfo.textContent = `Оновлення: ${new Date().toLocaleString()}`;
+      try {
+        const results = await Promise.all(repos.map(loadProject));
+        notice.classList.remove("active");
+        const progress = results.filter((r) => r.isProgress);
+        nowDeploying.textContent = progress.length
+          ? `Зараз деплоїться: ${progress.map((p) => p.project).join(", ")}`
+          : "Зараз деплою немає (активних in_progress немає)";
+
+        rows.innerHTML = "";
+        for (const item of results) {
+          const badgeClass = item.status === "success" ? "success" : (item.status === "failure" || item.status === "error" ? "failure" : "progress");
+          rows.insertAdjacentHTML(
+            "beforeend",
+            `<tr>
+              <td><a href="https://github.com/${item.repo}" target="_blank" rel="noreferrer">${item.project}</a></td>
+              <td>${item.commit ? `<a href="https://github.com/${item.repo}/commit/${item.commit}" target="_blank" rel="noreferrer">${shortenCommit(item.commit)}</a>` : "—"}</td>
+              <td>${makeBadge(item.status, badgeClass)} ${item.status}</td>
+              <td>${item.result || "—"}</td>
+              <td class="muted">${item.error || "—"}</td>
+              <td><div class="release-box">${item.releaseNotes}</div></td>
+            </tr>`
+          );
+        }
+      } catch (error) {
+        rows.innerHTML = '<tr><td colspan="6" class="muted">Помилка завантаження статусу GitHub API.</td></tr>';
+        notice.classList.add("active");
+        notice.textContent = `GitHub API error: ${error.message}${error.responseText ? ` | ${error.responseText}` : ""}`;
+      }
+    }
+
+    render();
+    setInterval(render, 15000);
+  </script>
+</body>
+</html>
