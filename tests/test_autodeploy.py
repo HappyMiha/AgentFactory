@@ -14,6 +14,37 @@ spec.loader.exec_module(deploy)
 
 
 class DeploymentSafetyTests(unittest.TestCase):
+    def test_release_tags_are_distinct_per_service_and_attempt(self):
+        core = {'id': 'core', 'service': 'lokvetia'}
+        identity = {'id': 'identity', 'service': 'identity'}
+        self.assertNotEqual(deploy.release_image(core, 'revision-first'), deploy.release_image(core, 'revision-second'))
+        self.assertNotEqual(deploy.release_image(core, 'revision-first'), deploy.release_image(identity, 'revision-first'))
+
+    def test_missing_manifest_can_be_archived_without_pausing_immutable_container(self):
+        with tempfile.TemporaryDirectory() as folder:
+            archive = Path(folder) / 'image.tar'
+            calls = []
+            def execute(args, **kwargs):
+                calls.append(args)
+                if len(calls) == 1:
+                    raise deploy.DeployError('No such image: old-manifest')
+                if args[1] == 'commit':
+                    return 'sha256:recovery'
+                archive.with_suffix('.partial').write_bytes(b'recovery-image')
+                return ''
+            with patch.object(deploy, 'command', side_effect=execute):
+                deploy.archive_image('old-container', {'Image': 'old-manifest', 'HostConfig': {'ReadonlyRootfs': True}}, archive)
+            self.assertEqual(archive.read_bytes(), b'recovery-image')
+            self.assertIn('--pause=false', calls[1])
+            self.assertEqual(deploy.read_json(archive.with_suffix('.json'))['source_container'], 'old-container')
+
+    def test_mutable_container_is_not_snapshotted_during_live_writes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(deploy, 'command', side_effect=deploy.DeployError('No such image')) as execute:
+                with self.assertRaises(deploy.DeployError):
+                    deploy.archive_image('mutable', {'Image': 'missing', 'HostConfig': {'ReadonlyRootfs': False}}, Path(folder) / 'image.tar')
+            self.assertEqual(execute.call_count, 1)
+
     def test_schema_removal_or_change_is_blocked(self):
         self.assertFalse(deploy.compatible({'state.db': 'old'}, {}))
         self.assertFalse(deploy.compatible({'state.db': 'old'}, {'state.db': 'new'}))
