@@ -3814,6 +3814,26 @@
       "updated_at": "2026-09-08T20:10:42+00:00",
       "note": "Publish existing autodeploy commit in a dedicated review branch; production acceptance remains pending.",
       "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
+    },
+    "cloud:AF-DEPLOY-001": {
+      "dependencies": [],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "resources": [],
+      "required_scopes": [
+        "cloud:README.md",
+        "cloud:scripts/autodeploy.py",
+        "cloud:.github/workflows/autodeploy.yml",
+        "cloud:docs/autodeploy.md"
+      ],
+      "priority": "P1",
+      "milestone": "operations",
+      "optional": false,
+      "updated_at": "2026-09-08T20:10:52+00:00",
+      "note": "Owner requested publication of prepared autodeploy workflow, backup/rollback scripts and deployment status documentation."
     }
   },
   "events": [
@@ -6996,6 +7016,16 @@
       "note": "Publish existing autodeploy commit in a dedicated review branch; production acceptance remains pending.",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-f8dc3ffb",
       "claim_id": "8dad3f26-485f-482d-b9b2-6b058a3bc967"
+    },
+    {
+      "operation_id": "5a2f9c76-9a34-4bc4-8995-d2f317129186",
+      "at": "2026-09-08T20:10:52+00:00",
+      "action": "catalog-maintenance",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "Owner requested publication of prepared autodeploy workflow, backup/rollback scripts and deployment status documentation.",
+      "branch": null,
+      "claim_id": null
     }
   ],
   "migration": {
