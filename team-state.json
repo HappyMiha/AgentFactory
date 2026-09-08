@@ -3821,7 +3821,7 @@
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
       "scopes": [
@@ -3831,7 +3831,7 @@
         "cloud:scripts/autodeploy.py",
         "cloud:tests/test_autodeploy.py"
       ],
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/Lokiravia/pull/22",
       "resources": [],
       "required_scopes": [
         "cloud:README.md",
@@ -3842,11 +3842,12 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:46:53+00:00",
+      "updated_at": "2026-09-08T21:49:44+00:00",
       "note": "",
       "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa",
       "completed_commit": "4342252cfed5743a9c028f141372adb2ae79395d",
-      "reviewed_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0"
+      "reviewed_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0",
+      "review_head": "379344919a1e2e685aa774317e395459e65f697b"
     }
   },
   "events": [
@@ -7214,6 +7215,16 @@
       "operation_id": "ab4d5fa9-92da-4298-9236-6208194c41fc",
       "at": "2026-09-08T21:46:53+00:00",
       "action": "claim",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-fe2f2222",
+      "claim_id": "83bbf2ee-2038-4bb8-8a97-3141ef76affa"
+    },
+    {
+      "operation_id": "ea242319-d4b1-4eeb-8dbf-e1235c15ac5d",
+      "at": "2026-09-08T21:49:44+00:00",
+      "action": "review",
       "task": "cloud:AF-DEPLOY-001",
       "worker": "HappyDucky02",
       "note": "",
