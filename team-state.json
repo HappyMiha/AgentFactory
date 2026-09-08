@@ -3758,7 +3758,7 @@
     },
     "cloud:AF-BRAND-001": {
       "title": "Rebrand AgentFactory Cloud as Lokiravia",
-      "status": "claimed",
+      "status": "review",
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
       "scopes": [
@@ -3796,7 +3796,7 @@
         "cloud:tests/test_team_coordination.py",
         "cloud:tests/test_upstream_map.py"
       ],
-      "pr": null,
+      "pr": "https://github.com/HappyMiha/AgentFactory-Cloud/pull/19",
       "dependencies": [],
       "source_dependencies": [],
       "resources": [
@@ -3814,9 +3814,10 @@
         "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
         "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
       ],
-      "updated_at": "2026-09-08T13:01:13+00:00",
-      "note": "Add one presentation-only compatibility mapping for guidance from the pinned pre-rebrand Core.",
-      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
+      "updated_at": "2026-09-08T13:12:42+00:00",
+      "note": "",
+      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef",
+      "review_head": "4bbe6e472e9ba7026b572486247a690e8c720726"
     }
   },
   "events": [
@@ -6959,6 +6960,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
       "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
+    },
+    {
+      "operation_id": "653a8387-c139-45af-8c54-17138236175a",
+      "at": "2026-09-08T13:12:42+00:00",
+      "action": "review",
+      "task": "cloud:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
+      "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
     }
   ],
   "migration": {
