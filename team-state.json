@@ -3817,10 +3817,15 @@
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "planned",
-      "owner": null,
-      "branch": null,
-      "scopes": [],
+      "status": "claimed",
+      "owner": "HappyDucky02",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
+      "scopes": [
+        "cloud:.github/workflows/autodeploy.yml",
+        "cloud:README.md",
+        "cloud:docs/autodeploy.md",
+        "cloud:scripts/autodeploy.py"
+      ],
       "pr": null,
       "resources": [],
       "required_scopes": [
@@ -3832,8 +3837,9 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T20:10:52+00:00",
-      "note": "Owner requested publication of prepared autodeploy workflow, backup/rollback scripts and deployment status documentation."
+      "updated_at": "2026-09-08T20:10:56+00:00",
+      "note": "Publish existing autodeploy commit in a dedicated review branch; production acceptance remains pending.",
+      "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
     }
   },
   "events": [
@@ -7026,6 +7032,16 @@
       "note": "Owner requested publication of prepared autodeploy workflow, backup/rollback scripts and deployment status documentation.",
       "branch": null,
       "claim_id": null
+    },
+    {
+      "operation_id": "33fd0d73-f6c1-4299-920d-999877c77b53",
+      "at": "2026-09-08T20:10:56+00:00",
+      "action": "claim",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "Publish existing autodeploy commit in a dedicated review branch; production acceptance remains pending.",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
+      "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
     }
   ],
   "migration": {
