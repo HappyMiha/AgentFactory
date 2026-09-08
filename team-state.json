@@ -3724,6 +3724,33 @@
       "review_head": "792d081f5718c96bbafe2af7ec14c85345b1cfeb",
       "completed_commit": "720c79b3530cf2dddfd8b0351094a0763f757a63",
       "reviewed_head": "792d081f5718c96bbafe2af7ec14c85345b1cfeb"
+    },
+    "core:AF-BRAND-001": {
+      "title": "Rebrand AgentFactory as Lokvetia Core",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [],
+      "source_dependencies": [],
+      "resources": [
+        "core:public-brand"
+      ],
+      "required_scopes": [
+        "core:README.md"
+      ],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "acceptance_summary": [
+        "Apply the owner-approved Lokvetia/Lokiravia brand to documentation, UI, assets and public metadata.",
+        "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
+        "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
+      ],
+      "updated_at": "2026-09-08T12:44:42+00:00",
+      "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved."
     }
   },
   "events": [
@@ -6776,6 +6803,16 @@
       "note": "PR45 exactb893e57 pushed: rehash and resolve completed payload paths; 63tests61pass2skip, CI green. Peer review pending; whole014 incomplete.",
       "branch": "agent/HappyDucky02/AF-GC-014-5675bbc2",
       "claim_id": "8d4fa6b1-a0dd-4bd5-ab0e-6504a740b463"
+    },
+    {
+      "operation_id": "343d5d5b-8e2b-4fc2-a2f2-b71ccc1ffc5e",
+      "at": "2026-09-08T12:44:42+00:00",
+      "action": "catalog-maintenance",
+      "task": "core:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved.",
+      "branch": null,
+      "claim_id": null
     }
   ],
   "migration": {
