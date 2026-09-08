@@ -3751,6 +3751,33 @@
       ],
       "updated_at": "2026-09-08T12:44:42+00:00",
       "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved."
+    },
+    "cloud:AF-BRAND-001": {
+      "title": "Rebrand AgentFactory Cloud as Lokiravia",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [],
+      "source_dependencies": [],
+      "resources": [
+        "cloud:public-brand"
+      ],
+      "required_scopes": [
+        "cloud:README.md"
+      ],
+      "scope_hints": [],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "acceptance_summary": [
+        "Apply the owner-approved Lokvetia/Lokiravia brand to documentation, UI, assets and public metadata.",
+        "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
+        "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
+      ],
+      "updated_at": "2026-09-08T12:44:45+00:00",
+      "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved."
     }
   },
   "events": [
@@ -6809,6 +6836,16 @@
       "at": "2026-09-08T12:44:42+00:00",
       "action": "catalog-maintenance",
       "task": "core:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved.",
+      "branch": null,
+      "claim_id": null
+    },
+    {
+      "operation_id": "fee8a138-1f33-4e5b-a063-dadd96a32f34",
+      "at": "2026-09-08T12:44:45+00:00",
+      "action": "catalog-maintenance",
+      "task": "cloud:AF-BRAND-001",
       "worker": "HappyDucky02",
       "note": "Owner requested full Lokvetia Core and Lokiravia rebrand; existing task ownership and dependencies preserved.",
       "branch": null,
