@@ -3731,6 +3731,7 @@
       "owner": "HappyDucky02",
       "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
       "scopes": [
+        "core:.gitattributes",
         "core:.github/ISSUE_TEMPLATE/bug.yml",
         "core:.github/workflows/ci.yml",
         "core:CHANGELOG.md",
@@ -3822,8 +3823,8 @@
         "Preserve existing storage, imports, package dependencies and stable task identities; add branded entry points.",
         "Verify both applications and packaging, document migration and keep existing product maturity claims accurate."
       ],
-      "updated_at": "2026-09-08T12:46:22+00:00",
-      "note": "Implement owner-requested rebrand while preserving runtime compatibility and active peer scopes.",
+      "updated_at": "2026-09-08T13:05:29+00:00",
+      "note": "Mark generated operator PDF as binary so Git handles its rebrand correctly.",
       "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
     },
     "cloud:AF-BRAND-001": {
@@ -6999,6 +7000,16 @@
       "note": "Add one presentation-only compatibility mapping for guidance from the pinned pre-rebrand Core.",
       "branch": "agent/HappyDucky02/AF-BRAND-001-a2a7c5e9",
       "claim_id": "3f8ddc0f-7a6f-4fde-87ef-ef1ce900ffef"
+    },
+    {
+      "operation_id": "10f92649-800a-486b-ac5c-6c82cd463449",
+      "at": "2026-09-08T13:05:29+00:00",
+      "action": "rescope",
+      "task": "core:AF-BRAND-001",
+      "worker": "HappyDucky02",
+      "note": "Mark generated operator PDF as binary so Git handles its rebrand correctly.",
+      "branch": "agent/HappyDucky02/AF-BRAND-001-2f3b0e1a",
+      "claim_id": "8111c798-b82f-487f-a092-1a812518b785"
     }
   ],
   "migration": {
