@@ -3821,8 +3821,8 @@
     },
     "cloud:AF-DEPLOY-001": {
       "dependencies": [],
-      "status": "done",
-      "owner": "HappyDucky02",
+      "status": "planned",
+      "owner": null,
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
       "scopes": [],
       "pr": "https://github.com/HappyMiha/Lokiravia/pull/21",
@@ -3836,8 +3836,8 @@
       "priority": "P1",
       "milestone": "operations",
       "optional": false,
-      "updated_at": "2026-09-08T21:36:03+00:00",
-      "note": "Merged shared identity client and deployment controller fixes with passing checks.",
+      "updated_at": "2026-09-08T21:46:47+00:00",
+      "note": "Reopen the same completed deployment task to mirror immutable image archive fixes; preserve prior PR history.",
       "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da",
       "review_head": "7a1f8ca0a4f5411b109974001573e7525dfdd2e0",
       "completed_commit": "4342252cfed5743a9c028f141372adb2ae79395d",
@@ -7194,6 +7194,16 @@
       "note": "",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-539fff83",
       "claim_id": "073da7bc-49c7-44a2-9221-554a7b0fba52"
+    },
+    {
+      "operation_id": "bab0128f-977d-41f3-87de-8f86ccfce3c8",
+      "at": "2026-09-08T21:46:47+00:00",
+      "action": "reopen",
+      "task": "cloud:AF-DEPLOY-001",
+      "worker": "HappyDucky02",
+      "note": "Reopen the same completed deployment task to mirror immutable image archive fixes; preserve prior PR history.",
+      "branch": "agent/HappyDucky02/AF-DEPLOY-001-de97e66e",
+      "claim_id": "71ac3b5c-bdbe-4852-9a4f-86e9610a40da"
     }
   ],
   "migration": {
