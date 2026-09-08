@@ -1,424 +1,297 @@
 #!/usr/bin/env python3
-"""Safe deploy helper used by CI/CD for automated release rollout.
-
-Features:
-- checks whether git head changed since last recorded deployment;
-- creates a timestamped backup for configured data paths;
-- runs configurable prepare / activate commands for rollout;
-- runs configurable health checks with retries;
-- rolls back data and runs rollback command on failure;
-- prints machine-readable JSON summary for CI logging.
-
-The script intentionally does not include project-specific shell commands;
-all runtime commands are injected through environment variables / CLI arguments.
-"""
-
-from __future__ import annotations
-
+"""One host-side controller for the test apps. Rollback changes routing, not data."""
+from contextlib import contextmanager
+from datetime import datetime, timezone
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import shutil
-import sqlite3
 import subprocess
-import sys
+import tempfile
 import time
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Sequence
-
+import uuid
 
 class DeployError(RuntimeError):
-    """Raised when a deployment or rollback step fails."""
+    pass
 
+def now():
+    return datetime.now(timezone.utc).isoformat(timespec='seconds')
 
-def _run_command(command: str, *, cwd: Path, env: Dict[str, str], label: str, timeout: int) -> subprocess.CompletedProcess[str]:
-    rendered = command.strip()
-    if not rendered:
-        return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
+def read_json(path, default=None):
+    if not path.exists() and default is not None:
+        return default
+    return json.loads(path.read_text(encoding='utf-8-sig'))
 
-    result = subprocess.run(
-        rendered,
-        shell=True,
-        cwd=str(cwd),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    if result.returncode != 0:
-        output = (result.stdout or "").strip()
-        error = (result.stderr or "").strip()
-        if output:
-            preview = f"{output}\n{error}" if error else output
+def atomic_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=path.parent, delete=False) as file:
+        temporary = Path(file.name)
+        json.dump(value, file, ensure_ascii=False, indent=2)
+        file.flush()
+        os.fsync(file.fileno())
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+@contextmanager
+def exclusive(path):
+    with path.open('a+b') as file:
+        if file.tell() == 0:
+            file.write(b'0'); file.flush()
+        file.seek(0)
+        if os.name == 'nt':
+            import msvcrt
+            msvcrt.locking(file.fileno(), msvcrt.LK_NBLCK, 1)
         else:
-            preview = error
-        if len(preview) > 4000:
-            preview = preview[:4000] + "…"
-        raise DeployError(f"{label} failed (exit {result.returncode}): {preview or '[empty output]'}")
-    return result
+            import fcntl
+            fcntl.flock(file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            yield
+        finally:
+            file.seek(0)
+            if os.name == 'nt':
+                msvcrt.locking(file.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                fcntl.flock(file.fileno(), fcntl.LOCK_UN)
 
-
-def _git_head_sha(repo_root: Path) -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+def command(args, *, cwd=None, input=None, timeout=900):
+    result = subprocess.run(args, cwd=cwd, input=input, capture_output=True, text=True,
+                            encoding='utf-8', errors='replace', timeout=timeout)
+    if result.returncode:
+        detail = (result.stderr or result.stdout)[-8000:]
+        detail = re.sub(r'(?i)(bearer\s+|token[=:]\s*)\S+', r'\1[redacted]', detail)
+        raise DeployError(f'{Path(args[0]).name} failed ({result.returncode}): {detail}')
     return result.stdout.strip()
 
+def compatible(before, after):
+    return all(after.get(path) == signature for path, signature in before.items())
 
-def _slug(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+class Controller:
+    def __init__(self, config):
+        self.config = config
+        self.root = Path(config['state_root']).resolve()
+        self.bundle = Path(config['runtime_bundle']).resolve()
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.public = self.root / 'public'
+        self.public.mkdir(exist_ok=True)
+        self.routes_path = self.public / 'routes.json'
+        self.status_path = self.public / 'status.json'
+        self.status = read_json(self.status_path, {'projects': {}, 'updated_at': now()})
+        for p in config['projects']:
+            if p['repository'] not in {'HappyMiha/Lokvetia-Core', 'HappyMiha/Lokiravia'}:
+                raise DeployError('Unapproved repository')
+            if p['service'] not in {'identity', 'lokvetia', 'lokiravia'} or not re.fullmatch(r'[a-z0-9-]+', p['id']):
+                raise DeployError('Invalid project configuration')
+        if not self.routes_path.exists():
+            atomic_json(self.routes_path, config.get('initial_routes', {}))
 
+    def report(self, p, phase, state='in_progress', **extra):
+        record = self.status['projects'].setdefault(p['id'], {})
+        record.update(project=p['name'], repository=p['repository'], host=p['host'],
+                      phase=phase, state=state, updated_at=now(), **extra)
+        self.status['updated_at'] = now()
+        atomic_json(self.status_path, self.status)
+        print(json.dumps({'project': p['id'], 'phase': phase, 'state': state}), flush=True)
+        if record.get('deployment_id') and phase in {'backup', 'activate', 'rollback', 'success', 'failure'}:
+            try:
+                payload = dict(state=state if state in {'success', 'failure'} else 'in_progress',
+                    environment_url='https://' + p['host'] + '/deployments',
+                    description=(extra.get('error') or phase)[:140], auto_inactive=False)
+                command(['gh', 'api', '--method', 'POST',
+                    f"repos/{p['repository']}/deployments/{record['deployment_id']}/statuses", '--input', '-'],
+                    input=json.dumps(payload), timeout=30)
+            except (DeployError, subprocess.TimeoutExpired):
+                record['reporting_error'] = 'GitHub status unavailable; local record is authoritative'
+                atomic_json(self.status_path, self.status)
 
-def _now_iso() -> str:
-    return datetime.now(tz=timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    def checkout(self, p):
+        repo = self.root / 'repositories' / p['repository'].split('/')[1]
+        repo.parent.mkdir(exist_ok=True)
+        if not repo.exists():
+            command(['git', 'clone', '--bare', 'https://github.com/' + p['repository'] + '.git', str(repo)])
+        command(['git', '-C', str(repo), 'fetch', '--no-tags', 'origin', 'refs/heads/main:refs/heads/main'])
+        sha = command(['git', '-C', str(repo), 'rev-parse', 'refs/heads/main'])
+        if not re.fullmatch('[0-9a-f]{40}', sha):
+            raise DeployError('Invalid main revision')
+        checkout = self.root / 'releases' / p['repository'].split('/')[1] / sha
+        if not checkout.exists():
+            checkout.parent.mkdir(parents=True, exist_ok=True)
+            command(['git', '-C', str(repo), 'worktree', 'add', '--detach', str(checkout), sha])
+        if command(['git', '-C', str(checkout), 'rev-parse', 'HEAD']) != sha:
+            raise DeployError('Immutable checkout mismatch')
+        return sha, checkout
 
+    def checks_passed(self, p, sha):
+        runs = json.loads(command(['gh', 'run', 'list', '--repo', p['repository'], '--workflow', 'autodeploy.yml',
+            '--commit', sha, '--limit', '5', '--json', 'status,conclusion'], timeout=45))
+        return bool(runs and runs[0]['status'] == 'completed' and runs[0]['conclusion'] == 'success')
 
-def _split_paths(raw: str | None) -> List[str]:
-    if not raw:
-        return []
-    return [item.strip() for item in re.split(r"[,\n;]+", raw) if item.strip()]
+    def health(self, container, p):
+        path = '/auth/account/config' if p['service'] == 'identity' else ('/api/projects?limit=1' if p['service'] == 'lokvetia' else '/api/briefs')
+        source = "from pathlib import Path;import urllib.request;token=Path('/run/secrets/access_token').read_text().strip();r=urllib.request.urlopen(urllib.request.Request('http://localhost:8080" + path + "',headers={'Authorization':'Bearer '+token}),timeout=10);assert r.status==200"
+        for attempt in range(12):
+            try:
+                command(['docker', 'exec', container, 'python', '-c', source], timeout=20)
+                return
+            except (DeployError, subprocess.TimeoutExpired) as error:
+                if attempt == 11:
+                    raise DeployError('Readiness failed: ' + str(error))
+                time.sleep(2)
 
+    def launch(self, p, image, name, volume, shadow=False):
+        args = ['docker', 'run', '-d', '--name', name, '--label', 'lokvetia.deploy.managed=true',
+            '--label', 'lokvetia.deploy.project=' + p['id'], '--read-only', '--init', '--cap-drop', 'ALL',
+            '--security-opt', 'no-new-privileges:true', '--memory', p.get('memory', '1g'), '--cpus', '2',
+            '--tmpfs', '/tmp:size=128m,mode=1777', '--network', 'none' if shadow else self.config['network'],
+            '--mount', 'type=volume,source=' + volume + ',target=/data',
+            '--mount', 'type=bind,source=' + str(Path(p['access_token_file']).resolve()) + ',target=/run/secrets/access_token,readonly',
+            '--env', 'TEST_PUBLIC_HOST=' + p['host'], '--env', 'TEMPORAL_ENABLED=false']
+        if not shadow:
+            args += ['--restart', 'unless-stopped']
+        for key, value in p.get('environment', {}).items():
+            if not key.startswith(('LOKVETIA_', 'AGENT_FACTORY_')):
+                raise DeployError('Unsupported environment key')
+            args += ['--env', key + '=' + value]
+        for mount in p.get('secret_mounts', []):
+            args += ['--mount', 'type=bind,source=' + str(Path(mount['source']).resolve()) + ',target=' + mount['target'] + ',readonly']
+        command(args + [image, p['service']], timeout=60)
 
-def _is_sqlite_file(path: Path) -> bool:
-    return path.suffix.lower() in {".db", ".sqlite", ".sqlite3"}
+    def rollback_route(self, p, previous):
+        routes = read_json(self.routes_path)
+        if previous is None:
+            routes.pop(p['host'], None)
+        else:
+            routes[p['host']] = previous
+        atomic_json(self.routes_path, routes)
 
-
-def _copy_path(source: Path, target_root: Path) -> list[tuple[Path, Path]]:
-    items: list[tuple[Path, Path]] = []
-    target = target_root / source.name
-    if source.is_dir():
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(source, target, symlinks=False)
-        return [(target, source)]
-
-    if not source.is_file():
-        raise DeployError(f"Path does not exist: {source}")
-
-    if _is_sqlite_file(source):
-        _backup_sqlite(source, target.with_suffix(source.suffix + ".backup"))
-        backup_main = target.with_suffix(source.suffix + ".backup")
-        items.append((backup_main, source))
-        for suffix in (".wal", ".shm"):
-            companion = source.with_suffix(source.suffix + suffix)
-            if companion.exists():
-                companion_target = backup_main.with_suffix(backup_main.suffix + suffix)
-                shutil.copy2(companion, companion_target)
-                items.append((companion_target, companion))
-        return items
-
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source, target)
-    return [(target, source)]
-
-
-def _backup_sqlite(source: Path, destination: Path) -> None:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    source_conn = sqlite3.connect(str(source))
-    destination_conn = sqlite3.connect(str(destination))
-    try:
-        source_conn.backup(destination_conn)
-    finally:
-        source_conn.close()
-        destination_conn.close()
-    check_connection = sqlite3.connect(str(destination))
-    try:
-        result = check_connection.execute("PRAGMA integrity_check;").fetchone()
-        if not result or result[0] != "ok":
-            raise DeployError(f"Backup integrity check failed for {source}: {result}")
-    finally:
-        check_connection.close()
-
-
-@dataclass
-class BackupItem:
-    source: str
-    kind: str
-    snapshots: list[tuple[str, str]]
-
-
-@dataclass
-class BackupPlan:
-    root: Path
-    created_at: str
-    items: list[BackupItem]
-
-
-def _build_backup(data_paths: Sequence[Path], repo_root: Path, project_name: str, commit_sha: str, backup_root: Path) -> BackupPlan:
-    created_at = _now_iso().replace(":", "-")
-    snapshot_root = backup_root / f"{_slug(project_name)}-{commit_sha[:8]}-{created_at}"
-    snapshot_root.mkdir(parents=True, exist_ok=True)
-
-    items: list[BackupItem] = []
-    for source in data_paths:
-        if not source.is_absolute():
-            source = (repo_root / source).resolve()
-
-        if not source.exists():
-            raise DeployError(f"Configured backup path does not exist: {source}")
-        relative_snapshot: list[str] = []
-        for snapshot, destination in _copy_path(source, snapshot_root):
-            relative_snapshot.append(f"{snapshot}|{destination}")
-        items.append(
-            BackupItem(
-                source=str(source),
-                kind="sqlite" if _is_sqlite_file(source) else "path",
-                snapshots=relative_snapshot,
-            )
-        )
-    return BackupPlan(root=snapshot_root, created_at=created_at, items=items)
-
-
-def _restore_backup(plan: BackupPlan) -> None:
-    for item in reversed(plan.items):
-        for mapping in item.snapshots:
-            snapshot_str, destination_str = mapping.split("|", 1)
-            snapshot = Path(snapshot_str)
-            destination = Path(destination_str)
-            if not snapshot.exists():
-                continue
-            if snapshot.is_dir():
-                if destination.exists():
-                    if destination.is_dir():
-                        shutil.rmtree(destination)
-                    else:
-                        destination.unlink()
-                shutil.copytree(snapshot, destination)
-                continue
-
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(snapshot, destination)
-
-
-def _load_state(state_file: Path) -> Dict[str, Any]:
-    if not state_file.exists():
-        return {}
-    try:
-        return json.loads(state_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
-
-
-def _save_state(state_file: Path, state: Dict[str, Any]) -> None:
-    state_file.parent.mkdir(parents=True, exist_ok=True)
-    state_file.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-
-
-def _release_notes(command: str | None, repo_root: Path, sha: str) -> str:
-    if command:
-        result = subprocess.run(
-            command,
-            shell=True,
-            cwd=str(repo_root),
-            capture_output=True,
-            text=True,
-        )
-        text = (result.stdout or "").strip()
-        if text:
-            return text
-    result = subprocess.run(
-        ["git", "log", "-1", "--pretty=%B", sha],
-        cwd=str(repo_root),
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    return (result.stdout or "").strip()[:1200]
-
-
-def _env_or_default(name: str, default: str = "") -> str:
-    return os.environ.get(name, default) or ""
-
-
-def _normalize_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run deploy workflow with backup/rollback support.")
-    parser.add_argument("--project-name", required=True, help="Human-readable project name for reports.")
-    parser.add_argument("--state-file", default=".github/autodeploy/state.json", help="Path to state snapshot file.")
-    parser.add_argument("--backup-root", default=".github/autodeploy/backups", help="Directory for persistent local backups.")
-    parser.add_argument("--data-path", action="append", default=[], help="Additional backup path. May be repeated.")
-    parser.add_argument("--data-paths", default="", help="Comma/semicolon/newline separated backup paths.")
-    parser.add_argument("--prepare-command", default=_env_or_default("DEPLOY_PREPARE_COMMAND"), help="Command executed before activate.")
-    parser.add_argument("--activate-command", default=_env_or_default("DEPLOY_ACTIVATE_COMMAND"), help="Command that performs actual rollout.")
-    parser.add_argument("--rollback-command", default=_env_or_default("DEPLOY_ROLLBACK_COMMAND"), help="Command to rollback code/runtime.")
-    parser.add_argument("--health-command", default=_env_or_default("DEPLOY_HEALTH_COMMAND"), help="Health command after activate.")
-    parser.add_argument("--release-notes-command", default=_env_or_default("DEPLOY_RELEASE_NOTES_COMMAND"), help="Command that prints release notes.")
-    parser.add_argument("--health-retries", type=int, default=5, help="Health-check retry count.")
-    parser.add_argument("--health-timeout", type=int, default=120, help="Per health check timeout.")
-    parser.add_argument("--command-timeout", type=int, default=600, help="Per command timeout.")
-    parser.add_argument("--repo-root", default=".", help="Deployment root path (current directory by default).")
-    return parser.parse_args(argv)
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    args = _normalize_args(argv)
-    repo_root = Path(args.repo_root).resolve()
-    state_file = (repo_root / args.state_file).resolve()
-    backup_root = (repo_root / args.backup_root).resolve()
-
-    if not args.activate_command:
-        print(json.dumps({"status": "failure", "error": "DEPLOY_ACTIVATE_COMMAND is required."}, indent=2), file=sys.stderr)
-        return 1
-
-    data_paths = list(args.data_path)
-    data_paths.extend(_split_paths(args.data_paths))
-    resolved_data_paths = [Path(os.path.expandvars(p)).expanduser() for p in data_paths]
-
-    state: Dict[str, Any] = _load_state(state_file)
-    current_sha = _git_head_sha(repo_root)
-    last_sha = state.get("deployed_sha")
-    started = _now_iso()
-
-    if last_sha and last_sha == current_sha:
-        summary = {
-            "project": args.project_name,
-            "status": "no_change",
-            "commit": current_sha,
-            "previous_commit": last_sha,
-            "state_file": str(state_file),
-            "started_at": started,
-            "finished_at": _now_iso(),
-            "data_backup": None,
-        }
-        print(json.dumps(summary, indent=2))
-        return 0
-
-    env = dict(os.environ)
-    env.update(
-        {
-            "DEPLOY_PROJECT": args.project_name,
-            "DEPLOY_PROJECT_SLUG": _slug(args.project_name),
-            "DEPLOY_PREVIOUS_SHA": last_sha or "",
-            "DEPLOY_CURRENT_SHA": current_sha,
-            "DEPLOY_REPO_ROOT": str(repo_root),
-        }
-    )
-
-    backup_plan: BackupPlan | None = None
-    try:
-        backup_plan = _build_backup(resolved_data_paths, repo_root, args.project_name, current_sha, backup_root) if resolved_data_paths else None
-
-        if args.prepare_command:
-            _run_command(
-                args.prepare_command,
-                cwd=repo_root,
-                env=env,
-                label="prepare",
-                timeout=args.command_timeout,
-            )
-
-        _run_command(
-            args.activate_command,
-            cwd=repo_root,
-            env=env,
-            label="activate",
-            timeout=args.command_timeout,
-        )
-
-        if args.health_command:
-            health_error: str | None = None
-            for attempt in range(1, args.health_retries + 1):
+    def deploy(self, p):
+        record = self.status['projects'].get(p['id'], {})
+        if record.get('state') == 'in_progress':
+            if 'previous_route' in record:
+                self.rollback_route(p, record['previous_route'])
+            self.report(p, 'failure', 'failure', error='Interrupted rollout recovered; previous routing and live data retained')
+        sha, checkout = self.checkout(p)
+        previous = read_json(self.routes_path).get(p['host'])
+        if previous and previous.get('sha') == sha:
+            return
+        if record.get('commit') == sha and record.get('retry_after', 0) > time.time():
+            return
+        if not self.checks_passed(p, sha):
+            self.report(p, 'waiting_for_ci', 'queued', commit=sha, error='Waiting for successful Auto Deploy checks on this exact main revision')
+            return
+        managed = command(['docker', 'ps', '-a', '--filter', 'label=lokvetia.deploy.project=' + p['id'], '--format', '{{.Names}}']).splitlines()
+        if len(managed) >= self.config.get('max_retained_containers_per_project', 8):
+            self.report(p, 'capacity', 'failure', commit=sha, error='Retained-release limit reached; confirm old jobs finished before retiring containers')
+            return
+        if shutil.disk_usage(self.root).free < 2 * 1024**3:
+            raise DeployError('Insufficient backup/build disk space')
+        attempt = sha[:12] + '-' + uuid.uuid4().hex[:8]
+        backup = self.root / 'backups' / p['id'] / attempt
+        backup.mkdir(parents=True)
+        previous_sha = previous.get('sha', '') if previous else ''
+        release_range = previous_sha + '..' + sha if re.fullmatch('[0-9a-f]{7,40}', previous_sha) else sha
+        notes = command(['git', '-C', str(checkout), 'log', '-100', '--format=%h %s', release_range])
+        self.status['projects'][p['id']] = dict(previous_route=previous, started_at=now(), backup=str(backup),
+            commit=sha, release_notes=notes, error='', rollback='not_needed')
+        self.report(p, 'backup')
+        activated = False
+        shadow = None
+        try:
+            result = command(['gh', 'api', '--method', 'POST', f"repos/{p['repository']}/deployments", '--input', '-'],
+                input=json.dumps(dict(ref=sha, environment='test-happyducky02-' + p['id'], auto_merge=False,
+                    required_contexts=[], description='HappyDucky02 ' + p['name'], payload={'release_notes': notes})), timeout=45)
+            self.status['projects'][p['id']]['deployment_id'] = json.loads(result)['id']
+            if previous:
+                inspected = json.loads(command(['docker', 'inspect', previous['container']]))[0]
+                archive = self.root / 'image-backups' / (inspected['Image'].split(':')[-1] + '.tar')
+                archive.parent.mkdir(exist_ok=True)
+                if not archive.exists():
+                    partial = archive.with_suffix('.partial')
+                    command(['docker', 'image', 'save', '--output', str(partial), inspected['Image']])
+                    os.replace(partial, archive)
+                self.status['projects'][p['id']]['image_backup'] = str(archive)
+            self.report(p, 'build')
+            image = ('lokvetia-core' if p['service'] != 'lokiravia' else 'lokiravia') + ':release-' + sha[:12]
+            dockerfile = self.bundle / ('Dockerfile.cloud' if p['service'] == 'lokiravia' else 'Dockerfile.core')
+            command(['docker', 'build', '--label', 'org.opencontainers.image.revision=' + sha, '--build-context', 'runtime=' + str(self.bundle),
+                     '--file', str(dockerfile), '--tag', image, str(checkout)], timeout=1800)
+            self.report(p, 'backup')
+            command(['docker', 'volume', 'inspect', p['volume']], timeout=30)
+            result = command(['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
+                '--security-opt', 'no-new-privileges:true', '--mount', 'type=volume,source=' + p['volume'] + ',target=/source,readonly',
+                '--mount', 'type=bind,source=' + str(backup) + ',target=/backup', '--entrypoint', 'python', image,
+                '/app/snapshot.py', '/source', '/backup/data'])
+            manifest = json.loads(result)
+            atomic_json(backup / 'manifest.json', dict(manifest, commit=sha, previous_route=previous))
+            self.report(p, 'validate')
+            volume = 'lokvetia-deploy-shadow-' + p['id'] + '-' + attempt
+            command(['docker', 'volume', 'create', volume])
+            command(['docker', 'run', '--rm', '--network', 'none', '--user', '0', '--mount', 'type=volume,source=' + volume + ',target=/shadow',
+                '--mount', 'type=bind,source=' + str(backup / 'data') + ',target=/snapshot,readonly', '--entrypoint', 'python', image, '-c',
+                "import shutil,os;shutil.copytree('/snapshot','/shadow',dirs_exist_ok=True);[(os.chown(os.path.join(r,n),10001,10001)) for r,ds,fs in os.walk('/shadow') for n in ds+fs];os.chown('/shadow',10001,10001)"])
+            shadow = 'lokvetia-shadow-' + p['id'] + '-' + attempt
+            self.launch(p, image, shadow, volume, True)
+            self.health(shadow, p)
+            schema = json.loads(command(['docker', 'exec', shadow, 'python', '/app/snapshot.py', '--schemas', '/data']))
+            if not compatible(manifest['schemas'], schema):
+                raise DeployError('Existing database schema would change; plan a compatible migration before rollout')
+            # This isolated shadow has never handled live requests or live data.
+            command(['docker', 'rm', '-f', shadow]); shadow = None
+            command(['docker', 'volume', 'rm', volume])
+            candidate = 'lokvetia-release-' + p['id'] + '-' + attempt
+            self.launch(p, image, candidate, p['volume'])
+            self.health(candidate, p)
+            self.report(p, 'activate', candidate=candidate)
+            routes = read_json(self.routes_path)
+            routes[p['host']] = dict(container=candidate, sha=sha, image=image, project=p['id'])
+            atomic_json(self.routes_path, routes)
+            activated = True
+            self.report(p, 'health')
+            self.health(candidate, p)
+            self.report(p, 'success', 'success', finished_at=now(), error='', retry_after=0)
+        except Exception as error:
+            rollback = 'not_needed'
+            if activated:
+                self.report(p, 'rollback', error=str(error))
                 try:
-                    _run_command(
-                        args.health_command,
-                        cwd=repo_root,
-                        env=env,
-                        label=f"health (attempt {attempt}/{args.health_retries})",
-                        timeout=args.health_timeout,
-                    )
-                    health_error = None
-                    break
-                except DeployError as error:
-                    health_error = str(error)
-                    if attempt >= args.health_retries:
-                        break
-                    time.sleep(3)
-            if health_error:
-                raise DeployError(health_error)
+                    self.rollback_route(p, previous)
+                    if previous:
+                        self.health(previous['container'], p)
+                    rollback = 'success'
+                except Exception as rollback_error:
+                    rollback = 'failure'
+                    error = DeployError(str(error) + ' | rollback: ' + str(rollback_error))
+            self.report(p, 'failure', 'failure', error=str(error), rollback=rollback, finished_at=now(), retry_after=time.time() + 900)
+        finally:
+            if shadow:
+                try:
+                    command(['docker', 'rm', '-f', shadow], timeout=30)
+                except Exception:
+                    pass
 
-        release_notes = _release_notes(args.release_notes_command, repo_root, current_sha)
-        state.update(
-            {
-                "project": args.project_name,
-                "deployed_sha": current_sha,
-                "updated_at": _now_iso(),
-                "last_attempt_sha": current_sha,
-                "last_attempt_status": "success",
-                "last_attempt_error": "",
-                "last_backup": str(backup_plan.root) if backup_plan else "",
-                "last_release_notes": release_notes,
-                "runner": "scripts/autodeploy.py",
-            }
-        )
-        _save_state(state_file, state)
+    def cycle(self):
+        with exclusive(self.root / 'controller.lock'):
+            for p in self.config['projects']:
+                if p.get('enabled', True):
+                    try:
+                        self.deploy(p)
+                    except Exception as error:
+                        self.report(p, 'failure', 'failure', error=str(error))
 
-        summary = {
-            "project": args.project_name,
-            "status": "success",
-            "commit": current_sha,
-            "previous_commit": last_sha,
-            "state_file": str(state_file),
-            "started_at": started,
-            "finished_at": _now_iso(),
-            "data_backup": str(backup_plan.root) if backup_plan else None,
-            "release_notes": release_notes,
-        }
-        print(json.dumps(summary, indent=2))
-        return 0
-    except Exception as error:
-        error_text = str(error)
-        if args.rollback_command and last_sha:
-            try:
-                _run_command(
-                    args.rollback_command,
-                    cwd=repo_root,
-                    env=env,
-                    label="rollback",
-                    timeout=args.command_timeout,
-                )
-            except DeployError as rollback_error:
-                error_text = f"{error_text} | rollback_command_failed={rollback_error}"
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--config', required=True, type=Path)
+    parser.add_argument('--watch', action='store_true')
+    args = parser.parse_args()
+    controller = Controller(read_json(args.config))
+    while True:
+        controller.cycle()
+        if not args.watch:
+            break
+        time.sleep(max(30, int(controller.config.get('poll_seconds', 60))))
 
-        if backup_plan:
-            try:
-                _restore_backup(backup_plan)
-            except Exception as restore_error:
-                error_text = f"{error_text} | restore_failed={restore_error}"
-
-        state.update(
-            {
-                "project": args.project_name,
-                "deployed_sha": last_sha,
-                "updated_at": _now_iso(),
-                "last_attempt_sha": current_sha,
-                "last_attempt_status": "failure",
-                "last_attempt_error": error_text,
-                "last_backup": str(backup_plan.root) if backup_plan else "",
-                "runner": "scripts/autodeploy.py",
-            }
-        )
-        _save_state(state_file, state)
-
-        summary = {
-            "project": args.project_name,
-            "status": "failure",
-            "commit": current_sha,
-            "previous_commit": last_sha,
-            "state_file": str(state_file),
-            "started_at": started,
-            "finished_at": _now_iso(),
-            "data_backup": str(backup_plan.root) if backup_plan else None,
-            "error": error_text,
-        }
-        print(json.dumps(summary, indent=2))
-        return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == '__main__':
+    main()

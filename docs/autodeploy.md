@@ -1,64 +1,81 @@
-# Автодеплой, бекап і rollback для Lokvetia Core
+# Test deployment and shared identity
 
-Для Core та Lokiravia запускаються GitHub Actions, які:
+The previous generic shell-command workflow has been replaced. GitHub Actions
+qualifies the exact main revision; one controller on HappyDucky02 polls both
+repositories every 60 seconds and performs the actual Docker deployment.
 
-- перевіряють, чи змінився Git HEAD порівняно з останнім деплоєм;
-- роблять timestamped backup вказаних шляхів даних;
-- виконують підготовку і активацію релізу;
-- запускають health check;
-- при помилці виконують rollback коду (за вашим скриптом) і відновлюють бекап даних.
+## Safety contract
 
-## Файли
+- Persistent named data volumes are reused; they are never restored during code rollback.
+- Before a release, the previous Docker image is archived and live SQLite databases
+  are copied using SQLite's online backup API with an integrity check. WAL/SHM files
+  are not copied independently. Ordinary files that change while copying fail the backup.
+- Each SQLite snapshot is transaction-consistent. Multiple databases and files are
+  not a single global transaction; disaster recovery needs explicit reconciliation.
+- A candidate starts on a disposable snapshot with networking disabled. An authenticated
+  read exercises database initialization. Any change to an existing database schema
+  blocks automatic deployment.
+- A stable streaming gateway reads routing atomically for each new request.
+  Existing calls retain their original upstream. Old application containers and all
+  game/AI workers remain running. There is no compose stop/restart/down or volume prune.
+- Failed activation switches new requests back to the previous running image.
+  New client writes remain in the same live volume. Controller crash recovery also
+  restores routing only. Failed releases are retained for investigation.
+- Retained containers are bounded. At the configured limit, deployment blocks until
+  an operator has verified that older jobs are finished and retires those releases.
+  This favors preserving work over automatic resource reclamation.
+- Automatic schema migrations, destructive data rollback and worker restarts are not supported.
+  These require an application-specific compatibility and drain plan.
 
-- Пайплайн: `.github/workflows/autodeploy.yml`
-- Робочий скрипт: `scripts/autodeploy.py`
-- Стан: `.github/autodeploy/state.json`
-- Бекапи: `.github/autodeploy/backups/...`
-- Сторінка статусів: `docs/deploy-dashboard.html`
+## Single deployment page
 
-## Необхідні репозиторійні змінні GitHub (Settings → Secrets and variables → Actions → Variables)
+The gateway serves /deployments on both test domains. The page reads the same
+authenticated /deployments/status endpoint: project, revision, current phase,
+success/failure, rollback result, error text and release notes. It does not store
+GitHub tokens in the browser. GitHub Deployments receives matching summary statuses.
 
-| Змінна | Призначення |
-|---|---|
-| `DEPLOY_DATA_PATHS` | Список шляхів для бекапу, розділені комою/крапкою з комою/новим рядком. Напр. `.agent-factory/state.db,.agent-factory-data` |
-| `DEPLOY_PREPARE_COMMAND` | Підготовча команда перед релізом (необов’язково). |
-| `DEPLOY_ACTIVATE_COMMAND` | Команда фактичного rollout (обов’язково). |
-| `DEPLOY_ROLLBACK_COMMAND` | Команда rollback коду/runtime (рекомендується встановити для критичних сервісів). |
-| `DEPLOY_HEALTH_COMMAND` | Команда перевірки, що сервіс працює після rollout. |
-| `DEPLOY_RELEASE_NOTES_COMMAND` | Команда, яка повертає release-notes (необов’язково; за замовчуванням бере commit message). |
+## Shared identity
 
-Всі ці змінні використовує `scripts/autodeploy.py` через середовище.
+id.lokvetia.com hosts the single invitation-only identity service and the shared
+/profile and /organizations pages. Both applications redirect to this service.
+Passwords, users and invitations exist only in its persistent accounts.sqlite3.
+Application databases contain opaque session references, not copies of users.
 
-## Рекомендований підхід для збереження клієнтських даних
+Browser sign-in uses short-lived single-use authorization codes, exact redirect
+allowlists, a browser-bound state cookie and PKCE. Application credentials and
+opaque grants use authenticated server-to-server endpoints, which are not routed
+publicly. This is a private integration for these two clients, not a general OIDC provider.
 
-- backup має бути **snapshot of data paths**, які не містять runtime cache;
-- rollback повинен повертати дані на рівні файлових баз (`*.db`, `*.sqlite3`) до стану до rollout;
-- `DEPLOY_ACTIVATE_COMMAND` має виконувати атомарний переключатель (blue-green, symlink, контейнерний reload), без прямого `kill` довгих фон-сервісів;
-- `DEPLOY_HEALTH_COMMAND` має перевіряти працездатний endpoint (наприклад `/health`);
-- `DEPLOY_ROLLBACK_COMMAND` повинен бути ідемпотентним (повторний виклик без шкоди).
+Remembered sessions expire after 30 days and remain valid across releases.
+Signing out revokes the central session and all its application grants.
+Existing configured operator identity is retained for the administrator so
+existing briefs, ownership and audit records remain accessible.
 
-## Мінімальна логіка (приклад)
+The current organization is one shared test organization. Invited members receive
+read/write membership, not administrator/control permissions. Separate tenant
+deployments and organization isolation must precede public self-registration.
 
-```sh
-DEPLOY_PREPARE_COMMAND="git fetch origin main && git reset --hard origin/main"
-DEPLOY_ACTIVATE_COMMAND="supervisorctl restart lokvetia-core"
-DEPLOY_ROLLBACK_COMMAND="supervisorctl restart lokvetia-core"
-DEPLOY_HEALTH_COMMAND="curl -fsS http://127.0.0.1:8765/healthz"
-DEPLOY_RELEASE_NOTES_COMMAND="git log -1 --pretty=%B"
+## Installation
+
+The runtime bundle is ops/test-deploy in Core. Keep private configuration,
+credentials, release checkouts and backups outside the Git checkout. Run:
+
+```powershell
+python scripts/autodeploy.py --config C:/path/to/private/config.json --watch
 ```
 
-## Як дивитися статус
+Install it as an at-logon task for the Docker Desktop owner with restart-on-failure.
+It needs Docker, Git and the existing GitHub CLI login. It does not require a public
+self-hosted Actions runner. Never mount the Docker socket into application,
+identity or gateway containers.
 
-Відкрийте `docs/deploy-dashboard.html` у GitHub Pages (або вручну перегляньте в репозиторії).
-На сторінці видно:
+Required config keys: state_root, runtime_bundle, network, initial_routes and projects.
+Each project has id, name, repository, service, host, volume, access_token_file,
+environment and secret_mounts. Service is identity, lokvetia or lokiravia.
 
-- який проєкт зараз деплоїться;
-- поточний статус (`success`, `failure`, `in_progress`);
-- текст помилки та commit;
-- release notes.
+The gateway uses a read-only mount of the public status/routing directory.
+Cloudflare routes the existing two domains and id.lokvetia.com to the gateway.
+Do not change existing application ports or stop their containers during onboarding.
 
-## Безпекові нотатки
-
-- Зберігайте секрети (ключі доступу до сервісів, токени AI, DB credentials) як GitHub Secrets і не вшивайте в `vars`.
-- Перед увімкненням автодеплою зробіть пробний manual `workflow_dispatch`.
-- Перший rollout краще виконувати через окремий підготовчий commit, щоб перевірити сумісність команд і restore сценарію.
+The source controller is versioned in Git. Updating the controller itself is an
+operator task; stopping only the controller does not stop applications or workers.
