@@ -3865,6 +3865,36 @@
       ],
       "updated_at": "2026-09-09T19:28:03+00:00",
       "note": "Owner-requested product and architecture planning; documentation only."
+    },
+    "cloud:AF-DOC-002": {
+      "title": "Design living-world product direction and evolution backlog",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [],
+      "source_dependencies": [],
+      "resources": [],
+      "required_scopes": [
+        "cloud:docs/evolution",
+        "cloud:README.md"
+      ],
+      "scope_hints": [
+        "cloud:docs/evolution",
+        "cloud:README.md"
+      ],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "acceptance_summary": [
+        "Document source evidence, concepts, architecture and prioritized acceptance-ready backlog.",
+        "Core improves itself; Lokiravia consumes verified capabilities for creator and living-world products.",
+        "Preserve existing task IDs, release gates, claims and implementation files.",
+        "Planning documents and data only; no product code or deployment."
+      ],
+      "updated_at": "2026-09-09T19:28:07+00:00",
+      "note": "Owner-requested product and architecture planning; documentation only."
     }
   },
   "events": [
@@ -7273,6 +7303,16 @@
       "at": "2026-09-09T19:28:03+00:00",
       "action": "catalogue-add",
       "task": "core:AF-DOC-002",
+      "worker": "HappyDucky02",
+      "note": "Owner-requested product and architecture planning; documentation only.",
+      "branch": null,
+      "claim_id": null
+    },
+    {
+      "operation_id": "af4342cf-cb12-4274-ab66-718ab2c90836",
+      "at": "2026-09-09T19:28:07+00:00",
+      "action": "catalogue-add",
+      "task": "cloud:AF-DOC-002",
       "worker": "HappyDucky02",
       "note": "Owner-requested product and architecture planning; documentation only.",
       "branch": null,
