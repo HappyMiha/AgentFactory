@@ -1,6 +1,6 @@
 # Пропозиція беклогу: самовдосконалення самого Lokvetia Core
 
-Дата: 9 вересня 2026. Проектні вимоги для майбутнього `docs/evolution/backlog.json`, а не активна runtime-черга. Всі `AF-RSI-*` мають статус **proposed**; цей документ не дозволяє запускати код, витрачати кошти або приймати реліз. Згідно з уточненням користувача, трьохкомп’ютерний claim workflow не є prerequisite цієї роботи.
+Дата редакції: 10 вересня 2026. Q05 уточнює існуючі картки; IDs і залежності збережені. Проектні вимоги для майбутнього `docs/evolution/backlog.json`, а не активна runtime-черга. Всі `AF-RSI-*` мають статус **proposed**; цей документ не дозволяє запускати код, витрачати кошти або приймати реліз. Згідно з уточненням користувача, трьохкомп’ютерний claim workflow не є prerequisite цієї роботи.
 
 Власник усіх нижченаведених reusable capabilities — **Lokvetia Core**. Lokiravia споживає прийняті контракти й додає власні продуктову оцінку та ігрові правила. RSI Core має працювати й доводити користь без гри, Cloud-акаунта чи Lokiravia runtime. Старі AF, AF-AMM, AF-GC і AF-CLD IDs/gates зберігаються. `AF-GC-043` вже існує й не перевикористовується.
 
@@ -25,10 +25,10 @@
 
 - **Залежності:** 001. **Reuse:** AF-001 identities, AF-016 skills, AF-024 packs, AF-048 worktrees, AF-055 context.
 - **Результат:** `EvolutionSubject` і `GenerationManifest`: kind, parent generation, Core commit, harness/role/tool/skill/config digests, runtime/profile, dependencies, mutation scope і rollback target.
-- **Приймання:** один generation digest однозначно визначає виконуваний склад; старий manifest відтворюється після registry update; source/harness/model-weight зміни розрізняються. Model weights — окремий research profile, не обіцянка доступного training.
-- **Негативні перевірки:** floating latest, змінений pack під тим самим version, підміна parent, невідомий component, повторне використання digest для інших bytes.
+- **Приймання:** один generation digest однозначно визначає виконуваний склад; старий manifest відтворюється після registry update; source/harness/model-weight зміни розрізняються. Model weights — окремий research profile, не обіцянка доступного training. ActivationBinding містить target, монотонну activation_seq, manifest digest, authority epoch, writer fence і exact state binding; immutable GenerationManifest не посилається на власний майбутній ActivationReceipt.
+- **Негативні перевірки:** floating latest, змінений pack під тим самим version, підміна parent, невідомий component, повторне використання digest для інших bytes. ABA A@41→B@42→A@43 не дозволяє старий grant для A@41; replay promotion ID не збільшує sequence.
 - **Артефакт:** versioned schema, три non-game приклади, compatibility matrix. **Фаза/пріоритет:** C0/P0.
-- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ### AF-RSI-003 — Зафіксувати протокол порівняння до запуску кандидатів
 
@@ -43,10 +43,10 @@
 
 - **Залежності:** 002, 003. **Reuse:** AF-003 evidence, AF-002 events, AF-051 candidates; поточний SQLite evidence ledger.
 - **Результат:** append-only lineage `hypothesis → protocol → baseline/challenger run → receipts → comparison → decision → generation` з rejected і inconclusive branches.
-- **Приймання:** restart не створює другого promotion; query пояснює походження чинної версії й показує всі спроби; ні experiment runner, ні review text не змінюють acceptance history.
-- **Негативні перевірки:** duplicate receipt, чужий tenant, неправильний generation, повторення команди після crash, спроба стерти негативний результат.
+- **Приймання:** restart не створює другого promotion; query пояснює походження чинної версії й показує всі спроби; ні experiment runner, ні review text не змінюють acceptance history. EvidenceSeal фіксує весь admitted attempt set і явні missing/invalid dispositions; пізній receipt створює amendment/challenge, а не змінює seal. Hash не підміняє перевірку issuer. Adoption відновленого Git commit повторно зв’язує actual tree/diff bytes із validated snapshot; accepted result/gate/linkage мають replayable transition identity й reconciliation без другого gate.
+- **Негативні перевірки:** duplicate receipt, чужий tenant, неправильний generation, повторення команди після crash, спроба стерти негативний результат. Пізній conflicting receipt не переписує accepted comparison і не допускає нову promotion до розв’язання challenge.
 - **Артефакт:** data/API contract, state diagram, replay fixtures. **Фаза/пріоритет:** C0/P0.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ## C1 — отримати зовнішній сигнал, який не можна вигадати рефлексією
 
@@ -81,10 +81,10 @@
 
 - **Залежності:** 003, 004. **Reuse:** AF-008 loop, AF-027/056 budgets, AF-AMM recovery; чинні authorization/reservation services.
 - **Результат:** єдиний experiment budget охоплює baseline, усі challengers, reviewers, retries, tooling і rejected branches.
-- **Приймання:** preflight блокує нову роботу поза reservation; Pause/Stop діє й на optimizer/reviewer; restart зберігає спожите й дозволяє лише ті самі залишкові межі; hard expansion потребує нової authority.
-- **Негативні перевірки:** розбиття однієї дороговартісної мутації на дочірні безлімітні runs; retry обнуляє counter; підвищення budget через artifact text; missing usage не рахується нульовим.
+- **Приймання:** preflight блокує нову роботу поза reservation; Pause/Stop діє й на optimizer/reviewer; restart зберігає спожите й дозволяє лише ті самі залишкові межі; hard expansion потребує нової authority. Reservation існує до dispatch; невідомий effect/charge після timeout має bounded exposure disposition, а не автоматичне повернення бюджету.
+- **Негативні перевірки:** розбиття однієї дороговартісної мутації на дочірні безлімітні runs; retry обнуляє counter; підвищення budget через artifact text; missing usage не рахується нульовим. Cancel request або lease expiry не обнуляє вже можливу charge; без потрібної верхньої межі вартості наступний dispatch заблокований.
 - **Артефакт:** budget accounting contract і cancel/restart traces. **Фаза/пріоритет:** C1/P0.
-- **Підстави:** RSI-SURVEY:R08, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R08, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ### AF-RSI-009 — Кваліфікувати ізольовану арену для змін Core
 
@@ -108,10 +108,10 @@
 
 - **Залежності:** 005, 006, 008, 009, 010. **Reuse:** AF-006 workflows, AF-044 runtime, AF-AMM checkpoints/epochs, AF-052 validators.
 - **Результат:** experiment runner, який викликає чинний execution boundary і повертає primary receipts, а не власну чергу/worker implementation.
-- **Приймання:** відомі seeds, model/runtime versions, hardware profile і budgets збережено; replay використовує accepted inputs; варіативність model calls чесно відокремлена від детермінованого replay accepted actions.
-- **Негативні перевірки:** baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete.
+- **Приймання:** відомі seeds, model/runtime versions, hardware profile і budgets збережено; replay використовує accepted inputs; варіативність model calls чесно відокремлена від детермінованого replay accepted actions. AttemptIntent persist до dispatch; receiver capability profile визначає допустимий lookup/dedup/retry. Unknown non-repeatable effect не повторюється без reconciliation, згідно з RC01–04 recovery contract.
+- **Негативні перевірки:** baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete. Provider без outcome lookup не оголошується exactly-once; cancel acknowledgment не підміняє observed stopped/no-effect receipt.
 - **Артефакт:** baseline/challenger execution bundle і comparison-ready index. **Фаза/пріоритет:** C1/P0.
-- **Підстави:** RSI-SURVEY:R05, RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R05, RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ## C2 — навчитися змінювати власний harness і власний source
 
@@ -165,11 +165,11 @@
 ### AF-RSI-017 — Просувати й відкочувати generation через shadow/canary stages
 
 - **Залежності:** 004, 007, 008, 016. **Reuse:** AF-024 pack lifecycle, AF-031 deployment profiles, AF-057 recovery; existing immutable release images/autodeploy plans.
-- **Результат:** `candidate → evaluated → shadow → canary → promoted/rejected/rolled_back` з protected active pointer.
-- **Приймання:** shadow не чинить повторних зовнішніх effects; canary audience/profile має explicit scope; failed promotion зберігає previous accepted version; дані канарки не губляться при restore.
-- **Негативні перевірки:** two concurrent promotions, crash після pointer switch, rejected generation повертається як latest, старе approval переноситься на нові bytes, canary виходить за audience.
+- **Результат:** release lifecycle `candidate → qualified → shadow → canary → promoted → superseded | revoked` із protected ActivationBinding. Обов’язкові shadow/canary stages задає profile; rejection лишається comparison outcome, rollback — нова authorized activation, не стан для стирання старої історії.
+- **Приймання:** shadow не чинить повторних зовнішніх effects; canary audience/profile має explicit scope; failure до commit залишає binding незмінною, після commit виконується scoped recovery за ActivationReceipt; несумісний/revoked fallback веде до paused/degraded режиму; дані канарки не губляться мовчки при restore. Grant/revocation і activation serialized в одній qualified authority boundary; final commit перевіряє exact ActivationBinding і immutable state readiness. Root supervisor upgrade має independent authority, quiesced control state і fenced handoff.
+- **Негативні перевірки:** two concurrent promotions, crash після pointer switch, rejected generation повертається як latest, старе approval переноситься на нові bytes, canary виходить за audience. RC06–11/14/16: grant revoke race, ABA, concurrent candidates, lost ack, unreadied successor, revoked fallback; жоден candidate не завершує self-approval.
 - **Артефакт:** promotion receipt, rollback drill, previous-generation availability proof. **Фаза/пріоритет:** C3/P0.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ### AF-RSI-018 — Показати людині стан і причину самовдосконалення
 
@@ -280,10 +280,10 @@
 
 - **Залежності:** 012, 016, 017, 022, 024. **Reuse:** AF-021 security, AF-028 chaos/recovery, AF-033 soak.
 - **Результат:** versioned long-run schedule зі staged bad skill, evaluator bias, stale memory, corrupted candidate, interrupted migration, provider outage та exhausted budget.
-- **Приймання:** за preregistered run length і workload profile неприйнята зміна не поширюється; revoked evidence/skill відстежується до consumers; state і previous accepted generation відновлюються; не приховано ресурсне зростання.
-- **Негативні перевірки:** помилка переживає rollback у shared cache, кілька слабких accepted changes дають сукупну деградацію, orphan optimizer далі витрачає ресурси, evaluator drift вимикає sentinel.
+- **Приймання:** за preregistered run length і workload profile неприйнята зміна не поширюється; revoked evidence/skill відстежується до consumers; сумісний state і дозволене previous accepted generation відновлюються, а за відсутності придатного fallback зберігаються історія й recovery disposition у paused/degraded режимі; не приховано ресурсне зростання. Майбутня реалізація проходить застосовні до прийнятих Core profiles RC01–14/16 із recovery-contract.md на neutral fixtures, включаючи final-commit races, bounded unknown effects і supervisor handoff. Доменний RC15 перевіряється тільки при окремій кваліфікації C7; not-applicable/unsupported не рахується pass і не створює world prerequisite для standalone Core.
+- **Негативні перевірки:** помилка переживає rollback у shared cache, кілька слабких accepted changes дають сукупну деградацію, orphan optimizer далі витрачає ресурси, evaluator drift вимикає sentinel. Письмова таблиця RC не вважається виконаним chaos report; stale fence не дає права робити remote effect, який не підтримує fence.
 - **Артефакт:** soak/chaos report з усіма interventions і failure lineage. **Фаза/пріоритет:** C6/P0.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R06, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R06, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ### AF-RSI-030 — Прийняти самовдосконалення Lokvetia Core як окремий продукт
 
@@ -319,28 +319,28 @@ Core-on-Core не залежить від commercial non-game offering `AF-CLD-0
 
 - **Залежності:** 004, 031. **Reuse:** AF-002 events, AF-003 evidence, AF-016 memory, AF-028 recovery; game-specific application залишається в pack.
 - **Результат:** adapter пов’язує accepted event, causation, revision, rule digest, random draws, checkpoint та replay receipt; канон стану належить engine/pack.
-- **Приймання:** replay використовує записані inputs, не нову LLM генерацію; атомарний checkpoint зберігає active rule epoch та останню прийняту revision; causal queries розрізняють факт, belief і невідомий зв’язок.
-- **Негативні перевірки:** пропущена/подвійна подія, checkpoint до незавершеної транзакції, хибне твердження про глобальний детермінізм, unbounded offscreen catch-up.
+- **Приймання:** replay використовує записані inputs, не нову LLM генерацію; атомарний checkpoint зберігає active rule epoch та останню прийняту revision; causal queries розрізняють факт, belief і невідомий зв’язок. Checkpoint має committed revision/watermark, stable accepted jobs, rule/schema digest; migration від stale revision відхиляється. Load видає новий session epoch; final state commit повторно звіряє epoch/fence і атомарно фіксує delta/event/resource/job completion/dedup.
+- **Негативні перевірки:** пропущена/подвійна подія, checkpoint до незавершеної транзакції, хибне твердження про глобальний детермінізм, unbounded offscreen catch-up. RC12/13/15: lost accepted event між copy і switch, partial checkpoint, precheck reply до load з apply після load, виданий ресурс без job receipt.
 - **Артефакт:** replay/checkpoint contract, injected-gap fixtures і declared determinism envelope. **Фаза/пріоритет:** C7/P0.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ### AF-RSI-033 — Кваліфікувати повільні agent decisions поза ігровим tick
 
 - **Залежності:** 008, 009, 031. **Reuse:** AF-011 routing, AF-027 budgets, AF-044 runtime, AF-GC-041 effective provider evidence.
 - **Результат:** bounded asynchronous inference profile із cancellation, per-session costs, request expiry та domain fallback signal.
-- **Приймання:** deterministic engine не чекає LLM на кадрі; stale/cancelled reply відкидається; budget рахує retries й provider fallback; qualified envelope містить latency/frame impact, source/target versions і поведінку при outage.
-- **Негативні перевірки:** timeout на п’ять хвилин, відсутній usage receipt, callback після load, master key у player package, retry storm.
+- **Приймання:** deterministic engine не чекає LLM на кадрі; stale/cancelled reply відкидається; budget рахує retries й provider fallback; qualified envelope містить latency/frame impact, source/target versions і поведінку при outage. Late reply після cancel/load перевіряється також на authoritative apply boundary; відсутність provider stop observer лишає effect reconciliation, а не доказ зупиненого процесу.
+- **Негативні перевірки:** timeout на п’ять хвилин, відсутній usage receipt, callback після load, master key у player package, retry storm. Успішний precheck не дозволяє apply після зміни epoch; невідома provider charge не зникає з budget ledger.
 - **Артефакт:** runtime-profile contract, failure walkthrough і measurement protocol. **Фаза/пріоритет:** C7/P0.
-- **Підстави:** RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ### AF-RSI-034 — Оцінювати domain-rule candidates без присвоєння художньої влади
 
 - **Залежності:** 007, 016, 017, 031, 032. **Reuse:** AF-020 evaluation, AF-024 packs, AF-051 candidates; domain suite і людський playtest визначає автор продукту.
 - **Результат:** `world_rules` subject підтримує old/new rule digest, compatibility/migration, deterministic receipts і окремі human-quality evidence.
-- **Приймання:** schema/test pass не вважається доказом гумору; Core comparison не переписує world state і не публікує pack; comparison decision і scoped promotion authorization розділені; старий accepted consumer pin працездатний.
-- **Негативні перевірки:** новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes.
+- **Приймання:** schema/test pass не вважається доказом гумору; Core comparison не переписує world state і не публікує pack; comparison decision і scoped promotion authorization розділені; старий accepted consumer pin працездатний. Rule migration переключає coherent rule/schema/checkpoint/revision/writer binding; comparison, scoped grant і ActivationReceipt розділені. Qualification stale snapshot не переноситься на нові live writes без перевірки.
+- **Негативні перевірки:** новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes. RC07/09/12–16: revoke/ABA, міграція r10 після live r11, half checkpoint, mixed rule/state, rewind save повторює зовнішній grant.
 - **Артефакт:** domain-evolution integration receipt і versioned migration/recovery specification. **Фаза/пріоритет:** C7/P1.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R04, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R04, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
 
 ## C8 — довгий дослідницький горизонт
 

@@ -3,7 +3,7 @@
   "artifact_kind": "design_backlog",
   "not_runtime_import": true,
   "language": "uk",
-  "as_of": "2026-09-09",
+  "as_of": "2026-09-10",
   "baseline_commit": "c22954f144702fdf7a3da16cf58176baa345f7c4",
   "priority_semantics": "within phase; exact delivery sequencing is dependencies plus delivery-plan.md",
   "dependency_semantics": "Qualified references join both evolution manifests; existing_work_refs are reuse evidence, not claims of completion. Missing accepted integration receipts block implementation.",
@@ -71,10 +71,11 @@
       "acceptance_criteria": [
         "один generation digest однозначно визначає виконуваний склад",
         "старий manifest відтворюється після registry update",
-        "source/harness/model-weight зміни розрізняються. Model weights — окремий research profile, не обіцянка доступного training"
+        "source/harness/model-weight зміни розрізняються. Model weights — окремий research profile, не обіцянка доступного training. ActivationBinding містить target, монотонну activation_seq, manifest digest, authority epoch, writer fence і exact state binding",
+        "immutable GenerationManifest не посилається на власний майбутній ActivationReceipt"
       ],
       "negative_cases": [
-        "floating latest, змінений pack під тим самим version, підміна parent, невідомий component, повторне використання digest для інших bytes"
+        "floating latest, змінений pack під тим самим version, підміна parent, невідомий component, повторне використання digest для інших bytes. ABA A@41→B@42→A@43 не дозволяє старий grant для A@41; replay promotion ID не збільшує sequence"
       ],
       "dependencies": [
         "core:AF-RSI-001"
@@ -94,7 +95,8 @@
         "RSI-SURVEY:R02",
         "RSI-SURVEY:R03",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -174,10 +176,12 @@
       "acceptance_criteria": [
         "restart не створює другого promotion",
         "query пояснює походження чинної версії й показує всі спроби",
-        "ні experiment runner, ні review text не змінюють acceptance history"
+        "ні experiment runner, ні review text не змінюють acceptance history. EvidenceSeal фіксує весь admitted attempt set і явні missing/invalid dispositions",
+        "пізній receipt створює amendment/challenge, а не змінює seal. Hash не підміняє перевірку issuer. Adoption відновленого Git commit повторно зв’язує actual tree/diff bytes із validated snapshot",
+        "accepted result/gate/linkage мають replayable transition identity й reconciliation без другого gate"
       ],
       "negative_cases": [
-        "duplicate receipt, чужий tenant, неправильний generation, повторення команди після crash, спроба стерти негативний результат"
+        "duplicate receipt, чужий tenant, неправильний generation, повторення команди після crash, спроба стерти негативний результат. Пізній conflicting receipt не переписує accepted comparison і не допускає нову promotion до розв’язання challenge"
       ],
       "dependencies": [
         "core:AF-RSI-002",
@@ -196,7 +200,8 @@
         "RSI-SURVEY:R03",
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -382,10 +387,11 @@
         "preflight блокує нову роботу поза reservation",
         "Pause/Stop діє й на optimizer/reviewer",
         "restart зберігає спожите й дозволяє лише ті самі залишкові межі",
-        "hard expansion потребує нової authority"
+        "hard expansion потребує нової authority. Reservation існує до dispatch",
+        "невідомий effect/charge після timeout має bounded exposure disposition, а не автоматичне повернення бюджету"
       ],
       "negative_cases": [
-        "розбиття однієї дороговартісної мутації на дочірні безлімітні runs; retry обнуляє counter; підвищення budget через artifact text; missing usage не рахується нульовим"
+        "розбиття однієї дороговартісної мутації на дочірні безлімітні runs; retry обнуляє counter; підвищення budget через artifact text; missing usage не рахується нульовим. Cancel request або lease expiry не обнуляє вже можливу charge; без потрібної верхньої межі вартості наступний dispatch заблокований"
       ],
       "dependencies": [
         "core:AF-RSI-003",
@@ -404,7 +410,8 @@
         "RSI-SURVEY:R08",
         "RSI-SURVEY:R12",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -539,10 +546,11 @@
       "acceptance_criteria": [
         "відомі seeds, model/runtime versions, hardware profile і budgets збережено",
         "replay використовує accepted inputs",
-        "варіативність model calls чесно відокремлена від детермінованого replay accepted actions"
+        "варіативність model calls чесно відокремлена від детермінованого replay accepted actions. AttemptIntent persist до dispatch",
+        "receiver capability profile визначає допустимий lookup/dedup/retry. Unknown non-repeatable effect не повторюється без reconciliation, згідно з RC01–04 recovery contract"
       ],
       "negative_cases": [
-        "baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete"
+        "baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete. Provider без outcome lookup не оголошується exactly-once; cancel acknowledgment не підміняє observed stopped/no-effect receipt"
       ],
       "dependencies": [
         "core:AF-RSI-005",
@@ -564,7 +572,8 @@
         "RSI-SURVEY:R05",
         "RSI-SURVEY:R08",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -859,15 +868,17 @@
       "phase": "C3",
       "priority_within_phase": "P0",
       "kind": "delivery",
-      "outcome": "`candidate → evaluated → shadow → canary → promoted/rejected/rolled_back` з protected active pointer",
+      "outcome": "release lifecycle `candidate → qualified → shadow → canary → promoted → superseded | revoked` із protected ActivationBinding. Обов’язкові shadow/canary stages задає profile; rejection лишається comparison outcome, rollback — нова authorized activation, не стан для стирання старої історії",
       "acceptance_criteria": [
         "shadow не чинить повторних зовнішніх effects",
         "canary audience/profile має explicit scope",
-        "failed promotion зберігає previous accepted version",
-        "дані канарки не губляться при restore"
+        "failure до commit залишає binding незмінною, після commit виконується scoped recovery за ActivationReceipt",
+        "несумісний/revoked fallback веде до paused/degraded режиму",
+        "дані канарки не губляться мовчки при restore. Grant/revocation і activation serialized в одній qualified authority boundary",
+        "final commit перевіряє exact ActivationBinding і immutable state readiness. Root supervisor upgrade має independent authority, quiesced control state і fenced handoff"
       ],
       "negative_cases": [
-        "two concurrent promotions, crash після pointer switch, rejected generation повертається як latest, старе approval переноситься на нові bytes, canary виходить за audience"
+        "two concurrent promotions, crash після pointer switch, rejected generation повертається як latest, старе approval переноситься на нові bytes, canary виходить за audience. RC06–11/14/16: grant revoke race, ABA, concurrent candidates, lost ack, unreadied successor, revoked fallback; жоден candidate не завершує self-approval"
       ],
       "dependencies": [
         "core:AF-RSI-004",
@@ -888,7 +899,8 @@
         "RSI-SURVEY:R03",
         "RSI-SURVEY:R06",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -1499,11 +1511,12 @@
       "acceptance_criteria": [
         "за preregistered run length і workload profile неприйнята зміна не поширюється",
         "revoked evidence/skill відстежується до consumers",
-        "state і previous accepted generation відновлюються",
-        "не приховано ресурсне зростання"
+        "сумісний state і дозволене previous accepted generation відновлюються, а за відсутності придатного fallback зберігаються історія й recovery disposition у paused/degraded режимі",
+        "не приховано ресурсне зростання. Майбутня реалізація проходить застосовні до прийнятих Core profiles RC01–14/16 із recovery-contract.md на neutral fixtures, включаючи final-commit races, bounded unknown effects і supervisor handoff. Доменний RC15 перевіряється тільки при окремій кваліфікації C7",
+        "not-applicable/unsupported не рахується pass і не створює world prerequisite для standalone Core"
       ],
       "negative_cases": [
-        "помилка переживає rollback у shared cache, кілька слабких accepted changes дають сукупну деградацію, orphan optimizer далі витрачає ресурси, evaluator drift вимикає sentinel"
+        "помилка переживає rollback у shared cache, кілька слабких accepted changes дають сукупну деградацію, orphan optimizer далі витрачає ресурси, evaluator drift вимикає sentinel. Письмова таблиця RC не вважається виконаним chaos report; stale fence не дає права робити remote effect, який не підтримує fence"
       ],
       "dependencies": [
         "core:AF-RSI-012",
@@ -1526,7 +1539,8 @@
         "RSI-SURVEY:R06",
         "RSI-SURVEY:R12",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -1663,10 +1677,12 @@
       "acceptance_criteria": [
         "replay використовує записані inputs, не нову LLM генерацію",
         "атомарний checkpoint зберігає active rule epoch та останню прийняту revision",
-        "causal queries розрізняють факт, belief і невідомий зв’язок"
+        "causal queries розрізняють факт, belief і невідомий зв’язок. Checkpoint має committed revision/watermark, stable accepted jobs, rule/schema digest",
+        "migration від stale revision відхиляється. Load видає новий session epoch",
+        "final state commit повторно звіряє epoch/fence і атомарно фіксує delta/event/resource/job completion/dedup"
       ],
       "negative_cases": [
-        "пропущена/подвійна подія, checkpoint до незавершеної транзакції, хибне твердження про глобальний детермінізм, unbounded offscreen catch-up"
+        "пропущена/подвійна подія, checkpoint до незавершеної транзакції, хибне твердження про глобальний детермінізм, unbounded offscreen catch-up. RC12/13/15: lost accepted event між copy і switch, partial checkpoint, precheck reply до load з apply після load, виданий ресурс без job receipt"
       ],
       "dependencies": [
         "core:AF-RSI-004",
@@ -1686,7 +1702,8 @@
         "RSI-SURVEY:R03",
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -1716,10 +1733,11 @@
         "deterministic engine не чекає LLM на кадрі",
         "stale/cancelled reply відкидається",
         "budget рахує retries й provider fallback",
-        "qualified envelope містить latency/frame impact, source/target versions і поведінку при outage"
+        "qualified envelope містить latency/frame impact, source/target versions і поведінку при outage. Late reply після cancel/load перевіряється також на authoritative apply boundary",
+        "відсутність provider stop observer лишає effect reconciliation, а не доказ зупиненого процесу"
       ],
       "negative_cases": [
-        "timeout на п’ять хвилин, відсутній usage receipt, callback після load, master key у player package, retry storm"
+        "timeout на п’ять хвилин, відсутній usage receipt, callback після load, master key у player package, retry storm. Успішний precheck не дозволяє apply після зміни epoch; невідома provider charge не зникає з budget ledger"
       ],
       "dependencies": [
         "core:AF-RSI-008",
@@ -1739,7 +1757,8 @@
       "source_evidence": [
         "RSI-SURVEY:R08",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -1769,10 +1788,11 @@
         "schema/test pass не вважається доказом гумору",
         "Core comparison не переписує world state і не публікує pack",
         "comparison decision і scoped promotion authorization розділені",
-        "старий accepted consumer pin працездатний"
+        "старий accepted consumer pin працездатний. Rule migration переключає coherent rule/schema/checkpoint/revision/writer binding",
+        "comparison, scoped grant і ActivationReceipt розділені. Qualification stale snapshot не переноситься на нові live writes без перевірки"
       ],
       "negative_cases": [
-        "новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes"
+        "новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes. RC07/09/12–16: revoke/ABA, міграція r10 після live r11, half checkpoint, mixed rule/state, rewind save повторює зовнішній grant"
       ],
       "dependencies": [
         "core:AF-RSI-007",
@@ -1795,7 +1815,8 @@
         "RSI-SURVEY:R04",
         "RSI-SURVEY:R12",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:recovery"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",

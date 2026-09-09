@@ -1,6 +1,6 @@
 # Архітектура рекурсивного самовдосконалення Lokvetia Core
 
-Статус: запропонована архітектура, 2026-09-09. Жоден новий сервіс у цьому документі не вважається реалізованим. Джерела й фактичні межі: [аудит](repository-audit.md), [RSI](rsi-source-analysis.md), [спільна концепція](vision.uk.md).
+Статус: запропонована архітектура, редакція 2026-09-10. Жоден новий сервіс у цьому документі не вважається реалізованим. Джерела й фактичні межі: [аудит](repository-audit.md), [RSI](rsi-source-analysis.md), [спільна концепція](vision.uk.md).
 
 ## 1. Межа продукту
 
@@ -57,7 +57,7 @@ flowchart TB
 
 ## 4. Manifest кандидата та envelope покоління
 
-До запуску створюється незмінний `CandidateManifest`: artifact/base/parent digests, склад, compatibility, protocol, capability scope, input/memory views і заплановані migration/rollback. Саме його digest отримують runners. Після завершення окремий незмінний `DecisionEnvelope` посилається на candidate digest і sealed experiment receipts, comparison та рішення; він не змінює candidate bytes. Release `GenerationManifest` зв’язує прийнятий candidate із decision envelope та qualification evidence. Mutable alias `active` оновлюється атомарно й посилається лише на цей завершений manifest.
+До запуску створюється незмінний `CandidateManifest`: artifact/base/parent digests, склад, compatibility, protocol, capability scope, input/memory views і заплановані migration/rollback. Саме його digest отримують runners. Після завершення окремий незмінний `DecisionEnvelope` посилається на candidate digest і sealed experiment receipts, comparison та рішення; він не змінює candidate bytes. Release `GenerationManifest` зв’язує прийнятий candidate із decision envelope та qualification evidence. Mutable alias `active` оновлює ActivationBinding із монотонною sequence й посилається лише на завершений manifest; ActivationReceipt фіксується окремо. Повернення старого digest не повертає старих дозволів.
 
 Таблиця нижче описує сукупність полів трьох пов’язаних records; post-run evidence/decision поля не є вхідною ідентичністю кандидата. Виправлення створює новий record, а не дописує майбутній результат у вже захешований input.
 
@@ -71,7 +71,7 @@ flowchart TB
 | `protocol_id`, `epoch_id`, `experiment_ids` | Незмінні критерії цього порівняння |
 | `capability_scope` | Дозволені інструменти/шляхи/витрати; production credentials відсутні в експерименті |
 | `evidence_manifest`, `comparison_decision_id` | Post-run receipts, порівняння, невдачі, dissent, причина прийняття claim |
-| `promotion_authorization_id` | Окремий release record: exact release digest, expected incumbent, target/profile, migration evidence, scope rollout; comparison не надає цього права |
+| `promotion_authorization_id` | Окремий release record: exact release digest, expected ActivationBinding/sequence, authority epoch, target/profile, migration evidence, scope rollout; comparison не надає цього права |
 | `rollback_plan`, `migration_plan` | Повернення runtime + сумісний стан, не лише старий git SHA |
 | `consent_scope`, `retention_policy` | Чи можна використати дані для shared learning, термін зберігання |
 
@@ -87,14 +87,16 @@ Accepted означає «прийнято заяву про покращенн�
 
 | Збій | Обов’язкова поведінка |
 | --- | --- |
-| Worker зник після виконання | Supervisor знаходить receipt за idempotency key; статус unknown, доки результат не звірено; повтор не створює друге прийняття |
+| Worker зник після виконання | Supervisor виконує lookup за key лише в qualified receiver profile; без спостережуваного outcome статус unknown і non-repeatable effect не повторюється автономно |
 | Timeout verifier | Evidence з таймаутом збережено; немає pass за мовчанням; retry витрачає загальний бюджет |
-| Crash після чинного promotion authorization до alias update | Durable promotion ID + CAS expected incumbent і exact release digest; recovery звіряє незмінний scope та qualification. Comparison acceptance не замінює дозволу на rollout; без нього incumbent збережений |
+| Crash після чинного promotion authorization до alias update | Durable promotion ID + CAS expected ActivationBinding/sequence і exact release digest; final commit serialized із revocation та повторною перевіркою scope/state qualification. Comparison acceptance не замінює дозволу на rollout; без нього incumbent збережений |
 | Одночасно два успішні кандидати | Один alias CAS; інший rebased/re-evaluated від нового base, без «останній запис переміг» |
 | Кандидат змінив validator/config під час run | Artifact/protocol hash mismatch; результат invalid, усі часткові докази збережені |
 | Provider змінив модель без точного version pin | Позначити confounder; повтор paired comparison або знизити силу claim, не приписувати різницю Core |
 | Перевищено ліміт | Cancel child attempts, bounded drain receipts, status aborted/inconclusive; cap не підвищується кандидатом |
 | Повернення версії із несумісною schema | Відпрацьований migration/restore plan або rollout не допускається; вимога зберігати user state |
+
+Докладні transitions, receipt requirements, effect profiles, supervisor handoff та 16 статичних crash-сценаріїв — у [Q05 recovery contract](recovery-contract.md). Вони уточнюють цю схему й не засвідчують виконаних runtime tests.
 
 Admission, task/attempt IDs, cancellation та budgets повинні використовувати наявні Core механізми, включно з AF-GC-043. Це не окрема черга виконавців.
 
@@ -169,5 +171,7 @@ Product research portfolio збирає observed friction, failed tasks, support
 | EV-004 | Experience graph — projection існуючих memory/evidence | Другий storage authority породжує розходження scope/invalidation | Виміряна потреба в іншому storage з міграційним контрактом |
 | EV-005 | Gameplay state і world-rule release — різні транзакції | Будь-який діалог не може встановити новий executable code | Доведений новий domain language із bounded verifier |
 | EV-006 | Novelty, user value, correctness, cost — окремі осі | Один engagement score приховує втрату agency й дорожчі експерименти | Людське дослідження обґрунтувало нову систему критеріїв |
+
+**EV-007 (Q05):** activation — версійована capability boundary: monotonic sequence, serialized grant/revocation, immutable activation receipt, coherent state binding та явна межа зовнішніх effect profiles. [Обґрунтування й умови перевірки](recovery-contract.md).
 
 Початкова поставка — contracts + offline Core-on-Core experiment design. Реальні training runs, production self-modification, публічний game world та міграції даних починаються тільки в окремо запитаній реалізації.

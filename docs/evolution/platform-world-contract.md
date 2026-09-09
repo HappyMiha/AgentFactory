@@ -1,6 +1,6 @@
 # Контракт платформи, creator-продукту та живого світу
 
-Спільна проєктна редакція 1 · 2026-09-09. Цей документ дзеркально зберігається в обох репозиторіях; узгодженість перевіряється за однаковим вмістом. Це design contract, не реалізований runtime API.
+Спільна проєктна редакція 2 · 2026-09-10. Цей документ дзеркально зберігається в обох репозиторіях; узгодженість перевіряється за однаковим вмістом. Це design contract, не реалізований runtime API.
 
 ## 1. Хто відповідає за яку істину
 
@@ -47,7 +47,7 @@ Counterfactual branch починається з відомого checkpoint, п�
 
 ## 5. Save, паралельні дії та довгі світи
 
-Load save змінює `session_epoch`, інвалідує outstanding proposals і відновлює world/rule generation. Reply зі старого save, actor generation або простроченим tick відхиляється. Duplicate event не видає повторну нагороду. Одночасна витрата останнього ресурсу серіалізується authoritative runtime; у пілоті достатній один writer на world partition.
+Load save змінює `session_epoch`, інвалідує outstanding proposals і відновлює world/rule generation. Reply зі старого save, actor generation або простроченим tick відхиляється. Duplicate event не видає повторну нагороду. Одночасна витрата останнього ресурсу серіалізується authoritative runtime; у пілоті достатній один writer на world partition. Final commit повторно звіряє epochs/fence/revision і атомарно фіксує delta/event/resource/job completion/dedup; precheck перед load не дозволяє stale apply після load.
 
 Перший пілот: світ рухається під час активної сесії, з обмеженим і поясненим catch-up. Always-on економіка та NPC за відсутності гравця — окрема гіпотеза, не прихована серверна вимога. Немає покарання за вихід або потреби заходити, щоб захистити базове право на гру.
 
@@ -55,7 +55,7 @@ Load save змінює `session_epoch`, інвалідує outstanding proposals
 
 ## 6. Зміна правил і операційне повернення
 
-Migration package містить old/new rule digest, правила перетворення стану, збережені інваріанти, replay suite, preview affected entities, schema compatibility і recovery plan. Підготовка та validation відбуваються на копії checkpoint; active epoch switch — одна атомарна межа. Клієнт бачить версію і причину зміни до входу в оновлений світ.
+Migration package містить old/new rule digest, правила перетворення стану, збережені інваріанти, replay suite, preview affected entities, schema compatibility і recovery plan. Підготовка та validation відбуваються на копії checkpoint; active epoch switch має coherent rule/schema/checkpoint/revision/writer binding із монотонною activation sequence. Одна лише атомарна зміна alias не доводить сумісності стану; кандидатна копія від stale revision не може стерти пізні чесні дії. Клієнт бачить версію і причину зміни до входу в оновлений світ.
 
 **Історичний наслідок** не скасовується через невигідність для сюжету. **Технічний дефект** може вимагати operational rollback. У приватному світі автор може відновити checkpoint. У спільному світі сліпий restore старого snapshot зітре чесні пізні дії інших людей: перевага — compatibility repair, compensating events, компенсація втрат і прозора incident record. Повний restore допускається лише за окремою погодженою політикою спільного світу.
 
@@ -80,5 +80,7 @@ Migration package містить old/new rule digest, правила перет�
 - Відкликана Core skill не поширюється в нові game-pack generations; уже випущений pack має відому залежність і remediation path.
 - Rule migration і rollback перевіряються на save з чесними паралельними діями; правило не змінює минулу причину подій.
 - Приватні діалоги, evidence доступу й персональні тексти не потрапляють у shared optimizer context без відповідної згоди та purpose.
+
+[Q05 recovery contract](recovery-contract.md) задає final-commit перевірки, serialized revocation, ABA protection, профілі ефектів та RC01–16. Це деталізація чинних карток, не нова runtime capability.
 
 Конкретні delivery IDs і залежності перелічені в беклогах обох продуктів. Дослідження можна читати як єдину програму; воно не запускає код або фонові ігрові процеси.
