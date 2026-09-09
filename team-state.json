@@ -3835,6 +3835,36 @@
       "completed_commit": "3d42cf9606d1100ebe0887306300b5fa4aaaea5e",
       "reviewed_head": "379344919a1e2e685aa774317e395459e65f697b",
       "review_head": "379344919a1e2e685aa774317e395459e65f697b"
+    },
+    "core:AF-DOC-002": {
+      "title": "Design verified recursive improvement of Lokvetia Core",
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
+      "pr": null,
+      "dependencies": [],
+      "source_dependencies": [],
+      "resources": [],
+      "required_scopes": [
+        "core:docs/evolution",
+        "core:README.md"
+      ],
+      "scope_hints": [
+        "core:docs/evolution",
+        "core:README.md"
+      ],
+      "priority": "P1",
+      "milestone": "m0",
+      "optional": false,
+      "acceptance_summary": [
+        "Document source evidence, concepts, architecture and prioritized acceptance-ready backlog.",
+        "Core improves itself; Lokiravia consumes verified capabilities for creator and living-world products.",
+        "Preserve existing task IDs, release gates, claims and implementation files.",
+        "Planning documents and data only; no product code or deployment."
+      ],
+      "updated_at": "2026-09-09T19:28:03+00:00",
+      "note": "Owner-requested product and architecture planning; documentation only."
     }
   },
   "events": [
@@ -7237,6 +7267,16 @@
       "note": "Merged immutable image fix; Core and identity main rollouts and stream continuity passed. Public identity route awaits confirmation.",
       "branch": "agent/HappyDucky02/AF-DEPLOY-001-539fff83",
       "claim_id": "073da7bc-49c7-44a2-9221-554a7b0fba52"
+    },
+    {
+      "operation_id": "abdc45e8-7e79-41ad-97ca-1ce2f9daca5a",
+      "at": "2026-09-09T19:28:03+00:00",
+      "action": "catalogue-add",
+      "task": "core:AF-DOC-002",
+      "worker": "HappyDucky02",
+      "note": "Owner-requested product and architecture planning; documentation only.",
+      "branch": null,
+      "claim_id": null
     }
   ],
   "migration": {
