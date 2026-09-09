@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-09",
+  "purpose": "Source identity and honest reading coverage, not task instructions or redistributed books",
+  "files": [
+    {
+      "filename": "2607.07663v2.pdf",
+      "sha256": "a7622a4816c873ea45d511de909b5cbbf5c8f366a4515ea31e00ef2362e2a3f7",
+      "bytes": 5049523,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "id": "RSI-SURVEY",
+      "title": "Recursive Self-Improvement in AI: From Bounded Self-Refinement to Autonomous Research Loops",
+      "version": "arXiv:2607.07663v2",
+      "pages": 44,
+      "coverage": "Text extracted all pages; main argument pp1–30 read; bibliography pp30–44 targeted; Figure5 p18 visually inspected. No experiment reproduction."
+    },
+    {
+      "filename": "Марк Калашников – Во имя Веры (2).epub",
+      "sha256": "5f1047486ee6c79aa404f1ee4a28cd78bee2309b6899163b33b634055eb74fb0",
+      "bytes": 343645,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Во имя Веры"
+      ],
+      "creator": [
+        "Марк Калашников"
+      ],
+      "identifier": [
+        "urn:uuid:583568e4-2694-4a2d-8f86-e239df5efbbd"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Марк Калашников – Между сном и явью (1).epub",
+      "sha256": "63ae0ae93476f6c60019b3715ead71210ce41f3d8208722b7ac5a5758a66c1e1",
+      "bytes": 669799,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Трансформа: Между сном и явью"
+      ],
+      "creator": [
+        "Марк Александрович Калашников"
+      ],
+      "identifier": [
+        "urn:uuid:0058d61b-69a7-11e4-a35a-002590591ed2",
+        "isbn:978-5-699-76823-3"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Марк Калашников – Прайд (4).epub",
+      "sha256": "47bef8f31bd58e098d6126f1c300afa7134b30422719fb304a9f3aa84b4e3364",
+      "bytes": 820223,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Трансформа: Прайд (книга 4)"
+      ],
+      "creator": [
+        "Калашников М."
+      ],
+      "identifier": [
+        "urn:uuid:cb837448-7a6c-44ac-b786-27172a982ded",
+        "11348"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Марк Калашников – Пробуждение (6).epub",
+      "sha256": "45860966114d1b4cb1eed25166eef30c9327f6c6055b72f637691401455fa462",
+      "bytes": 1751831,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Пробуждение"
+      ],
+      "creator": [
+        "Марк Александрович  Калашников"
+      ],
+      "identifier": [
+        "urn:uuid:f086f897-d34c-4618-867a-5312f47bedc1"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Марк Калашников – Путь Зверя (3).epub",
+      "sha256": "ad7fc32dbc4b814a1d9b49cc14357533c69efdd4210f61e337574c9dc7d31c9c",
+      "bytes": 284040,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Трансформа 3"
+      ],
+      "creator": [
+        "Марк Калашников"
+      ],
+      "identifier": [
+        "urn:uuid:92a6f61e-89db-42dd-8876-2a973abe491a"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Марк Калашников – Разлом (5).epub",
+      "sha256": "e09a62ea06b3f9a92ee3b88766cf71ccaa2c16d6a67b91d043b0852ff36a069b",
+      "bytes": 1842520,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Трансформа: Разлом (книга 5)"
+      ],
+      "creator": [
+        "Калашников М."
+      ],
+      "identifier": [
+        "urn:uuid:d8a94056-4fd9-4fd8-8b85-a674812e6be9",
+        "11350"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Сергей Вишневский – Бегающий сейф (1) (1).epub",
+      "sha256": "6803936e32f95d61b30f7704438d183a6f3f213e1da5aefad05d8413b3588de4",
+      "bytes": 304056,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Бегающий сейф"
+      ],
+      "creator": [
+        "Сергей Вишневский"
+      ],
+      "identifier": [
+        "urn:uuid:be357d19-a6e2-4162-af0f-6dbb7c31d522",
+        "12791"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Сергей Вишневский – Звезда в руке и шило в ... (3).epub",
+      "sha256": "42153bb45ab515b2180080066b1be6549a9e688ae691a1c1559790455290889f",
+      "bytes": 230982,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Звезда в руке и шило в ..."
+      ],
+      "creator": [
+        "Сергей Вишневский"
+      ],
+      "identifier": [
+        "urn:uuid:90d5ed74-33d5-4c7c-ab2b-035ccfaa2ab5",
+        "12794"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    },
+    {
+      "filename": "Сергей Вишневский – Маго-ядерный едренбатон! (2).epub",
+      "sha256": "21f8a881dbc8f87628ccdb67e17cf30e45962bd05e8e6c531b9ee233a3a54983",
+      "bytes": 311094,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "title": [
+        "Маго-ядерный едренбатон!"
+      ],
+      "creator": [
+        "Сергей Вишневский"
+      ],
+      "identifier": [
+        "urn:uuid:6d990676-6159-490a-96d3-f5af72c87885",
+        "12793"
+      ],
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+    }
+  ],
+  "public_primary_sources": [
+    {
+      "id": "RSI-DGM",
+      "url": "https://arxiv.org/abs/2505.22954v3",
+      "coverage": "metadata and abstract; survey synthesis"
+    },
+    {
+      "id": "RSI-RQGM",
+      "url": "https://arxiv.org/abs/2606.26294v2",
+      "coverage": "metadata and abstract; survey synthesis"
+    },
+    {
+      "id": "RSI-AEVOLVE",
+      "url": "https://arxiv.org/abs/2606.20657v3",
+      "coverage": "metadata and abstract; newer than survey version"
+    },
+    {
+      "id": "RSI-SOUNDNESS",
+      "url": "https://arxiv.org/abs/2605.30329v1",
+      "coverage": "metadata and abstract; survey synthesis"
+    }
+  ]
+}
