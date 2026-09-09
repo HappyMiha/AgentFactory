@@ -3838,13 +3838,10 @@
     },
     "core:AF-DOC-002": {
       "title": "Design verified recursive improvement of Lokvetia Core",
-      "status": "claimed",
-      "owner": "HappyDucky02",
-      "branch": "agent/HappyDucky02/AF-DOC-002-53008b1f",
-      "scopes": [
-        "core:README.md",
-        "core:docs/evolution"
-      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
       "pr": null,
       "dependencies": [],
       "source_dependencies": [],
@@ -3866,8 +3863,8 @@
         "Preserve existing task IDs, release gates, claims and implementation files.",
         "Planning documents and data only; no product code or deployment."
       ],
-      "updated_at": "2026-09-09T19:28:18+00:00",
-      "note": "Research, architecture and backlog only; no product implementation.",
+      "updated_at": "2026-09-09T19:29:34+00:00",
+      "note": "Owner requested a unified planning approach without coordination claims; branch preserved.",
       "claim_id": "99e762a6-84ff-4d66-b9d2-ef999a4a5cd5"
     },
     "cloud:AF-DOC-002": {
@@ -7345,6 +7342,16 @@
       "note": "Literature-grounded living-world product and backlog planning; no implementation.",
       "branch": "agent/HappyDucky02/AF-DOC-002-285c48f5",
       "claim_id": "e726f18c-8581-4612-b02e-66dcda3dc8c2"
+    },
+    {
+      "operation_id": "9d35b983-4127-4a3a-bee5-712ac32982f0",
+      "at": "2026-09-09T19:29:34+00:00",
+      "action": "release",
+      "task": "core:AF-DOC-002",
+      "worker": "HappyDucky02",
+      "note": "Owner requested a unified planning approach without coordination claims; branch preserved.",
+      "branch": null,
+      "claim_id": "99e762a6-84ff-4d66-b9d2-ef999a4a5cd5"
     }
   ],
   "migration": {
