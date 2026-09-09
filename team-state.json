@@ -3869,13 +3869,10 @@
     },
     "cloud:AF-DOC-002": {
       "title": "Design living-world product direction and evolution backlog",
-      "status": "claimed",
-      "owner": "HappyDucky02",
-      "branch": "agent/HappyDucky02/AF-DOC-002-285c48f5",
-      "scopes": [
-        "cloud:README.md",
-        "cloud:docs/evolution"
-      ],
+      "status": "planned",
+      "owner": null,
+      "branch": null,
+      "scopes": [],
       "pr": null,
       "dependencies": [],
       "source_dependencies": [],
@@ -3897,8 +3894,8 @@
         "Preserve existing task IDs, release gates, claims and implementation files.",
         "Planning documents and data only; no product code or deployment."
       ],
-      "updated_at": "2026-09-09T19:28:52+00:00",
-      "note": "Literature-grounded living-world product and backlog planning; no implementation.",
+      "updated_at": "2026-09-09T19:29:39+00:00",
+      "note": "Owner requested a unified planning approach without coordination claims; branch preserved.",
       "claim_id": "e726f18c-8581-4612-b02e-66dcda3dc8c2"
     }
   },
@@ -7352,6 +7349,16 @@
       "note": "Owner requested a unified planning approach without coordination claims; branch preserved.",
       "branch": null,
       "claim_id": "99e762a6-84ff-4d66-b9d2-ef999a4a5cd5"
+    },
+    {
+      "operation_id": "da10ee68-d495-43dc-acf1-49b4cb6a10ee",
+      "at": "2026-09-09T19:29:39+00:00",
+      "action": "release",
+      "task": "cloud:AF-DOC-002",
+      "worker": "HappyDucky02",
+      "note": "Owner requested a unified planning approach without coordination claims; branch preserved.",
+      "branch": null,
+      "claim_id": "e726f18c-8581-4612-b02e-66dcda3dc8c2"
     }
   ],
   "migration": {
