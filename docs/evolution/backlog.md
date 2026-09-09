@@ -354,4 +354,3 @@ Core-on-Core не залежить від commercial non-game offering `AF-CLD-0
 
 C7 — паралельний consumer track для спільних E3/E4 доказів. C8 — необов’язковий research горизонт E5. Ці додатки не збільшують scope standalone Core acceptance AF-RSI-030.
 - **Підстави:** RSI-SURVEY:R09, RSI-SURVEY:R10, REPO-AUDIT, DESIGN:core-architecture, RSI-AEVOLVE
-

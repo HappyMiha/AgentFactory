@@ -4,6 +4,8 @@
 
 **AI teams. Human direction.**
 
+**Product & architecture research:** [Self-improving Core and living worlds — concept, 65-item joint portfolio, evidence and delivery plan](docs/evolution/README.md) (proposed; documentation only).
+
 [Lokvetia](https://lokvetia.com) · [Lokiravia game creation](https://github.com/HappyMiha/Lokiravia) · [Brand and migration](docs/brand/migration.md)
 
 **Моніторинг деплою:** [Deployment dashboard](docs/deploy-dashboard.html) · [Автодеплой і rollback](docs/autodeploy.md)
