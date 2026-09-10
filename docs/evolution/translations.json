@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "hash_basis": "utf8_lf",
+  "source_language": "uk",
+  "translation_language": "en",
+  "scope": "Complete Markdown portfolio plus Core's legacy Ukrainian GC backlog; canonical JSON and runtime status are not translated or modified.",
+  "review_boundary": "Hashes and structural checks detect drift, missing sections and invariant changes. They do not prove semantic equivalence or product acceptance.",
+  "translations": [
+    {
+      "source": "docs/evolution/backlog.md",
+      "translation": "docs/evolution/backlog.en.md",
+      "source_sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
+      "translation_sha256": "0a2b191b36e15357f39091ae55b064b5a02a4b47e5e7651031b217ab95ac97db"
+    },
+    {
+      "source": "docs/evolution/continuation.md",
+      "translation": "docs/evolution/continuation.en.md",
+      "source_sha256": "1e4e6a60e4af966d7070250bcca827e780a0ad69464d1796b28f0d189651bd38",
+      "translation_sha256": "b0fb71a93865d9cfb281a03a6a003ce51bc32be50934b9f659678adcfc375268"
+    },
+    {
+      "source": "docs/evolution/core-architecture.md",
+      "translation": "docs/evolution/core-architecture.en.md",
+      "source_sha256": "73efcbb7cc2e2cd5bb91265c2e9ff76cd29cff3fc0e0921fe48daaffef03d3dc",
+      "translation_sha256": "484b532f62d0ed1fb05204cad50420ceafa68d92a23671e80b1c909386f7a82c"
+    },
+    {
+      "source": "docs/evolution/counterfactual-evaluation.md",
+      "translation": "docs/evolution/counterfactual-evaluation.en.md",
+      "source_sha256": "390946b3badd220ec0f26c6cb81290bb9740c58d744618e939435107cdd28c21",
+      "translation_sha256": "ce79d01a4dd5c9f5a7914e2bffc15d57c37e5eaf7c911f9c873507ad5d1567d2"
+    },
+    {
+      "source": "docs/evolution/creator-evolution.md",
+      "translation": "docs/evolution/creator-evolution.en.md",
+      "source_sha256": "50b411eb1d175a8846314a35502c638cb2e356449282c92a27ef6291e0877738",
+      "translation_sha256": "658ae6e817598adedd6ee5ea3b84cf4c1329d949cd04b53fabd0d2fd14e1e7b1"
+    },
+    {
+      "source": "docs/evolution/delivery-plan.md",
+      "translation": "docs/evolution/delivery-plan.en.md",
+      "source_sha256": "7d3e731a805dce8163e8b8522f1fbbd830f96895c262c0ceda08ae3b8d140b72",
+      "translation_sha256": "3bfd9cea8737600c876fffc5f624f6aa30cc432df611f15a7932d17396636aa0"
+    },
+    {
+      "source": "docs/evolution/evaluator-succession.md",
+      "translation": "docs/evolution/evaluator-succession.en.md",
+      "source_sha256": "ed5ec86ac845613753d99c490a05bf64411f23b996bc6c0ced31016b2a7cb180",
+      "translation_sha256": "265e3fc03ec5496498aa8d65e78d0e582552b4f97845b376456d569b01007565"
+    },
+    {
+      "source": "docs/evolution/experience-improvement.md",
+      "translation": "docs/evolution/experience-improvement.en.md",
+      "source_sha256": "4f43440cf4e01bce4ea545ee462e6b9340cdfb8bd571e9d8045a41b2c663709f",
+      "translation_sha256": "0d94722ab67fe080b1abffe1e2549421758e220aac7b071c265b3de3bf967b0a"
+    },
+    {
+      "source": "docs/evolution/first-releases.md",
+      "translation": "docs/evolution/first-releases.en.md",
+      "source_sha256": "ceeb0131abf203171b54e32318dd1ba4bb8d28d9f7b67fe792b9b7c12b06e88a",
+      "translation_sha256": "7525fe562721f4d29bdd850fc040fd071de0ddf04ca79d6d839704b330394067"
+    },
+    {
+      "source": "docs/evolution/identity-continuity.md",
+      "translation": "docs/evolution/identity-continuity.en.md",
+      "source_sha256": "ed310aa5898699485dc608d15bd1e05f8a93c33f84e08d151ecc6d8e8dba76d6",
+      "translation_sha256": "dcf4ceded57b6fe206e3a9272d9618b71417a4f8af1830f2e6985ac7035c2ebc"
+    },
+    {
+      "source": "docs/evolution/implementation-identity-audit.md",
+      "translation": "docs/evolution/implementation-identity-audit.en.md",
+      "source_sha256": "0513f44c22f10c3681cf9b16adb7037df8bfbedb51279642af68c727a9f6e811",
+      "translation_sha256": "2318e0c0a03b9536442cdc88a7c69108f5966892d9b2de9d67760dd1677367b8"
+    },
+    {
+      "source": "docs/evolution/implementation-order.md",
+      "translation": "docs/evolution/implementation-order.en.md",
+      "source_sha256": "b434e29d0ae2b90e472f7565fe872d5a56228918a2a4a50786ce2ef43d72ba6d",
+      "translation_sha256": "08f8667624fe9a4a4017d8321fee65c0b8bf8dce10c88cea0eeb2df755bd862f"
+    },
+    {
+      "source": "docs/evolution/implementation-recovery-audit.md",
+      "translation": "docs/evolution/implementation-recovery-audit.en.md",
+      "source_sha256": "245a4f5f102cc34d22cc7ac370f0933b1169a54916f34bb268ddbfa4e76a2f6a",
+      "translation_sha256": "64ee10b997fbee218657420dcbf539f2bd1e2c7a853e1c8c68859a9622022b9f"
+    },
+    {
+      "source": "docs/evolution/iteration-review.md",
+      "translation": "docs/evolution/iteration-review.en.md",
+      "source_sha256": "b6c7afaff4ea05b6b784b89e48464030e306c6960fca7f65a68f7f98112393f1",
+      "translation_sha256": "12b86a51c4ce6144edf6f86df54c7ed961927f764d91ef3cb799aeb498db3eb5"
+    },
+    {
+      "source": "docs/evolution/language-policy.md",
+      "translation": "docs/evolution/language-policy.en.md",
+      "source_sha256": "7c46f0e039f87d3c5da37de980eb5bae7ceadddcee725f1209c2fd90697af1b5",
+      "translation_sha256": "f44ec4f83b805b6631705e18fddd45dc2003b6a1938c7f3a02ec0d79ddee3475"
+    },
+    {
+      "source": "docs/evolution/non-game-evaluation.md",
+      "translation": "docs/evolution/non-game-evaluation.en.md",
+      "source_sha256": "258133d9eaecb9da19917f085549f620db5fa14ac69a64536ac7ee2438051bc1",
+      "translation_sha256": "4f493ea311e5d1824f523421f621d88740d5d7e42b760ef957cb3693cb7046fc"
+    },
+    {
+      "source": "docs/evolution/platform-world-contract.md",
+      "translation": "docs/evolution/platform-world-contract.en.md",
+      "source_sha256": "fa261eff891a61b44a93d5bf4f4b80877a72e82c1fbcd47b97a3b25fe7741e1a",
+      "translation_sha256": "6aff60249523e79e356e8eea2a81d7517b11788569c110b96ab22e73becc21f2"
+    },
+    {
+      "source": "docs/evolution/README.md",
+      "translation": "docs/evolution/README.en.md",
+      "source_sha256": "10bcc5c441a2fc6c960f149f84f877c5db2be4b694055eb0f22ba4dee704e437",
+      "translation_sha256": "13ffd624469986d62f1f65c4d7967a36656ba8741875c4e3259310895c009719"
+    },
+    {
+      "source": "docs/evolution/recovery-contract.md",
+      "translation": "docs/evolution/recovery-contract.en.md",
+      "source_sha256": "446c278525a1a9ca643f6317781d47316673380621cc3211fd344fb247b723c5",
+      "translation_sha256": "f976dbea1a366e5e43515e8a47e897b480aa000c6897bdc42cd4a699aa5ccef6"
+    },
+    {
+      "source": "docs/evolution/repository-audit.md",
+      "translation": "docs/evolution/repository-audit.en.md",
+      "source_sha256": "e82f74515fa5ca6fec97b52221271d77602885abb54bb1bd453207c8bbbcd7fe",
+      "translation_sha256": "dbf0c4bc1f42ca0ff93a1eb5a83052d452a22dc739a12dc57c69a0d69b621898"
+    },
+    {
+      "source": "docs/evolution/rsi-source-analysis.md",
+      "translation": "docs/evolution/rsi-source-analysis.en.md",
+      "source_sha256": "b6f62af896a1417e5b3ecad2c9496367e83f16315f90f9ab5fea54924a33b62e",
+      "translation_sha256": "cbda419be5fa942e4b1198314033fe72a2968acd6cbf71f9ad6ebe48330a35d7"
+    },
+    {
+      "source": "docs/evolution/source-guide.md",
+      "translation": "docs/evolution/source-guide.en.md",
+      "source_sha256": "3ce4b5c55da01b01a741e4bb5b9d5d98ac0cca2a57221bba69845f2e2728e25e",
+      "translation_sha256": "ec411d183bda704c2dbf4f1609830c3a2c4398ee5275bf554cb015f8bf983c99"
+    },
+    {
+      "source": "docs/evolution/training-research.md",
+      "translation": "docs/evolution/training-research.en.md",
+      "source_sha256": "901976703d5f12df04b5951d8bc3c9cd881988f0e0b0a028e1aabbf450800bef",
+      "translation_sha256": "030d2de107519c667675c891829a808d6be6e8a78d5ae06cd9f5ba6d217f28e5"
+    },
+    {
+      "source": "docs/evolution/validation.md",
+      "translation": "docs/evolution/validation.en.md",
+      "source_sha256": "ba6b10d0c3e3811612a678dec4f85aed0c11bbda901726934be7976e4fe8e911",
+      "translation_sha256": "30776f8b3f2fc72157cd4f664b3fb66befa50e41528d41ee156f67683b2401f6"
+    },
+    {
+      "source": "docs/evolution/vision.uk.md",
+      "translation": "docs/evolution/vision.en.md",
+      "source_sha256": "dec331e5c3202df3d8cc216e2c9c98cbf0a8fc783f58cc88fe35e10cb3072bcb",
+      "translation_sha256": "90c217936fb79ef7d0c454ee875d80fc8148cc21b4d4cad4db7fe0571f550dc3"
+    },
+    {
+      "source": "docs/game-creator-backlog.uk.md",
+      "translation": "docs/game-creator-backlog.en.md",
+      "source_sha256": "e8da3c8ed882e597f921c6be99ed59673ce3cef674b499a60d4128787aa49b7f",
+      "translation_sha256": "b231a9d7f784e25ef6d8b073d8cb17b15b8cfe5fb42cac7f187a255f6b35bf80"
+    }
+  ],
+  "canonical_sources": [
+    {
+      "path": "docs/evolution/backlog.json",
+      "sha256": "88eb6ce231fefb9163addfdedbc97519dd381fcb4e92699a9ac48364241f5d30"
+    },
+    {
+      "path": "docs/evolution/implementation-order.json",
+      "sha256": "c3a698cd879166fb62e4e6598a4ba58dd2b67a8a58de1f50340b656541f83061"
+    },
+    {
+      "path": "docs/evolution/sources.json",
+      "sha256": "216ec5c1b320fd01295157c62061b66d6a40b012d9354ccca86fd0b414fe0b7f"
+    },
+    {
+      "path": "examples/autonomous-mission-backlog.json",
+      "sha256": "d4d91bac01db7d0fb1e9d901ea4d6f30d0357483a2dbcb7e5041b7cbd13eb776"
+    },
+    {
+      "path": "examples/backlog.json",
+      "sha256": "337a056c1e677a3c9763dd4c5f2f298f6afa68120207192b1f93cf35ba101045"
+    },
+    {
+      "path": "examples/development-backlog.json",
+      "sha256": "d450da092af6387c7a7dc39dac634d11fc9b0ba53ac7b80124066ef1e814557a"
+    },
+    {
+      "path": "examples/game-creator-backlog.json",
+      "sha256": "fbc804176abb4e6583d896542929abb424e4e58ccd41405363546962ac2b6473"
+    }
+  ]
+}

@@ -1,16 +1,18 @@
 # Lokvetia Core
 
-План розвитку обох продуктів: [єдиний порядок280 вимог](docs/evolution/implementation-order.md) · [склад перших релізів](docs/evolution/first-releases.md).
+English · [Українська — концепція, архітектура й беклог](docs/evolution/README.md)
+
+Development plan for both products: [unified order of 280 requirements](docs/evolution/implementation-order.en.md) · [first-release scope](docs/evolution/first-releases.en.md).
 
 <p><img src="src/agent_factory/static/brand-wordmark.svg" alt="Lokvetia Core" width="360"></p>
 
 **AI teams. Human direction.**
 
-**Product & architecture research:** [Self-improving Core and living worlds — concept, 65-item joint portfolio, evidence and delivery plan](docs/evolution/README.md) (proposed; documentation only).
+**Product & architecture research:** [Self-improving Core and living worlds — concept, 65-item joint portfolio, evidence and delivery plan](docs/evolution/README.en.md) (proposed; documentation only).
 
 [Lokvetia](https://lokvetia.com) · [Lokiravia game creation](https://github.com/HappyMiha/Lokiravia) · [Brand and migration](docs/brand/migration.md)
 
-**Моніторинг деплою:** [Deployment dashboard](docs/deploy-dashboard.html) · [Автодеплой і rollback](docs/autodeploy.md)
+**Deployment monitoring:** [Deployment dashboard](docs/deploy-dashboard.html) · [Automatic deployment and rollback](docs/autodeploy.md)
 
 Formerly **AgentFactory Core**. Lokvetia is the family brand; **Lokiravia** is the separate game creation product. The domain is the brand address, not a claim that a hosted service has launched. Existing installations, Python imports, configuration and stored state remain compatible.
 
@@ -46,7 +48,7 @@ The first product proof is a small Godot 2D game: idea → build → Play → fe
 
 The [Unreal and Gameplay AI plan](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/unreal-gameplay-plan.md) adds a separate direction: Core coordinates the AI team, an optional adapter controls Unreal through an existing MCP backend, and a game-owned runtime supplies NPC memory and world behavior. Its first proof is one level, three NPCs and one objective, a Windows package played without the editor, save/load, an AI outage and a second accepted build after feedback.
 
-The existing [42-task AF-GC manifest](examples/game-creator-backlog.json), [detailed Ukrainian backlog](docs/game-creator-backlog.uk.md), and older AF/AF-AMM IDs remain stable upstream references. A backlog entry or component test is not proof of the full creator journey.
+The existing [43-task AF-GC manifest](examples/game-creator-backlog.json), [detailed English backlog](docs/game-creator-backlog.en.md) ([Українська](docs/game-creator-backlog.uk.md)), and older AF/AF-AMM IDs remain stable upstream references. A backlog entry or component test is not proof of the full creator journey.
 
 ## Why Lokvetia Core
 
@@ -103,7 +105,7 @@ The existing [42-task AF-GC manifest](examples/game-creator-backlog.json), [deta
 
 The status labels below describe earlier component delivery records. They do not certify an end-to-end live coding route, a supported game engine, a beginner-friendly creator interface, or a secure hosted service. Use the [current audit](docs/product-audit-2026-09-05.md) and the phase-specific acceptance gates when deciding what a product may claim.
 
-Для швидкого старту користувача дивіться [україномовну інструкцію](docs/user-guide-uk.md) або готовий [PDF user guide](output/pdf/agent-factory-user-guide-uk.pdf).
+For a quick start in Ukrainian, see the [Ukrainian user guide](docs/user-guide-uk.md) or the [PDF user guide](output/pdf/agent-factory-user-guide-uk.pdf).
 
 | Capability | Status | Notes |
 |---|---|---|
