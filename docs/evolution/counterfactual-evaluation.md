@@ -74,6 +74,8 @@ E0 та E1 evaluators отримують **той самий frozen corpus** tra
 
 Паралельна зміна planner й evaluator потребує окремого preregistered 2×2 design з incumbent/challenger оцінками та зовнішніми anchors. Факт, що новий evaluator краще оцінив власний planner, не доводить приросту ні одного з них.
 
+[Q03 succession](evaluator-succession.md) додає criterion dependency inventory, придатність історичних scores після переходу та integrity measurement path. Заміна A0/A1 як treatment не є автоматично зміною спільного критерію. Незгода E0 потребує незалежного розбору, а re-score старих artifacts не доводить fresh generator gain. Усі чотири оцінки можуть погодитися через той самий пошкоджений telemetry channel; первинні receipts залишаються окремою перевіркою.
+
 ## 7. Що змінилося в беклозі та чого ще немає
 
 Уточнення лягають у чинні AF-RSI003/005/007/011/034 та AF-LW002/011/012/025/030. Нових IDs/edges немає. Для W0 обов’язкові тільки його domain contract та development fixtures; AF-RSI019/024/034 і AF-LW024/025 не стають новими prerequisites AF-LW030. Сезонний C10 лишається поза W0.

@@ -64,6 +64,14 @@
 
 [Q02 contract](identity-continuity.md) уточнив actor_generation як incarnation, per-record ContinuityPlan, semantic grants і versioned outcome projection; 8 статичних controls не є виконаними міграціями. Статично перевірено вузькі source paths Core roles/memory. Уточнено 4 Core та 4 world картки, без нових IDs/edges чи W0 scope. Незалежне рев’ю прибрало можливість candidate самому скорочувати inventory та переозначувати immutable receipts новим decoder. Q02 завершено; наступний прохід — Q03, повні методи/limitations DGM і RQGM для fixed/evolving evaluator.
 
+## Прохід 8 — Q03: епохи оцінювання й межа рекурсії (2026-09-10)
+
+Прочитано методи/результати/limitations DGM v3 і RQGM v2 та релевантні технічні додатки: 68 сторінок із 110 extracted, з точними ranges/hashes, без твердження про всі listings/references. Первинна матриця відділяє повідомлення авторів від нашого дизайну; EPUB coverage незмінне, зовнішні experiments не відтворено.
+
+[Evaluator succession](evaluator-succession.md) та Q03-E01–10 уточнюють criterion dependencies, snapshot/cutover, stale ranking без втрати історії, measurement path, непрямий test exposure, quality-conditioned evaluator labels, повні витрати й O2 comparison з прийнятим O1. Незалежне рев’ю відділило treatment A0/A1 від criterion generation та prior-access snapshot від нового access ledger. Зміна самого supervisor лишається можливою через окрему qualification; власний candidate не переписує чинну перевірку себе.
+
+Уточнено п’ять чинних Core-карток AF-RSI020–024; 65 IDs/239 edges та scope W0 збережено. Спільний контракт узгоджено в обох продуктах, код не змінювався. Q03 завершено як primary-source/design pass. Далі Q04: повний A-Evolve v3 та перевірка меж training claims без запуску training.
+
 ## Межа висновку
 
 Перевірки структури, посилань, DAG і чинних контрактних validators наведено у `validation.md`. Вони засвідчують узгодженість проєктної поставки E0. E1–E5, успішна RSI, людський досвід і готова гра залишаються майбутніми доказами. Гіпотези можуть бути відхилені; backlog не вимагає назвати кожне покоління успішним.

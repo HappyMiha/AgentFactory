@@ -44,6 +44,10 @@
 
 Дві повні глави звірені з original EPUB XML/NCX і hashes. Paragraph-text/LF counts розділені; невідомий pass1 overlap збережено як unknown, не нуль. Перевірено source manifest parity, Markdown/JSON, 65 IDs/239 edges, DAG/closures, refs/links, shared docs і docs-only scope. Q02-I01–08 — authored static controls; source audit обмежений roles/memory paths, не повним execution stack. Чинні repository validators повторені з їхніми static/synthetic межами; model/engine/human runs не виконувалися.
 
+## Q03, 2026-09-10
+
+PDF hashes, pypdf metadata/version/page counts і exact reading ranges звірено з приватними ledger; extraction відділена від читання. Перевірено шість primary-source anchors, десять унікальних static controls, source manifest parity, Markdown/JSON, unchanged 65 IDs/239 edges, DAG/closures, refs/links, 15 identical shared docs та docs-only scope. Незалежні рецензії звірили джерельні межі й criterion/treatment/access/activation semantics. Чинні repository validators повторені з їхніми static/synthetic межами. Q03-E01–10 не виконувалися проти runtime; Core, model, engine, training та human experiments відсутні.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.

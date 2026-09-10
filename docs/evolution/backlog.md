@@ -195,46 +195,46 @@
 
 - **Залежності:** 001, 002, 005, 006, 019. **Reuse:** AF-020 evaluation, AF-022 ADR, AF-024 evaluation packs.
 - **Результат:** evaluator manifest з rubric, tools, dataset construction, judgment method, cost і known failure envelope.
-- **Приймання:** чинний frozen protocol та незалежна holdout authority перевіряють challenger evaluator; evaluator не приймає власну заміну й не змінює historical verdicts.
-- **Негативні перевірки:** evaluator/optimizer одночасно послаблюють metric; champion переписано під час comparison; новий evaluator бачить sealed labels.
-- **Артефакт:** evaluator candidate і comparison report проти незмінного anchor. **Фаза/пріоритет:** C4/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture
+- **Приймання:** чинний frozen protocol та незалежна holdout authority перевіряють challenger evaluator; evaluator не приймає власну заміну й не змінює historical verdicts; CriterionManifest фіксує не тільки judge, а generation/sampling/replay/scoring dependencies, outcome meaning, prior-access snapshot, політику наступних звернень і qualification envelope; профіль задає повний inventory, невідомі залежності залишаються unresolved; нова епоха активується з узгодженим criterion/selection snapshot за Q05; джерело первинного факту, telemetry producer і decoder кваліфіковані окремо від judge.
+- **Негативні перевірки:** evaluator/optimizer одночасно послаблюють metric; champion переписано під час comparison; новий evaluator або його діагност отримує sealed labels; той самий checker помилково приховує змінений task sampler; crash перемикає evaluator без його selection view.
+- **Артефакт:** evaluator candidate, CriterionManifest та comparison/transition report проти незалежних anchors. **Фаза/пріоритет:** C4/P0.
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, RSI-RQGM:RQGM-01, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:evaluator-succession
 
 ### AF-RSI-021 — Кваліфікувати калібрування й систематичні помилки evaluator
 
 - **Залежності:** 007, 020. **Reuse:** AF-020 criterion evidence, AF-021 hostile cases, AF-023 independent coordination.
 - **Результат:** eval-of-eval suite з зовнішньо перевірними outcomes, blinded human labels для qualitative cases, calibration і false-accept/false-reject analysis.
-- **Приймання:** упередженість на користь автора, довгих відповідей, престижної моделі й оптимістичного proposal виміряна; abstain/inconclusive — дозволені; reviewer disagreement збережено. Frozen qualitative corpus включає відмінності між наміром автора, досвідом адресата, повтором-парафразом і неповними відповідями. Зовнішній розбір перевіряє, чи evaluator зберіг uncertainty та правильну область claim.
-- **Негативні перевірки:** красивий неправильний research plan, short correct answer, самопосилання на confidence, протилежні labels після перестановки імен моделей. Самозвіт про теплий тон або позитивні відповіді тільки тих, хто залишився, підміняють якість для всіх користувачів.
+- **Приймання:** упередженість на користь автора, довгих відповідей, престижної моделі й оптимістичного proposal виміряна; abstain/inconclusive — дозволені; reviewer disagreement збережено; frozen qualitative corpus включає відмінності між наміром автора, досвідом адресата, повтором-парафразом і неповними відповідями; зовнішній розбір перевіряє uncertainty та область claim; anchor exposure audit охоплює діагностів, feedback, aggregate scores і memory, а final confirmation відділена від adaptive selection; panel acceptance та зовнішня фактична правильність мають різні labels і permitted claims; blind quality slices перевіряють добрі/погані роботи різного авторства, parity rates не дорівнює fairness, кілька reviews одного artifact рахуються як кластер, partial/strict outcomes збережені окремо.
+- **Негативні перевірки:** красивий неправильний research plan, short correct answer, самопосилання на confidence, протилежні labels після перестановки імен моделей; позитивні відповіді тільки тих, хто залишився, підміняють якість для всіх; solver не бачить tests, але test-aware diagnostic передає їх у skill, після чого corpus названо untouched holdout; збіг суддів названо ground truth; missing telemetry marker названо відсутністю порушення, valid compatible format безпідставно rejected або якісний artifact відхилено заради parity.
 - **Артефакт:** calibration report і permitted evaluation envelope; thresholds fixed before run. **Фаза/пріоритет:** C4/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, RSI-DGM:DGM-03, RSI-RQGM:RQGM-02, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement, CONTRACT:evaluator-succession
 
 ### AF-RSI-022 — Розділити agent gain та evaluator drift при коеволюції
 
 - **Залежності:** 019, 020, 021. **Reuse:** AF-027 comparison telemetry, AF-022 methodology versioning.
 - **Результат:** 2×2 cross-evaluation: old agent/new agent × old evaluator/new evaluator плюс зовнішній sentinel suite.
-- **Приймання:** видно, чи поліпшився task result, чи лише змінився спосіб оцінки; prior released generations залишаються оціненими за своїми original protocols; methodology upgrade має separate decision.
-- **Негативні перевірки:** gain зникає на old evaluator, новий evaluator приймає poisoned candidates, drift маскується aggregate score, selective cross-cell omission.
-- **Артефакт:** cross-evaluation matrix, dissent та methodology adoption/rejection receipt. **Фаза/пріоритет:** C4/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture
+- **Приймання:** видно, чи поліпшився task result, чи лише змінився спосіб оцінки; prior released generations зберігають original protocols/verdicts; methodology upgrade має separate decision; stale fitness/posteriors/ranks та залежні distilled conclusions виключаються з нового selection view за criterion dependency inventory, raw receipts не стираються; нові оцінки мають нові records, старий corpus не названо fresh generation; запізнілі результати лишаються historical до applicability decision і не обнуляють витрати; незалежна adjudication може встановити помилку incumbent evaluator.
+- **Негативні перевірки:** gain зникає на old evaluator і без зовнішнього розбору проголошено провал challenger; новий evaluator приймає poisoned candidates; drift маскується aggregate score або selective cross-cell omission; criterion switch залишає stale champion; re-score старих outputs видано за нову поведінку генератора.
+- **Артефакт:** cross-evaluation matrix, criterion dependency inventory, rebuilt selection view, dissent та methodology adoption/rejection receipt. **Фаза/пріоритет:** C4/P0.
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, RSI-RQGM:RQGM-01, RSI-RQGM:RQGM-03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:evaluator-succession
 
 ### AF-RSI-023 — Порівнювати покоління самого optimizer
 
 - **Залежності:** 007, 010, 012, 019. **Reuse:** AF-011 routing, AF-023 tournament/coordination, AF-008 bounded loop.
 - **Результат:** optimizer subject має versioned proposal policy, search strategy, mutation operators, memory retrieval і experiment selection.
-- **Приймання:** optimizer N і N+1 стартують з однакового knowledge/budget на відкладених задачах; вимірюються independent accepted improvements per total cost і time-to-useful-change, включно з невдалими пошуками.
-- **Негативні перевірки:** challenger отримав training traces тестового періоду, більше parallel compute без обліку, score за кількістю proposals/commits, копіювання готового challenger solution.
+- **Приймання:** optimizer N і N+1 стартують з однакового дозволеного knowledge/budget на відкладених задачах; вимірюються independent accepted improvements per total cost і time-to-useful-change, включно з невдалими пошуками; одиниця корисного improvement, resource caps, ціна та adaptive-selection policy фіксуються до досліду; облік включає creation/qualification, expansions, judges, archive re-evaluation, anchors і confirmation; conditional reuse efficiency позначається окремо; архівований stepping stone не отримує release eligibility від самого search score; незалежні search runs відділені від повторів оцінки одного агента, starting archive/diagnosis/selection контрольовані або відкрито включені в treatment bundle.
+- **Негативні перевірки:** challenger отримав training traces тестового періоду; більше parallel compute без обліку; score за кількістю proposals/commits або поділ однієї зміни на кілька accepted artifacts; копіювання готового challenger solution; equal evaluation calls приховали дорожчу модель, додаткові перевірки або creation cost; revoked predecessor повернуто через новий rank.
 - **Артефакт:** optimizer-generation benchmark і counterfactual ablation. **Фаза/пріоритет:** C4/P0.
-- **Підстави:** RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R08, RSI-DGM:DGM-01, RSI-DGM:DGM-02, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:evaluator-succession
 
 ### AF-RSI-024 — Замкнути перший bounded рекурсивний цикл
 
 - **Залежності:** 017, 019, 022, 023. **Reuse:** AF-AMM epochs/checkpoints, AF-008 loop, AF-053 delivery.
 - **Результат:** Core запускає optimizer N; той пропонує N+1; зовнішня процедура приймає/відхиляє N+1; прийнятий N+1 бере участь у створенні наступного Core/harness покоління.
-- **Приймання:** typed lineage O0→O1→O2 показує, що прийнятий optimizer O1 запропонував зміну самого optimizer/method O2; product artifacts оцінюються окремо на fresh tasks; stopping/depth/cost bounds фіксовані; зовнішній anchor лишається незалежним; без виміряної користі O2 зберігається як відхилена/невизначена зміна без сильнішого claim.
-- **Негативні перевірки:** самопризначення N+1 чемпіоном, незавершений epoch оголошено successor, depth limit обходиться новим mission ID, цикл триває після Stop.
+- **Приймання:** typed lineage O0→O1→O2 показує, що прийнятий optimizer O1 запропонував зміну самого optimizer/method O2; product artifacts оцінюються окремо на fresh tasks; користь O2 порівнюється з безпосереднім прийнятим O1 за спільного protocol/knowledge/resource envelope та ablation без нового методу; stopping/depth/cost bounds фіксовані, а зовнішній anchor незалежний; qualification/supervisor не змінюється власним candidate під час його перевірки, власна зміна control process має окремий handoff за Q05; без виміряної користі O2 зберігається як відхилена/невизначена зміна, локальний успіх O1 і recursive participation не перетворюються на positive next-step gain; рольова карта й execution receipt підтверджують фактичне використання зміненого operator, а не тільки наявність його файла.
+- **Негативні перевірки:** самопризначення N+1 чемпіоном; незавершений epoch оголошено successor; depth/cost limit обходиться новим mission ID; цикл триває після Stop; O2 кращий лише за O0, але гірший за O1; benchmark або panel curve названо доказом автономної еволюції всього control loop чи правильної продуктової мети.
 - **Артефакт:** recursive lineage bundle з відтворюваним rejection/recovery path. **Фаза/пріоритет:** C4/P0.
-- **Підстави:** RSI-SURVEY:R08, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R08, RSI-SURVEY:R12, RSI-DGM:DGM-02, RSI-RQGM:RQGM-03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:evaluator-succession
 
 ## C5 — поліпшувати вибір задач і напрям розвитку самого продукту
 

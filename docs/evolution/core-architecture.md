@@ -124,7 +124,7 @@ Shadow не здійснює повторної зовнішньої дії аб
 
 Optimizer O0 створює candidate optimizer O1; зовнішній протокол приймає або відхиляє O1. Обидва отримують новий, однаковий portfolio задач і бюджет та виробляють дочірні **продуктові** кандидати. Порівнюємо accepted useful improvements, coverage, time-to-evidence, cost, regressions і частку чесно припинених невдалих напрямів. Це доказ optimizer improvement.
 
-Сильніший recursive-method claim потребує typed lineage `O0 → proposed O1 → independently accepted O1 → O1-produced optimizer/method O2`. O2 є зміною самого способу покращення, а не лише кращим task artifact. Окремий fresh comparison має встановити його корисність; сам зв’язок походження доводить участь у циклі, але не приріст. Провал O2 збережено як провал; він не стирає локального поліпшення O1 і не дає права заявляти, що кожна генерація краща.
+Сильніший recursive-method claim потребує typed lineage `O0 → proposed O1 → independently accepted O1 → O1-produced optimizer/method O2`. O2 є зміною самого способу покращення, а не лише кращим task artifact. Окремий fresh comparison проти безпосереднього прийнятого O1 має встановити його корисність; сам зв’язок походження доводить участь у циклі, але не приріст. Потрібен receipt фактичного використання зміненого методу, а не тільки його нового файла. Провал O2 збережено як провал; він не стирає локального поліпшення O1 і не дає права заявляти, що кожна генерація краща.
 
 Заявляти recursive gain можна лише в межах виміряного перенесення. Якщо G1 лише краще вирішує знайомі задачі, приймаємо task improvement, але не method improvement. Якщо мета змінилася між поколіннями, scores різних епох не з’єднуємо в одну криву «інтелект зростає».
 
@@ -137,6 +137,8 @@ Evaluator `E_n` фіксується в епосі n. Candidate `E_n+1` пере
 Спочатку `E_n+1` працює в shadow. Зберігаються обидві оцінки та матриця розбіжностей. Нову епоху відкриває окреме рішення з objective version, reason, calibration evidence та cross-epoch bridge set. Generator та evaluator не схвалюють один одного в одному нерозділеному циклі. Інша назва моделі або роль у prompt не гарантує незалежності; потрібні різні повноваження, незабруднені дані й external anchors.
 
 Базові права користувача, evidence integrity, privacy boundary, бюджет і спосіб зупинки не оптимізуються приховано разом із reward. Пропозиція змінити їх належить до відкритого продуктового рішення власника, з окремим impact review. Це дає можливість змінити рамку, не змінюючи її непомітно.
+
+[Q03 evaluator succession](evaluator-succession.md) визначає criterion dependencies, узгоджений cutover і перебудову поточного selection view без стирання історії. Treatment A0/A1 відділене від генератора задач; frozen prior-access snapshot — від журналу наступних звернень. Старі бали, запізнілі receipts, витрати й archive eligibility мають різну семантику. Десять відкритих статичних controls уточнюють критерії; первинні DGM/RQGM методи не є доказом виконаної Core RSI.
 
 ## 9. Experience graph та довготривала пам’ять
 
