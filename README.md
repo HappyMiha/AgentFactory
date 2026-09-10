@@ -1,5 +1,7 @@
 # Lokvetia Core
 
+План розвитку обох продуктів: [єдиний порядок280 вимог](docs/evolution/implementation-order.md) · [склад перших релізів](docs/evolution/first-releases.md).
+
 <p><img src="src/agent_factory/static/brand-wordmark.svg" alt="Lokvetia Core" width="360"></p>
 
 **AI teams. Human direction.**

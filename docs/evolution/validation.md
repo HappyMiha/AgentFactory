@@ -78,3 +78,16 @@ PDF hashes, pypdf metadata/version/page counts і exact reading ranges звір�
 ## D01 — анонімізація поточного дерева
 
 Перевірки: дев’ять source identities без назв/авторів/імен файлів; незмінні SHA-256, bytes, Q01/Q02 coverage; парність джерел в обох репозиторіях; нові літературні шляхи й anchors; відсутність ebook-файлів; ignore guards із позитивним контролем продуктового PDF. Посилений пошук ловить стару назву корпусу в приватному шляху й назву книги в chapter anchor. Перевірка доступної історії не виявила наданих книжкових файлів, але історичні бібліографічні згадки зберігаються. Продуктовий runtime не запускався.
+
+
+## D02–D04 — підсумкова перевірка узгодженого плану
+
+- Exact bijection:280 requirements;44 containers окремо;796 canonical hard edges, без missing targets/cycles. Назви, kind, parents, raw labels, existing refs, source items і AC pointers/digests звірено зі всіма шістьма manifests.
+- Source SHA-256 і65 authoring Markdown bindings перевірено по bytes Git blobs зазначених commits; platform checkout comparison явно нормалізує CRLF до LF. Item digest нормалізується як описано в JSON.
+- Усі24 closure/allocations перераховано; earliest allocation, memberships, deterministic topological order і depth узгоджені. Exact gates: Core030=30; workbench015=12; CLD020=20; LW030=22; C-PILOT=36 без AF032–035/AMM gates. W-FIRST→W-DEPTH записано як release policy, не legacy dependency.
+- Три нові shared artifacts ідентичні між репозиторіями; разом21 shared file. Markdown/JSON усіх65 RSI/LW карток та239 нових edges лишаються узгодженими. Links і diff whitespace перевірено; canonical manifests не змінено.
+- Чинний Core game-creator validator:47 entries/43 executable, schema round-trip, labels, DAG, milestones, gates і roadmap agreement пройдені. Lokiravia validators:18 synthetic engine/target results і13 synthetic scenarios/5 gates пройдені; engine не запускався, реальний build не приймався.
+- Приватність поточного дерева й reference ignore guards повторно перевірені. Незалежний cleanup scan включав усі доступні текстові типи; нові публічні артефакти не містять книжкових назв чи приватних шляхів джерел. Історію Git не переписано.
+- Незалежні рев’ю закрили CRLF source binding, global console gate та ранній reuse scope. Матриця I-REUSE перевірена проти19 consumers/45 unique legacy refs; потрібні capabilities не відкладаються до broad platform release.
+
+Це evidence якості документації та її traceability. Unit/conformance fixtures не є live product acceptance. Продуктовий код, залежності, model/engine/training/deployment у цьому циклі не змінювались і не запускались.

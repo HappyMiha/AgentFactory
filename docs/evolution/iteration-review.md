@@ -112,3 +112,14 @@ Q08 завершено як source/design pass. Для поточної черг
 Літературні джерела переведено на LIT-A/LIT-B і номери томів. Вилучено назви, авторів, ідентифікаційні метадані та старі назви аналітичних файлів з поточного дерева. Відповідність лишається локально поза Git; hashes, anchors, точне покриття й дослідницькі висновки збережено. Додано ignore guards для книжок і приватних extraction caches; продуктові PDF дозволені. Незалежне рев’ю знайшло три старі шляхи й одну назву в chapter anchor; виправлено перед комітом.
 
 Перевірено 2 408 доступних історичних blobs: самих наданих файлів і перевірених текстових уривків не виявлено. Старі коміти містять бібліографічні згадки; історію не переписано. Це очищення поточної версії, не видалення минулих комітів.
+
+
+## D02–D04 — один порядок і перші релізи, 2026-09-10
+
+**D02.** Зіставлено шість canonical manifests: 280 вимог (183 Core,97 Lokiravia),796 hard dependencies,44 hierarchy containers. Нові65 RSI/LW карток включено до наявних AF/GC/AMM/CLD вимог без зміни IDs, criteria або edges. Derived implementation-order задає24 release/direction bands, exact closures, first allocation і стабільний топологічний порядок. First allocation означає перевірку reuse/прогалин, а не повторну реалізацію.
+
+**D03.** Зафіксовано C-PILOT36-task obligation map із вузьким capability acceptance, L-PREVIEW8-task map, C-WORKBENCH12, L-CREATOR20 і W-FIRST22. Окремо визначено C-SELF019, C-METHOD024, C-RSI030, наступний світ і чинні commercial/platform gates. Windows writable sandbox blocker, Hermes prerequisite, unsaved draft gap, missing Play/restore та окремий living-world profile стали явними роботами/межами приймання. Виправлено застарілий installation pin у Lokiravia; dependency та historical capability maps не змінено.
+
+**D04.** Три незалежні перевірки охопили структуру/приватність, Core і Lokiravia. Закрито всі матеріальні findings: source hashes прив’язано до pinned Git blobs з явною CRLF→LF перевіркою checkout; any_console_support gate збережено глобально; I-REUSE вимагає early capability qualification до споживача, навіть якщо full legacy task має пізню allocation. Матриця19 consumers точно охоплює45 refs RSI001–019. Raw existing_work_refs збережено; кожен має потребу explicit consumption disposition.
+
+Підсумок цього циклу — узгоджений документаційний план, придатний до оцінювання прогалин і старту реалізації за окремим дорученням. Runtime, game experience, model improvement та релізне приймання не заявлені. Q09/Q10 залишаються зовнішніми входами для людського evidence/ресурсів; вони не завадили завершити цей план. Повторні автономні проходи завершуються після перевіреного commit/push; нові картки заради активності не додаються.
