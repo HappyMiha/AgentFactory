@@ -13,6 +13,8 @@
 | `CONTRACT:experience-improvement` | [Q01 користь і досвід](experience-improvement.md) | Власні критерії та відкриті design controls; не експериментальні результати |
 | `TRANSFORMA:TR-S01`…`TR-S16` | Перший аналіз «Трансформи» у Lokiravia | Конкретна прочитана сцена; пояснення персонажа відділене від авторитетного факту |
 | `TRANSFORMA:TR2-01`…`06` | Другий критичний прохід у Lokiravia | Перегляд попереднього висновку, новий контекст і наша проєктна відповідь |
+| `TRANSFORMA:TR3-01`…`TR3-06` | Третій прохід «Трансформи» у Lokiravia | Дві повні глави; точний pass обсяг із невідомим lifetime overlap |
+| `CONTRACT:identity-continuity` | [Q02 identity](identity-continuity.md) | Власна семантика переходів і статичні контроли; не runtime migration proof |
 | `REPO-AUDIT` | [Аудит репозиторіїв](repository-audit.md) | Поточні capabilities та gaps на exact baseline commits; не гарантія майбутньої готовності |
 | `CONTRACT:counterfactual-evaluation` | [Q06 порівняння](counterfactual-evaluation.md) | Власний experimental design і паперові контролі; не execution/human/RSI result |
 | `CONTRACT:recovery` | [Q05 переходи й відновлення](recovery-contract.md) | Власні статичні interleaving scenarios, source-audit та вимоги, не виконані crash tests |
@@ -30,6 +32,7 @@
 - [Другий прохід «Бігаючого сейфа»: три повні глави](https://github.com/HappyMiha/Lokiravia/blob/docs/living-systems-rsi/docs/evolution/running-safe-second-pass.md).
 - [«Трансформа»: шість томів і структурне покриття](https://github.com/HappyMiha/Lokiravia/blob/docs/living-systems-rsi/docs/evolution/transforma-analysis.md).
 - [Другий критичний прохід «Трансформи»](https://github.com/HappyMiha/Lokiravia/blob/docs/living-systems-rsi/docs/evolution/transforma-second-pass.md).
+- [Третій прохід «Трансформи»: ідентичність і ціна перетворення](https://github.com/HappyMiha/Lokiravia/blob/docs/living-systems-rsi/docs/evolution/transforma-third-pass.md).
 - [Оригінальна гра «Місто, яке винне тобі послугу»](https://github.com/HappyMiha/Lokiravia/blob/docs/living-systems-rsi/docs/evolution/living-world-design.md).
 - [Архітектура самовдосконалення Core](https://github.com/HappyMiha/Lokvetia-Core/blob/docs/living-systems-rsi/docs/evolution/core-architecture.md).
 
@@ -42,6 +45,8 @@ Survey: текст витягнуто з усіх 44 сторінок; проч�
 «Бігаючий сейф»: проіндексовано три EPUB у порядку spine, 7,585 абзаців / 1,174,753 символи. Контрольований перший прохід — 629 повних абзаців / 91,564 символи, 7.79% за цим виміром. Q01 додав три повні глави: 1,547 абзаців / 219,160 символів у цьому проході, з них 1,473 / 209,123 нових; 74 / 10,037 повторних. Сукупно контрольовано прочитано 2,102 абзаців / 300,687 символів (25.60%). Межі глав і нормалізація в другій записці. Індексація не дорівнює читанню, три глави не дорівнюють трьом романам.
 
 «Трансформа»: шість EPUB, 122 сюжетні глави та чотири додатки в структурному огляді, 5,200,830 витягнутих символів; 16 глибоких scene anchors у першому аналізі. Другий критичний прохід прочитав 484 повні абзаци / 92,368 символів, включаючи повтори. Консервативно додане повне покриття — 382 абзаци / 75,928 символів; серед нього ціла перша глава четвертого тому. Не складати ці числа з початковими вибірками як нібито точний відсоток унікально прочитаного тексту.
+
+Q02 «Трансформи»: повністю прочитані глави XV томів2/3 — 320 абзаців / 43,434 символи тексту, 43,752 із міжабзацними LF. Exact pass2 overlap — нуль; exact pass1 overlap, lifetime new unique й кумулятивний відсоток невідомі через неповний старий ledger. Це вперше документоване суцільне читання двох глав, не 320 гарантовано нових абзаців.
 
 Повного послідовного прочитання дев’яти романів, відтворення RSI-експериментів або людських playtests ще немає. [Наступна черга](continuation.md) прямо містить додаткове читання й перевірки, що можуть змінити рішення.
 

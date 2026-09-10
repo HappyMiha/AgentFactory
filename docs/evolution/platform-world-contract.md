@@ -29,11 +29,13 @@
 | --- | --- |
 | `proposal_id`, `request_id`, `causation_id`, `correlation_id` | Idempotency, відповідь на конкретне спостереження, причинна гілка |
 | `world_id`, `session_epoch`, `rule_epoch`, `expected_revision` | Перевірка світу, завантаження save, версії правил і конкурентної зміни |
-| `actor_id`, `actor_generation`, `authority_scope` | Чия це дія, чи існує актор, що він має право змінити |
+| `actor_id`, `actor_generation`, `authority_scope` | Canonical actor, чинна incarnation і дозволена область дії; actor_generation не означає форму або версію planner |
 | `action_type`, `typed_arguments`, `preconditions` | Дія з відомого bounded vocabulary та типізованими параметрами |
 | `observed_facts`, `belief_refs`, `intent` | Чому актор її пропонує; beliefs не підвищуються до facts |
 | `expires_at_tick`, `resource_limit`, `consequence_scope` | Час актуальності, витрати, дозволений масштаб ефекту |
 | `producer_version`, `generation_id` | Походження моделі/методу, не право самосхвалення |
+
+[Q02 identity contract](identity-continuity.md) розділяє entity, incarnation, representation/state revision та execution generation. `actor_generation` тут означає incarnation; майбутнє перейменування в `actor_incarnation` є schema change, не другим незалежним лічильником. `expected_revision` охоплює форму/capabilities, `generation_id` — exact producer. Перехід має scope inventory й semantic compatibility, а не тільки валідні bytes.
 
 Engine validator перевіряє identity, version, preconditions, domain permissions, ресурси й дозволений масштаб. Прийнята дія створює `WorldEvent` із `event_id`, parents, tick, before/after revision, rule digest, typed delta, recorded random draws, validation receipt і visibility policy. Відхилена дія створює rejection receipt; не змінює стан і не витрачає ігровий ресурс вдруге.
 

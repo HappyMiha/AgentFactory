@@ -31,7 +31,30 @@
         "urn:uuid:583568e4-2694-4a2d-8f86-e239df5efbbd"
       ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See transforma-third-pass.md.",
+      "q02_coverage": {
+        "volume": 2,
+        "chapter": 15,
+        "source_sha256": "5f1047486ee6c79aa404f1ee4a28cd78bee2309b6899163b33b634055eb74fb0",
+        "epub_anchor": "OPS/ch1-15.xhtml#id15",
+        "next_heading_excluded": "OPS/ch1-16.xhtml#id16",
+        "spine_ordinal": 16,
+        "first_paragraph": 1,
+        "last_paragraph": 167,
+        "fully_read_paragraphs": 167,
+        "paragraph_text_characters": 22591,
+        "cache_characters_including_lf": 22757,
+        "interparagraph_lf": 166,
+        "first_documented_complete_read": true,
+        "verified_pass2_overlap": {
+          "paragraphs": 0,
+          "characters": 0
+        },
+        "exact_pass1_overlap": null,
+        "exact_lifetime_new_unique": null,
+        "cumulative_book_coverage": null,
+        "limit": "Pass1 has structural windows without exhaustive paragraph/character ledger; complete-chapter pass is exact, lifetime union is unknown. No full-book claim."
+      }
     },
     {
       "filename": "Марк Калашников – Между сном и явью (1).epub",
@@ -105,7 +128,30 @@
         "urn:uuid:92a6f61e-89db-42dd-8876-2a973abe491a"
       ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See transforma-third-pass.md.",
+      "q02_coverage": {
+        "volume": 3,
+        "chapter": 15,
+        "source_sha256": "ad7fc32dbc4b814a1d9b49cc14357533c69efdd4210f61e337574c9dc7d31c9c",
+        "epub_anchor": "OPS/ch1-15.xhtml#id15",
+        "next_heading_excluded": "OPS/ch1-16.xhtml#id16",
+        "spine_ordinal": 16,
+        "first_paragraph": 1,
+        "last_paragraph": 153,
+        "fully_read_paragraphs": 153,
+        "paragraph_text_characters": 20843,
+        "cache_characters_including_lf": 20995,
+        "interparagraph_lf": 152,
+        "first_documented_complete_read": true,
+        "verified_pass2_overlap": {
+          "paragraphs": 0,
+          "characters": 0
+        },
+        "exact_pass1_overlap": null,
+        "exact_lifetime_new_unique": null,
+        "cumulative_book_coverage": null,
+        "limit": "Pass1 has structural windows without exhaustive paragraph/character ledger; complete-chapter pass is exact, lifetime union is unknown. No full-book claim."
+      }
     },
     {
       "filename": "Марк Калашников – Разлом (5).epub",
@@ -376,5 +422,18 @@
       "characters": 1174753
     },
     "union_character_percent": 25.6
+  },
+  "transforma_q02_totals": {
+    "complete_chapters": 2,
+    "fully_read_paragraphs": 320,
+    "paragraph_text_characters": 43434,
+    "cache_characters_including_lf": 43752,
+    "verified_pass2_overlap": {
+      "paragraphs": 0,
+      "characters": 0
+    },
+    "exact_pass1_overlap": null,
+    "exact_lifetime_new_unique": null,
+    "cumulative_corpus_coverage": null
   }
 }

@@ -40,6 +40,10 @@
 
 Джерельне coverage перераховане за множинами spine/paragraph anchors проти незміненого pass1 ledger; file hashes і точні межі трьох глав перевірені. Перевірено Markdown/JSON parity, 65 IDs/239 edges, DAG/closures, source/legacy refs, links, shared docs і docs-only scope. Q01-E01–06 — статичні authoring controls, не зіграні сцени чи виконані Core experiments. Релевантні чинні repository validators повторені з їхніми попередніми static/synthetic межами.
 
+## Q02, 2026-09-10
+
+Дві повні глави звірені з original EPUB XML/NCX і hashes. Paragraph-text/LF counts розділені; невідомий pass1 overlap збережено як unknown, не нуль. Перевірено source manifest parity, Markdown/JSON, 65 IDs/239 edges, DAG/closures, refs/links, shared docs і docs-only scope. Q02-I01–08 — authored static controls; source audit обмежений roles/memory paths, не повним execution stack. Чинні repository validators повторені з їхніми static/synthetic межами; model/engine/human runs не виконувалися.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.

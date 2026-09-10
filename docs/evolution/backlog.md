@@ -25,10 +25,10 @@
 
 - **Залежності:** 001. **Reuse:** AF-001 identities, AF-016 skills, AF-024 packs, AF-048 worktrees, AF-055 context.
 - **Результат:** `EvolutionSubject` і `GenerationManifest`: kind, parent generation, Core commit, harness/role/tool/skill/config digests, runtime/profile, dependencies, mutation scope і rollback target.
-- **Приймання:** один generation digest однозначно визначає виконуваний склад; старий manifest відтворюється після registry update; source/harness/model-weight зміни розрізняються. Model weights — окремий research profile, не обіцянка доступного training. ActivationBinding містить target, монотонну activation_seq, manifest digest, authority epoch, writer fence і exact state binding; immutable GenerationManifest не посилається на власний майбутній ActivationReceipt.
-- **Негативні перевірки:** floating latest, змінений pack під тим самим version, підміна parent, невідомий component, повторне використання digest для інших bytes. ABA A@41→B@42→A@43 не дозволяє старий grant для A@41; replay promotion ID не збільшує sequence.
+- **Приймання:** один generation digest однозначно визначає виконуваний склад; старий manifest відтворюється після registry update; source/harness/model-weight зміни розрізняються. Model weights — окремий research profile, не обіцянка доступного training. ActivationBinding містить target, монотонну activation_seq, manifest digest, authority epoch, writer fence і exact state binding; immutable GenerationManifest не посилається на власний майбутній ActivationReceipt. Canonical entity, incarnation, mutable representation і execution generation мають різні ролі; lineage не є новою authority. Для comparison зафіксовані output schema, decoder/projection і label semantics; common-meaning mapping версій перевірено або результат not-comparable.
+- **Негативні перевірки:** floating latest, змінений pack під тим самим version, підміна parent, невідомий component, повторне використання digest для інших bytes. ABA A@41→B@42→A@43 не дозволяє старий grant для A@41; replay promotion ID не збільшує sequence. Та сама назва підміняє іншу сутність; immutable raw receipts переоцінені новим decoder як gain без спільного значення outcome.
 - **Артефакт:** versioned schema, три non-game приклади, compatibility matrix. **Фаза/пріоритет:** C0/P0.
-- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
+- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery, CONTRACT:identity-continuity
 
 ### AF-RSI-003 — Зафіксувати протокол порівняння до запуску кандидатів
 
@@ -128,19 +128,19 @@
 
 - **Залежності:** 007, 010, 011, 012. **Reuse:** AF-010 roles, AF-011 routing, AF-012 composition, AF-016 skills, AF-024 packs.
 - **Результат:** один обмежений профіль mutation для prompts/context policy/tool choice/role topology/skills із versioned manifests.
-- **Приймання:** змінений harness дає verified benefit на зовнішньому наборі задач; route fallback не руйнує producer/reviewer independence; skill transitions відбуваються у чинному registry з primary evaluation receipts.
-- **Негативні перевірки:** виробник набуває reviewer duty, routing приховує дорогі fallback calls, auto-install tool без capability approval, skill оцінюється лише на власних прикладах.
+- **Приймання:** змінений harness дає verified benefit на зовнішньому наборі задач; route fallback не руйнує producer/reviewer independence; skill transitions відбуваються у чинному registry з primary evaluation receipts. Reuse skill/memory у новому runtime, tenant або purpose проходить окремі scope/authority/applicability checks; hash і lineage не видають права. Alias/model name не доводять незалежність reviewer за declared decision policy.
+- **Негативні перевірки:** виробник набуває reviewer duty, routing приховує дорогі fallback calls, auto-install tool без capability approval, skill оцінюється лише на власних прикладах. Новий agent ID приховує producer lineage чи конфлікт duties; copied memory scope мовчки розширено; latest role lookup підміняє qualified version.
 - **Артефакт:** accepted або rejected harness generation, ablation без кожної ключової зміни. **Фаза/пріоритет:** C2/P0.
-- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:identity-continuity
 
 ### AF-RSI-014 — Готувати зміни власного коду Core як звичайні immutable candidates
 
 - **Залежності:** 009, 010, 011. **Reuse:** AF-049/050 workers, AF-051 candidates, AF-052 validators, AF-053 delivery, AF-054 software roles.
 - **Результат:** Core може вибрати свій repository як target і створити scoped candidate source change через існуючий coding pipeline.
-- **Приймання:** candidate вирішує відтворену platform-задачу, має exact base/head/diff, незалежний review і release plan; активний Core не підміняється під час свого експерименту.
-- **Негативні перевірки:** patch змінює tests, щоб приховати failure; самовільний push/merge/install; зміна worker authority; developer database потрапляє до candidate artifacts.
+- **Приймання:** candidate вирішує відтворену platform-задачу, має exact base/head/diff, незалежний review і release plan; активний Core не підміняється під час свого експерименту. Affected surface включає залежні зміни capabilities, required components і maintenance cost. Для supported schema migration перевірені semantic permission/role/purpose contracts та outcome projections, а не лише читабельність даних; failure/partial state визначений до активації.
+- **Негативні перевірки:** patch змінює tests, щоб приховати failure; самовільний push/merge/install; зміна worker authority; developer database потрапляє до candidate artifacts. Компонент A покращено непогодженою зміною B; старий permission label набув ширшого змісту; preview або тимчасовий дослід сам активує постійний Core.
 - **Артефакт:** Core-on-Core candidate branch/patch і повний delivery receipt. **Фаза/пріоритет:** C2/P0.
-- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R02, RSI-SURVEY:R03, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:identity-continuity
 
 ### AF-RSI-015 — Побудувати незалежний benchmark продукту Core
 
@@ -166,10 +166,10 @@
 
 - **Залежності:** 004, 007, 008, 016. **Reuse:** AF-024 pack lifecycle, AF-031 deployment profiles, AF-057 recovery; existing immutable release images/autodeploy plans.
 - **Результат:** release lifecycle `candidate → qualified → shadow → canary → promoted → superseded | revoked` із protected ActivationBinding. Обов’язкові shadow/canary stages задає profile; rejection лишається comparison outcome, rollback — нова authorized activation, не стан для стирання старої історії.
-- **Приймання:** shadow не чинить повторних зовнішніх effects; canary audience/profile має explicit scope; failure до commit залишає binding незмінною, після commit виконується scoped recovery за ActivationReceipt; несумісний/revoked fallback веде до paused/degraded режиму; дані канарки не губляться мовчки при restore. Grant/revocation і activation serialized в одній qualified authority boundary; final commit перевіряє exact ActivationBinding і immutable state readiness. Root supervisor upgrade має independent authority, quiesced control state і fenced handoff.
-- **Негативні перевірки:** two concurrent promotions, crash після pointer switch, rejected generation повертається як latest, старе approval переноситься на нові bytes, canary виходить за audience. RC06–11/14/16: grant revoke race, ABA, concurrent candidates, lost ack, unreadied successor, revoked fallback; жоден candidate не завершує self-approval.
+- **Приймання:** shadow не чинить повторних зовнішніх effects; canary audience/profile має explicit scope; failure до commit залишає binding незмінною, після commit виконується scoped recovery за ActivationReceipt; несумісний/revoked fallback веде до paused/degraded режиму; дані канарки не губляться мовчки при restore. Grant/revocation і activation serialized в одній qualified authority boundary; final commit перевіряє exact ActivationBinding і immutable state readiness. Root supervisor upgrade має independent authority, quiesced control state і fenced handoff. Supported identity/role/schema transitions мають ContinuityPlan з inventory класів, визначеним qualified profile/authority, per-record rights/obligations/resources/privacy dispositions і unknown/unmapped outcomes. Зміна покоління не скидає unresolved effects, budget lineage, чинні revocations або відповідальність; одноразове approval не розширює scope наступника.
+- **Негативні перевірки:** two concurrent promotions, crash після pointer switch, rejected generation повертається як latest, старе approval переноситься на нові bytes, canary виходить за audience. RC06–11/14/16: grant revoke race, ABA, concurrent candidates, lost ack, unreadied successor, revoked fallback; жоден candidate не завершує self-approval. Candidate виключає незручний запис із migration inventory; split/merge копіює grants або private memory без authority; rollback відновлює старі права поверх чинної revocation.
 - **Артефакт:** promotion receipt, rollback drill, previous-generation availability proof. **Фаза/пріоритет:** C3/P0.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery, CONTRACT:identity-continuity
 
 ### AF-RSI-018 — Показати людині стан і причину самовдосконалення
 

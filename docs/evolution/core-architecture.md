@@ -55,6 +55,8 @@ flowchart TB
 
 Це логічні компоненти. Перша реалізація не потребує нових мікросервісів, graph database, другого scheduler або переписування Temporal. Спочатку — вузькі контракти та існуючі storage boundaries; виділення сервісів залежить від виміряних навантаження й isolation requirements.
 
+[Q02 identity continuity](identity-continuity.md) відділяє сталий logical product від exact execution generation і чинного principal. Міграція перевіряє semantic meaning rights/purpose та outcome projections; candidate не обирає сам, які зобов’язання враховувати. [Вузький source audit](implementation-identity-audit.md) показує, які versioned roles/memory primitives вже існують і чого локальне читання цих функцій не доводить.
+
 ## 4. Manifest кандидата та envelope покоління
 
 До запуску створюється незмінний `CandidateManifest`: artifact/base/parent digests, склад, compatibility, protocol, capability scope, input/memory views і заплановані migration/rollback. Саме його digest отримують runners. Після завершення окремий незмінний `DecisionEnvelope` посилається на candidate digest і sealed experiment receipts, comparison та рішення; він не змінює candidate bytes. Release `GenerationManifest` зв’язує прийнятий candidate із decision envelope та qualification evidence. Mutable alias `active` оновлює ActivationBinding із монотонною sequence й посилається лише на завершений manifest; ActivationReceipt фіксується окремо. Повернення старого digest не повертає старих дозволів.

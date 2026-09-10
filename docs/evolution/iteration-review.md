@@ -58,6 +58,12 @@
 
 Додано [experience criteria](experience-improvement.md) й Q01-E01–06 як відкриті статичні контроли. Уточнено 6 Core та 7 world карток, без нових IDs/edges. Core переглядає власні source/harness/evaluator/product direction через незалежне evidence й owner proposal, не через збільшення активності. Незалежне рев’ю перевірило межу domain policy, missing/withdrawn feedback та claims про повтор/економіку. Коду й реальних model/engine/human runs немає. Q01 закрито; наступний прохід — Q02: нові повні глави томів2/3 «Трансформи», стабільність ідентичності та ціна вибору.
 
+## Прохід 7 — Q02: ідентичність і семантика переходів (2026-09-10)
+
+Прочитано повні глави XV томів2/3 «Трансформи»: 320 абзаців / 43 434 символи тексту. Pass1 не має точного overlap ledger, тому lifetime приріст/відсоток не вигадано; pass2 не мав цих томів. Новий контекст дав збереження біографії здібності, залежності самозміни, temporary/permanent межу, persona проти особи та ресурсну ціну підтримки.
+
+[Q02 contract](identity-continuity.md) уточнив actor_generation як incarnation, per-record ContinuityPlan, semantic grants і versioned outcome projection; 8 статичних controls не є виконаними міграціями. Статично перевірено вузькі source paths Core roles/memory. Уточнено 4 Core та 4 world картки, без нових IDs/edges чи W0 scope. Незалежне рев’ю прибрало можливість candidate самому скорочувати inventory та переозначувати immutable receipts новим decoder. Q02 завершено; наступний прохід — Q03, повні методи/limitations DGM і RQGM для fixed/evolving evaluator.
+
 ## Межа висновку
 
 Перевірки структури, посилань, DAG і чинних контрактних validators наведено у `validation.md`. Вони засвідчують узгодженість проєктної поставки E0. E1–E5, успішна RSI, людський досвід і готова гра залишаються майбутніми доказами. Гіпотези можуть бути відхилені; backlog не вимагає назвати кожне покоління успішним.
