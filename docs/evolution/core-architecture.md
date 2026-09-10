@@ -114,6 +114,8 @@ Shadow не здійснює повторної зовнішньої дії аб
 
 Контролі: incumbent без еволюції; incumbent із тим самим додатковим compute/resampling; challenger без нової memory/skill; новий optimizer на новому domain. Перевірка mechanism і outcome окрема. Маніпуляція звітністю, відкинуті failure cases або підміна реального запуску synthetic fixture відхиляють claim незалежно від score.
 
+[Q06 comparison protocol](counterfactual-evaluation.md) уточнює experimental subject: replay відновлює історію; action intervention змінює дію; planner comparison змінює власний компонент Core за однакових початкових observable inputs і дозволяє різні downstream actions. Public authored scenarios — development evidence. Evaluator candidates перевіряють один frozen corpus із зовнішніми labels; більша кількість подій не замінює user goal або causal contribution.
+
 ## 7. Рекурсія: змінюємо механізм покращення
 
 Optimizer O0 створює candidate optimizer O1; зовнішній протокол приймає або відхиляє O1. Обидва отримують новий, однаковий portfolio задач і бюджет та виробляють дочірні **продуктові** кандидати. Порівнюємо accepted useful improvements, coverage, time-to-evidence, cost, regressions і частку чесно припинених невдалих напрямів. Це доказ optimizer improvement.

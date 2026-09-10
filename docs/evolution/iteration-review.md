@@ -46,6 +46,12 @@
 
 Уточнено 9 існуючих Core-карток та AF-LW023/030, синхронізовано JSON. 65 IDs і 239 залежностей збережено. Нового читання EPUB/PDF не було; літературне coverage незмінне. Q05 закрито як design pass; наступне питання з практичною користю — Q06, паперові причинні/контрфактичні сценарії міста.
 
+## Прохід 5 — Q06: внесок дії та чесний контроль (2026-09-10)
+
+Паперові проходи міста виявили: накриття не сушить мокре; dry weather не виключає незалежної зустрічі; W0 бракувало власного багатокрокового провалу. Створено 10 scenario specs у Markdown/JSON, S0/R1–7 та [shared protocol](counterfactual-evaluation.md). C08 конкретизує half-action save, C09 — локальний late plan, C10 лишає сезонний місток поза W0. Full E06/E07 тепер мають material/work inputs і ReadingCompleted evidence; null-return UX не вигадує події.
+
+Уточнено 5 Core та 5 world карток без нових IDs/edges. Core planner/evaluator comparison відділене від replay/intervention, visible authored fixtures — від holdout, domain benefit — від standalone/recursive claim. Незалежно переглянуто world causality та protocol boundaries. Не запускалися engine/provider/playtests; нового читання книжок/наукових PDF не було. Q06 закрито як paper design pass. Наступний прохід повертається до нових первинних даних: Q01, повні нові глави «Бігаючого сейфа» й перевірка гумору/ціни/невдач.
+
 ## Межа висновку
 
 Перевірки структури, посилань, DAG і чинних контрактних validators наведено у `validation.md`. Вони засвідчують узгодженість проєктної поставки E0. E1–E5, успішна RSI, людський досвід і готова гра залишаються майбутніми доказами. Гіпотези можуть бути відхилені; backlog не вимагає назвати кожне покоління успішним.

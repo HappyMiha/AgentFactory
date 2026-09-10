@@ -34,10 +34,10 @@
 
 - **Залежності:** 001, 002. **Reuse:** AF-020 evaluation, AF-032 qualification, AF-027 telemetry.
 - **Результат:** `ExperimentProtocol`: гіпотеза, baseline, контрольований change surface, datasets, primary outcome, non-regression floors, budget, seeds/repetitions, comparison rule, stopping rule.
-- **Приймання:** protocol digest зафіксований до challenger output; зміна metric/threshold створює новий експеримент; documented failed/inconclusive — валідні завершення. Правила statistical confidence і мінімально корисного ефекту обираються для конкретної задачі до вимірювання.
-- **Негативні перевірки:** підвищення cap лише challenger, вибір metric після результату, викидання невдалих seeds, зниження non-regression floor заднім числом.
+- **Приймання:** protocol digest зафіксований до challenger output; зміна metric/threshold створює новий експеримент; documented failed/inconclusive — валідні завершення. Правила statistical confidence і мінімально корисного ефекту обираються для конкретної задачі до вимірювання. Protocol явно класифікує replay/action intervention/input sensitivity/planner comparison/evaluator comparison; pair identity фіксує initial observable inputs, goal, rules, exogenous/coupling plan і horizon.
+- **Негативні перевірки:** підвищення cap лише challenger, вибір metric після результату, викидання невдалих seeds, зниження non-regression floor заднім числом. Після втручання downstream NPC choices не копіюються з baseline; різні задачі не стають paired через однакову назву.
 - **Артефакт:** protocol template і acceptance decision examples. **Фаза/пріоритет:** C0/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:counterfactual-evaluation
 
 ### AF-RSI-004 — Зв’язати покоління, спроби, докази та рішення
 
@@ -54,10 +54,10 @@
 
 - **Залежності:** 003, 004. **Reuse:** AF-015 context, AF-016 memory, AF-021 injection defense, AF-029 storage.
 - **Результат:** dataset/benchmark registry із provenance, rights, task family, split, version, access scope, contamination tracking та retired-case policy.
-- **Приймання:** optimizer бачить дозволені training diagnostics, final holdout працює в окремому evaluator scope; запам’ятований кейс не рахується новим; будь-яка зміна split змінює protocol.
-- **Негативні перевірки:** витік через logs/memory/error output, перейменування training case у holdout, синтетична копія holdout, retrieval за його приватним ID.
+- **Приймання:** optimizer бачить дозволені training diagnostics, final holdout працює в окремому evaluator scope; запам’ятований кейс не рахується новим; будь-яка зміна split змінює protocol. Опубліковані паперові Q06-C01–C10 мають статус development/design; fresh holdout потребує незалежного походження та contamination audit, а не лише нових імен або seeds.
+- **Негативні перевірки:** витік через logs/memory/error output, перейменування training case у holdout, синтетична копія holdout, retrieval за його приватним ID. Public expected trace чи його синтетичний переказ не оголошується прихованим зовнішнім grounding.
 - **Артефакт:** benchmark registry contract, доступи, provenance/contamination receipts. **Фаза/пріоритет:** C1/P0.
-- **Підстави:** RSI-SURVEY:R06, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R06, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:counterfactual-evaluation
 
 ### AF-RSI-006 — Узагальнити evidence-first evaluator поза Codex diff
 
@@ -72,10 +72,10 @@
 
 - **Залежності:** 003, 005, 006. **Reuse:** AF-027 telemetry/cost ledger, AF-032 qualification.
 - **Результат:** comparator для paired baseline/challenger outcome, dispersion, confidence, cost/latency, sample size, aborts і non-regression floors.
-- **Приймання:** рішення `better`, `worse`, `equivalent`, `inconclusive` відтворюється з receipts; failed runs і витрати всіх кандидатів збережено; sequential selection/multiple comparisons враховано за declared protocol. Краща новизна, прибутковість або нижча ціна не компенсують порушений hard invariant; зміна критерію після результату створює новий protocol.
-- **Негативні перевірки:** більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout.
+- **Приймання:** рішення `better`, `worse`, `equivalent`, `inconclusive` відтворюється з receipts; failed runs і витрати всіх кандидатів збережено; sequential selection/multiple comparisons враховано за declared protocol. Краща новизна, прибутковість або нижча ціна не компенсують порушений hard invariant; зміна критерію після результату створює новий protocol. Окремо оцінюються виконання початкової мети, правильне handling відмови/невідомості, causal contribution, integrity та повна ціна. Evaluator comparison використовує один frozen corpus із зовнішніми labels і blind order.
+- **Негативні перевірки:** більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout. Невиконане читання не стає виконаним через гарне пояснення відмови; більше cascades не компенсує порушену згоду або більші витрати.
 - **Артефакт:** decision report із прикладами adoption/no-go. **Фаза/пріоритет:** C1/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:counterfactual-evaluation
 
 ### AF-RSI-008 — Резервувати bounded бюджет повного експерименту
 
@@ -108,10 +108,10 @@
 
 - **Залежності:** 005, 006, 008, 009, 010. **Reuse:** AF-006 workflows, AF-044 runtime, AF-AMM checkpoints/epochs, AF-052 validators.
 - **Результат:** experiment runner, який викликає чинний execution boundary і повертає primary receipts, а не власну чергу/worker implementation.
-- **Приймання:** відомі seeds, model/runtime versions, hardware profile і budgets збережено; replay використовує accepted inputs; варіативність model calls чесно відокремлена від детермінованого replay accepted actions. AttemptIntent persist до dispatch; receiver capability profile визначає допустимий lookup/dedup/retry. Unknown non-repeatable effect не повторюється без reconciliation, згідно з RC01–04 recovery contract.
-- **Негативні перевірки:** baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete. Provider без outcome lookup не оголошується exactly-once; cancel acknowledgment не підміняє observed stopped/no-effect receipt.
+- **Приймання:** відомі seeds, model/runtime versions, hardware profile і budgets збережено; replay використовує accepted inputs; варіативність model calls чесно відокремлена від детермінованого replay accepted actions. AttemptIntent persist до dispatch; receiver capability profile визначає допустимий lookup/dedup/retry. Unknown non-repeatable effect не повторюється без reconciliation, згідно з RC01–04 recovery contract. Same seed не є достатньою paired гарантією: зафіксовані stream roles/event mapping, unmatched-draw policy та перерахунок distributions після зміни дії. Planner outputs можуть відрізнятися; replay має інший claim.
+- **Негативні перевірки:** baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete. Provider без outcome lookup не оголошується exactly-once; cancel acknowledgment не підміняє observed stopped/no-effect receipt. Додаткова model репліка не має непомітно зміщувати зовнішню погоду в парі; різні causal conditions не примушують до однакового random outcome.
 - **Артефакт:** baseline/challenger execution bundle і comparison-ready index. **Фаза/пріоритет:** C1/P0.
-- **Підстави:** RSI-SURVEY:R05, RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
+- **Підстави:** RSI-SURVEY:R05, RSI-SURVEY:R08, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery, CONTRACT:counterfactual-evaluation
 
 ## C2 — навчитися змінювати власний harness і власний source
 
@@ -337,10 +337,10 @@ Core-on-Core не залежить від commercial non-game offering `AF-CLD-0
 
 - **Залежності:** 007, 016, 017, 031, 032. **Reuse:** AF-020 evaluation, AF-024 packs, AF-051 candidates; domain suite і людський playtest визначає автор продукту.
 - **Результат:** `world_rules` subject підтримує old/new rule digest, compatibility/migration, deterministic receipts і окремі human-quality evidence.
-- **Приймання:** schema/test pass не вважається доказом гумору; Core comparison не переписує world state і не публікує pack; comparison decision і scoped promotion authorization розділені; старий accepted consumer pin працездатний. Rule migration переключає coherent rule/schema/checkpoint/revision/writer binding; comparison, scoped grant і ActivationReceipt розділені. Qualification stale snapshot не переноситься на нові live writes без перевірки.
-- **Негативні перевірки:** новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes. RC07/09/12–16: revoke/ABA, міграція r10 після live r11, half checkpoint, mixed rule/state, rewind save повторює зовнішній grant.
+- **Приймання:** schema/test pass не вважається доказом гумору; Core comparison не переписує world state і не публікує pack; comparison decision і scoped promotion authorization розділені; старий accepted consumer pin працездатний. Rule migration переключає coherent rule/schema/checkpoint/revision/writer binding; comparison, scoped grant і ActivationReceipt розділені. Qualification stale snapshot не переноситься на нові live writes без перевірки. Domain scenario bundle розрізняє authored expected outcomes, виконані state receipts та human evidence. Consumer planner claim не замінює незалежний non-game Core gate або O0→O1→O2 method proof.
+- **Негативні перевірки:** новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes. RC07/09/12–16: revoke/ABA, міграція r10 після live r11, half checkpoint, mixed rule/state, rewind save повторює зовнішній grant. Готова паперова історія чи новий world-state trace видається за вже поліпшений Core; новий evaluator сам створює легший corpus для своєї оцінки.
 - **Артефакт:** domain-evolution integration receipt і versioned migration/recovery specification. **Фаза/пріоритет:** C7/P1.
-- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R04, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery
+- **Підстави:** RSI-SURVEY:R03, RSI-SURVEY:R04, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:recovery, CONTRACT:counterfactual-evaluation
 
 ## C8 — довгий дослідницький горизонт
 

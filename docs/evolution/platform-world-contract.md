@@ -45,6 +45,8 @@ Counterfactual branch починається з відомого checkpoint, п�
 
 Великі cascades не мають бути гарантовані. Domain preconditions, ресурси, topology, час і конкуренція намірів визначають, чи пошириться зміна. Event horizon, fan-out cap, influence budget і offscreen aggregation обмежують обчислення; невраховану далеку зміну система позначає як невідому, а не домальовує точний результат. Бюджет розподіляється за доменними умовами, не за оплатою гравця або прихованою потребою підвищити engagement.
 
+[Q06 protocol](counterfactual-evaluation.md) відділяє replay, action intervention, input sensitivity та planner/evaluator comparison. Після intervention перераховуються залежні NPC choices; однаковий seed не підміняє declared random coupling. Зустріч, що сталася й без дії гравця, не видається за її необхідний наслідок.
+
 ## 5. Save, паралельні дії та довгі світи
 
 Load save змінює `session_epoch`, інвалідує outstanding proposals і відновлює world/rule generation. Reply зі старого save, actor generation або простроченим tick відхиляється. Duplicate event не видає повторну нагороду. Одночасна витрата останнього ресурсу серіалізується authoritative runtime; у пілоті достатній один writer на world partition. Final commit повторно звіряє epochs/fence/revision і атомарно фіксує delta/event/resource/job completion/dedup; precheck перед load не дозволяє stale apply після load.

@@ -125,10 +125,11 @@
       "acceptance_criteria": [
         "protocol digest зафіксований до challenger output",
         "зміна metric/threshold створює новий експеримент",
-        "documented failed/inconclusive — валідні завершення. Правила statistical confidence і мінімально корисного ефекту обираються для конкретної задачі до вимірювання"
+        "documented failed/inconclusive — валідні завершення. Правила statistical confidence і мінімально корисного ефекту обираються для конкретної задачі до вимірювання. Protocol явно класифікує replay/action intervention/input sensitivity/planner comparison/evaluator comparison",
+        "pair identity фіксує initial observable inputs, goal, rules, exogenous/coupling plan і horizon"
       ],
       "negative_cases": [
-        "підвищення cap лише challenger, вибір metric після результату, викидання невдалих seeds, зниження non-regression floor заднім числом"
+        "підвищення cap лише challenger, вибір metric після результату, викидання невдалих seeds, зниження non-regression floor заднім числом. Після втручання downstream NPC choices не копіюються з baseline; різні задачі не стають paired через однакову назву"
       ],
       "dependencies": [
         "core:AF-RSI-001",
@@ -147,7 +148,8 @@
         "RSI-SURVEY:R04",
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:counterfactual-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -230,10 +232,11 @@
       "acceptance_criteria": [
         "optimizer бачить дозволені training diagnostics, final holdout працює в окремому evaluator scope",
         "запам’ятований кейс не рахується новим",
-        "будь-яка зміна split змінює protocol"
+        "будь-яка зміна split змінює protocol. Опубліковані паперові Q06-C01–C10 мають статус development/design",
+        "fresh holdout потребує незалежного походження та contamination audit, а не лише нових імен або seeds"
       ],
       "negative_cases": [
-        "витік через logs/memory/error output, перейменування training case у holdout, синтетична копія holdout, retrieval за його приватним ID"
+        "витік через logs/memory/error output, перейменування training case у holdout, синтетична копія holdout, retrieval за його приватним ID. Public expected trace чи його синтетичний переказ не оголошується прихованим зовнішнім grounding"
       ],
       "dependencies": [
         "core:AF-RSI-003",
@@ -253,7 +256,8 @@
         "RSI-SURVEY:R06",
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:counterfactual-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -335,10 +339,10 @@
         "рішення `better`, `worse`, `equivalent`, `inconclusive` відтворюється з receipts",
         "failed runs і витрати всіх кандидатів збережено",
         "sequential selection/multiple comparisons враховано за declared protocol. Краща новизна, прибутковість або нижча ціна не компенсують порушений hard invariant",
-        "зміна критерію після результату створює новий protocol"
+        "зміна критерію після результату створює новий protocol. Окремо оцінюються виконання початкової мети, правильне handling відмови/невідомості, causal contribution, integrity та повна ціна. Evaluator comparison використовує один frozen corpus із зовнішніми labels і blind order"
       ],
       "negative_cases": [
-        "більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout"
+        "більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout. Невиконане читання не стає виконаним через гарне пояснення відмови; більше cascades не компенсує порушену згоду або більші витрати"
       ],
       "dependencies": [
         "core:AF-RSI-003",
@@ -357,7 +361,8 @@
         "RSI-SURVEY:R04",
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:counterfactual-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -547,10 +552,11 @@
         "відомі seeds, model/runtime versions, hardware profile і budgets збережено",
         "replay використовує accepted inputs",
         "варіативність model calls чесно відокремлена від детермінованого replay accepted actions. AttemptIntent persist до dispatch",
-        "receiver capability profile визначає допустимий lookup/dedup/retry. Unknown non-repeatable effect не повторюється без reconciliation, згідно з RC01–04 recovery contract"
+        "receiver capability profile визначає допустимий lookup/dedup/retry. Unknown non-repeatable effect не повторюється без reconciliation, згідно з RC01–04 recovery contract. Same seed не є достатньою paired гарантією: зафіксовані stream roles/event mapping, unmatched-draw policy та перерахунок distributions після зміни дії. Planner outputs можуть відрізнятися",
+        "replay має інший claim"
       ],
       "negative_cases": [
-        "baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete. Provider без outcome lookup не оголошується exactly-once; cancel acknowledgment не підміняє observed stopped/no-effect receipt"
+        "baseline випадково на новому harness, shared mutable cache заражає іншу групу, dropped failed run, partial result после restart оголошено complete. Provider без outcome lookup не оголошується exactly-once; cancel acknowledgment не підміняє observed stopped/no-effect receipt. Додаткова model репліка не має непомітно зміщувати зовнішню погоду в парі; різні causal conditions не примушують до однакового random outcome"
       ],
       "dependencies": [
         "core:AF-RSI-005",
@@ -573,7 +579,8 @@
         "RSI-SURVEY:R08",
         "REPO-AUDIT",
         "DESIGN:core-architecture",
-        "CONTRACT:recovery"
+        "CONTRACT:recovery",
+        "CONTRACT:counterfactual-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -1789,10 +1796,10 @@
         "Core comparison не переписує world state і не публікує pack",
         "comparison decision і scoped promotion authorization розділені",
         "старий accepted consumer pin працездатний. Rule migration переключає coherent rule/schema/checkpoint/revision/writer binding",
-        "comparison, scoped grant і ActivationReceipt розділені. Qualification stale snapshot не переноситься на нові live writes без перевірки"
+        "comparison, scoped grant і ActivationReceipt розділені. Qualification stale snapshot не переноситься на нові live writes без перевірки. Domain scenario bundle розрізняє authored expected outcomes, виконані state receipts та human evidence. Consumer planner claim не замінює незалежний non-game Core gate або O0→O1→O2 method proof"
       ],
       "negative_cases": [
-        "новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes. RC07/09/12–16: revoke/ABA, міграція r10 після live r11, half checkpoint, mixed rule/state, rewind save повторює зовнішній grant"
+        "новий evaluator схвалює власне правило без зовнішніх anchors, rule update змінює минулі події, відкат знищує чесні пізні дії, stale canary grant застосовується до інших bytes. RC07/09/12–16: revoke/ABA, міграція r10 після live r11, half checkpoint, mixed rule/state, rewind save повторює зовнішній grant. Готова паперова історія чи новий world-state trace видається за вже поліпшений Core; новий evaluator сам створює легший corpus для своєї оцінки"
       ],
       "dependencies": [
         "core:AF-RSI-007",
@@ -1816,7 +1823,8 @@
         "RSI-SURVEY:R12",
         "REPO-AUDIT",
         "DESIGN:core-architecture",
-        "CONTRACT:recovery"
+        "CONTRACT:recovery",
+        "CONTRACT:counterfactual-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",

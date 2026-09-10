@@ -32,6 +32,10 @@
 
 Повторно перевірено парність Markdown/JSON, unchanged 65 IDs/239 edges, DAG/closures, legacy refs, relative links, docs-only scope та whitespace. Recovery contract дзеркально однаковий у двох репозиторіях. Незалежне source review і interleaving review уточнили final-commit, external effect і control-process handoff semantics. T01–08 та RC01–16 перевірено як статичні специфікації, а не виконано проти runtime. Чинні validators повторені для цієї документаційної редакції з тими самими межами synthetic evidence.
 
+## Q06, 2026-09-10
+
+Перевірено 10 унікальних paper scenario IDs та парність їхніх полів Markdown/JSON, межу W0/extended і valid control references. Це schema/authoring consistency, не виконання expected traces. Повторно перевірено backlog parity, 65 IDs/239 edges, DAG/closures, legacy/source refs, links та docs-only scope. Shared counterfactual-evaluation.md однаковий у двох репозиторіях. Незалежне рев’ю перевірило temporal/causal assumptions та допустимі claims Core. Чинні static/synthetic repository validators повторені; engine і model runs не виконувалися.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.

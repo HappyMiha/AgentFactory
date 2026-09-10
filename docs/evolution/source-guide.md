@@ -12,6 +12,7 @@
 | `TRANSFORMA:TR-S01`…`TR-S16` | Перший аналіз «Трансформи» у Lokiravia | Конкретна прочитана сцена; пояснення персонажа відділене від авторитетного факту |
 | `TRANSFORMA:TR2-01`…`06` | Другий критичний прохід у Lokiravia | Перегляд попереднього висновку, новий контекст і наша проєктна відповідь |
 | `REPO-AUDIT` | [Аудит репозиторіїв](repository-audit.md) | Поточні capabilities та gaps на exact baseline commits; не гарантія майбутньої готовності |
+| `CONTRACT:counterfactual-evaluation` | [Q06 порівняння](counterfactual-evaluation.md) | Власний experimental design і паперові контролі; не execution/human/RSI result |
 | `CONTRACT:recovery` | [Q05 переходи й відновлення](recovery-contract.md) | Власні статичні interleaving scenarios, source-audit та вимоги, не виконані crash tests |
 | `CONTRACT:platform-world` | [Межа платформи й світу](platform-world-contract.md) | Наше архітектурне рішення |
 | `DESIGN:vision`, `DESIGN:core-architecture` | [Спільна концепція](vision.uk.md), архітектура в Core | Власна продуктова/архітектурна гіпотеза |
