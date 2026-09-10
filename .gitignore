@@ -22,3 +22,17 @@ Thumbs.db
 .idea/
 .vscode/
 tmp/
+
+# Private reference inputs and extraction caches
+*.epub
+*.EPUB
+2607.07663v2.pdf
+2505.22954v3.pdf
+2606.26294v2.pdf
+2606.20657v3.pdf
+*.mobi
+*.azw
+*.azw3
+*.fb2
+research/private/
+.private-references/

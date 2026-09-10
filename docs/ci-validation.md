@@ -6,12 +6,13 @@ personal AI CLI installation or provider credentials.
 
 ## Automatic and manual runs
 
-At the owner's request (`core:AF-TEAM-002`), the six Python matrix jobs run only
+At the owner's request, the six Python matrix jobs run only
 when someone explicitly starts the **CI** workflow with **Run workflow** in
 GitHub Actions. They are skipped on pull requests and pushes to `main`.
-Wheel and Docker checks still run automatically. The separate required
-coordination policy and team tooling checks remain active, as do local
-pre-push checks. This changes scheduling; it does not repair or hide old failures.
+Wheel and Docker checks still run automatically. The **Planning validation** job
+also runs on pull requests and pushes to `main`, checking active backlog structure
+and readable alignment with its focused regression tests. This changes scheduling;
+it does not repair or hide old failures.
 
 To request the matrix for a specific branch, use **Actions > CI > Run workflow**
 and select that branch, or run `gh workflow run ci.yml --ref BRANCH`.
@@ -26,6 +27,7 @@ Install and run the same checks locally with the Python environment you selected
 ```sh
 python -m pip install -e ".[web,dev]"
 python -m compileall -q src tests
+python scripts/validate_backlog.py
 python scripts/validate-game-creator-backlog.py
 python -m unittest discover -s tests -v
 agent-factory --help
@@ -49,9 +51,8 @@ is a test failure, not a reason to silently skip the tests.
   zero; Windows uses a checked `tasklist.exe` call and exact CSV PID matching.
   Probe failures do not count as successful cancellation. Additional tests
   verify live/reaped children and both OS probe paths.
-- Empty unittest suites fail local commit checks on both Python 3.11 (exit 0)
-  and Python 3.12+ (exit 5). Neither result creates a passing attestation;
-  import failures retain their actual diagnostic.
+- Planning validation rejects malformed task references, duplicate IDs, cycles,
+  invalid release gates and drift between the Lokiravia manifest and readable backlog.
 
 The workflow uploads `tests-<os>-python-<version>` artifacts even when tests
 fail. Each contains verbose unittest output, including executed test count and

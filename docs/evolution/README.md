@@ -1,0 +1,48 @@
+# Lokvetia Core: продукт, який уміє доказово поліпшувати себе
+
+Мова документації: [погоджений двомовний підхід](language-policy.md) · [English language policy](language-policy.en.md). Українські оригінали збережено; повний англомовний портфель — наступний етап.
+
+**Почати з [єдиного порядку реалізації](implementation-order.md) та [точного складу перших релізів](first-releases.md).** Узгоджено280 вимог обох продуктів; нові65 карток включено до наявної роботи. Це план, а не прийнятий runtime.
+
+Документаційний портфель · редакція 2026-09-10 · **E0 / proposed**. 35 нових карток Core; спільно з Lokiravia — 65. Нові RSI/LW вимоги ще не реалізовані; наявні legacy компоненти враховано окремо. Чинні alpha-обмеження, backlog і release gates зберігаються.
+
+Core має поліпшувати власний код, harness, інструменти, пам’ять, UX, метод дослідження та наступний optimizer. Кожне прийняте покоління прив’язане до незмінного суб’єкта, незалежних доказів, визначеної до запуску метрики й шляху відновлення. Lokiravia є одним зі споживачів; standalone користь Core доводиться без готової гри.
+
+Новий прохід Q05: [як покоління Core і світ відновлюються після збоїв](recovery-contract.md) — 16 статичних сценаріїв, точні повноваження й узгоджене переключення стану.
+
+Q06: [як порівнювати причинні гілки та нові версії Core](counterfactual-evaluation.md). Десять відкритих паперових сценаріїв міста уточнюють вимоги; вони не є прихованим benchmark або зіграним playtest.
+
+Q01: [користь, повтор і право змінити напрям](experience-improvement.md) — нове читання трьох повних глав «корпусу A» уточнило критерії гумору, виходу та самовдосконалення продукту.
+
+Q02: [що зберігається після перетворення](identity-continuity.md) — ідентичність, форма, покоління Core й перенесення прав/домовленостей; вісім статичних контролів.
+
+Q03: [як Core змінює оцінювач і перевіряє власну рекурсію](evaluator-succession.md) — пряме читання DGM/RQGM, шість джерельних anchors і десять статичних controls; п’ять Core-карток уточнено.
+
+Q04: [чи потрібне Core навчання моделі](training-research.md) — повний текст A-Evolve v3, окремі feasibility/admission/adoption та вісім статичних controls; training035 лишається необов’язковим.
+
+Q07: [від задуму до поліпшення Core](creator-evolution.md) — source-аудит brief/scope/team, межа до Play, точні feedback/restore subjects і stage-specific критерії; десять статичних controls.
+
+Q08: [незалежні задачі для перевірки Core](non-game-evaluation.md) — дві work-product families, source/root ancestry, baseline/selection/final policy та десять статичних controls; фактичний benchmark ще не створений.
+
+## Почати тут
+
+| Документ | Навіщо читати |
+|---|---|
+| [Спільна концепція](vision.uk.md) | Кому потрібні продукти, обіцянка досвіду, три об’єкти еволюції та E0–E5 |
+| [Архітектура Core](core-architecture.md) | Чотири контури, reuse, manifest lifecycle, O0→O1→O2, verifier/optimizer evolution, шість ADR |
+| [План доказів і поставок](delivery-plan.md) | Порядок роботи, перші вузькі зрізи, інтеграція чинних GC/CLD gates, creator experiment |
+| [35 карток беклогу](backlog.md) · [JSON](backlog.json) | Outcomes, acceptance, negative cases, залежності, reusable capabilities і джерела |
+| [Контракт Core ↔ світ](platform-world-contract.md) | Хто може змінити стан/правило/платформу; replay, session epochs, migration та receipt profiles |
+
+## Підстави й якість
+
+- [Аудит обох репозиторіїв](repository-audit.md) — exact baseline й фактичні прогалини.
+- [Q02 source audit: roles і memory](implementation-identity-audit.md) — наявні version/scope primitives та межі висновку.
+- [RSI: реєстр тверджень](rsi-source-analysis.md) — прочитаний PDF, первинні джерела та межі висновків.
+- [Джерела й покриття](source-guide.md) · [10 файлових ідентичностей](sources.json) — що справді прочитано й що ще потребує перевірки.
+- [Журнал проходів](iteration-review.md) · [Перевірки](validation.md) — які заперечення змінили дизайн.
+- [Черга наступних проходів](continuation.md) — конкретні питання, stop conditions і відкладене людське evidence.
+
+Супутній [портфель Lokiravia](https://github.com/HappyMiha/Lokiravia/blob/docs/living-systems-rsi/docs/evolution/README.md) містить літературні дослідження, оригінальну пригоду та 30 світових задач.
+
+Markdown є джерелом змісту карток; JSON зберігає синхронні структуровані поля й кваліфіковані залежності. Обидва файли редагуються разом. Цей design manifest не імпортують у runtime як чинний backlog. Усі дослідницькі результати тут proposed; майбутній no-go може бути правильним результатом.

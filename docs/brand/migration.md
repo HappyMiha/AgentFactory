@@ -20,7 +20,6 @@ The canonical repository names are `HappyMiha/Lokvetia-Core` and `HappyMiha/Loki
 | Workspace and database | `.agent-factory`, existing SQLite paths and schema | Existing data is opened in place |
 | Configuration | `AGENT_FACTORY_*` and existing settings | No credentials or environment migration |
 | Runtime identities | Existing Temporal namespaces, queues, workflow IDs, cookies and keyring entries | Running work and sign-ins remain discoverable |
-| Coordination | `core`/`cloud`, AF task IDs, `team-state`, claims, branches and tokens | Existing ownership and evidence remain authoritative |
 | Package dependency | Existing Core commit pin in Lokiravia | Rebranding does not silently upgrade runtime behavior |
 | Historical files | Existing backlog/PDF filenames and dated evidence | Old references remain valid |
 
@@ -28,7 +27,7 @@ The old strings in these technical surfaces are deliberate compatibility identif
 
 ## Update an existing checkout
 
-Update your own branch by the existing team workflow, incorporating the current `main` and rerunning checks. Do not replace an active task branch or copy another task's claim token. Once both repository renames are complete, an optional local remote update is:
+Update your branch from the current `main`, preserve unrelated work and rerun the relevant checks. Once both repository renames are complete, an optional local remote update is:
 
 ```sh
 git remote set-url origin https://github.com/HappyMiha/Lokvetia-Core.git
@@ -37,9 +36,9 @@ lokvetia --help
 lokvetia --workspace . web --open
 ```
 
-The old remote continues to redirect. Updated coordination tooling recognizes explicit old and new repository aliases and validates PR evidence by repository identity and PR number, while preserving branch, base and head checks. Retained branches must incorporate this tooling before recording review/completion after the rename.
+The old remote continues to redirect. Existing branches, task IDs and historical review evidence remain valid after the rename.
 
-The existing installation work under `core:AF-GC-014` remains separately owned. Its reserved files are not edited by this rebrand. Historical documents retain their recorded findings with a current-brand note.
+The existing installation work under `core:AF-GC-014` remains separate from this rebrand. Historical documents retain their recorded findings with a current-brand note.
 
 ## Product truth and domains
 

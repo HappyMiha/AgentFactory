@@ -1,8 +1,12 @@
 # Lokvetia Core
 
+План розвитку обох продуктів: [єдиний порядок280 вимог](docs/evolution/implementation-order.md) · [склад перших релізів](docs/evolution/first-releases.md).
+
 <p><img src="src/agent_factory/static/brand-wordmark.svg" alt="Lokvetia Core" width="360"></p>
 
 **AI teams. Human direction.**
+
+**Product & architecture research:** [Self-improving Core and living worlds — concept, 65-item joint portfolio, evidence and delivery plan](docs/evolution/README.md) (proposed; documentation only).
 
 [Lokvetia](https://lokvetia.com) · [Lokiravia game creation](https://github.com/HappyMiha/Lokiravia) · [Brand and migration](docs/brand/migration.md)
 
@@ -34,7 +38,7 @@ The local interface opens at `http://127.0.0.1:8765`. For the offline demonstrat
 
 > **Planning update — 5 September 2026:** there are two projects. This repository remains the public, Apache-2.0 **Core**. [Lokiravia](https://github.com/HappyMiha/AgentFactory-Cloud) is a separate public repository for the commercial product plan: creating, playing, remixing, and publishing games. No Cloud application or game pipeline is claimed as delivered by this update.
 
-**Developing from three computers:** read the [team workflow](docs/team-workflow.md) and [live task register](https://github.com/HappyMiha/AgentFactory/blob/team-state/team-state.json). HappyDucky02, HappySnowman, and HappyHahahaker use owned branches, atomic task claims, checks before push, and pull requests into `main`.
+**Contributing:** see the [development setup and checks](CONTRIBUTING.md).
 
 Start with the simple English [Core and Cloud description](docs/core-cloud-boundaries.md), [roadmap](docs/core-cloud-roadmap.md), [backlog ownership](docs/core-cloud-backlog.md), and [audit summary](docs/product-audit-2026-09-05.md). The Cloud repository holds its [product description](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/product-description.md), [roadmap](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/roadmap.md), and [67-task backlog](https://github.com/HappyMiha/AgentFactory-Cloud/blob/main/docs/backlog.md).
 

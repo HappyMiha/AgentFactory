@@ -1,0 +1,13 @@
+# Q02: ідентичність і зміст контрактів у чинному Core
+
+2026-09-10. Статичне читання на Core commit `1f0f25bab16886ff5597f3a2be02eb1d44fac023`. Розглянуто зазначені нижче ділянки двох модулів; виклики в усіх верхніх шарах не аудитовано, runtime не запускався. Це межа локально перевіреної реалізації, не твердження про наскрізну вразливість.
+
+| Першоджерело | Фактично наявне | Що треба визначити для самоеволюції |
+|---|---|---|
+| [roles.py](../../src/agent_factory/roles.py), рядки31–70, 93–115 | RoleDefinition окремо має ID, version, tools, permissions, limits і incompatible duties. Повторна реєстрація того самого ID/version із іншим contract digest відхиляється | Права не повинні непомітно розширюватись через нове тлумачення старого role/permission label; потрібен semantic compatibility contract |
+| Той самий модуль, рядки118–126 | `resolve` із version бере конкретну версію; без version бере останній запис | Evolution manifest і міграція мають explicit version/digest; наявність зручного latest lookup не є дозволом floating qualification |
+| Той самий модуль, рядки184–215 | Конфлікт duties перевіряється між призначеннями з однаковими decision_key та agent_id; role/version визначені явно | Ця функція сама не доводить, що різні agent IDs мають незалежне походження чи управління. Alias/lineage checks повинні бути частиною заявленої decision policy; не робимо висновку про поведінку всього application stack |
+| [memory.py](../../src/agent_factory/memory.py), рядки30–70, 105–145 | MemoryWrite містить tenant/mission/task, purpose, authority, source, validity та invalidation; digest охоплює зміст і ці поля | Старий зміст/хеш не є окремим правом перенесення в інший purpose, tenant або actor. Copy/reuse має зберігати походження й виконувати чинну authority policy |
+| Той самий модуль, рядки266–296, 299–340 | Skill draft перевіряє наявність source_memory_id, фіксує specification digest для key/version. Review вимагає дозволеного reviewer role, версію tests, verdict/score, representative cases та непорожнє evidence | Посилання на source memory або заповнене review поле саме по собі не є зовнішнім доказом семантичної переносимості. Новий runtime/role/evaluator має explicit applicability decision для відповідного scope |
+
+Чинні version/digest, role assignment і memory scope primitives повторно використовуються. [Identity continuity contract](identity-continuity.md) визначає додаткові правила й статичні Q02-I01–08; він не оголошує ці правила вже реалізованими. Зміни own-source/harness/optimizer/evaluator Core лишаються immutable candidates із незалежною перевіркою. Нове ім’я, новий process або копія skill не дають нової authority.
