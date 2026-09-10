@@ -2,13 +2,9 @@
 
 Task: `core:AF-GC-...` or `cloud:AF-CLD-...`
 
-Worker: `HappyDucky02` / `HappySnowman` / `HappyHahahaker`
+Prerequisites and upstream commit evidence:
 
-Claim branch and declared scopes:
-
-Merged prerequisites and upstream commit evidence:
-
-Reviewer worker and downstream impact:
+Review evidence and downstream impact:
 
 Describe the operator-visible result and why it matters.
 
