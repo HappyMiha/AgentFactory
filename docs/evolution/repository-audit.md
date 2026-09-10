@@ -4,6 +4,8 @@
 
 Q07, 2026-09-10: [додатковий creator audit](creator-evolution.md) простежив actual brief/scope/team callers, Core delivery/recovery primitives і межу до Play/feedback/restore. Це окремий актуалізований source snapshot із точними commits та pin comparison; початковий аудит нижче зберігає свою дату.
 
+Q08, 2026-09-10: [non-game evaluation design](non-game-evaluation.md) використовує шість конкретних Core failure classes із code/tests та історичного readiness gate. Synthetic fixtures, поточні guards і вузькі static limits розділені; нових live defects або виконаних experiments не заявлено.
+
 ## 1. Висновок для продуктового рішення
 
 Основа вже значно серйозніша за прототип «агенти розмовляють між собою». Core містить реальні модулі незмінних кандидатів, детермінованих перевірок, незалежної оцінки, пам’яті, контрольованих skills, bounded repair, робочих дерев, політик, sandbox, кваліфікації та відновлення. Їх треба розширити до перевірюваної еволюції **самого продукту Lokvetia Core**. Створювати паралельні Evaluator, Skill Registry, scheduler чи evidence store в Lokiravia було б помилкою власності та інтеграції.

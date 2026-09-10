@@ -130,10 +130,10 @@
         "protocol digest зафіксований до challenger output",
         "зміна metric/threshold створює новий експеримент",
         "documented failed/inconclusive — валідні завершення. Правила statistical confidence і мінімально корисного ефекту обираються для конкретної задачі до вимірювання. Protocol явно класифікує replay/action intervention/input sensitivity/planner comparison/evaluator comparison",
-        "pair identity фіксує initial observable inputs, goal, rules, exogenous/coupling plan і horizon"
+        "pair identity фіксує initial observable inputs, goal, rules, exogenous/coupling plan і horizon. Для non-game comparison наперед визначено root/family/slice, reference roles R0/Rn, finite candidate/search/final-gate caps та cluster-aware analysis. Допустима memory treatment має спільний eligible experience pool, не обов’язково однакове представлення. Fault schedule прив’язано до semantic boundary: законне уникнення effect не примушує arm виконувати його й не вилучає root, task outcome та fault applicability окремі"
       ],
       "negative_cases": [
-        "підвищення cap лише challenger, вибір metric після результату, викидання невдалих seeds, зниження non-regression floor заднім числом. Після втручання downstream NPC choices не копіюються з baseline; різні задачі не стають paired через однакову назву"
+        "підвищення cap лише challenger, вибір metric після результату, викидання невдалих seeds, зниження non-regression floor заднім числом. Після втручання downstream NPC choices не копіюються з baseline; різні задачі не стають paired через однакову назву. Створено новий final set або criterion epoch, щоб скинути cumulative failed-selection history. Candidate штучно змушено до зайвої операції для зручної fault injection"
       ],
       "dependencies": [
         "core:AF-RSI-001",
@@ -153,7 +153,8 @@
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
         "DESIGN:core-architecture",
-        "CONTRACT:counterfactual-evaluation"
+        "CONTRACT:counterfactual-evaluation",
+        "CONTRACT:non-game-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -237,10 +238,10 @@
         "optimizer бачить дозволені training diagnostics, final holdout працює в окремому evaluator scope",
         "запам’ятований кейс не рахується новим",
         "будь-яка зміна split змінює protocol. Опубліковані паперові Q06-C01–C10 мають статус development/design",
-        "fresh holdout потребує незалежного походження та contamination audit, а не лише нових імен або seeds"
+        "fresh holdout потребує незалежного походження та contamination audit, а не лише нових імен або seeds. TaskCase/TaskSetManifest фіксує root/source/generator/solution ancestry та freshness vector, split робиться по залежних roots до outcomes. D development, S adaptive selection і F final confirmation мають різні allowed diagnostics і claims. Доступ task agent до F input дозволений тільки в declared evaluation scope, transitive optimizer/log/skill/retrieval exposure записується. Unknown pretraining access не видається clean. Aggregate feedback, retired sets і past failed final gates зберігають lineage"
       ],
       "negative_cases": [
-        "витік через logs/memory/error output, перейменування training case у holdout, синтетична копія holdout, retrieval за його приватним ID. Public expected trace чи його синтетичний переказ не оголошується прихованим зовнішнім grounding"
+        "витік через logs/memory/error output, перейменування training case у holdout, синтетична копія holdout, retrieval за його приватним ID. Public expected trace чи його синтетичний переказ не оголошується прихованим зовнішнім grounding. S із прихованими labels названо незалежним F після selection queries. Sibling schedules, незалежний автор тієї самої розв’язки або нова дата оголошені fresh roots без ancestry audit"
       ],
       "dependencies": [
         "core:AF-RSI-003",
@@ -261,7 +262,8 @@
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
         "DESIGN:core-architecture",
-        "CONTRACT:counterfactual-evaluation"
+        "CONTRACT:counterfactual-evaluation",
+        "CONTRACT:non-game-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -344,10 +346,11 @@
         "failed runs і витрати всіх кандидатів збережено",
         "sequential selection/multiple comparisons враховано за declared protocol. Краща новизна, прибутковість або нижча ціна не компенсують порушений hard invariant",
         "зміна критерію після результату створює новий protocol. Окремо оцінюються виконання початкової мети, правильне handling відмови/невідомості, causal contribution, integrity та повна ціна. Evaluator comparison використовує один frozen corpus із зовнішніми labels і blind order. Declared consumer slices показують вигоду й повну відому ціну для різних ролей, включаючи exit/restore",
-        "missing cost не вважається нульовим. Якщо висновок спирається лише на тих, хто залишився, його область прямо обмежено"
+        "missing cost не вважається нульовим. Якщо висновок спирається лише на тих, хто залишився, його область прямо обмежено. Independent n задають task/source clusters, не seeds, assertions або reviewer votes. Rn є comparator для incremental adoption, R0 — для накопиченого claim за сумісного current protocol. Кожна наперед названа family має власний outcome/floor та uncertainty",
+        "інфраструктурний invalid measurement відрізнено від невдалого valid outcome. Equivalent потребує окремого наперед заданого criterion. Task/nomination/oracle preparation і всі search/retest attempts входять до campaign cost, нуль accepted improvements не робить витрати нульовими"
       ],
       "negative_cases": [
-        "більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout. Невиконане читання не стає виконаним через гарне пояснення відмови; більше cascades не компенсує порушену згоду або більші витрати. Середній приріст приховує ціну, перенесену на іншу роль, або порушення її зафіксованого hard floor"
+        "більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout. Невиконане читання не стає виконаним через гарне пояснення відмови; більше cascades не компенсує порушену згоду або більші витрати. Середній приріст приховує ціну, перенесену на іншу роль, або порушення її зафіксованого hard floor. Candidate кращий тільки за засновника, гірший за чинне покоління. Одну repo задачу з шістьма перевірками видано за переносимість між сім’ями, недоведений gain оголошено equivalence"
       ],
       "dependencies": [
         "core:AF-RSI-003",
@@ -368,7 +371,8 @@
         "REPO-AUDIT",
         "DESIGN:core-architecture",
         "CONTRACT:counterfactual-evaluation",
-        "CONTRACT:experience-improvement"
+        "CONTRACT:experience-improvement",
+        "CONTRACT:non-game-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -781,10 +785,10 @@
       "acceptance_criteria": [
         "success визначається зовнішніми tests і людською оцінкою там, де вона потрібна",
         "tool use, time/cost, ручні виправлення та failed attempts рахуються",
-        "benchmark не складається лише з unit tests самого Core"
+        "benchmark не складається лише з unit tests самого Core. Початкові NG-F1 bounded external-fixture maintenance і NG-F2 requirements-to-decision packet мають різні work products та неперетинні source/root tasks. Context/tool/repair/recovery/evidence — cross-cutting slices, не додаткові independent families. Existing Core fixtures і NG-O01–06 відкриті development recipes. Qualification включає source/rights, solvability, qualified verifier/document adapter, known-good/bad controls та людський product signal там, де claim цього потребує. Реальні roots, sample/repeats та budget приймаються окремо до виконання"
       ],
       "negative_cases": [
-        "task identity leakage, hardcoded answer, текстовий «готово» без артефакту, non-game task потребує Godot або Cloud"
+        "task identity leakage, hardcoded answer, текстовий «готово» без артефакту, non-game task потребує Godot або Cloud. Той самий patch спочатку оцінений як план, потім як код і названий двома незалежними сім’ями. F2 schema pass видається повною usability перевіркою, а всі supported задачі відхиляються заради безпомилкового handling score"
       ],
       "dependencies": [
         "core:AF-RSI-003",
@@ -806,7 +810,8 @@
         "RSI-SURVEY:R08",
         "RSI-SURVEY:R11",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:non-game-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",
@@ -1631,10 +1636,10 @@
       "outcome": "окремий Core RSI acceptance dossier; немає залежності від playable Lokiravia чи прийняття ігрового світу",
       "acceptance_criteria": [
         "за зафіксованим протоколом кілька послідовних поколінь охоплюють власні source/harness і optimizer",
-        "показано benefit на щонайменше двох незалежних non-game task families, product-signal evidence, failed candidate, evaluator challenge і rollback. Реальна кількість поколінь/вибірка/порогові значення зафіксовані до запуску. Якщо дані не підтверджують приріст, gate не пройдено"
+        "показано benefit на щонайменше двох незалежних non-game task families, product-signal evidence, failed candidate, evaluator challenge і rollback. Реальна кількість поколінь/вибірка/порогові значення зафіксовані до запуску. Якщо дані не підтверджують приріст, gate не пройдено. Дві qualifying non-game families і analysis rules названі до outcomes, їхню незалежність обґрунтовано work-product/source/root lineage. Користь показано в обох за своїми наперед заданими axes/floors, pooled mean не приховує family regression. Candidate selection, final exposure і cumulative failed gates у release dossier видимі. Product-signal evidence не замінюється структурною correctness плану"
       ],
       "negative_cases": [
-        "успіх тільки на cached training tasks; жодної зміни optimizer; змінений evaluator — єдине джерело gain; Core не працює без Cloud/game pack; підтримку оголошено поза qualified OS/model envelope"
+        "успіх тільки на cached training tasks; жодної зміни optimizer; змінений evaluator — єдине джерело gain; Core не працює без Cloud/game pack; підтримку оголошено поза qualified OS/model envelope. Дві вдалі slices вибрано після score або новий F обнулив невдалі пошуки. Шістдесят рядків із повторів одного fixture названі шістдесятьма незалежними задачами"
       ],
       "dependencies": [
         "core:AF-RSI-019",
@@ -1657,7 +1662,8 @@
         "RSI-SURVEY:R08",
         "RSI-SURVEY:R12",
         "REPO-AUDIT",
-        "DESIGN:core-architecture"
+        "DESIGN:core-architecture",
+        "CONTRACT:non-game-evaluation"
       ],
       "definition_of_ready": [
         "Прийняті контракти залежностей із точними версіями й межами доказів.",

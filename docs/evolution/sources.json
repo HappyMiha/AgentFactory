@@ -1062,5 +1062,209 @@
     "human_study_performed": false,
     "literary_pdf_coverage_changed": false,
     "raw_user_source_committed": false
+  },
+  "repository_q08_audit": {
+    "date": "2026-09-10",
+    "kind": "targeted static source/test/history and non-game evaluation design",
+    "note": "non-game-evaluation.md",
+    "snapshots": {
+      "Lokvetia-Core": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+      "Lokiravia": "23704f316948a50aba724ede5d461ecbd8cdaaea"
+    },
+    "cited_source_files": [
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/candidate_changes.py",
+        "line_anchors": [
+          105
+        ],
+        "git_blob": "7838bef1af1b8e68887dfd67654a8eca6c9fa9cf",
+        "git_content_sha256": "f865482a6b0559a92a18f1da73d8928fbd510bb989a4ce71024433121e35bd71"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/coding_delivery.py",
+        "line_anchors": [
+          481
+        ],
+        "git_blob": "f835732018fbfb911ef2bb31d1572700c9e7ff35",
+        "git_content_sha256": "458751991edded967cb4085c50e52a260fb011c9458df29526e5a3b7654c19e4"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/context_packages.py",
+        "line_anchors": [
+          414
+        ],
+        "git_blob": "def602993218f0d82fd9b2ae3253639e0c42c22b",
+        "git_content_sha256": "ee0cc7b5a0987cddc2488a3620467793baa9bebb2eb55daa18b9cd94c7f18089"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/environment_readiness.py",
+        "line_anchors": [
+          239
+        ],
+        "git_blob": "0f8f1198de0bba8a85fb991d31fb47f8d5eb872c",
+        "git_content_sha256": "6653bce0e9dcbcd257b025620b1e055f2a7d82262f340b4089e2c3504a69d738"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/evaluation.py",
+        "line_anchors": [
+          100
+        ],
+        "git_blob": "b74ac39e771a777297e87e0a56e940d59dac1911",
+        "git_content_sha256": "f94766ced32182184ee71f0d0fbe96280a27430621651fbda47fcff418d4963d"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/mission_intake.py",
+        "line_anchors": [
+          1311
+        ],
+        "git_blob": "56150414aef028b08a2e814a36a20bc398ac48de",
+        "git_content_sha256": "0472133272232733b9e88ec4986fd1ddc22e4d545739fc77adc03fb21e5bc7a5"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/worker_runtime.py",
+        "line_anchors": [
+          324,
+          373
+        ],
+        "git_blob": "6c9342ab241252ae6b82d3074e4073173f1d996b",
+        "git_content_sha256": "05e995d1e903134665e861696b12edf022cfc4a819ad8f211d3fad299a46d3ad"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_mission_control.py",
+        "line_anchors": [
+          373
+        ],
+        "git_blob": "44521b8db6210fa459286256991503b3668944fd",
+        "git_content_sha256": "02db23cda6824ec6015d917547b15ba541a525907df995f6bd35864ee8d9a6ec"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_mission_intake.py",
+        "line_anchors": [
+          267
+        ],
+        "git_blob": "813d81eba9952af653daac85472d5e0cdffc0d8a",
+        "git_content_sha256": "079371c06e5124b02d3a40db78c0420a2fe3e6b49422c8ec578fcc9ad762b885"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_mission_recovery.py",
+        "line_anchors": [
+          60
+        ],
+        "git_blob": "db4eec441711284316e74a47e5271d5725224725",
+        "git_content_sha256": "c5f57619b8445bb2fc0fc98bfbf703122be255e6c698d11437280c4c55f10d22"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_proposal_verifier.py",
+        "line_anchors": [
+          208,
+          492
+        ],
+        "git_blob": "ad610240e334309dcb808de0733de9233f641a84",
+        "git_content_sha256": "0511f114e7d9c964ef79f5560dfac6b07a75520c8d301b7ae21b5d7c3f47ce5a"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_codex_worker.py",
+        "line_anchors": [
+          289,
+          389
+        ],
+        "git_blob": "6f24522ebec69e96152bba3c18df6ce96e612812",
+        "git_content_sha256": "2217c6e1fe6d7c34d25685ab4376268faad58fa280ae4fa4aaefc5d8ff5f5e26"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_context_packages.py",
+        "line_anchors": [
+          147
+        ],
+        "git_blob": "7451633d90f09a3d50df8e17cd04319c5137bf12",
+        "git_content_sha256": "ef65ea50de421049aa676858ce3f3232338d1cf1c6a7f23f2917bc27df9841dc"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_environment_readiness.py",
+        "line_anchors": [
+          40
+        ],
+        "git_blob": "09897e586858bcc104347dbec77995724dc7760e",
+        "git_content_sha256": "8f5d757b032e282a914912f1c8d31ede27b2fba4f6c0bae10a1c27f67e40eb55"
+      }
+    ],
+    "historical_change": {
+      "repository": "Lokvetia-Core",
+      "commit": "cf7896b66f202ba537e62b6a15f7ee3f7bc614a0",
+      "committer_time": "2026-09-06T02:35:48+02:00",
+      "subject": "Require current route checks before autonomous development (#12)",
+      "meaning": "gate change inspected; no user incident or reproduction inferred"
+    },
+    "q07_cited_path_overlap": [
+      "src/agent_factory/coding_delivery.py"
+    ],
+    "coverage_note": "Selected source/test regions and one historical change. File hashes identify artifacts, not full-file reading. Cited-path overlap is not an exact lifetime reading-coverage delta.",
+    "families": [
+      "NG-F1",
+      "NG-F2"
+    ],
+    "source_classes": [
+      "NG-D01",
+      "NG-D02",
+      "NG-D03",
+      "NG-D04",
+      "NG-D05",
+      "NG-D06"
+    ],
+    "public_recipes": [
+      "NG-O01",
+      "NG-O02",
+      "NG-O03",
+      "NG-O04",
+      "NG-O05",
+      "NG-O06"
+    ],
+    "authored_controls": [
+      "Q08-N01",
+      "Q08-N02",
+      "Q08-N03",
+      "Q08-N04",
+      "Q08-N05",
+      "Q08-N06",
+      "Q08-N07",
+      "Q08-N08",
+      "Q08-N09",
+      "Q08-N10"
+    ],
+    "actual_task_corpus_created": false,
+    "hidden_final_set_created": false,
+    "product_runs_performed": false,
+    "runtime_tests_rerun": false,
+    "human_study_performed": false,
+    "literary_pdf_coverage_changed": false,
+    "raw_user_source_committed": false
   }
 }

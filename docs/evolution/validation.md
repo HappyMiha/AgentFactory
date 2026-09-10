@@ -60,6 +60,14 @@ PDF hashes, pypdf metadata/version/page counts і exact reading ranges звір�
 
 Чинні validators повторені: Core — 47 items / 43 executable, World — 18 synthetic engine-operation results та 13 synthetic evidence scenarios / 5 gates. Source/browser/runtime tests цього creator шляху тільки прочитані, не запускалися. Q07 не виконував app/model/engine/provider/training/user experiments і не збільшував literary/PDF coverage.
 
+## Q08, 2026-09-10
+
+Звірено 14 cited Core source/test files на exact snapshot: commit/blob/content hashes і line anchors; окремо перевірено SHA, дату й subject історичного readiness commit. Шість failure classes відділено від live incident claims. Перевірено дві user-work families, шість public development recipes і десять authored controls; реального task corpus/final set не створено, їхні outcomes не виконувалися.
+
+Змінено п’ять чинних Core карток003/005/007/015/030; World-картки незмінні. Markdown/JSON parity, 65 IDs/239 edges, DAG/closures, titles/status/phase/priorities/dependencies, refs/links, 18 identical shared docs, docs-only scope та whitespace пройшли перевірку. Незалежне рев’ю закрило cumulative final-history, semantic fault applicability і точність interrupted adoption boundary; уточнення harness AND source gate019 не змінює залежностей.
+
+Чинні validators повторені: Core47/43, World18 synthetic engine-operation results та13 synthetic scenarios/5 gates. App/model/provider/engine/training/user runs і повторне виконання source/browser/runtime tests цього аудиту не проводилися. Literary/PDF coverage незмінне. Рішення про паузу автоматичних проходів зафіксоване після завершення доступної Q01–Q08 черги; це не acceptance продуктів.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.

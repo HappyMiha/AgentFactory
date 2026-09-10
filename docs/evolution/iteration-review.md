@@ -90,6 +90,16 @@
 
 Уточнено Core025/026, World013/025 і evidence boundary World030; чинні owners збережені, немає нових IDs/edges. Q07 завершено як source/design pass. Далі Q08: fresh non-game task families з Core defect classes, baseline/holdout і contamination policy без запуску нового продуктового коду.
 
+## Прохід 11 — Q08: незалежність non-game задач і чесний final (2026-09-10)
+
+Статично прочитані шість Core defect classes: stale requirements, mandatory context/dispatch, readiness binding, primary evidence, interrupted artifact adoption і Pause/unknown effects; окремо звірено historical readiness commit. Existing fixtures не названо живими інцидентами, literary/PDF coverage незмінне. Source/hash/line anchors збережені в manifest.
+
+[Non-game evaluation](non-game-evaluation.md) замінює помилковий підрахунок шести вимірів як шести families на дві різні user-work families. Task-root/source/solution ancestry, D/S/F exposure, R0/Rn/ablation controls, finite final allowances, outcome/fault applicability та full campaign cost визначено до майбутніх запусків. Шістдесят root-pairs і repeats лишаються неперевірною без precision/resources review гіпотезою, а шість public recipes — design, не hidden corpus.
+
+Незалежне рев’ю уточнило cumulative final-selection history, законне уникнення injected-effect boundary і точний момент interrupted candidate adoption. Усунуто неузгодженість delivery plan: повний RSI019 потребує власних harness і source змін; один mutation proof — ранній зріз. Уточнено Core003/005/007/015/030, 65 IDs/239 edges та W0/standalone scope збережено.
+
+Q08 завершено як source/design pass. Для поточної черги лишилися Q09/Q10; прийнято рішення призупинити автоматизацію після поставки до реальних даних/profile/resources/учасників або нового дослідницького питання. Код і фактичні benchmark tasks не створювалися.
+
 ## Межа висновку
 
 Перевірки структури, посилань, DAG і чинних контрактних validators наведено у `validation.md`. Вони засвідчують узгодженість проєктної поставки E0. E1–E5, успішна RSI, людський досвід і готова гра залишаються майбутніми доказами. Гіпотези можуть бути відхилені; backlog не вимагає назвати кожне покоління успішним.

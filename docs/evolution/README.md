@@ -18,6 +18,8 @@ Q04: [чи потрібне Core навчання моделі](training-researc
 
 Q07: [від задуму до поліпшення Core](creator-evolution.md) — source-аудит brief/scope/team, межа до Play, точні feedback/restore subjects і stage-specific критерії; десять статичних controls.
 
+Q08: [незалежні задачі для перевірки Core](non-game-evaluation.md) — дві work-product families, source/root ancestry, baseline/selection/final policy та десять статичних controls; фактичний benchmark ще не створений.
+
 ## Почати тут
 
 | Документ | Навіщо читати |

@@ -10,6 +10,7 @@
 | `RSI-DGM:DGM-01`…`03`, `RSI-RQGM:RQGM-01`…`03` | [Q03 primary-methods matrix](evaluator-succession.md), exact ranges/hashes у sources.json | Пряме читання методів/обмежень; повідомлення авторів відділені від власних вимог, експерименти не відтворено |
 | `RSI-AEVOLVE:AE-01`…`05` | [Q04 primary-source matrix](training-research.md), coverage/hash у sources.json | Повне текстове читання v3, зіставлення із survey; не reproduction і не textual diff старої версії |
 | `RSI-SOUNDNESS` | Розділ першоджерел RSI analysis, URL у sources.json | Поки незалежно звірені metadata/abstract; повне читання методів не заявлене |
+| `CONTRACT:non-game-evaluation` | [Q08 non-game task design](non-game-evaluation.md) | Targeted Core source/tests/history, дві proposed families та public recipes; не виконаний benchmark або створений hidden set |
 | `CONTRACT:creator-evolution` | [Q07 creator source/design audit](creator-evolution.md) | Точні repository snapshots/call paths, stage outcomes і десять authored controls; не live journey або user study |
 | `CONTRACT:training-research` | [Q04 training feasibility](training-research.md) | Власні критерії та вісім статичних controls; design не дозволяє training |
 | `CONTRACT:evaluator-succession` | [Q03 критерії епох і рекурсії](evaluator-succession.md) | Власний контракт і десять відкритих статичних controls, не виконані experiments |
