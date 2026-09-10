@@ -89,22 +89,12 @@
       }
     },
     {
-      "filename": "Марк Калашников – Во имя Веры (2).epub",
       "sha256": "5f1047486ee6c79aa404f1ee4a28cd78bee2309b6899163b33b634055eb74fb0",
       "bytes": 343645,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Во имя Веры"
-      ],
-      "creator": [
-        "Марк Калашников"
-      ],
-      "identifier": [
-        "urn:uuid:583568e4-2694-4a2d-8f86-e239df5efbbd"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See transforma-third-pass.md.",
+      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See literary-b-pass-3.md.",
       "q02_coverage": {
         "volume": 2,
         "chapter": 15,
@@ -127,81 +117,59 @@
         "exact_lifetime_new_unique": null,
         "cumulative_book_coverage": null,
         "limit": "Pass1 has structural windows without exhaustive paragraph/character ledger; complete-chapter pass is exact, lifetime union is unknown. No full-book claim."
-      }
+      },
+      "id": "LIT-B-02",
+      "corpus": "B",
+      "volume": 2,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Марк Калашников – Между сном и явью (1).epub",
       "sha256": "63ae0ae93476f6c60019b3715ead71210ce41f3d8208722b7ac5a5758a66c1e1",
       "bytes": 669799,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Трансформа: Между сном и явью"
-      ],
-      "creator": [
-        "Марк Александрович Калашников"
-      ],
-      "identifier": [
-        "urn:uuid:0058d61b-69a7-11e4-a35a-002590591ed2",
-        "isbn:978-5-699-76823-3"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-01",
+      "corpus": "B",
+      "volume": 1,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Марк Калашников – Прайд (4).epub",
       "sha256": "47bef8f31bd58e098d6126f1c300afa7134b30422719fb304a9f3aa84b4e3364",
       "bytes": 820223,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Трансформа: Прайд (книга 4)"
-      ],
-      "creator": [
-        "Калашников М."
-      ],
-      "identifier": [
-        "urn:uuid:cb837448-7a6c-44ac-b786-27172a982ded",
-        "11348"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-04",
+      "corpus": "B",
+      "volume": 4,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Марк Калашников – Пробуждение (6).epub",
       "sha256": "45860966114d1b4cb1eed25166eef30c9327f6c6055b72f637691401455fa462",
       "bytes": 1751831,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Пробуждение"
-      ],
-      "creator": [
-        "Марк Александрович  Калашников"
-      ],
-      "identifier": [
-        "urn:uuid:f086f897-d34c-4618-867a-5312f47bedc1"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-06",
+      "corpus": "B",
+      "volume": 6,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Марк Калашников – Путь Зверя (3).epub",
       "sha256": "ad7fc32dbc4b814a1d9b49cc14357533c69efdd4210f61e337574c9dc7d31c9c",
       "bytes": 284040,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Трансформа 3"
-      ],
-      "creator": [
-        "Марк Калашников"
-      ],
-      "identifier": [
-        "urn:uuid:92a6f61e-89db-42dd-8876-2a973abe491a"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See transforma-third-pass.md.",
+      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See literary-b-pass-3.md.",
       "q02_coverage": {
         "volume": 3,
         "chapter": 15,
@@ -224,45 +192,33 @@
         "exact_lifetime_new_unique": null,
         "cumulative_book_coverage": null,
         "limit": "Pass1 has structural windows without exhaustive paragraph/character ledger; complete-chapter pass is exact, lifetime union is unknown. No full-book claim."
-      }
+      },
+      "id": "LIT-B-03",
+      "corpus": "B",
+      "volume": 3,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Марк Калашников – Разлом (5).epub",
       "sha256": "e09a62ea06b3f9a92ee3b88766cf71ccaa2c16d6a67b91d043b0852ff36a069b",
       "bytes": 1842520,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Трансформа: Разлом (книга 5)"
-      ],
-      "creator": [
-        "Калашников М."
-      ],
-      "identifier": [
-        "urn:uuid:d8a94056-4fd9-4fd8-8b85-a674812e6be9",
-        "11350"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-05",
+      "corpus": "B",
+      "volume": 5,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Сергей Вишневский – Бегающий сейф (1) (1).epub",
       "sha256": "6803936e32f95d61b30f7704438d183a6f3f213e1da5aefad05d8413b3588de4",
       "bytes": 304056,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Бегающий сейф"
-      ],
-      "creator": [
-        "Сергей Вишневский"
-      ],
-      "identifier": [
-        "urn:uuid:be357d19-a6e2-4162-af0f-6dbb7c31d522",
-        "12791"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in running-safe-second-pass.md.",
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in literary-a-pass-2.md.",
       "q01_coverage": {
         "source_id": "S1",
         "sha256": "6803936e32f95d61b30f7704438d183a6f3f213e1da5aefad05d8413b3588de4",
@@ -302,26 +258,20 @@
         },
         "full_book_read": false,
         "union_character_percent": 10.77
-      }
+      },
+      "id": "LIT-A-01",
+      "corpus": "A",
+      "volume": 1,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Сергей Вишневский – Звезда в руке и шило в ... (3).epub",
       "sha256": "42153bb45ab515b2180080066b1be6549a9e688ae691a1c1559790455290889f",
       "bytes": 230982,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Звезда в руке и шило в ..."
-      ],
-      "creator": [
-        "Сергей Вишневский"
-      ],
-      "identifier": [
-        "urn:uuid:90d5ed74-33d5-4c7c-ab2b-035ccfaa2ab5",
-        "12794"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in running-safe-second-pass.md.",
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in literary-a-pass-2.md.",
       "q01_coverage": {
         "source_id": "S3",
         "sha256": "42153bb45ab515b2180080066b1be6549a9e688ae691a1c1559790455290889f",
@@ -373,26 +323,20 @@
         },
         "full_book_read": false,
         "union_character_percent": 39.88
-      }
+      },
+      "id": "LIT-A-03",
+      "corpus": "A",
+      "volume": 3,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     },
     {
-      "filename": "Сергей Вишневский – Маго-ядерный едренбатон! (2).epub",
       "sha256": "21f8a881dbc8f87628ccdb67e17cf30e45962bd05e8e6c531b9ee233a3a54983",
       "bytes": 311094,
       "source_kind": "user_supplied",
       "raw_content_committed": false,
-      "title": [
-        "Маго-ядерный едренбатон!"
-      ],
-      "creator": [
-        "Сергей Вишневский"
-      ],
-      "identifier": [
-        "urn:uuid:6d990676-6159-490a-96d3-f5af72c87885",
-        "12793"
-      ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in running-safe-second-pass.md.",
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in literary-a-pass-2.md.",
       "q01_coverage": {
         "source_id": "S2",
         "sha256": "21f8a881dbc8f87628ccdb67e17cf30e45962bd05e8e6c531b9ee233a3a54983",
@@ -444,7 +388,12 @@
         },
         "full_book_read": false,
         "union_character_percent": 29.08
-      }
+      },
+      "id": "LIT-A-02",
+      "corpus": "A",
+      "volume": 2,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
     }
   ],
   "public_primary_sources": [
@@ -716,7 +665,7 @@
       "coverage": "metadata and abstract; survey synthesis"
     }
   ],
-  "running_safe_q01_totals": {
+  "literary_a_q01_totals": {
     "baseline_read": {
       "paragraphs": 629,
       "characters": 91564
@@ -743,7 +692,7 @@
     },
     "union_character_percent": 25.6
   },
-  "transforma_q02_totals": {
+  "literary_b_q02_totals": {
     "complete_chapters": 2,
     "fully_read_paragraphs": 320,
     "paragraph_text_characters": 43434,
@@ -1266,5 +1215,13 @@
     "human_study_performed": false,
     "literary_pdf_coverage_changed": false,
     "raw_user_source_committed": false
+  },
+  "publication_policy": {
+    "book_titles_published": false,
+    "book_files_published": false,
+    "private_identity_map_committed": false,
+    "source_hashes_and_anonymous_anchors_retained": true,
+    "reading_coverage_unchanged": true,
+    "scope": "Current documentation tree; historical commits not rewritten"
   }
 }
