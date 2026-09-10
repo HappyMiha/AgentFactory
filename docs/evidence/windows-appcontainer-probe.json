@@ -84,7 +84,7 @@
     {
       "expected": "denied-without-grant",
       "id": "C12-tool-in-user-profile",
-      "note": "interpreter under %USERPROFILE% with no container ACE",
+      "note": "interpreter under the user profile with no container ACE",
       "outcome": "denied",
       "returncode": 3221225506
     },
@@ -111,7 +111,7 @@
       "outcome": "tree-terminated"
     }
   ],
-  "elapsed_seconds": 16.57,
+  "elapsed_seconds": 17.05,
   "host": {
     "elevated": false,
     "interpreter_ref": "sha256:eda6add8ca04523c",
@@ -122,7 +122,7 @@
   "mechanism": {
     "isolation": "AppContainer (SECURITY_CAPABILITIES, zero capabilities)",
     "process_tree": "Job object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE",
-    "read_grants": "inheritable (OI)(CI)(RX) ACE on the interpreter tree only",
+    "read_grants": "inheritable (OI)(CI)(RX) ACE on the staged tool tree only",
     "write_grants": "inheritable (OI)(CI)(M) ACE for the container SID"
   },
   "qualification": "not-qualified",

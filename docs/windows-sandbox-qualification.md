@@ -66,13 +66,39 @@ to reach it, so a reparse point inside a writable root does not widen the bounda
   place the child could have written.
 - Granting an ACE on a directory does not reach files that already exist inside it;
   the grant has to be applied recursively.
+- **The `NUL` device is unreachable inside the container.** Directory creation and
+  ordinary file writes work, but a command that reads or writes `NUL` fails with
+  access denied. This is a device-namespace effect, not a boundary defect; treat an
+  access-denied result from such a command as a tool limitation, not an escape attempt.
+
+## How the backend applies this
+
+`WindowsAppContainerBackend.wrap` writes an execution specification into the control
+directory and returns a launcher invocation, so `SandboxManager` keeps its existing
+pipes, output limits, evidence capture and supervisor teardown. The launcher
+(`agent_factory.windows_sandbox`) creates the per-execution container, applies the write
+and tool ACEs, starts the command suspended, assigns it to the job, resumes it, and
+removes every grant and the profile on the way out. Because the job dies with the
+launcher, the supervisor's existing `terminate_tree` is still the authoritative stop.
+
+The backend refuses to run a command outside its configured tool roots instead of
+widening the grant to reach it, and reports itself unavailable when no root is
+configured, so an unconfigured Windows host still fails closed.
+
+A killed launcher never reaches its own teardown, which would leave container ACEs on
+a tool directory that outlives the execution. `SandboxManager` therefore calls
+`SandboxBackend.release` after the process tree ends — on success, timeout, output
+overflow and stop alike — and the Windows implementation revokes every grant and
+deletes the profile from the recorded specification. It is idempotent, so the normal
+path releasing twice costs nothing. Grants still survive a crash of Core itself.
 
 ## Outstanding before this can be qualified
 
-The probe exercised the boundary, not the product path. Still unproven: the
-`SandboxBackend` integration itself, the validator and Hermes/Codex routes over that
-integration, concurrent executions sharing one container name, cleanup after an
-interrupted grant, and behaviour on Windows builds other than the one above. Until
-those carry their own evidence, the Windows profile stays **not-qualified** and
-`UnavailableSandboxBackend` remains correct. WSL2 and Windows Sandbox remain separate
-possible profiles; neither is a substitute for the Windows path.
+The probe and the backend tests exercise the boundary, not the product path. Still
+unproven: the validator and Hermes/Codex routes over this backend, concurrent
+executions, grants left behind when Core itself dies rather than the launcher,
+worktrees large enough for recursive ACL application to matter, and behaviour on
+Windows builds other than the one above. Until those carry their own evidence the
+Windows profile stays **not-qualified**, and it stays unavailable unless an operator
+provisions `AGENT_FACTORY_SANDBOX_TOOL_ROOTS`. WSL2 and Windows Sandbox remain
+separate possible profiles; neither is a substitute for the Windows path.
