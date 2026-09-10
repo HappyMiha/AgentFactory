@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "as_of": "2026-09-09",
+  "as_of": "2026-09-10",
   "purpose": "Source identity and honest reading coverage, not task instructions or redistributed books",
   "files": [
     {
@@ -143,7 +143,47 @@
         "12791"
       ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in running-safe-second-pass.md.",
+      "q01_coverage": {
+        "source_id": "S1",
+        "sha256": "6803936e32f95d61b30f7704438d183a6f3f213e1da5aefad05d8413b3588de4",
+        "chapter": "внутрішня Глава 3",
+        "ranges": [
+          {
+            "spine": 4,
+            "first_paragraph": 48,
+            "last_paragraph": 174,
+            "member": "OPS/ch1-2.xhtml"
+          }
+        ],
+        "next_heading_excluded": "4:175",
+        "baseline_read": {
+          "paragraphs": 199,
+          "characters": 29116
+        },
+        "pass_read": {
+          "paragraphs": 127,
+          "characters": 15568
+        },
+        "overlap_with_baseline": {
+          "paragraphs": 5,
+          "characters": 234
+        },
+        "new_unique": {
+          "paragraphs": 122,
+          "characters": 15334
+        },
+        "union_with_baseline": {
+          "paragraphs": 321,
+          "characters": 44450
+        },
+        "extracted": {
+          "paragraphs": 2449,
+          "characters": 412749
+        },
+        "full_book_read": false,
+        "union_character_percent": 10.77
+      }
     },
     {
       "filename": "Сергей Вишневский – Звезда в руке и шило в ... (3).epub",
@@ -162,7 +202,59 @@
         "12794"
       ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in running-safe-second-pass.md.",
+      "q01_coverage": {
+        "source_id": "S3",
+        "sha256": "42153bb45ab515b2180080066b1be6549a9e688ae691a1c1559790455290889f",
+        "chapter": "Глава 1",
+        "ranges": [
+          {
+            "spine": 3,
+            "first_paragraph": 1,
+            "last_paragraph": 324,
+            "member": "OPS/ch1-1.xhtml"
+          },
+          {
+            "spine": 4,
+            "first_paragraph": 1,
+            "last_paragraph": 339,
+            "member": "OPS/ch1-2.xhtml"
+          },
+          {
+            "spine": 5,
+            "first_paragraph": 1,
+            "last_paragraph": 33,
+            "member": "OPS/ch1-3.xhtml"
+          }
+        ],
+        "next_heading_excluded": "6:1",
+        "baseline_read": {
+          "paragraphs": 251,
+          "characters": 34140
+        },
+        "pass_read": {
+          "paragraphs": 696,
+          "characters": 95745
+        },
+        "overlap_with_baseline": {
+          "paragraphs": 13,
+          "characters": 1997
+        },
+        "new_unique": {
+          "paragraphs": 683,
+          "characters": 93748
+        },
+        "union_with_baseline": {
+          "paragraphs": 934,
+          "characters": 127888
+        },
+        "extracted": {
+          "paragraphs": 2353,
+          "characters": 320685
+        },
+        "full_book_read": false,
+        "union_character_percent": 39.88
+      }
     },
     {
       "filename": "Сергей Вишневский – Маго-ядерный едренбатон! (2).epub",
@@ -181,7 +273,59 @@
         "12793"
       ],
       "opf_path": "OPS/content.opf",
-      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos."
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in running-safe-second-pass.md.",
+      "q01_coverage": {
+        "source_id": "S2",
+        "sha256": "21f8a881dbc8f87628ccdb67e17cf30e45962bd05e8e6c531b9ee233a3a54983",
+        "chapter": "Глава 1",
+        "ranges": [
+          {
+            "spine": 3,
+            "first_paragraph": 1,
+            "last_paragraph": 296,
+            "member": "OPS/ch1-1.xhtml"
+          },
+          {
+            "spine": 4,
+            "first_paragraph": 1,
+            "last_paragraph": 308,
+            "member": "OPS/ch1-2.xhtml"
+          },
+          {
+            "spine": 5,
+            "first_paragraph": 1,
+            "last_paragraph": 120,
+            "member": "OPS/ch1-3.xhtml"
+          }
+        ],
+        "next_heading_excluded": "6:1",
+        "baseline_read": {
+          "paragraphs": 179,
+          "characters": 28308
+        },
+        "pass_read": {
+          "paragraphs": 724,
+          "characters": 107847
+        },
+        "overlap_with_baseline": {
+          "paragraphs": 56,
+          "characters": 7806
+        },
+        "new_unique": {
+          "paragraphs": 668,
+          "characters": 100041
+        },
+        "union_with_baseline": {
+          "paragraphs": 847,
+          "characters": 128349
+        },
+        "extracted": {
+          "paragraphs": 2783,
+          "characters": 441319
+        },
+        "full_book_read": false,
+        "union_character_percent": 29.08
+      }
     }
   ],
   "public_primary_sources": [
@@ -205,5 +349,32 @@
       "url": "https://arxiv.org/abs/2605.30329v1",
       "coverage": "metadata and abstract; survey synthesis"
     }
-  ]
+  ],
+  "running_safe_q01_totals": {
+    "baseline_read": {
+      "paragraphs": 629,
+      "characters": 91564
+    },
+    "pass_read": {
+      "paragraphs": 1547,
+      "characters": 219160
+    },
+    "overlap_with_baseline": {
+      "paragraphs": 74,
+      "characters": 10037
+    },
+    "new_unique": {
+      "paragraphs": 1473,
+      "characters": 209123
+    },
+    "union_with_baseline": {
+      "paragraphs": 2102,
+      "characters": 300687
+    },
+    "extracted": {
+      "paragraphs": 7585,
+      "characters": 1174753
+    },
+    "union_character_percent": 25.6
+  }
 }

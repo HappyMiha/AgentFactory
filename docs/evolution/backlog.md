@@ -16,10 +16,10 @@
 
 - **Залежності:** немає. **Reuse:** AF-004 policy, AF-013 Blueprint, AF-018 tools, AF-022 ADR; `policy.py`, `blueprint.py`, `tools.py`, `adr.py`.
 - **Результат:** ADR і authority matrix для change proposer, experiment runner, evidence issuer, evaluator, promotion authority та активного control plane.
-- **Приймання:** для code, harness, evaluator і product-goal зміни визначено допустимі записи; optimizer не змінює чинні objective, evidence, budget або authorization власним candidate; кожна нова влада є окремою версією рішення.
-- **Негативні перевірки:** підміна policy через prompt/skill/retrieval; candidate оголошує себе accepted; service identity видає себе за власника. Усі сценарії залишають чинний control plane без змін.
+- **Приймання:** для code, harness, evaluator і product-goal зміни визначено допустимі записи; optimizer не змінює чинні objective, evidence, budget або authorization власним candidate; кожна нова влада є окремою версією рішення. Scope класифікує фактичний effect surface: названа косметичною/інформаційною зміна не отримує прихованого права змінити поведінку, capabilities або контроль. Невизначений експеримент має явно дозволену область невідомого результату.
+- **Негативні перевірки:** підміна policy через prompt/skill/retrieval; candidate оголошує себе accepted; service identity видає себе за власника. Усі сценарії залишають чинний control plane без змін. Перейменування behavior mutation на formatting обходить належну перевірку.
 - **Артефакт:** decision table, state transitions, attack/denial fixtures. **Фаза/пріоритет:** C0/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
 
 ### AF-RSI-002 — Описати незмінний суб’єкт і покоління еволюції
 
@@ -72,10 +72,10 @@
 
 - **Залежності:** 003, 005, 006. **Reuse:** AF-027 telemetry/cost ledger, AF-032 qualification.
 - **Результат:** comparator для paired baseline/challenger outcome, dispersion, confidence, cost/latency, sample size, aborts і non-regression floors.
-- **Приймання:** рішення `better`, `worse`, `equivalent`, `inconclusive` відтворюється з receipts; failed runs і витрати всіх кандидатів збережено; sequential selection/multiple comparisons враховано за declared protocol. Краща новизна, прибутковість або нижча ціна не компенсують порушений hard invariant; зміна критерію після результату створює новий protocol. Окремо оцінюються виконання початкової мети, правильне handling відмови/невідомості, causal contribution, integrity та повна ціна. Evaluator comparison використовує один frozen corpus із зовнішніми labels і blind order.
-- **Негативні перевірки:** більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout. Невиконане читання не стає виконаним через гарне пояснення відмови; більше cascades не компенсує порушену згоду або більші витрати.
+- **Приймання:** рішення `better`, `worse`, `equivalent`, `inconclusive` відтворюється з receipts; failed runs і витрати всіх кандидатів збережено; sequential selection/multiple comparisons враховано за declared protocol. Краща новизна, прибутковість або нижча ціна не компенсують порушений hard invariant; зміна критерію після результату створює новий protocol. Окремо оцінюються виконання початкової мети, правильне handling відмови/невідомості, causal contribution, integrity та повна ціна. Evaluator comparison використовує один frozen corpus із зовнішніми labels і blind order. Declared consumer slices показують вигоду й повну відому ціну для різних ролей, включаючи exit/restore; missing cost не вважається нульовим. Якщо висновок спирається лише на тих, хто залишився, його область прямо обмежено.
+- **Негативні перевірки:** більше tokens маскується як intelligence gain, один lucky seed, переоптимізація середнього з критичним tail regression, нескінченне підглядання в holdout. Невиконане читання не стає виконаним через гарне пояснення відмови; більше cascades не компенсує порушену згоду або більші витрати. Середній приріст приховує ціну, перенесену на іншу роль, або порушення її зафіксованого hard floor.
 - **Артефакт:** decision report із прикладами adoption/no-go. **Фаза/пріоритет:** C1/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:counterfactual-evaluation
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:counterfactual-evaluation, CONTRACT:experience-improvement
 
 ### AF-RSI-008 — Резервувати bounded бюджет повного експерименту
 
@@ -175,10 +175,10 @@
 
 - **Залежності:** 004, 007, 008, 017. **Reuse:** AF-036 application services, AF-038/043 operator UI, AF-056 telemetry.
 - **Результат:** operator view «що Core намагається поліпшити, чому, скільки витрачено, що доведено, що буде застосовано» з generation comparison і Pause/Stop.
-- **Приймання:** evaluation, proposal, accepted candidate і active release мають різні зрозумілі стани; failed experiment видимий; primary next action не вимагає JSON; current good generation і rollback доступні.
-- **Негативні перевірки:** missing receipts відображають green success, refresh стирає незбережену owner decision, stale UI дозволяє інший promotion, paused workflow витрачає бюджет у дочірніх runs.
+- **Приймання:** evaluation, proposal, accepted candidate і active release мають різні зрозумілі стани; failed experiment видимий; primary next action не вимагає JSON; current good generation і rollback доступні. За чинною consumer policy реальний Stop/opt-out до ефекту інвалідує несумісну queued поведінку; current policy/version check на остаточній authoritative show/dispatch boundary серіалізований з прийняттям opt-out; stale output denied/re-rendered, уже доставлене не оголошується скасованим. Потрібні state/effect receipts, ціна й стан виходу/повернення, а не лише видима кнопка.
+- **Негативні перевірки:** missing receipts відображають green success, refresh стирає незбережену owner decision, stale UI дозволяє інший promotion, paused workflow витрачає бюджет у дочірніх runs. Стара запланована відповідь обходить нове обмеження; style change приховує необхідну причину відмови чи шлях відновлення.
 - **Артефакт:** UI/API acceptance scenarios, accessibility та interruption walkthrough. **Фаза/пріоритет:** C3/P1.
-- **Підстави:** RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
 
 ### AF-RSI-019 — Прийняти перший Core-on-Core цикл без заяви про повний RSI
 
@@ -204,10 +204,10 @@
 
 - **Залежності:** 007, 020. **Reuse:** AF-020 criterion evidence, AF-021 hostile cases, AF-023 independent coordination.
 - **Результат:** eval-of-eval suite з зовнішньо перевірними outcomes, blinded human labels для qualitative cases, calibration і false-accept/false-reject analysis.
-- **Приймання:** упередженість на користь автора, довгих відповідей, престижної моделі й оптимістичного proposal виміряна; abstain/inconclusive — дозволені; reviewer disagreement збережено.
-- **Негативні перевірки:** красивий неправильний research plan, short correct answer, самопосилання на confidence, протилежні labels після перестановки імен моделей.
+- **Приймання:** упередженість на користь автора, довгих відповідей, престижної моделі й оптимістичного proposal виміряна; abstain/inconclusive — дозволені; reviewer disagreement збережено. Frozen qualitative corpus включає відмінності між наміром автора, досвідом адресата, повтором-парафразом і неповними відповідями. Зовнішній розбір перевіряє, чи evaluator зберіг uncertainty та правильну область claim.
+- **Негативні перевірки:** красивий неправильний research plan, short correct answer, самопосилання на confidence, протилежні labels після перестановки імен моделей. Самозвіт про теплий тон або позитивні відповіді тільки тих, хто залишився, підміняють якість для всіх користувачів.
 - **Артефакт:** calibration report і permitted evaluation envelope; thresholds fixed before run. **Фаза/пріоритет:** C4/P0.
-- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R04, RSI-SURVEY:R06, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
 
 ### AF-RSI-022 — Розділити agent gain та evaluator drift при коеволюції
 
@@ -251,19 +251,19 @@
 
 - **Залежності:** 003, 015, 018, 025. **Reuse:** AF-009 intent, AF-015 provenance, AF-016 preferences, AF-029 scoped storage.
 - **Результат:** consent-scoped feedback/user-study protocol для task completion, зрозумілості, кількості ручних виправлень, довіри до пояснення та керованості.
-- **Приймання:** qualitative evidence пов’язане з точним продуктом/версією/сценарієм; simulation і synthetic users не видаються за дослідження людей; часові/географічні/вибіркові обмеження видимі.
-- **Негативні перевірки:** optimizer фабрикує голос користувача, vanity engagement замінює task success, невдоволені сесії виключено, приватні тексти автоматично потрапляють у training.
+- **Приймання:** qualitative evidence пов’язане з точним продуктом/версією/сценарієм; simulation і synthetic users не видаються за дослідження людей; часові/географічні/вибіркові обмеження видимі. У дозволеному обсязі показано denominators для початку, завершення, зупинки й наданого feedback. Withdrawn/missing не заповнюється вигаданою оцінкою; відмова відповідати не погіршує доступ. Без дозволу на облік denominator позначено невідомим.
+- **Негативні перевірки:** optimizer фабрикує голос користувача, vanity engagement замінює task success, невдоволені сесії виключено, приватні тексти автоматично потрапляють у training. Причина виходу приписана без evidence; відкликання згоди ігнорується заради повного журналу; невідповідь прирівняна до задоволення.
 - **Артефакт:** product feedback evidence contract і blinded comparison template. **Фаза/пріоритет:** C5/P1.
-- **Підстави:** RSI-SURVEY:R07, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R07, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
 
 ### AF-RSI-027 — Пропонувати research portfolio та перегляд product goal
 
 - **Залежності:** 003, 007, 025, 026. **Reuse:** AF-009 intake, AF-013 Blueprint, AF-022 ADR, AF-AMM backlog revisions.
 - **Результат:** альтернативні product/research directions із value-of-information, cost, uncertainty, decisive experiment, opportunity cost і stop/abandon criterion.
-- **Приймання:** агент може довести, що поточний напрям не підтверджується; scope/objective/value function change оформлено як versioned proposal до власника; попередні критерії не переписуються, щоб «успішно» завершити стару мету.
-- **Негативні перевірки:** власна benchmark-слабкість перетворюється на вилучення user need, adoption росте через приховування costs, goal drift без decision, нескінченне дослідження без decisive experiment.
+- **Приймання:** агент може довести, що поточний напрям не підтверджується; scope/objective/value function change оформлено як versioned proposal до власника; попередні критерії не переписуються, щоб «успішно» завершити стару мету. Окремий контрприклад має зростання локального task-success і недостатнє наближення до потреби власника; допустимий висновок — abandon/change proposal із ціною переходу й decisive experiment.
+- **Негативні перевірки:** власна benchmark-слабкість перетворюється на вилучення user need, adoption росте через приховування costs, goal drift без decision, нескінченне дослідження без decisive experiment. Успішне виконання багатьох дрібних задач оголошене доказом правильного продуктового напряму без перевірки потреби.
 - **Артефакт:** portfolio decision memo, comparison of alternatives і owner-decision boundary. **Фаза/пріоритет:** C5/P0.
-- **Підстави:** RSI-SURVEY:R07, RSI-SURVEY:R10, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R07, RSI-SURVEY:R10, RSI-SURVEY:R12, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
 
 ### AF-RSI-028 — Перевіряти нові інструменти й топології як пояснювані експерименти
 

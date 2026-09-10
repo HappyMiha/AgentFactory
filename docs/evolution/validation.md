@@ -36,6 +36,10 @@
 
 Перевірено 10 унікальних paper scenario IDs та парність їхніх полів Markdown/JSON, межу W0/extended і valid control references. Це schema/authoring consistency, не виконання expected traces. Повторно перевірено backlog parity, 65 IDs/239 edges, DAG/closures, legacy/source refs, links та docs-only scope. Shared counterfactual-evaluation.md однаковий у двох репозиторіях. Незалежне рев’ю перевірило temporal/causal assumptions та допустимі claims Core. Чинні static/synthetic repository validators повторені; engine і model runs не виконувалися.
 
+## Q01, 2026-09-10
+
+Джерельне coverage перераховане за множинами spine/paragraph anchors проти незміненого pass1 ledger; file hashes і точні межі трьох глав перевірені. Перевірено Markdown/JSON parity, 65 IDs/239 edges, DAG/closures, source/legacy refs, links, shared docs і docs-only scope. Q01-E01–06 — статичні authoring controls, не зіграні сцени чи виконані Core experiments. Релевантні чинні repository validators повторені з їхніми попередніми static/synthetic межами.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.
