@@ -52,6 +52,14 @@ PDF hashes, pypdf metadata/version/page counts і exact reading ranges звір�
 
 Звірено PDF hash/version/page count, 12/12 full-text pages і 33 550 extraction characters; два reading ledgers узгоджені, повторне читання не множить coverage. Survey ranges/hash і version chronology перевірені; старий A-Evolve textual diff відсутній. Перевірено п’ять source anchors, вісім static controls, Markdown/JSON parity, 65 IDs/239 edges, DAG/closures, refs/links, 16 shared identical docs та docs-only scope. Чинні validators повторені з їхніми static/synthetic межами. Q04-T01–08 не виконувалися; навчання, serving і людські експерименти не запускалися.
 
+## Q07, 2026-09-10
+
+Звірено 24 cited source files на exact repository snapshots: commit/blob/content hashes, наявність line anchors та actual consumer pin. Десять перелічених Core source files однакові на pin і audited HEAD; caller qualification і повна рівність репозиторію з цього не випливають. Перевірено 11 source-matrix anchors, шість paper steps і десять унікальних authored controls. Це authoring/source consistency, а не виконання expected outcomes.
+
+Уточнено лише Core025/026, World013/025 і evidence boundary World030; titles/status/phase/priorities/dependencies збережені. Markdown/JSON parity, 65 IDs/239 edges, DAG/closures, legacy/source refs, relative links, 17 identical shared docs, whitespace та docs-only scope пройшли перевірку. Незалежні Core/World/product рецензії звірили фактичні call paths і закрили зауваження до planned/realized fidelity та restore version/audit/evidence identity.
+
+Чинні validators повторені: Core — 47 items / 43 executable, World — 18 synthetic engine-operation results та 13 synthetic evidence scenarios / 5 gates. Source/browser/runtime tests цього creator шляху тільки прочитані, не запускалися. Q07 не виконував app/model/engine/provider/training/user experiments і не збільшував literary/PDF coverage.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.

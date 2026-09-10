@@ -772,5 +772,295 @@
     "survey_new_full_text_pages": 0,
     "literary_coverage_changed": false,
     "experiments_reproduced": false
+  },
+  "repository_q07_audit": {
+    "date": "2026-09-10",
+    "kind": "targeted static source and test-assertion audit; proposed creator/RSI contract",
+    "note": "creator-evolution.md",
+    "snapshots": {
+      "Lokvetia-Core": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+      "Lokiravia": "c3093b2edb9ccfafaaa0b68fa3681aec87832122"
+    },
+    "consumer_pin": "480849f78957bb6b2fd7ab341300d54955aeabb8",
+    "intake_guide_stale_pin": "7ec9ff33f1c4e7f2980e4b121d05f3c366acedd1",
+    "consumer_pin_comparison": {
+      "paths": [
+        "src/agent_factory/local_games.py",
+        "src/agent_factory/game_planning.py",
+        "src/agent_factory/game_planning_web.py",
+        "src/agent_factory/mission_intake.py",
+        "src/agent_factory/coding_delivery.py",
+        "src/agent_factory/local_recovery.py",
+        "src/agent_factory/mission_checkpoints.py",
+        "src/agent_factory/autonomous_backlog_approval.py",
+        "src/agent_factory/web.py",
+        "src/agent_factory/workforce.py"
+      ],
+      "different_paths": [],
+      "head": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+      "pin": "480849f78957bb6b2fd7ab341300d54955aeabb8",
+      "meaning": "Identical content only for these ten files; not caller/route qualification or all-repository equality"
+    },
+    "cited_source_files": [
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/backlog.md",
+        "line_anchors": [
+          401
+        ],
+        "git_blob": "9ce7c1ce1143ee2f9b350b1be916fec0b8642e3d",
+        "git_content_sha256": "31992ce07b89a9baaff2dd951cf3be8c13232127b552b3db0d5790a01a47096a"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/domain-model.md",
+        "line_anchors": [
+          35
+        ],
+        "git_blob": "25e4ec77f5c2e3d1522bea55a793330521d31d8b",
+        "git_content_sha256": "75cba720f763f9af4e4aefce690cf09de4994a3b7c7127fd64cd2da92ea6dbbb"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/evidence-gates.md",
+        "line_anchors": [
+          79
+        ],
+        "git_blob": "1f592fbc0c7b6f6828cb01c4daaa0c12e866b72d",
+        "git_content_sha256": "e96d3b8d7dd3e6d636774fa8a02ae90ef1e06d76c6b7cac276d739ea6bd3bd9f"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/game-brief-intake.md",
+        "line_anchors": [
+          29
+        ],
+        "git_blob": "3ef2f1fb6eb187570670c01688c34da38e1a2fb0",
+        "git_content_sha256": "2065b2507040590e0876f834ccc67117f949380e80ee5196338a19939a5bcadf"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "prototypes/creator-operator/app.js",
+        "line_anchors": [
+          8
+        ],
+        "git_blob": "88903e4edfbb1837b07fff70a476db49c28e1a22",
+        "git_content_sha256": "5313589baa330d36344c1aa0b22052b6efc6024aae4f798d0dc327f5ade6ec80"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "pyproject.toml",
+        "line_anchors": [
+          11
+        ],
+        "git_blob": "c4dd7a1743fcad92a42de8b7deab663f65d10a03",
+        "git_content_sha256": "9ce358d12b611a70e59d499f1be2969038b9cd1af78bcd2f018ce41208902b0f"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/brief_web.py",
+        "line_anchors": [
+          84
+        ],
+        "git_blob": "97b3cd49c904521164e1001f722516a24d03d717",
+        "git_content_sha256": "6f2c81dd4fa744f6f823d16d39dc99501819b69b988d3df213f5e9abcc9037e1"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/game_briefs.py",
+        "line_anchors": [
+          203
+        ],
+        "git_blob": "d4a7e0e4c95a60b1cd17329aae7b97b1d3e11957",
+        "git_content_sha256": "408787bce7f261cc46658f5a473f0485b624ddec5fd9339786356e2e7267e93a"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/game_team.py",
+        "line_anchors": [
+          78
+        ],
+        "git_blob": "d36f02f0e9bb6217d1ec68ff3e113ba528731b25",
+        "git_content_sha256": "875a34c0665c94ee8db608a7096cd38acd6d5b85550ec03230f89d583fecab16"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/scope_plans.py",
+        "line_anchors": [
+          62
+        ],
+        "git_blob": "28d5a4331985a86acdc917746fb4762b1670f1bb",
+        "git_content_sha256": "d50179e36fc958a796dcbe1d86d4765375fc1d96b3c3ecd38dc8a16164f26784"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/static/brief.js",
+        "line_anchors": [
+          52
+        ],
+        "git_blob": "97eae4c1f12a2464d8490a9ae827c805f39031be",
+        "git_content_sha256": "9b48ce1c5e57f9ebbe16942f89476abe04e6af82c8403fb860bb44ac3ff79085"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/static/scope.js",
+        "line_anchors": [
+          31,
+          36
+        ],
+        "git_blob": "22c90d11507f0ea05d36a45da0b4d38a19f19465",
+        "git_content_sha256": "dc056ff7a674bd21a9cdacd1b1245ae23481a909f179a626974e517ce5e7d7a5"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_creator_flows.py",
+        "line_anchors": [
+          122
+        ],
+        "git_blob": "ad636a3a05e6bc71c44bb792613f169518ddf82b",
+        "git_content_sha256": "ffe53bb2d41a4d4928c334851d62cc7131a4a920a4314e8f3021b57ab1b4062d"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_game_briefs.py",
+        "line_anchors": [
+          44
+        ],
+        "git_blob": "eeecfdeaabeee5848a693056798621dd9d64b80b",
+        "git_content_sha256": "51ddc0157397c9c61f349e4883784ccebb579a937d2ae318a6f1151e329ddccb"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_game_team.py",
+        "line_anchors": [
+          36
+        ],
+        "git_blob": "8d97586a866afc227d8b8bb41cc267ff62929338",
+        "git_content_sha256": "3fbaaa5c6f10a03c0762347f0741e7a8b9ca867219724f403269daca7aca6e73"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_scope_plans.py",
+        "line_anchors": [
+          90
+        ],
+        "git_blob": "999da15e3284c03635565cdc46f91082833e2e09",
+        "git_content_sha256": "429e598a7f3071988ddd68907dcac5c50eeb540aa35230b4716350f60ef7cc20"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/autonomous_backlog_approval.py",
+        "line_anchors": [
+          314
+        ],
+        "git_blob": "aea351dfe2afb5601de05db618240f73508f9c34",
+        "git_content_sha256": "0e4659478b91ab2dc8785296280cace21d81c8b400f895ff902a9396c08a84f8"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/coding_delivery.py",
+        "line_anchors": [
+          1099
+        ],
+        "git_blob": "f835732018fbfb911ef2bb31d1572700c9e7ff35",
+        "git_content_sha256": "458751991edded967cb4085c50e52a260fb011c9458df29526e5a3b7654c19e4"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/game_planning.py",
+        "line_anchors": [
+          143
+        ],
+        "git_blob": "b216e1345b5c8b5b47f82e291b485521cfbd0409",
+        "git_content_sha256": "871be496f70f6e2ce1080d474c916c30ae25da9282fb1f938e16ccf52692e626"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/local_games.py",
+        "line_anchors": [
+          166
+        ],
+        "git_blob": "3fc4f2ad0eda9a26a8087863122f94669b5c58c2",
+        "git_content_sha256": "376b9ff450b20eac2275e38701dacc24766606cfe7cdfe702e481a75b11d0635"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/local_recovery.py",
+        "line_anchors": [
+          573
+        ],
+        "git_blob": "71adb6474a2843bcdb47b34f7ac739f7ea4d7790",
+        "git_content_sha256": "358e12803808987cf163041ebac07705a00cf15a3e38ffd9d8aad8e99146a011"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/mission_checkpoints.py",
+        "line_anchors": [
+          203
+        ],
+        "git_blob": "ffc9e5bc5a23d4c2c99ebbf7d71cabefdc68b091",
+        "git_content_sha256": "bf61d78b82fe0f9850f8af8aa4459ff7b55982784714bde220bb35df858ca8cd"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/orchestration/temporal/activities.py",
+        "line_anchors": [
+          1332
+        ],
+        "git_blob": "a5ac9290e9652c922a2919245a180152476d4153",
+        "git_content_sha256": "8289d6f5b16ae0ea43da4e07800fcb6e64f3c5e4fc64d641824f9cd3afeffa31"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/web.py",
+        "line_anchors": [
+          544
+        ],
+        "git_blob": "cf672c1e27292eb241bdeec5e90c700ef1e58725",
+        "git_content_sha256": "6c5b5d6799d3b0ce2394cd577a28d6d456040646263d79b2c1e6206c7fd0ee48"
+      }
+    ],
+    "source_coverage": "Targeted paths and selected tests only; hashes identify full source files, not a claim of full-file/full-repository reading",
+    "authored_controls": [
+      "Q07-P01",
+      "Q07-P02",
+      "Q07-P03",
+      "Q07-P04",
+      "Q07-P05",
+      "Q07-P06",
+      "Q07-P07",
+      "Q07-P08",
+      "Q07-P09",
+      "Q07-P10"
+    ],
+    "product_runs_performed": false,
+    "runtime_tests_rerun": false,
+    "human_study_performed": false,
+    "literary_pdf_coverage_changed": false,
+    "raw_user_source_committed": false
   }
 }

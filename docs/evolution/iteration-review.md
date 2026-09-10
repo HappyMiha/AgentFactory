@@ -80,6 +80,16 @@
 
 65 IDs/239 edges та optional C8/незалежність W0 і standalone Core збережено. Зовнішній post-training результат не видано за виконану самоеволюцію Core; runtime/training/code не запускалися й не змінювалися. Q04 завершено як source/design pass. Далі Q07: фактичний creator шлях brief→scope→Play→feedback→restore та evidence gaps без дублювання AF-CLD.
 
+## Прохід 10 — Q07: задум, фактична версія й відновлення (2026-09-10)
+
+Статично простежено actual Lokiravia brief→scope→Core team gap assessment і окремі Core intake/planning/approval/delivery/recovery paths. Pin480849… звірено з dependency; десять перевірених Core source files однакові на pin і HEAD. Intake guide має застарілий інший pin. Наявність primitives відділена від caller wiring, generic completion — від actual Play, prototype draft recovery — від usable game/world/Core restore. EPUB/PDF coverage незмінне.
+
+[Creator evolution](creator-evolution.md) визначає projection reviewed human requirements, version-bound feedback, чотири restore subjects, fidelity/assistance/missingness та окремі planning/end-to-end study prerequisites. Шість кроків paper walkthrough і Q07-P01–10 не є реальними сесіями. Конкретна ще не перевірена Core hypothesis — version-aware context selection у власному source/harness, а не приписування Core поліпшення окремої сцени.
+
+Незалежне рев’ю розділило planned fidelity scope та realized fidelity гри й повернуло явну вимогу CLD012 про нові restore/version та audit records без переприв’язки старого evidence. Core source/pin reviewer підтвердив вузьку межу висновків.
+
+Уточнено Core025/026, World013/025 і evidence boundary World030; чинні owners збережені, немає нових IDs/edges. Q07 завершено як source/design pass. Далі Q08: fresh non-game task families з Core defect classes, baseline/holdout і contamination policy без запуску нового продуктового коду.
+
 ## Межа висновку
 
 Перевірки структури, посилань, DAG і чинних контрактних validators наведено у `validation.md`. Вони засвідчують узгодженість проєктної поставки E0. E1–E5, успішна RSI, людський досвід і готова гра залишаються майбутніми доказами. Гіпотези можуть бути відхилені; backlog не вимагає назвати кожне покоління успішним.

@@ -242,19 +242,19 @@
 
 - **Залежності:** 012, 015, 018. **Reuse:** AF-027 telemetry, AF-009 intake, AF-AMM backlog analyzer/revisions.
 - **Результат:** opportunity records містять observed failure/friction, affected users/tasks, source evidence, frequency/impact uncertainty і candidate hypothesis.
-- **Приймання:** система відрізняє bug, usability gap, unsupported scope, evaluator problem і research unknown; згортає дублікати за cause/evidence, зберігаючи початкові reports; не створює бажання користувача з telemetry.
-- **Негативні перевірки:** один noisy incident стає roadmap mandate; private content витікає в shared hypothesis; уже виправлений issue без нової evidence відкривається знову.
+- **Приймання:** система відрізняє bug, usability gap, unsupported scope, evaluator problem і research unknown; згортає дублікати за cause/evidence, зберігаючи початкові reports; не створює бажання користувача з telemetry. Для creator-сигналу прив’язано точні product/profile, brief/scope, фактичний stage і доступні source/build/session identities. Припущення про cause відділено від перевіреного дефекту. Непідключений Play не рахується невдалою зіграною сесією, authored paper fixture не стає observed user report. Projection перевіряє reviewed human requirements поряд з original source, а не лише збереження оригіналу.
+- **Негативні перевірки:** один noisy incident стає roadmap mandate; private content витікає в shared hypothesis; уже виправлений issue без нової evidence відкривається знову. Source checksum збігається, але людські edits/agreed scope втрачено в execution context. Cloud UI або world-only candidate отримує claim про поліпшений незмінений Core.
 - **Артефакт:** ranked opportunity register з provenance і uncertainty. **Фаза/пріоритет:** C5/P1.
-- **Підстави:** RSI-SURVEY:R07, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture
+- **Підстави:** RSI-SURVEY:R07, RSI-SURVEY:R11, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:creator-evolution
 
 ### AF-RSI-026 — Ввести незалежний продуктовий сигнал від користувачів Core
 
 - **Залежності:** 003, 015, 018, 025. **Reuse:** AF-009 intent, AF-015 provenance, AF-016 preferences, AF-029 scoped storage.
 - **Результат:** consent-scoped feedback/user-study protocol для task completion, зрозумілості, кількості ручних виправлень, довіри до пояснення та керованості.
-- **Приймання:** qualitative evidence пов’язане з точним продуктом/версією/сценарієм; simulation і synthetic users не видаються за дослідження людей; часові/географічні/вибіркові обмеження видимі. У дозволеному обсязі показано denominators для початку, завершення, зупинки й наданого feedback. Withdrawn/missing не заповнюється вигаданою оцінкою; відмова відповідати не погіршує доступ. Без дозволу на облік denominator позначено невідомим.
-- **Негативні перевірки:** optimizer фабрикує голос користувача, vanity engagement замінює task success, невдоволені сесії виключено, приватні тексти автоматично потрапляють у training. Причина виходу приписана без evidence; відкликання згоди ігнорується заради повного журналу; невідповідь прирівняна до задоволення.
+- **Приймання:** qualitative evidence пов’язане з точним продуктом/версією/сценарієм; simulation і synthetic users не видаються за дослідження людей; часові/географічні/вибіркові обмеження видимі. У дозволеному обсязі показано denominators для початку, завершення, зупинки й наданого feedback. Withdrawn/missing не заповнюється вигаданою оцінкою; відмова відповідати не погіршує доступ. Без дозволу на облік denominator позначено невідомим. Planning і end-to-end study мають окремі prerequisites/outcomes. Для creator case stage completion не підміняє finished game. Planned fidelity reviewed scope відділено від realized fidelity поведінки exact build, кожна застосовується на своєму study рівні. Fidelity commitments і scope decisions, actual played/source/target versions, independent/assisted outcome, active/wall/wait time та usable restore receipt визначено до comparison. Менші зусилля через непогоджене спрощення не проходять floor. Недоступний runtime не оцінюється як time-to-Play, зміна task meaning створює нову versioned hypothesis.
+- **Негативні перевірки:** optimizer фабрикує голос користувача, vanity engagement замінює task success, невдоволені сесії виключено, приватні тексти автоматично потрапляють у training. Причина виходу приписана без evidence; відкликання згоди ігнорується заради повного журналу; невідповідь прирівняна до задоволення. Допомога фасилітатора прихована, history view видано за playable restore, feedback V1 тихо приклеєно до latest V2. Кілька аналітичних ролей одного receipt пораховано незалежними спостереженнями.
 - **Артефакт:** product feedback evidence contract і blinded comparison template. **Фаза/пріоритет:** C5/P1.
-- **Підстави:** RSI-SURVEY:R07, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement
+- **Підстави:** RSI-SURVEY:R07, REPO-AUDIT, DESIGN:core-architecture, CONTRACT:experience-improvement, CONTRACT:creator-evolution
 
 ### AF-RSI-027 — Пропонувати research portfolio та перегляд product goal
 

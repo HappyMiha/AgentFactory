@@ -16,6 +16,8 @@ Q03: [як Core змінює оцінювач і перевіряє власну
 
 Q04: [чи потрібне Core навчання моделі](training-research.md) — повний текст A-Evolve v3, окремі feasibility/admission/adoption та вісім статичних controls; training035 лишається необов’язковим.
 
+Q07: [від задуму до поліпшення Core](creator-evolution.md) — source-аудит brief/scope/team, межа до Play, точні feedback/restore subjects і stage-specific критерії; десять статичних controls.
+
 ## Почати тут
 
 | Документ | Навіщо читати |
