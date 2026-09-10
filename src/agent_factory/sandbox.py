@@ -150,6 +150,14 @@ class SandboxBackend(ABC):
         self, policy: SandboxPolicy, command: tuple[str, ...], control_dir: Path
     ) -> list[str]: ...
 
+    def release(self, control_dir: Path) -> None:
+        """Drop host state the launch may still hold after the process tree ends.
+
+        Backends that only wrap an argument vector leave nothing behind. One that
+        grants OS permissions must release them here, because a killed launcher
+        never runs its own teardown.
+        """
+
 
 class BubblewrapBackend(SandboxBackend):
     name = "bubblewrap"
@@ -252,13 +260,86 @@ class UnavailableSandboxBackend(SandboxBackend):
         raise SandboxUnavailableError(self.reason)
 
 
+class WindowsAppContainerBackend(SandboxBackend):
+    """AppContainer isolation applied by a launcher child process.
+
+    The OS boundary cannot be expressed as an argument vector, so `wrap` returns a
+    launcher invocation that applies it. Terminating the launcher tears the whole
+    contained tree down, which keeps the existing supervisor teardown authoritative.
+    Tool roots are a deployment input: a command outside them is unreadable to the
+    container, and widening the grant to reach it is a decision, not a default.
+    """
+
+    name = "appcontainer"
+
+    def __init__(self, tool_roots: Sequence[Path] = ()):
+        self.tool_roots = tuple(Path(root).resolve() for root in tool_roots)
+
+    def availability(self) -> tuple[bool, str]:
+        if sys.platform != "win32":
+            return False, "AppContainer isolation requires Windows"
+        if not self.tool_roots:
+            return False, "No qualified sandbox tool root is configured"
+        if any(not root.is_dir() for root in self.tool_roots):
+            return False, "A configured sandbox tool root does not exist"
+        return True, "AppContainer profile and job object are available"
+
+    def wrap(
+        self, policy: SandboxPolicy, command: tuple[str, ...], control_dir: Path
+    ) -> list[str]:
+        available, reason = self.availability()
+        if not available:
+            raise SandboxUnavailableError(reason)
+        executable = Path(command[0]).resolve()
+        if not any(_within(executable, root) for root in self.tool_roots):
+            raise SandboxUnavailableError(
+                "Sandbox command is outside every qualified tool root"
+            )
+        from . import windows_sandbox  # Imports Win32 bindings; Windows hosts only.
+
+        specification = control_dir / "appcontainer.json"
+        specification.write_text(
+            json.dumps(
+                {
+                    "container": windows_sandbox.container_name(),
+                    "command": list(command),
+                    "cwd": str(policy.worktree),
+                    "write_roots": [str(root) for root in policy.write_roots],
+                    "tool_roots": [str(root) for root in self.tool_roots],
+                },
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+        return [sys.executable, "-m", "agent_factory.windows_sandbox", str(specification)]
+
+    def release(self, control_dir: Path) -> None:
+        from . import windows_sandbox
+
+        specification = control_dir / "appcontainer.json"
+        if not specification.is_file():
+            return
+        windows_sandbox.release(
+            json.loads(specification.read_text(encoding="utf-8"))
+        )
+
+
+def configured_tool_roots() -> tuple[Path, ...]:
+    """Tool directories an operator has explicitly provisioned for the sandbox."""
+    raw = os.environ.get("AGENT_FACTORY_SANDBOX_TOOL_ROOTS", "")
+    return tuple(Path(value) for value in raw.split(os.pathsep) if value.strip())
+
+
 def platform_sandbox_backend() -> SandboxBackend:
     if sys.platform.startswith("linux"):
         return BubblewrapBackend()
     if sys.platform == "darwin":
         return MacOSSandboxBackend()
+    if sys.platform == "win32":
+        # Enforcement exists, but stays unavailable until tool roots are provisioned.
+        return WindowsAppContainerBackend(configured_tool_roots())
     return UnavailableSandboxBackend(
-        "No qualified Windows sandbox backend is configured; writable execution is disabled"
+        "No qualified sandbox backend is configured; writable execution is disabled"
     )
 
 
@@ -534,6 +615,9 @@ class SandboxManager:
                     destination = evidence_dir / "files" / name
                     destination.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(source, destination)
+            # Runs after teardown, including when the launcher was killed outright.
+            with suppress(OSError, ValueError, RuntimeError):
+                self.backend.release(control_dir)
             for path in reversed(created_temp):
                 shutil.rmtree(path, ignore_errors=True)
             shutil.rmtree(control_dir, ignore_errors=True)
