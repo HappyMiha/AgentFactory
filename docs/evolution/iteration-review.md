@@ -72,6 +72,14 @@
 
 Уточнено п’ять чинних Core-карток AF-RSI020–024; 65 IDs/239 edges та scope W0 збережено. Спільний контракт узгоджено в обох продуктах, код не змінювався. Q03 завершено як primary-source/design pass. Далі Q04: повний A-Evolve v3 та перевірка меж training claims без запуску training.
 
+## Прохід 9 — Q04: training як перевірна гіпотеза Core (2026-09-10)
+
+Прочитано весь текст A-Evolve v3: 12 сторінок / 33 550 символів, вибрані таблиці й figures звірені візуально. Survey с.22–23 перечитані, адресні фрагменти й version chronology записані окремо. Старий v2→v3 diff не виконувався; текстові доповнення конкретної версії не вигадано. EPUB coverage незмінне.
+
+[Training research](training-research.md) розділяє feasibility/admission/adoption, research agent і target model, reference/policy/checkpoint/serving identities, exact resume та warm start, adaptive feedback і final confirmation. Уточнено AF-RSI035 з вісьмома відкритими статичними controls та повним cost/resource envelope. Незалежне рев’ю прибрало кругову вимогу measured gain до пілоту й відділило внутрішній selection treatment від authoritative criterion revision.
+
+65 IDs/239 edges та optional C8/незалежність W0 і standalone Core збережено. Зовнішній post-training результат не видано за виконану самоеволюцію Core; runtime/training/code не запускалися й не змінювалися. Q04 завершено як source/design pass. Далі Q07: фактичний creator шлях brief→scope→Play→feedback→restore та evidence gaps без дублювання AF-CLD.
+
 ## Межа висновку
 
 Перевірки структури, посилань, DAG і чинних контрактних validators наведено у `validation.md`. Вони засвідчують узгодженість проєктної поставки E0. E1–E5, успішна RSI, людський досвід і готова гра залишаються майбутніми доказами. Гіпотези можуть бути відхилені; backlog не вимагає назвати кожне покоління успішним.

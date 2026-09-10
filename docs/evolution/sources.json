@@ -13,7 +13,80 @@
       "title": "Recursive Self-Improvement in AI: From Bounded Self-Refinement to Autonomous Research Loops",
       "version": "arXiv:2607.07663v2",
       "pages": 44,
-      "coverage": "Text extracted all pages; main argument pp1–30 read; bibliography pp30–44 targeted; Figure5 p18 visually inspected. No experiment reproduction."
+      "coverage": "Text extracted all pages; main argument pp1–30 read; bibliography pp30–44 targeted; Figure5 p18 visually inspected. No experiment reproduction.",
+      "q04_rereading": {
+        "date": "2026-09-10",
+        "full_text_pages_repeated": [
+          22,
+          23
+        ],
+        "new_full_text_pages": [],
+        "context_reads": [
+          {
+            "page": 22,
+            "read_scope": "full page text",
+            "ranges_zero_based_half_open": [
+              [
+                0,
+                4712
+              ]
+            ],
+            "characters": 4712,
+            "extracted_page_text_sha256": "5899aa09367bd4328b3e672dd3bacb3b85254f918405a339896ff98818337a33"
+          },
+          {
+            "page": 23,
+            "read_scope": "full page text",
+            "ranges_zero_based_half_open": [
+              [
+                0,
+                4712
+              ]
+            ],
+            "characters": 4712,
+            "extracted_page_text_sha256": "96df7428febe74d83d82752762d9c4a31347f31b67412de0bcdff00a4dc0a28f"
+          },
+          {
+            "page": 26,
+            "read_scope": "targeted reference 180 context only; not full page",
+            "ranges_zero_based_half_open": [
+              [
+                803,
+                2558
+              ]
+            ],
+            "characters": 1755,
+            "extracted_page_text_sha256": "3c1d920d6ca0ec5b19840eaa31e387318dab21acb4e9af8175f7a014ac2cbcca"
+          },
+          {
+            "page": 43,
+            "read_scope": "targeted reference 180 context only; not full page",
+            "ranges_zero_based_half_open": [
+              [
+                2285,
+                4040
+              ]
+            ],
+            "characters": 1755,
+            "extracted_page_text_sha256": "eb3427f78bb9f36b916a6d8a1938b943e31fe6f28f052feb9219b5a1a17a363d"
+          },
+          {
+            "page": 1,
+            "read_scope": "metadata prefix only; not full page",
+            "ranges_zero_based_half_open": [
+              [
+                0,
+                1800
+              ]
+            ],
+            "characters": 1800,
+            "extracted_page_text_sha256": "c70ae6f7d4eafd0ea2f4661dabe591a9e21ed14b55670787007d83e268e23cf4"
+          }
+        ],
+        "range_unit": "Unicode codepoint offsets in normalized decoded local page text; zero-based half-open",
+        "lifetime_fragment_overlap": "Unknown for previously targeted bibliography fragments; no unique lifetime gain claimed",
+        "paper_source_hash_unchanged": true
+      }
     },
     {
       "filename": "Марк Калашников – Во имя Веры (2).epub",
@@ -557,7 +630,85 @@
     {
       "id": "RSI-AEVOLVE",
       "url": "https://arxiv.org/abs/2606.20657v3",
-      "coverage": "metadata and abstract; newer than survey version"
+      "coverage": "Q04: complete extracted text of versioned v3 (all 12 pages), selected figures/tables checked; methods/budget/limitations compared with survey; experiments not reproduced",
+      "q04_primary_reading": {
+        "review_date": "2026-09-10",
+        "pdf_url": "https://arxiv.org/pdf/2606.20657v3",
+        "version": "2606.20657v3",
+        "pdf_sha256": "6914910acf4267f2d8280eb0371a73b438408b71b44e08ea6b12a16ec3704db7",
+        "bytes": 1770940,
+        "page_count": 12,
+        "extracted_page_count": 12,
+        "full_text_read_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "full_text_read_count": 12,
+        "full_text_read_characters": 33550,
+        "full_text_read": true,
+        "extraction_only_pages": [],
+        "visually_reviewed_pages": [
+          2,
+          6,
+          8,
+          12
+        ],
+        "visual_objects": [
+          "Table 1",
+          "Figure 2",
+          "Figure 3",
+          "Table 2"
+        ],
+        "all_figures_reviewed": false,
+        "experiments_reproduced": false,
+        "upstream_code_audited": false,
+        "raw_content_committed": false,
+        "previous_coverage": "Metadata/abstract and survey only; no earlier full primary-PDF page reading",
+        "reading_semantics": "All extracted page text including references inspected; repeated access by multiple readers counted once; cited papers not thereby read.",
+        "evidence_note": "training-research.md",
+        "claim_anchors": [
+          "AE-01",
+          "AE-02",
+          "AE-03",
+          "AE-04",
+          "AE-05"
+        ],
+        "version_comparison": {
+          "access_date": "2026-09-10",
+          "official_source": "https://arxiv.org/abs/2606.20657",
+          "aevolve_history": [
+            {
+              "version": "v1",
+              "timestamp_utc": "2026-06-09T07:23:11Z"
+            },
+            {
+              "version": "v2",
+              "timestamp_utc": "2026-06-25T04:21:07Z"
+            },
+            {
+              "version": "v3",
+              "timestamp_utc": "2026-09-08T04:06:10Z"
+            }
+          ],
+          "survey_official_source": "https://arxiv.org/abs/2607.07663",
+          "survey_v2_timestamp_utc": "2026-09-06T11:44:06Z",
+          "survey_reference_180_url": "https://arxiv.org/abs/2606.20657",
+          "survey_reference_180_pins_version": false,
+          "older_aevolve_full_pdf_read": false,
+          "old_to_v3_textual_diff_performed": false,
+          "limit": "Chronology and agreement between survey content and current v3 do not establish which older A-Evolve version survey authors read or what changed textually in v3"
+        }
+      }
     },
     {
       "id": "RSI-SOUNDNESS",
@@ -611,5 +762,15 @@
     "full_text_read_pages_per_paper": 34,
     "experiments_reproduced": false,
     "literary_coverage_changed": false
+  },
+  "rsi_q04_totals": {
+    "primary_pdf_extracted_pages": 12,
+    "primary_pdf_full_text_read_pages": 12,
+    "primary_pdf_unique_new_full_text_pages": 12,
+    "primary_pdf_full_text_characters": 33550,
+    "survey_full_text_pages_repeated": 2,
+    "survey_new_full_text_pages": 0,
+    "literary_coverage_changed": false,
+    "experiments_reproduced": false
   }
 }

@@ -14,6 +14,8 @@ Q02: [що зберігається після перетворення](identit
 
 Q03: [як Core змінює оцінювач і перевіряє власну рекурсію](evaluator-succession.md) — пряме читання DGM/RQGM, шість джерельних anchors і десять статичних controls; п’ять Core-карток уточнено.
 
+Q04: [чи потрібне Core навчання моделі](training-research.md) — повний текст A-Evolve v3, окремі feasibility/admission/adoption та вісім статичних controls; training035 лишається необов’язковим.
+
 ## Почати тут
 
 | Документ | Навіщо читати |

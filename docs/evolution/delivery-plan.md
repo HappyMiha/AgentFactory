@@ -37,6 +37,8 @@ flowchart LR
 | Жива зміна правил | Кандидат world-rule, несуперечлива міграція, версійована історія, rollback і повторний playtest | Core034; AF-LW-023–028 та prerequisites | Готовність масової онлайн-гри |
 | Далекі дослідження | Перевірка нового напряму, нового evaluator, training або мережевої співпраці | Core027–028/035, World029; чинні engine/platform gates | Обов’язок реалізувати кожну гіпотезу |
 
+[Q04 training research](training-research.md) конкретизує Core035 як feasibility/admission/adoption design. Допуск майбутнього bounded pilot спирається на права, реальні ресурси й придатний протокол, а adoption — на пізніше measured product evidence. Поточна документація жодного training не запускає.
+
 Standalone acceptance Core охоплює 001–030. Доменні adapters 031–034 і training research035 до цього gate не входять. Наявні consumer profiles проходять контрактні перевірки; завершення AF-CLD-020 або майбутньої гри не стає вимогою прийняти Core.
 
 ## 3. Точна межа першої гри

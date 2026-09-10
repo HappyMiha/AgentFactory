@@ -154,6 +154,8 @@ Product research portfolio збирає observed friction, failed tasks, support
 
 Можлива frame revision: Core навчався робити докладніші плани, а спостереження показало, що користувачі губляться й не доходять до запуску. Система пропонує скоротити план та змінити primary outcome на зрозуміле наступне рішення. Старий показник повноти може впасти; критерій якості продукту не зводиться до максимуму старої метрики. Нову мету затверджують як нову версію, зберігаючи accessibility, прозорість та task success constraints.
 
+Необов’язковий [Q04 training research](training-research.md) додає окремі identities research/controller, target model, trainer/data/recipe та serving bundle. Reference substrate і standing policy не змішуються; внутрішня selection strategy може еволюціонувати як treatment за спільного external criterion. Feasibility, дозвіл конкретного bounded pilot і adoption після фактичних outcomes — різні рішення. Новий model checkpoint сам не доводить покращення дослідника, Core workflow або O0→O1→O2.
+
 ## 11. Метрики й економічна межа
 
 | Метрика | Розрахунок / джерело | Використання |

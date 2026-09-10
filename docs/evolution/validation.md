@@ -48,6 +48,10 @@
 
 PDF hashes, pypdf metadata/version/page counts і exact reading ranges звірено з приватними ledger; extraction відділена від читання. Перевірено шість primary-source anchors, десять унікальних static controls, source manifest parity, Markdown/JSON, unchanged 65 IDs/239 edges, DAG/closures, refs/links, 15 identical shared docs та docs-only scope. Незалежні рецензії звірили джерельні межі й criterion/treatment/access/activation semantics. Чинні repository validators повторені з їхніми static/synthetic межами. Q03-E01–10 не виконувалися проти runtime; Core, model, engine, training та human experiments відсутні.
 
+## Q04, 2026-09-10
+
+Звірено PDF hash/version/page count, 12/12 full-text pages і 33 550 extraction characters; два reading ledgers узгоджені, повторне читання не множить coverage. Survey ranges/hash і version chronology перевірені; старий A-Evolve textual diff відсутній. Перевірено п’ять source anchors, вісім static controls, Markdown/JSON parity, 65 IDs/239 edges, DAG/closures, refs/links, 16 shared identical docs та docs-only scope. Чинні validators повторені з їхніми static/synthetic межами. Q04-T01–08 не виконувалися; навчання, serving і людські експерименти не запускалися.
+
 ## Незалежне рев’ю
 
 Окремі рецензії перевірили архітектурні повноваження, lifecycle і recursive claim; standalone/MVP залежності; семантичне походження літературних прив’язок. Усі конкретні зауваження враховані в [журналі виправлень](iteration-review.md). Другий прямий літературний прохід додав контрприклади та змінив критерії приймання.

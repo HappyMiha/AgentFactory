@@ -8,7 +8,9 @@
 |---|---|---|
 | `RSI-SURVEY:R01`…`R12` | [Реєстр тверджень survey](rsi-source-analysis.md) | Твердження авторів із розділом/сторінкою, межами перевірки й нашим наслідком для дизайну |
 | `RSI-DGM:DGM-01`…`03`, `RSI-RQGM:RQGM-01`…`03` | [Q03 primary-methods matrix](evaluator-succession.md), exact ranges/hashes у sources.json | Пряме читання методів/обмежень; повідомлення авторів відділені від власних вимог, експерименти не відтворено |
-| `RSI-AEVOLVE`, `RSI-SOUNDNESS` | Розділ першоджерел RSI analysis, URL у sources.json | Поки незалежно звірені metadata/abstract; повне читання методів не заявлене |
+| `RSI-AEVOLVE:AE-01`…`05` | [Q04 primary-source matrix](training-research.md), coverage/hash у sources.json | Повне текстове читання v3, зіставлення із survey; не reproduction і не textual diff старої версії |
+| `RSI-SOUNDNESS` | Розділ першоджерел RSI analysis, URL у sources.json | Поки незалежно звірені metadata/abstract; повне читання методів не заявлене |
+| `CONTRACT:training-research` | [Q04 training feasibility](training-research.md) | Власні критерії та вісім статичних controls; design не дозволяє training |
 | `CONTRACT:evaluator-succession` | [Q03 критерії епох і рекурсії](evaluator-succession.md) | Власний контракт і десять відкритих статичних controls, не виконані experiments |
 | `SAFE:L01`…`L12` | Literary analysis у Lokiravia, spine/paragraph anchors | Літературне натхнення або негативний приклад; ніколи не доказ технічної правильності |
 | `SAFE:SF2-01`…`SF2-06` | Другий прохід «Бігаючого сейфа» у Lokiravia | Повні нові глави, контрприклади й власні проєктні наслідки |
@@ -41,6 +43,8 @@
 Посилання ведуть у документаційну гілку; після прийняття гілки їх можна перевести на сталий release/tag. Baseline commits у manifest та audit зберігаються як історична точка аналізу.
 
 ## Реальне покриття
+
+Q04 A-Evolve v3: повний текст 12/12 сторінок, 33 550 символів extraction; вибрані таблиці/figures перевірені. Survey с.22–23 перечитані, с.1/26/43 — адресні фрагменти; exact ranges у sources.json. Старий A-Evolve PDF не читався, version diff не заявлено.
 
 Q03 DGM/RQGM: 110 сторінок primary PDFs extracted, 68 повністю прочитаних сторінок тексту. Точні ranges, виключення й вибрана visual перевірка — у [журналі Q03](evaluator-succession.md). Решта бібліографії/listings не видана за прочитану; зовнішні experiments не запускалися.
 
