@@ -14,17 +14,17 @@
       "sha256": "d450da092af6387c7a7dc39dac634d11fc9b0ba53ac7b80124066ef1e814557a",
       "hash_basis": "git_blob_bytes",
       "checkout_comparison": "CRLF_to_LF_normalized_bytes",
-      "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+      "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
       "items": 63
     },
     {
       "id": "Lokvetia-Core/examples/game-creator-backlog.json",
       "repo": "Lokvetia-Core",
       "path": "examples/game-creator-backlog.json",
-      "sha256": "e76ca3daaba965177e091d0e02c77bd360916ebf968a208becf91da3a4e747e3",
+      "sha256": "fbc804176abb4e6583d896542929abb424e4e58ccd41405363546962ac2b6473",
       "hash_basis": "git_blob_bytes",
       "checkout_comparison": "CRLF_to_LF_normalized_bytes",
-      "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+      "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
       "items": 47
     },
     {
@@ -34,7 +34,7 @@
       "sha256": "d4d91bac01db7d0fb1e9d901ea4d6f30d0357483a2dbcb7e5041b7cbd13eb776",
       "hash_basis": "git_blob_bytes",
       "checkout_comparison": "CRLF_to_LF_normalized_bytes",
-      "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+      "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
       "items": 75
     },
     {
@@ -44,17 +44,17 @@
       "sha256": "88eb6ce231fefb9163addfdedbc97519dd381fcb4e92699a9ac48364241f5d30",
       "hash_basis": "git_blob_bytes",
       "checkout_comparison": "CRLF_to_LF_normalized_bytes",
-      "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+      "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
       "items": 35
     },
     {
       "id": "Lokiravia/examples/agentfactory-cloud-backlog.json",
       "repo": "Lokiravia",
       "path": "examples/agentfactory-cloud-backlog.json",
-      "sha256": "e7915099feb327b91281322e0b2fe8d1986c18843bc7dd0db34e16b37f25e902",
+      "sha256": "837740ad8283b2c6c9065fec08a629735dcd1687561c28cecca8eaa57f684799",
       "hash_basis": "git_blob_bytes",
       "checkout_comparison": "CRLF_to_LF_normalized_bytes",
-      "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+      "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
       "items": 74
     },
     {
@@ -64,7 +64,7 @@
       "sha256": "6d1ffb051b97f1023016d2d57ae76e9a7092281b9b86bedc40c34d59f7b26d95",
       "hash_basis": "git_blob_bytes",
       "checkout_comparison": "CRLF_to_LF_normalized_bytes",
-      "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+      "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
       "items": 30
     }
   ],
@@ -3772,7 +3772,7 @@
       "source": {
         "manifest": "Lokvetia-Core/examples/game-creator-backlog.json",
         "json_pointer": "/items/46",
-        "item_sha256": "4a7e57f44cbef02b290cf88ef2d16922b69d724440a95e9b634b8929e0676017",
+        "item_sha256": "31c5cc41d34c01d4a3dbe90ca66a435335b9be6bce02bb3dfbc3d5929a9e00dd",
         "acceptance_criteria_pointer": "/items/46/acceptance_criteria",
         "acceptance_criteria_sha256": "3a7eed9fe235adb999ab7a46cc63a991a60d22f4e2fc17e3b0dfb1407553fc30"
       },
@@ -4160,7 +4160,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-001"
         }
       },
@@ -4218,7 +4218,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-002"
         }
       },
@@ -4280,7 +4280,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-003"
         }
       },
@@ -4339,7 +4339,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-004"
         }
       },
@@ -4398,7 +4398,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-005"
         }
       },
@@ -4458,7 +4458,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-006"
         }
       },
@@ -4521,7 +4521,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-007"
         }
       },
@@ -4578,7 +4578,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-008"
         }
       },
@@ -4637,7 +4637,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-009"
         }
       },
@@ -4701,7 +4701,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-010"
         }
       },
@@ -4762,7 +4762,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-011"
         }
       },
@@ -4823,7 +4823,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-015"
         }
       },
@@ -5406,7 +5406,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-001"
         }
       },
@@ -5455,7 +5455,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-031"
         }
       },
@@ -5511,7 +5511,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-032"
         }
       },
@@ -5567,7 +5567,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-002"
         }
       },
@@ -5609,7 +5609,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-003"
         }
       },
@@ -5652,7 +5652,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-004"
         }
       },
@@ -5704,7 +5704,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-005"
         }
       },
@@ -5755,7 +5755,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-008"
         }
       },
@@ -5799,7 +5799,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-009"
         }
       },
@@ -5853,7 +5853,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-010"
         }
       },
@@ -5894,7 +5894,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-014"
         }
       },
@@ -5936,7 +5936,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-033"
         }
       },
@@ -5993,7 +5993,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-011"
         }
       },
@@ -6046,7 +6046,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-012"
         }
       },
@@ -6099,7 +6099,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-030"
         }
       },
@@ -6164,7 +6164,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-012"
         }
       },
@@ -6221,7 +6221,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-013"
         }
       },
@@ -6282,7 +6282,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-014"
         }
       },
@@ -6346,7 +6346,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-016"
         }
       },
@@ -6408,7 +6408,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-017"
         }
       },
@@ -6467,7 +6467,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-018"
         }
       },
@@ -6526,7 +6526,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-019"
         }
       },
@@ -6583,7 +6583,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-020"
         }
       },
@@ -6640,7 +6640,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-021"
         }
       },
@@ -6694,7 +6694,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-022"
         }
       },
@@ -6747,7 +6747,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-023"
         }
       },
@@ -6803,7 +6803,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-024"
         }
       },
@@ -6857,7 +6857,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-025"
         }
       },
@@ -6909,7 +6909,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-026"
         }
       },
@@ -6966,7 +6966,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-027"
         }
       },
@@ -7021,7 +7021,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-028"
         }
       },
@@ -7079,7 +7079,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-029"
         }
       },
@@ -7135,7 +7135,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-030"
         }
       },
@@ -7191,7 +7191,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-006"
         }
       },
@@ -7231,7 +7231,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-007"
         }
       },
@@ -7271,7 +7271,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-013"
         }
       },
@@ -7326,7 +7326,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-015"
         }
       },
@@ -7369,7 +7369,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-016"
         }
       },
@@ -7419,7 +7419,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-017"
         }
       },
@@ -7461,7 +7461,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-018"
         }
       },
@@ -7503,7 +7503,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-034"
         }
       },
@@ -7559,7 +7559,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-019"
         }
       },
@@ -7610,7 +7610,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-020"
         }
       },
@@ -7652,7 +7652,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-021"
         }
       },
@@ -7696,7 +7696,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-022"
         }
       },
@@ -7739,7 +7739,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-023"
         }
       },
@@ -7796,7 +7796,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-024"
         }
       },
@@ -7852,7 +7852,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-025"
         }
       },
@@ -7906,7 +7906,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-026"
         }
       },
@@ -7963,7 +7963,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-027"
         }
       },
@@ -8018,7 +8018,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-028"
         }
       },
@@ -13352,7 +13352,7 @@
       "source": {
         "manifest": "Lokiravia/examples/agentfactory-cloud-backlog.json",
         "json_pointer": "/items/60",
-        "item_sha256": "f389b037ed7ec1fde64c9bb46820db2feaaa6e108a1e3eee9d3c2238b5d923d2",
+        "item_sha256": "11b55109c4b6c0a7d69d96f4cbaa2502658fb627a309b86cef62059463b6d120",
         "acceptance_criteria_pointer": "/items/60/acceptance_criteria",
         "acceptance_criteria_sha256": "c54de84af106d23daed3e22750523bc77bf9b16e13046f20f9ce97a5b61e73da"
       },
@@ -13867,7 +13867,7 @@
           "path": "Lokiravia/docs/evolution/backlog.md",
           "sha256": "ce4cc636445616c21f8b2cad10eb0787c45c0c8a2a7022502a504725534abb9c",
           "hash_basis": "git_blob_bytes",
-          "commit": "24ecb1e931d7df6c90900bb31e08a1e5faa13ce1",
+          "commit": "39dd3030acd642dccec30abebdd7ce6caf0a2ec8",
           "stable_id": "AF-LW-029"
         }
       },
@@ -13916,7 +13916,7 @@
           "path": "Lokvetia-Core/docs/evolution/backlog.md",
           "sha256": "50e2d1f8ec59afbe9c2629042cc88c4a73630ccdc2601a3e8a59faf88cac7654",
           "hash_basis": "git_blob_bytes",
-          "commit": "38280160e8cabfcb64f325cd5c1c5f8aa6f67ab7",
+          "commit": "c35f20cf90b0caf4d9bdd2d1fd25d1557de016ad",
           "stable_id": "AF-RSI-035"
         }
       },
