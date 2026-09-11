@@ -18,9 +18,35 @@ SUPPORTED_KINDS = frozenset(
 EXECUTABLE_KINDS = frozenset({"task", "bug", "research", "change"})
 MARKER_PATTERN = re.compile(r"<!--\s*agent-factory-id:([^\s]+)\s*-->")
 
+# An item may record what was actually produced for it. Acceptance is a claim
+# about delivered work, so a manifest cannot declare it without naming evidence.
+ACCEPTED_STATUS_LABELS = frozenset({"status:accepted", "status:done", "status:delivered"})
+EVIDENCE_KINDS = frozenset({"code", "test", "document", "run", "review", "deployment"})
+EVIDENCE_FIELDS = frozenset({"kind", "reference", "recorded_by", "note"})
+MAX_EVIDENCE = 20
+MAX_EVIDENCE_REFERENCE = 300
+MAX_EVIDENCE_NOTE = 500
+
 
 class BacklogManifestError(ValueError):
     """Raised when a backlog manifest is incomplete or internally inconsistent."""
+
+
+@dataclass(frozen=True)
+class Evidence:
+    """One named artifact that shows what was produced for a backlog item.
+
+    It records where to look and who recorded it. It does not itself assert
+    that the work is correct, and a reviewer still has to read what it names.
+    """
+
+    kind: str
+    reference: str
+    recorded_by: str
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass(frozen=True)
@@ -42,6 +68,13 @@ class ProposedItem:
     expected_artifacts: tuple[str, ...] = field(default_factory=tuple)
     definition_of_done: tuple[str, ...] = field(default_factory=tuple)
     assigned_role: str = "Developer"
+    evidence: tuple[Evidence, ...] = field(default_factory=tuple)
+
+    @property
+    def accepted(self) -> bool:
+        """Whether the manifest declares this item accepted."""
+
+        return bool({label.strip().lower() for label in self.labels} & ACCEPTED_STATUS_LABELS)
 
     @property
     def executable(self) -> bool:
@@ -147,6 +180,14 @@ class BacklogProposal:
         if not self.items:
             raise BacklogManifestError("Backlog proposal cannot be empty")
         _validate_graph(self.items)
+        unsupported = sorted(
+            item.stable_id for item in self.items if item.accepted and not item.evidence
+        )
+        if unsupported:
+            raise BacklogManifestError(
+                "A manifest cannot declare acceptance without evidence; these items "
+                f"are marked accepted and name none: {unsupported}"
+            )
         if self.schema_version >= 2:
             for item in self.items:
                 if not item.executable:
@@ -198,6 +239,53 @@ def _strings(value: Any, field_name: str, stable_id: str) -> tuple[str, ...]:
             f"Item {stable_id!r} field {field_name!r} must be a list of non-empty strings"
         )
     return tuple(entry.strip() for entry in value)
+
+
+def _evidence(value: Any, stable_id: str) -> tuple[Evidence, ...]:
+    """Validate recorded evidence. Unknown fields are refused, not ignored."""
+
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise BacklogManifestError(f"Item {stable_id!r} field 'evidence' must be a list")
+    if len(value) > MAX_EVIDENCE:
+        raise BacklogManifestError(
+            f"Item {stable_id!r} declares more than {MAX_EVIDENCE} evidence entries"
+        )
+    entries: list[Evidence] = []
+    for position, entry in enumerate(value):
+        where = f"Item {stable_id!r} evidence entry {position}"
+        if not isinstance(entry, dict):
+            raise BacklogManifestError(f"{where} must be an object")
+        unknown = sorted(set(entry) - EVIDENCE_FIELDS)
+        if unknown:
+            raise BacklogManifestError(f"{where} has unsupported fields: {unknown}")
+        kind = str(entry.get("kind", "")).strip().lower()
+        if kind not in EVIDENCE_KINDS:
+            raise BacklogManifestError(
+                f"{where} has unsupported kind {kind!r}; choose one of {sorted(EVIDENCE_KINDS)}"
+            )
+        reference = str(entry.get("reference", "")).strip()
+        if not reference or len(reference) > MAX_EVIDENCE_REFERENCE:
+            raise BacklogManifestError(
+                f"{where} needs a reference of 1 to {MAX_EVIDENCE_REFERENCE} characters"
+            )
+        recorded_by = str(entry.get("recorded_by", "")).strip()
+        if not recorded_by:
+            raise BacklogManifestError(f"{where} must name who recorded it")
+        note = str(entry.get("note", "")).strip()
+        if len(note) > MAX_EVIDENCE_NOTE:
+            raise BacklogManifestError(
+                f"{where} note is longer than {MAX_EVIDENCE_NOTE} characters"
+            )
+        entries.append(Evidence(kind=kind, reference=reference, recorded_by=recorded_by, note=note))
+    references = [entry.reference for entry in entries]
+    duplicates = sorted({value for value in references if references.count(value) > 1})
+    if duplicates:
+        raise BacklogManifestError(
+            f"Item {stable_id!r} records the same evidence twice: {duplicates}"
+        )
+    return tuple(entries)
 
 
 def _item(
@@ -310,6 +398,7 @@ def _item(
         expected_artifacts=expected_artifacts,
         definition_of_done=definition_of_done,
         assigned_role=assigned_role,
+        evidence=_evidence(document.get("evidence"), stable_id),
     )
 
 

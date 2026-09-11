@@ -80,10 +80,12 @@ class TaskProgress:
     role: str
     accepted: bool
     merged: bool
+    declared: bool
     state: str
     dependencies: tuple[str, ...]
     blocked_by: tuple[str, ...]
     commits: tuple[CommitRecord, ...]
+    evidence: tuple[Any, ...]
     manifest: str
 
     def to_dict(self) -> dict[str, Any]:
@@ -97,6 +99,8 @@ class TaskProgress:
             "role": self.role,
             "accepted": self.accepted,
             "merged": self.merged,
+            "declared": self.declared,
+            "evidence": [entry.to_dict() for entry in self.evidence],
             "state": self.state,
             "dependencies": list(self.dependencies),
             "blocked_by": list(self.blocked_by),
@@ -113,6 +117,7 @@ def _counts(tasks: Sequence[TaskProgress]) -> dict[str, Any]:
     weight = sum(task.weight for task in tasks) or 0
     accepted_weight = sum(task.weight for task in tasks if task.accepted)
     merged_weight = sum(task.weight for task in tasks if task.merged)
+    declared_weight = sum(task.weight for task in tasks if task.declared)
     by_state = {state: 0 for state in STATES}
     for task in tasks:
         by_state[task.state] += 1
@@ -121,11 +126,13 @@ def _counts(tasks: Sequence[TaskProgress]) -> dict[str, Any]:
         "weight": weight,
         "accepted": sum(1 for task in tasks if task.accepted),
         "merged": sum(1 for task in tasks if task.merged),
+        "declared": sum(1 for task in tasks if task.declared),
         "remaining": sum(1 for task in tasks if not task.merged),
         "by_state": by_state,
         "percent": {
             "accepted": _percent(accepted_weight, weight),
             "merged": _percent(merged_weight, weight),
+            "declared": _percent(declared_weight, weight),
             "accepted_by_count": _percent(
                 sum(1 for task in tasks if task.accepted), len(tasks)
             ),
@@ -384,10 +391,12 @@ def build_project(
                 role=item.assigned_role,
                 accepted=accepted,
                 merged=merged,
+                declared=bool(item.evidence),
                 state=state,
                 dependencies=dependencies,
                 blocked_by=blocked_by,
                 commits=records,
+                evidence=item.evidence,
                 manifest=path,
             )
         )
@@ -423,9 +432,10 @@ def report(projects: Sequence[ProjectProgress]) -> dict[str, Any]:
     return {
         "generated_at": _now(),
         "evidence_note": (
-            "A merged commit records engineering delivery only. Acceptance is "
-            "declared by the backlog manifest and its release gate, and is never "
-            "inferred from a merge."
+            "Three separate facts. Recorded evidence names what was produced. A "
+            "merged commit records engineering delivery. Acceptance is declared by "
+            "the backlog manifest against its release gate, and a manifest cannot "
+            "declare it without evidence. None of them is inferred from another."
         ),
         "totals": _counts(every_task),
         "projects": documents,

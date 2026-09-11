@@ -5,17 +5,48 @@ page reads `/progress/status`, which the deployment controller republishes each
 cycle from the bare clones it already fetches. No repository is written to, and
 no GitHub token reaches the browser.
 
-## Two tracks that never merge into one number
+## Three tracks that never merge into one number
 
 | Track | Source | What it proves |
 |---|---|---|
+| Evidence recorded | `evidence` entries on the backlog item | Somebody named what was produced and where to find it |
 | Code in main | A task identifier observed in the repository's own commit history | Engineering delivery of that change |
 | Accepted | `status:accepted` in the backlog manifest | Owner acceptance against the task's release gate |
 
-A merge never sets acceptance. Acceptance is declared in the manifest, and the
-page reports the two tracks separately at task, block, project, and total level.
-A published percentage describes coverage of a planning baseline. It is not a
-statement that a build runs, a game plays, or a service is deployed.
+A merge never sets acceptance, and recorded evidence is not a verdict — a
+reviewer still has to read what it names. The page reports the three tracks
+separately at task, block, project, and total level. A published percentage
+describes coverage of a planning baseline. It is not a statement that a build
+runs, a game plays, or a service is deployed.
+
+The merged track only sees identifiers that a commit message cites. Work
+delivered without citing its task reads as outstanding there, which is exactly
+what the evidence track is for: record the files that prove it and the task
+stops looking untouched.
+
+## Recording evidence
+
+An item may carry up to twenty entries. Each names a `kind` — `code`, `test`,
+`document`, `run`, `review` or `deployment` — a `reference`, whoever recorded
+it, and an optional short note:
+
+```json
+{"stable_id": "AF-GC-042", "evidence": [
+  {"kind": "test", "reference": "tests/test_provider_role_qualification.py",
+   "recorded_by": "Reviewer", "note": "profile by role matrix"},
+  {"kind": "document", "reference": "docs/provider-role-qualification.md",
+   "recorded_by": "Reviewer"}
+]}
+```
+
+Unknown fields and invented kinds are refused rather than ignored, and the same
+reference cannot be recorded twice on one item.
+
+**An item marked `status:accepted` must name at least one entry.** Both the
+canonical loader and `scripts/validate_backlog.py` refuse a manifest that
+declares acceptance with nothing recorded, so the two cannot drift apart. This
+gate checks that evidence exists, not that it is sufficient; judging that is the
+reviewer's job.
 
 ## How a task is classified
 
@@ -69,6 +100,6 @@ screen rather than blanking the page.
 ## Keeping the acceptance track honest
 
 The manifest is the only place acceptance is recorded, so a task moves to
-`status:accepted` in the same reviewed change that records its evidence. Marking
-a task accepted because its code merged defeats the separation this page exists
-to show.
+`status:accepted` in the same reviewed change that records its evidence — the
+loader now requires it. Marking a task accepted because its code merged defeats
+the separation this page exists to show.

@@ -36,6 +36,14 @@ def item(stable_id: str, **overrides) -> dict:
     return document
 
 
+EVIDENCE = {"kind": "test", "reference": "tests/test_example.py",
+            "recorded_by": "Reviewer", "note": "covers the stated criterion"}
+
+
+def accepted_item(stable_id: str, **overrides) -> dict:
+    return item(stable_id, labels=["status:accepted"], evidence=[EVIDENCE], **overrides)
+
+
 def manifest(*items: dict, name: str = "plan") -> tuple[str, dict, str]:
     document = {"schema_version": 1, "source": {"name": name}, "items": list(items)}
     return (f"examples/{name}.json", document, "a" * 64)
@@ -98,11 +106,27 @@ class TrackSeparationTests(unittest.TestCase):
         self.assertEqual(task.state, "merged")
 
     def test_acceptance_comes_only_from_the_manifest(self):
-        result = project(manifest(item("AF-001", labels=["status:accepted"])))
+        result = project(manifest(accepted_item("AF-001")))
         task = tasks_by_id(result)["AF-001"]
         self.assertTrue(task.accepted)
         self.assertFalse(task.merged)
         self.assertEqual(task.state, "accepted")
+
+    def test_recorded_evidence_is_its_own_track(self):
+        result = project(manifest(
+            item("AF-001", evidence=[EVIDENCE]),
+            item("AF-002"),
+        ))
+        tasks = tasks_by_id(result)
+        self.assertTrue(tasks["AF-001"].declared)
+        self.assertFalse(tasks["AF-001"].accepted)
+        self.assertFalse(tasks["AF-002"].declared)
+        self.assertEqual(result.to_dict()["declared"], 1)
+
+    def test_a_manifest_cannot_declare_acceptance_without_evidence(self):
+        result = project(manifest(item("AF-001", labels=["status:accepted"])))
+        self.assertEqual(result.to_dict()["tasks"], 0)
+        self.assertTrue(any("acceptance" in warning for warning in result.warnings))
 
     def test_an_unreferenced_task_stays_outstanding(self):
         result = project(
@@ -229,7 +253,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(document["totals"]["merged"], 1)
         self.assertEqual(document["totals"]["accepted"], 0)
         self.assertEqual(document["totals"]["remaining"], 1)
-        self.assertIn("never inferred from a merge", document["evidence_note"])
+        self.assertIn("None of them is inferred from another", document["evidence_note"])
 
     def test_a_malformed_manifest_is_reported_and_the_rest_still_loads(self):
         broken = ("examples/broken.json", {"schema_version": 9, "items": []}, "b" * 64)
