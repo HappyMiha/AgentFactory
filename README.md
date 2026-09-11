@@ -346,6 +346,7 @@ See:
 - [Godot 2D game pack and engine adapter](docs/godot-pack.md)
 - [Latest verified playable version](docs/playable-versions.md)
 - [Asset provenance and safe import](docs/asset-provenance.md)
+- [Export and sharing](docs/export-and-share.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)
