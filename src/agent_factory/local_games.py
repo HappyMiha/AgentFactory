@@ -222,17 +222,55 @@ class LocalGames:
         document['play_blocker'] = 'verified_playable_version_unavailable'
         return document
 
+    @staticmethod
+    def _progress(counts):
+        """Summarize stored work-item states. Accepted work is the honest share.
+
+        A completed run is not acceptance, so the published share counts only
+        approved items. Finished and blocked work are reported beside it rather
+        than folded into one number.
+        """
+        total = sum(counts.values())
+        accepted = counts.get('approved', 0)
+        return {
+            'total': total,
+            'accepted': accepted,
+            'finished': counts.get('completed', 0),
+            'in_progress': counts.get('running', 0),
+            'waiting': counts.get('pending', 0),
+            'blocked': counts.get('failed', 0) + counts.get('rejected', 0),
+            'accepted_share': round(100.0 * accepted / total, 1) if total else 0.0,
+        }
+
+    @staticmethod
+    def _next_action(mission, progress):
+        """The one action the creator has to take next, derived from stored state."""
+        phase = mission.phase.value
+        if phase in ('DRAFT', 'SPECIFICATION_ANALYSIS', 'BACKLOG_GENERATION'):
+            return 'prepare_plan'
+        if phase == 'WAITING_FOR_BACKLOG_APPROVAL' or mission.active_execution_epoch_id is None:
+            return 'approve_plan'
+        if progress['blocked']:
+            return 'resolve_blocked_work'
+        if phase == 'COMPLETED':
+            return 'review_result'
+        return 'inspect_readiness'
+
     def project(self, mission_id, actor):
         mission = AutonomousMissionService(self.storage).get(mission_id)
         if mission.mission_owner != actor:
             raise KeyError('game_not_found')
         counts = {r['status']: r['count'] for r in self.db.execute(
             'SELECT status,COUNT(*) count FROM work_items WHERE project_id=? GROUP BY status', (mission.project_id,))}
+        progress = self._progress(counts)
         # Execution checkpoints and completed workflow runs do not certify playability.
         return {'id': mission.project_id, 'mission_id': mission.id, 'title': mission.name,
                 'phase': mission.phase.value, 'disposition': mission.disposition.value,
                 'version': mission.version, 'task_counts': counts, 'latest_working': None,
-                'next_action': 'approve_plan' if mission.active_execution_epoch_id is None else 'inspect_readiness',
+                'progress': progress,
+                'working_version': {'available': False,
+                                    'reason': 'verified_playable_version_unavailable'},
+                'next_action': self._next_action(mission, progress),
                 'updated_at': mission.updated_at}
 
     def list(self, actor, *, q='', offset=0, limit=20):
