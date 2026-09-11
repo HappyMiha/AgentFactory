@@ -12,6 +12,7 @@ from typing import Any
 
 from .lifecycle import TRANSITIONS, ensure_transition
 from .models import AssignmentLease, Budget, Status, WorkItem
+from .playable_versions import PLAYABLE_VERSION_MIGRATION
 from .worker_admission import ADMISSION_MIGRATION
 
 MIGRATIONS: tuple[tuple[int, str], ...] = (
@@ -6600,6 +6601,7 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
         BEGIN SELECT RAISE(ABORT,'execution reservation is closed'); END;
         CREATE INDEX execution_usage_stage ON execution_usage_samples(trace_id,stage_key);
     """),
+    (78, PLAYABLE_VERSION_MIGRATION),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

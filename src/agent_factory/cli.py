@@ -194,6 +194,41 @@ def parser() -> argparse.ArgumentParser:
     godot_build.add_argument("--commit", default="unknown")
     godot_build.add_argument("--frames", type=int, default=180)
 
+    playable = sub.add_parser(
+        "playable", help="The verified game version a player can launch right now."
+    ).add_subparsers(dest="action", required=True)
+    playable_current = playable.add_parser("current", help="Show the playable version.")
+    playable_current.add_argument("--project", required=True)
+    playable_history = playable.add_parser("history", help="List recorded versions.")
+    playable_history.add_argument("--project", required=True)
+    playable_history.add_argument("--limit", type=int, default=20)
+    playable_promote = playable.add_parser(
+        "promote", help="Offer an engine build record; only a verified build is promoted."
+    )
+    playable_promote.add_argument("--project", required=True)
+    playable_promote.add_argument("--engine", default="godot")
+    playable_promote.add_argument(
+        "--build", required=True, help="Path to the JSON build record to promote."
+    )
+    playable_promote.add_argument("--command-id", required=True)
+    playable_promote.add_argument("--actor", required=True)
+    playable_restore = playable.add_parser(
+        "restore", help="Preview and restore an earlier verified version."
+    )
+    playable_restore.add_argument("--project", required=True)
+    playable_restore.add_argument("--version", required=True)
+    playable_restore.add_argument("--branch", required=True)
+    playable_restore.add_argument("--command-id")
+    playable_restore.add_argument("--actor")
+    playable_restore.add_argument(
+        "--confirm", action="store_true",
+        help="Apply the previewed restore; without it only the preview is printed.",
+    )
+    playable_verify = playable.add_parser(
+        "verify", help="Re-check the stored artifact against its recorded build."
+    )
+    playable_verify.add_argument("--project", required=True)
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -725,6 +760,65 @@ def _execute(args: argparse.Namespace) -> int:
                     indent=2,
                 )
             )
+        elif args.command == "playable":
+            from .playable_versions import CandidateBuild, PlayableVersions
+
+            versions = PlayableVersions(storage)
+            if args.action == "current":
+                current = versions.current(args.project)
+                print(json.dumps(current.checkpoint if current else None, indent=2))
+                return 0 if current else 3
+            if args.action == "history":
+                print(json.dumps(
+                    [item.checkpoint for item in versions.history(args.project, limit=args.limit)],
+                    indent=2,
+                ))
+            elif args.action == "promote":
+                record = json.loads(Path(args.build).expanduser().read_text(encoding="utf-8"))
+                result = versions.promote(
+                    args.project,
+                    CandidateBuild.from_artifact(record, engine=args.engine),
+                    command_id=args.command_id, actor=args.actor,
+                )
+                print(json.dumps({
+                    "outcome": result.outcome, "reason": result.reason,
+                    "pointer_moved": result.pointer_moved,
+                    "reproducible": result.reproducible, "replayed": result.replayed,
+                    "version": result.version.checkpoint if result.version else None,
+                }, indent=2))
+                return 0 if result.accepted or result.outcome == "unchanged" else 3
+            elif args.action == "restore":
+                preview = versions.restore_preview(
+                    args.project, args.version, branch=args.branch,
+                )
+                if not args.confirm:
+                    print(json.dumps({
+                        "preview": preview.summary,
+                        "next": "repeat with --confirm --command-id ID --actor NAME",
+                    }, indent=2))
+                    return 0
+                if not args.command_id or not args.actor:
+                    raise ValueError("--confirm requires --command-id and --actor")
+                result = versions.restore(
+                    args.project, args.version, branch=args.branch,
+                    command_id=args.command_id, actor=args.actor, preview=preview,
+                )
+                print(json.dumps({
+                    "outcome": result.outcome, "reason": result.reason,
+                    "replayed": result.replayed,
+                    "version": result.version.checkpoint if result.version else None,
+                }, indent=2))
+            else:
+                current = versions.current(args.project)
+                if current is None:
+                    print(json.dumps({"verified": False, "reason": "no playable version"}, indent=2))
+                    return 3
+                verified, reason = versions.verify_artifact(current)
+                print(json.dumps({
+                    "verified": verified, "reason": reason,
+                    "version_digest": current.version_digest,
+                }, indent=2))
+                return 0 if verified else 3
         elif args.command == "state":
             if args.action == "check":
                 print(json.dumps(storage.integrity_check(), indent=2))
