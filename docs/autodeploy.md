@@ -34,6 +34,14 @@ authenticated /deployments/status endpoint: project, revision, current phase,
 success/failure, rollback result, error text and release notes. It does not store
 GitHub tokens in the browser. GitHub Deployments receives matching summary statuses.
 
+## Single development progress page
+
+The gateway serves /progress on the same authenticated boundary. Each cycle the
+controller republishes /progress/status from the bare clones it already fetched:
+backlog tasks, large blocks, what has code in main, what is blocked and by what,
+and what is ready to start. Merged code and owner acceptance stay separate
+tracks. See [the development progress page](progress-dashboard.md).
+
 ## Shared identity
 
 id.lokvetia.com hosts the single invitation-only identity service and the shared

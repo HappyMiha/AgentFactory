@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Прогрес розробки · Lokvetia</title><style>
+:root{--ink:#173a42;--paper:#f3f1e8;--line:#d0d9cf;--green:#277454;--red:#a8352d;--gold:#a57217;--mute:#566c69}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:radial-gradient(ellipse at 100% 0,#d9e8dc,transparent 65%),var(--paper);font:16px/1.6 'Trebuchet MS',sans-serif}
+header,main{max-width:1220px;margin:auto;padding:24px}
+header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);gap:20px}
+nav{display:flex;gap:22px;flex-wrap:wrap}
+a{color:inherit}
+h1{font:normal clamp(40px,6vw,68px)/1.1 Georgia,serif;letter-spacing:-.04em;margin:18px 0}
+h2{font:normal 28px Georgia,serif;margin:0}
+h3{font:normal 19px Georgia,serif;margin:0}
+p{max-width:800px}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.15em;color:#567168}
+.summary{display:flex;flex-wrap:wrap;gap:26px;padding:18px 0;border-bottom:1px solid var(--line)}
+.figure{font:normal 34px Georgia,serif;display:block;line-height:1.1}
+.figure-label{font-size:13px;color:var(--mute)}
+.card{border:1px solid var(--line);border-radius:14px;padding:26px;background:#ffffffce;margin-top:26px;min-width:0}
+.card-head{display:flex;justify-content:space-between;gap:15px;align-items:baseline;flex-wrap:wrap}
+.meta{font-size:13px;color:var(--mute);overflow-wrap:anywhere}
+.track{display:flex;justify-content:space-between;gap:12px;font-size:13px;margin:14px 0 4px}
+.rail{height:7px;background:#e4e7dd;border-radius:4px;overflow:hidden}
+.bar{height:100%;width:0;background:var(--gold)}
+.bar.accepted{background:var(--green)}
+.scroller{overflow-x:auto;margin-top:22px}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:min(100%,420px)}
+th{text-align:left;font-weight:normal;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.1em;padding:6px 10px 6px 0;border-bottom:1px solid var(--line)}
+td{padding:10px 10px 10px 0;border-bottom:1px solid #e7eae2;vertical-align:top}
+td.count{white-space:nowrap;font-variant-numeric:tabular-nums}
+.block-rail{width:150px;max-width:36vw}
+.badge{padding:3px 9px;border-radius:20px;font-size:12px;white-space:nowrap;background:#e6e8df}
+.badge.accepted{background:#e0f0e6;color:var(--green)}
+.badge.merged{background:#f4ecd3;color:var(--gold)}
+.badge.blocked{background:#fae5df;color:var(--red)}
+.badge.in_progress{background:#e2ecf3;color:#1d5876}
+details{margin-top:16px}
+summary{cursor:pointer;font-size:14px;color:var(--mute)}
+ul.items{list-style:none;margin:12px 0 0;padding:0;font-size:14px}
+ul.items li{padding:9px 0;border-top:1px solid #e7eae2;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.id{font:13px 'Courier New',monospace;white-space:nowrap}
+.grow{flex:1 1 260px;min-width:0}
+.small{font-size:12px;color:var(--mute)}
+.notice{color:var(--red)}
+button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:9px 16px;color:var(--ink);font:inherit;cursor:pointer}
+button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #83ad98;outline-offset:4px}
+[hidden]{display:none!important}
+@media(max-width:650px){header{align-items:flex-start;flex-direction:column}header,main{padding:20px}.card{padding:20px}nav{font-size:14px}.block-rail{display:none}}
+</style></head><body>
+<header><a href="/" style="text-decoration:none"><b>Lokvetia · Прогрес</b></a><nav><a href="/deployments">Деплой</a><a href="https://test.lokvetia.com/">Core</a><a href="https://test.lokiravia.com/">Lokiravia</a><a href="https://id.lokvetia.com/organizations">Організація</a><a href="https://id.lokvetia.com/profile">Мій профіль</a></nav></header>
+<main>
+<p class="eyebrow">Беклоги обох репозиторіїв</p>
+<h1>Що зроблено.<br>Що залишилось.</h1>
+<p>Дві окремі шкали. <strong>Код у main</strong> — задача згадана в історії репозиторію. <strong>Прийнято</strong> — це заявлено в беклозі та його release gate. Змерджений код ніколи не означає прийняття.</p>
+<div class="summary" id="summary" aria-live="polite"></div>
+<p id="notice" class="notice" role="status"></p>
+<div class="filters" id="filters"></div>
+<section id="projects"></section>
+<p><small id="updated"></small> <button id="refresh">Оновити</button></p>
+<p><small>Відсоток зважений за розміром задачі (S=2, M=5, L=10 умовних днів; без мітки — 5). Це охоплення планового беклогу, а не готовий продукт.</small></p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const STATES={accepted:'Прийнято',merged:'Код у main',in_progress:'В роботі',blocked:'Заблоковано',todo:'Не почато'};
+const FILTERS=[['all','Усі задачі'],['remaining','Залишилось'],['blocked','Заблоковані'],['ready','Готові до роботи']];
+const REPOSITORIES=['HappyMiha/Lokvetia-Core','HappyMiha/Lokiravia'];
+let filter='all',data=null,busy=false,timer;
+function node(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
+function figure(value,label){const box=node('div');box.append(node('strong',value,'figure'),node('span',label,'figure-label'));return box;}
+function rail(percent,cls){const r=node('div',undefined,'rail'),b=node('div',undefined,'bar'+(cls?' '+cls:''));b.style.width=Math.max(0,Math.min(100,Number(percent)||0))+'%';r.append(b);return r;}
+function trackBar(label,percent,cls){const box=node('div'),head=node('div',undefined,'track');head.append(node('span',label),node('span',(Number(percent)||0).toFixed(0)+'%'));box.append(head,rail(percent,cls));return box;}
+function keep(item){
+  if(filter==='remaining')return !item.merged&&!item.accepted;
+  if(filter==='blocked')return item.state==='blocked';
+  if(filter==='ready')return item.state==='todo'&&!(item.blocked_by||[]).length;
+  return true;}
+function commitLink(repository,commit){
+  const link=node('a',String(commit.sha).slice(0,8),'id');
+  if(/^[0-9a-f]{40}$/.test(commit.sha||'')&&REPOSITORIES.includes(repository)){
+    link.href='https://github.com/'+repository+'/commit/'+commit.sha;link.target='_blank';link.rel='noreferrer';}
+  link.title=String(commit.subject||'');
+  return link;}
+function itemRow(item,repository){
+  const row=node('li');
+  row.append(node('span',item.id,'id'),node('span',STATES[item.state]||item.state,'badge '+item.state));
+  const main=node('div',undefined,'grow');
+  main.append(node('div',item.title));
+  const facts=[item.priority,item.size?'розмір '+item.size:null,item.role].filter(Boolean).join(' · ');
+  main.append(node('div',facts,'small'));
+  if((item.blocked_by||[]).length)main.append(node('div','Чекає на: '+item.blocked_by.join(', '),'small'));
+  if((item.commits||[]).length){
+    const line=node('div',undefined,'small');line.append(node('span','Коміти: '));
+    item.commits.forEach((commit,index)=>{if(index)line.append(node('span',', '));line.append(commitLink(repository,commit));});
+    if(item.commit_count>item.commits.length)line.append(node('span',' +'+(item.commit_count-item.commits.length)));
+    main.append(line);}
+  row.append(main);
+  return row;}
+function blockRows(project){
+  const body=node('tbody');
+  project.blocks.forEach(block=>{
+    const visible=block.items.filter(keep);
+    if(filter!=='all'&&!visible.length)return;
+    const row=node('tr');
+    const first=node('td');
+    first.append(node('h3',block.title),node('div',block.track,'small'));
+    row.append(first);
+    row.append(node('td',block.merged+' / '+block.tasks,'count'));
+    row.append(node('td',String(block.by_state.blocked),'count'));
+    row.append(node('td',block.accepted+' / '+block.tasks,'count'));
+    const barCell=node('td',undefined,'block-rail');
+    barCell.append(rail(block.percent.merged),node('div',block.percent.merged.toFixed(0)+'% коду · '+block.percent.accepted.toFixed(0)+'% прийнято','small'));
+    row.append(barCell);
+    body.append(row);
+    const detailRow=node('tr'),cell=node('td');cell.colSpan=5;
+    const details=node('details');
+    details.append(node('summary','Задачі ('+visible.length+')'));
+    const list=node('ul',undefined,'items');
+    visible.forEach(item=>list.append(itemRow(item,project.repository)));
+    details.append(list);cell.append(details);detailRow.append(cell);body.append(detailRow);});
+  return body;}
+function projectCard(project){
+  const box=node('article',undefined,'card'),head=node('div',undefined,'card-head');
+  head.append(node('h2',project.name));
+  const revision=node('a',(project.revision||'').slice(0,12)||'Ревізія невідома','meta');
+  if(/^[0-9a-f]{40}$/.test(project.revision||'')&&REPOSITORIES.includes(project.repository)){
+    revision.href='https://github.com/'+project.repository+'/commit/'+project.revision;revision.target='_blank';revision.rel='noreferrer';}
+  head.append(revision);box.append(head);
+  box.append(trackBar('Код у main',project.percent.merged),trackBar('Прийнято',project.percent.accepted,'accepted'));
+  const counts=node('div',undefined,'summary');
+  counts.append(figure(String(project.tasks),'задач у беклозі'),figure(String(project.merged),'з кодом у main'),
+                figure(String(project.remaining),'залишилось'),figure(String(project.by_state.blocked),'заблоковано'),
+                figure(String(project.ready_count||0),'готові до роботи'));
+  box.append(counts);
+  const table=node('table'),head2=node('thead'),headRow=node('tr');
+  ['Блок','Код у main','Заблоковано','Прийнято','Прогрес'].forEach(label=>headRow.append(node('th',label)));
+  head2.append(headRow);table.append(head2,blockRows(project));const scroller=node('div',undefined,'scroller');scroller.append(table);box.append(scroller);
+  (project.warnings||[]).forEach(warning=>box.append(node('p',warning,'notice')));
+  return box;}
+function render(){
+  if(!data)return;
+  const totals=data.totals||{tasks:0,merged:0,accepted:0,remaining:0,percent:{merged:0,accepted:0}};
+  $('summary').replaceChildren(
+    figure(String(totals.tasks),'задач у двох беклогах'),
+    figure(totals.percent.merged.toFixed(0)+'%','мають код у main'),
+    figure(totals.percent.accepted.toFixed(0)+'%','прийнято за беклогом'),
+    figure(String(totals.remaining),'ще без коду'));
+  $('projects').replaceChildren(...(data.projects||[]).map(projectCard));
+  $('notice').textContent=(data.errors||[]).join('; ');
+  $('updated').textContent='Звіт сформовано: '+new Date(data.generated_at).toLocaleString('uk-UA');}
+function buildFilters(){
+  $('filters').replaceChildren(...FILTERS.map(([key,label])=>{
+    const button=node('button',label);
+    button.setAttribute('aria-pressed',String(key===filter));
+    button.onclick=()=>{filter=key;buildFilters();render();};
+    return button;}));}
+async function refresh(){
+  if(busy)return;busy=true;clearTimeout(timer);
+  try{
+    const response=await fetch('/progress/status',{cache:'no-store'});
+    if(response.status===401){$('notice').textContent='Увійдіть, щоб переглянути прогрес розробки.';return;}
+    if(!response.ok||!response.headers.get('content-type')?.includes('application/json'))throw Error('Звіт про прогрес недоступний');
+    data=await response.json();
+    if(!data.projects||!data.projects.length){$('notice').textContent=data.error||'Звіт ще не сформовано';return;}
+    render();
+  }catch(error){$('notice').textContent=error.message+'. Попередній звіт залишено на екрані.';}
+  finally{busy=false;timer=setTimeout(refresh,document.hidden?300000:120000);}}
+$('refresh').onclick=refresh;buildFilters();refresh();
+</script></body></html>

@@ -9,12 +9,24 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
 
 class DeployError(RuntimeError):
     pass
+
+# Used when an existing configuration file predates the progress page.
+# Set "progress": {"projects": []} to turn the published report off.
+DEFAULT_PROGRESS = {'projects': [
+    {'id': 'core', 'name': 'Lokvetia Core', 'repository': 'HappyMiha/Lokvetia-Core',
+     'manifests': ['examples/development-backlog.json',
+                   'examples/game-creator-backlog.json',
+                   'examples/autonomous-mission-backlog.json']},
+    {'id': 'cloud', 'name': 'Lokiravia', 'repository': 'HappyMiha/Lokiravia',
+     'manifests': ['examples/agentfactory-cloud-backlog.json']},
+]}
 
 def now():
     return datetime.now(timezone.utc).isoformat(timespec='seconds')
@@ -294,6 +306,35 @@ class Controller:
                 except Exception:
                     pass
 
+    def refresh_progress(self):
+        """Republish the development progress document from the fetched repositories.
+
+        This reads the same bare clones the deployment already maintains. It
+        never writes to a repository, and a failure leaves the previously
+        published report on screen rather than blanking the page.
+        """
+        settings = self.config.get('progress') or DEFAULT_PROGRESS
+        script = self.bundle / 'progress' / 'scripts' / 'progress_report.py'
+        if not settings.get('projects') or not script.exists():
+            return
+        entries = []
+        for entry in settings['projects']:
+            repository = str(entry.get('repository', ''))
+            if repository not in {'HappyMiha/Lokvetia-Core', 'HappyMiha/Lokiravia'}:
+                raise DeployError('Unapproved repository in the progress configuration')
+            repo = self.root / 'repositories' / repository.split('/')[1]
+            if repo.exists():
+                entries.append(dict(entry, repo_path=str(repo), ref='refs/heads/main'))
+        if not entries:
+            return
+        config_path = self.root / 'progress-config.json'
+        atomic_json(config_path, {'projects': entries})
+        try:
+            command([sys.executable, str(script), '--config', str(config_path),
+                     '--output', str(self.public / 'progress.json')], timeout=300)
+        except (DeployError, subprocess.TimeoutExpired) as error:
+            print(json.dumps({'progress_error': str(error)[:300]}), flush=True)
+
     def cycle(self):
         with exclusive(self.root / 'controller.lock'):
             for p in self.config['projects']:
@@ -302,6 +343,10 @@ class Controller:
                         self.deploy(p)
                     except Exception as error:
                         self.report(p, 'failure', 'failure', error=str(error))
+            try:
+                self.refresh_progress()
+            except Exception as error:
+                print(json.dumps({'progress_error': str(error)[:300]}), flush=True)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
