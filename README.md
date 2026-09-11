@@ -348,6 +348,7 @@ See:
 - [Asset provenance and safe import](docs/asset-provenance.md)
 - [Export and sharing](docs/export-and-share.md)
 - [Support bundles](docs/support-bundle.md)
+- [Updates and uninstall](docs/updates-and-uninstall.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)
