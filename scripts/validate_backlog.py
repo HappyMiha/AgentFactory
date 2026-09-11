@@ -19,8 +19,43 @@ ACTIVE_BACKLOGS = (
 )
 
 
+ACCEPTED_STATUS_LABELS = frozenset({"status:accepted", "status:done", "status:delivered"})
+EVIDENCE_KINDS = frozenset({"code", "test", "document", "run", "review", "deployment"})
+EVIDENCE_FIELDS = frozenset({"kind", "reference", "recorded_by", "note"})
+
+
 class ValidationError(ValueError):
     """An active backlog or its readable representation is inconsistent."""
+
+
+def validate_evidence(stable_id: str, item: dict) -> int:
+    """Validate the same evidence contract as the Core manifest loader."""
+    entries = item.get("evidence", [])
+    if not isinstance(entries, list) or len(entries) > 20:
+        raise ValidationError(f"{stable_id}: evidence must be a list of at most 20 entries")
+    seen = set()
+    for position, entry in enumerate(entries):
+        where = f"{stable_id}: evidence entry {position}"
+        if not isinstance(entry, dict) or set(entry) - EVIDENCE_FIELDS:
+            raise ValidationError(f"{where} must be an object with supported fields only")
+        if any(not isinstance(entry.get(key, ""), str) for key in EVIDENCE_FIELDS):
+            raise ValidationError(f"{where}: evidence fields must be strings")
+        if entry.get("kind", "").strip().lower() not in EVIDENCE_KINDS:
+            raise ValidationError(f"{where} needs a supported kind")
+        reference = entry.get("reference", "").strip()
+        if not reference or len(reference) > 300:
+            raise ValidationError(f"{where} needs a reference of 1 to 300 characters")
+        if reference in seen:
+            raise ValidationError(f"{where}: duplicate evidence reference")
+        seen.add(reference)
+        if not entry.get("recorded_by", "").strip():
+            raise ValidationError(f"{where} must name who recorded it")
+        if len(entry.get("note", "").strip()) > 500:
+            raise ValidationError(f"{where}: note exceeds 500 characters")
+    labels = {str(value).strip().lower() for value in item.get("labels", [])}
+    if labels & ACCEPTED_STATUS_LABELS and not entries:
+        raise ValidationError(f"{stable_id}: marked accepted without evidence; record what was produced or leave the status as proposed")
+    return len(entries)
 
 
 def validate_backlog(path: Path) -> dict:
@@ -39,6 +74,7 @@ def validate_backlog(path: Path) -> dict:
             raise ValidationError(f"{path.name}: missing or duplicate stable_id {stable_id!r}")
         by_id[stable_id] = item
     for stable_id, item in by_id.items():
+        validate_evidence(stable_id, item)
         parent = item.get("parent_id")
         if parent is not None and (not isinstance(parent, str) or parent not in by_id or parent == stable_id):
             raise ValidationError(f"{stable_id}: invalid parent reference")
@@ -113,7 +149,7 @@ def validate_cloud_alignment(root: Path, by_id: dict[str, dict]) -> None:
                 raise ValidationError(f"Cloud readable acceptance differs from JSON: {stable_id}")
 
 
-def validate_repository(root: Path) -> list[tuple[str, int]]:
+def validate_repository(root: Path) -> list[tuple[str, int, int]]:
     results = []
     for name in ACTIVE_BACKLOGS:
         path = root / name
@@ -122,7 +158,8 @@ def validate_repository(root: Path) -> list[tuple[str, int]]:
         items = validate_backlog(path)
         if name.endswith("agentfactory-cloud-backlog.json"):
             validate_cloud_alignment(root, items)
-        results.append((name, len(items)))
+        recorded = sum(len(item.get("evidence", [])) for item in items.values())
+        results.append((name, len(items), recorded))
     if not results:
         raise ValidationError("No supported active backlog found in examples/")
     return results
@@ -137,8 +174,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         results = validate_repository(args.root)
-        for name, count in results:
-            print(f"Valid: {name} ({count} items)")
+        for name, count, recorded in results:
+            print(f"Valid: {name} ({count} items, {recorded} evidence entries)")
         return 0
     except (OSError, ValueError, TypeError, KeyError, RecursionError) as exc:
         print(f"Backlog validation failed: {exc}", file=sys.stderr)

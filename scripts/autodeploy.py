@@ -9,12 +9,24 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import uuid
 
 class DeployError(RuntimeError):
     pass
+
+# Used when an existing configuration file predates the progress page.
+# Set "progress": {"projects": []} to turn the published report off.
+DEFAULT_PROGRESS = {'projects': [
+    {'id': 'core', 'name': 'Lokvetia Core', 'repository': 'HappyMiha/Lokvetia-Core',
+     'manifests': ['examples/development-backlog.json',
+                   'examples/game-creator-backlog.json',
+                   'examples/autonomous-mission-backlog.json','docs/evolution/backlog.json']},
+    {'id': 'cloud', 'name': 'Lokiravia', 'repository': 'HappyMiha/Lokiravia',
+     'manifests': ['examples/agentfactory-cloud-backlog.json','docs/evolution/backlog.json']},
+]}
 
 def now():
     return datetime.now(timezone.utc).isoformat(timespec='seconds')
@@ -92,6 +104,11 @@ def archive_image(container, inspected, archive):
     atomic_json(archive.with_suffix('.json'), metadata)
     os.replace(partial, archive)
 
+# Bounded so a long-running controller cannot grow its published state forever.
+HISTORY_PER_PROJECT = 20
+HISTORY_ERROR_LIMIT = 2000
+
+
 class Controller:
     def __init__(self, config):
         self.config = config
@@ -103,6 +120,8 @@ class Controller:
         self.routes_path = self.public / 'routes.json'
         self.status_path = self.public / 'status.json'
         self.status = read_json(self.status_path, {'projects': {}, 'updated_at': now()})
+        # Older published state predates the release history.
+        self.status.setdefault('history', {})
         for p in config['projects']:
             if p['repository'] not in {'HappyMiha/Lokvetia-Core', 'HappyMiha/Lokiravia'}:
                 raise DeployError('Unapproved repository')
@@ -113,9 +132,16 @@ class Controller:
 
     def report(self, p, phase, state='in_progress', **extra):
         record = self.status['projects'].setdefault(p['id'], {})
+        if state in {'success', 'failure'} and 'finished_at' not in extra:
+            previous_terminal = record.get('state') in {'success', 'failure'}
+            same_commit = extra.get('commit', record.get('commit')) == record.get('commit')
+            extra['finished_at'] = record.get('finished_at') if previous_terminal and same_commit else None
+            extra['finished_at'] = extra['finished_at'] or now()
         record.update(project=p['name'], repository=p['repository'], host=p['host'],
                       phase=phase, state=state, updated_at=now(), **extra)
         self.status['updated_at'] = now()
+        if state in {'success', 'failure'}:
+            self.remember(p, record)
         atomic_json(self.status_path, self.status)
         print(json.dumps({'project': p['id'], 'phase': phase, 'state': state}), flush=True)
         if record.get('deployment_id') and phase in {'backup', 'activate', 'rollback', 'success', 'failure'}:
@@ -129,6 +155,35 @@ class Controller:
             except (DeployError, subprocess.TimeoutExpired):
                 record['reporting_error'] = 'GitHub status unavailable; local record is authoritative'
                 atomic_json(self.status_path, self.status)
+
+    def remember(self, p, record):
+        """Keep a bounded record of finished attempts so the page shows a trail.
+
+        Only an attempt that ended is remembered, and only the fields the page
+        reads. A repeated report for the same attempt replaces its entry rather
+        than adding another, so a retry of the same revision cannot inflate the
+        list.
+        """
+        entries = self.status.setdefault('history', {}).setdefault(p['id'], [])
+        entry = {
+            'attempt_id': record.get('attempt_id', ''),
+            'commit': record.get('commit', ''),
+            'state': record.get('state', ''),
+            'phase': record.get('phase', ''),
+            'rollback': record.get('rollback', ''),
+            'error': str(record.get('error') or '')[:HISTORY_ERROR_LIMIT],
+            'finished_at': record.get('finished_at') or now(),
+        }
+        same = [
+            index for index, previous in enumerate(entries)
+            if (entry['attempt_id'] and previous.get('attempt_id') == entry['attempt_id'])
+            or (not entry['attempt_id'] and previous.get('commit') == entry['commit']
+                and previous.get('finished_at') == entry['finished_at'])
+        ]
+        for index in reversed(same):
+            entries.pop(index)
+        entries.insert(0, entry)
+        del entries[HISTORY_PER_PROJECT:]
 
     def checkout(self, p):
         repo = self.root / 'repositories' / p['repository'].split('/')[1]
@@ -217,7 +272,7 @@ class Controller:
         previous_sha = previous.get('sha', '') if previous else ''
         release_range = previous_sha + '..' + sha if re.fullmatch('[0-9a-f]{7,40}', previous_sha) else sha
         notes = command(['git', '-C', str(checkout), 'log', '-100', '--format=%h %s', release_range])
-        self.status['projects'][p['id']] = dict(previous_route=previous, started_at=now(), backup=str(backup),
+        self.status['projects'][p['id']] = dict(previous_route=previous, attempt_id=attempt, started_at=now(), backup=str(backup),
             commit=sha, release_notes=notes, error='', rollback='not_needed')
         self.report(p, 'backup')
         activated = False
@@ -294,6 +349,34 @@ class Controller:
                 except Exception:
                     pass
 
+    def refresh_progress(self):
+        """Republish the development progress document from the fetched repositories.
+
+        This reads the same bare clones the deployment already maintains. It
+        never writes to a repository, and a failure leaves the previously
+        published report on screen rather than blanking the page.
+        """
+        settings = self.config.get('progress') or DEFAULT_PROGRESS
+        script = self.bundle / 'progress' / 'scripts' / 'progress_report.py'
+        if not settings.get('projects') or not script.exists():
+            return
+        entries = []
+        for entry in settings['projects']:
+            repository = str(entry.get('repository', ''))
+            if repository not in {'HappyMiha/Lokvetia-Core', 'HappyMiha/Lokiravia'}:
+                raise DeployError('Unapproved repository in the progress configuration')
+            repo = self.root / 'repositories' / repository.split('/')[1]
+            entries.append(dict(entry, repo_path=str(repo), ref='refs/heads/main'))
+        if not entries:
+            return
+        config_path = self.root / 'progress-config.json'
+        atomic_json(config_path, {'projects': entries})
+        try:
+            command([sys.executable, str(script), '--config', str(config_path),
+                     '--output', str(self.public / 'progress.json')], timeout=300)
+        except (DeployError, subprocess.TimeoutExpired) as error:
+            print(json.dumps({'progress_error': str(error)[:300]}), flush=True)
+
     def cycle(self):
         with exclusive(self.root / 'controller.lock'):
             for p in self.config['projects']:
@@ -302,6 +385,10 @@ class Controller:
                         self.deploy(p)
                     except Exception as error:
                         self.report(p, 'failure', 'failure', error=str(error))
+            try:
+                self.refresh_progress()
+            except Exception as error:
+                print(json.dumps({'progress_error': str(error)[:300]}), flush=True)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

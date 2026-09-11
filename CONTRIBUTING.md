@@ -16,6 +16,7 @@ Run `python scripts/validate_backlog.py` and the checks appropriate to your chan
 - Treat provider output, imported backlog data, repository content, and CLI output as untrusted.
 - Add tests for success, denial, replay, timeout, malformed input, and interrupted execution paths.
 - Do not include credentials, personal data, local absolute paths, generated databases, or provider auth profiles.
+- Record backlog evidence when you mark an item accepted. A manifest that declares `status:accepted` without at least one `evidence` entry is refused by the loader and by `scripts/validate_backlog.py`.
 
 ## Development setup
 

@@ -2365,6 +2365,20 @@
         "size:m",
         "status:proposed",
         "product:game-creator"
+      ],
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/test_provider_role_qualification.py",
+          "recorded_by": "Repository maintainer",
+          "note": "shipped profiles by autonomous role IDs, zero subprocess for denied pairs"
+        },
+        {
+          "kind": "document",
+          "reference": "docs/provider-role-qualification.md",
+          "recorded_by": "Repository maintainer",
+          "note": "where the check runs and what it does not prove"
+        }
       ]
     },
     {

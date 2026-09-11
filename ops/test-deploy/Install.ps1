@@ -8,11 +8,16 @@ $ErrorActionPreference = 'Stop'
 $server = (Resolve-Path -LiteralPath $ServerRoot).Path
 $root = Join-Path $server 'autodeploy'
 $source = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
-foreach ($folder in @($root, "$root/runtime", "$root/public", "$root/secrets")) {
+foreach ($folder in @($root, "$root/runtime", "$root/runtime/progress/scripts", "$root/runtime/progress/src/agent_factory", "$root/public", "$root/secrets")) {
     New-Item -ItemType Directory -Path $folder -Force | Out-Null
 }
 Copy-Item -LiteralPath "$source/scripts/autodeploy.py" -Destination "$root/controller.py"
 Copy-Item -LiteralPath "$source/docs/deploy-dashboard.html" -Destination "$root/public/dashboard.html"
+Copy-Item -LiteralPath "$source/docs/progress-dashboard.html" -Destination "$root/public/progress.html"
+Copy-Item -LiteralPath "$source/scripts/progress_report.py" -Destination "$root/runtime/progress/scripts/progress_report.py"
+foreach ($name in @('__init__.py','backlog.py','progress.py')) {
+    Copy-Item -LiteralPath "$source/src/agent_factory/$name" -Destination "$root/runtime/progress/src/agent_factory/$name"
+}
 foreach ($name in @('serve.py','domain_adapter.py','snapshot.py','gateway.py','Dockerfile.core','Dockerfile.cloud')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $name) -Destination "$root/runtime/$name"
 }
@@ -41,6 +46,10 @@ if (-not (Test-Path -LiteralPath "$root/config.json")) {
     $cloudEnv = $common.Clone(); $cloudEnv.LOKVETIA_SSO_CLIENT='cloud'; $cloudEnv.LOKVETIA_SSO_ORIGIN='https://test.lokiravia.com'
     $config = @{
         state_root=$root;runtime_bundle="$root/runtime";network='lokvetia-test_default';poll_seconds=60;max_retained_containers_per_project=8
+        progress=@{projects=@(
+            @{id='core';name='Lokvetia Core';repository='HappyMiha/Lokvetia-Core';manifests=@('examples/development-backlog.json','examples/game-creator-backlog.json','examples/autonomous-mission-backlog.json','docs/evolution/backlog.json')},
+            @{id='cloud';name='Lokiravia';repository='HappyMiha/Lokiravia';manifests=@('examples/agentfactory-cloud-backlog.json','docs/evolution/backlog.json')}
+        )}
         initial_routes=@{
             'test.lokvetia.com'=@{container='lokvetia-test-lokvetia-1';sha='e74cb1a';project='core'}
             'test.lokiravia.com'=@{container='lokvetia-test-lokiravia-1';sha='ff76420';project='cloud'}

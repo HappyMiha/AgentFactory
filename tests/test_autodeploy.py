@@ -120,3 +120,100 @@ class DeploymentSafetyTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ReleaseHistoryTests(unittest.TestCase):
+    """Finished attempts stay visible after the next one starts."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = Path(self.folder.name)
+        self.project = {'id': 'core', 'name': 'Lokvetia Core', 'service': 'lokvetia',
+                        'repository': 'HappyMiha/Lokvetia-Core', 'host': 'test.lokvetia.com'}
+
+    def controller(self):
+        return deploy.Controller({'state_root': str(self.root), 'runtime_bundle': str(self.root),
+                                  'projects': [self.project]})
+
+    def history(self, controller):
+        return controller.status['history'].get('core', [])
+
+    def test_only_a_finished_attempt_is_remembered(self):
+        controller = self.controller()
+        controller.report(self.project, 'build')
+        controller.report(self.project, 'activate')
+        self.assertEqual(self.history(controller), [])
+        controller.report(self.project, 'success', 'success', commit='a' * 40,
+                          finished_at='2026-09-11T10:00:00+00:00')
+        self.assertEqual(len(self.history(controller)), 1)
+        self.assertEqual(self.history(controller)[0]['state'], 'success')
+
+    def test_the_newest_attempt_is_listed_first(self):
+        controller = self.controller()
+        controller.report(self.project, 'failure', 'failure', commit='a' * 40,
+                          finished_at='2026-09-11T10:00:00+00:00', error='first')
+        controller.report(self.project, 'success', 'success', commit='b' * 40,
+                          finished_at='2026-09-11T11:00:00+00:00')
+        self.assertEqual([entry['commit'][:1] for entry in self.history(controller)], ['b', 'a'])
+
+    def test_repeating_one_attempt_does_not_duplicate_its_entry(self):
+        controller = self.controller()
+        for _ in range(3):
+            controller.report(self.project, 'failure', 'failure', commit='a' * 40,
+                              finished_at='2026-09-11T10:00:00+00:00', error='same attempt')
+        self.assertEqual(len(self.history(controller)), 1)
+
+    def test_the_list_stays_bounded(self):
+        controller = self.controller()
+        for index in range(deploy.HISTORY_PER_PROJECT + 7):
+            controller.report(self.project, 'success', 'success', commit=f'{index:040d}',
+                              finished_at=f'2026-09-11T10:{index:02d}:00+00:00')
+        self.assertEqual(len(self.history(controller)), deploy.HISTORY_PER_PROJECT)
+        self.assertTrue(self.history(controller)[0]['commit'].endswith(str(
+            deploy.HISTORY_PER_PROJECT + 6)))
+
+    def test_a_long_error_is_truncated_before_publication(self):
+        controller = self.controller()
+        controller.report(self.project, 'failure', 'failure', commit='a' * 40,
+                          finished_at='2026-09-11T10:00:00+00:00', error='x' * 9000)
+        self.assertEqual(len(self.history(controller)[0]['error']), deploy.HISTORY_ERROR_LIMIT)
+
+    def test_history_survives_a_controller_restart(self):
+        controller = self.controller()
+        controller.report(self.project, 'success', 'success', commit='a' * 40,
+                          finished_at='2026-09-11T10:00:00+00:00')
+        self.assertEqual(len(self.history(self.controller())), 1)
+
+    def test_published_state_without_history_upgrades_in_place(self):
+        public = self.root / 'public'
+        public.mkdir(parents=True, exist_ok=True)
+        deploy.atomic_json(public / 'status.json',
+                           {'projects': {'core': {'phase': 'success'}}, 'updated_at': '2026-09-11T09:00:00+00:00'})
+        controller = self.controller()
+        self.assertEqual(controller.status['history'], {})
+        controller.report(self.project, 'failure', 'failure', commit='a' * 40,
+                          finished_at='2026-09-11T10:00:00+00:00', error='boom')
+        published = deploy.read_json(public / 'status.json')
+        self.assertEqual(published['history']['core'][0]['error'], 'boom')
+
+    def test_a_rollback_result_is_carried_into_the_entry(self):
+        controller = self.controller()
+        controller.report(self.project, 'failure', 'failure', commit='a' * 40, rollback='success',
+                          finished_at='2026-09-11T10:00:00+00:00', error='health check failed')
+        self.assertEqual(self.history(controller)[0]['rollback'], 'success')
+
+
+    def test_repeated_terminal_report_without_timestamp_keeps_one_entry(self):
+        controller = self.controller()
+        with patch.object(deploy, 'now', side_effect=[f'time-{i}' for i in range(20)]):
+            for _ in range(3):
+                controller.report(self.project, 'failure', 'failure', commit='a' * 40)
+        self.assertEqual(len(self.history(controller)), 1)
+
+    def test_two_attempts_of_one_revision_are_retained_even_in_the_same_second(self):
+        controller = self.controller()
+        for attempt in ('first', 'second'):
+            controller.report(self.project, 'failure', 'failure', commit='a' * 40,
+                              attempt_id=attempt, finished_at='same-second')
+        self.assertEqual(len(self.history(controller)), 2)

@@ -104,7 +104,7 @@ class BacklogValidationTests(unittest.TestCase):
         }
         cloud = {"schema_version": 2, "items": [item]}
         self.write(checks.ACTIVE_BACKLOGS[0], json.dumps(core))
-        self.assertEqual(checks.validate_repository(self.root), [(checks.ACTIVE_BACKLOGS[0], 1)])
+        self.assertEqual(checks.validate_repository(self.root), [(checks.ACTIVE_BACKLOGS[0], 1, 0)])
         self.write(checks.ACTIVE_BACKLOGS[1], json.dumps(cloud))
         with self.assertRaisesRegex(checks.ValidationError, "missing its readable"):
             checks.validate_repository(self.root)
@@ -113,9 +113,9 @@ class BacklogValidationTests(unittest.TestCase):
             "\n### AF-CLD-001\n\nEvidence will be reviewed.\n"
         )
         self.write("docs/backlog.md", text)
-        self.assertEqual(checks.validate_repository(self.root), [(name, 1) for name in checks.ACTIVE_BACKLOGS])
+        self.assertEqual(checks.validate_repository(self.root), [(name, 1, 0) for name in checks.ACTIVE_BACKLOGS])
         (self.root / checks.ACTIVE_BACKLOGS[0]).unlink()
-        self.assertEqual(checks.validate_repository(self.root), [(checks.ACTIVE_BACKLOGS[1], 1)])
+        self.assertEqual(checks.validate_repository(self.root), [(checks.ACTIVE_BACKLOGS[1], 1, 0)])
         self.write("docs/backlog.md", text.replace("Review support", "Wrong title"))
         with self.assertRaisesRegex(checks.ValidationError, "index differs"):
             checks.validate_repository(self.root)
@@ -135,7 +135,7 @@ class BacklogValidationTests(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             self.assertEqual(checks.main(["--root", str(self.root)]), 0)
-        self.assertIn("(1 items)", output.getvalue())
+        self.assertIn("(1 items, 0 evidence entries)", output.getvalue())
         self.assertEqual(before, sorted(path.relative_to(self.root).as_posix() for path in self.root.rglob("*")))
 
 

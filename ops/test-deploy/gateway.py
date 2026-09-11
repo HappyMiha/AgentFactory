@@ -14,6 +14,13 @@ import uvicorn
 
 state = Path(os.environ.get('DEPLOY_PUBLIC_STATE', '/state'))
 HOP = {b'connection', b'keep-alive', b'proxy-authenticate', b'proxy-authorization', b'te', b'trailer', b'transfer-encoding', b'upgrade'}
+# Signed-in operator pages served from published state, never from an application.
+PAGES = {
+    '/deployments': ('dashboard.html', 'status.json',
+                     {'projects': {}, 'error': 'Deployment controller has not reported yet'}),
+    '/progress': ('progress.html', 'progress.json',
+                  {'projects': [], 'error': 'Progress report has not been generated yet'}),
+}
 
 
 @asynccontextmanager
@@ -47,19 +54,21 @@ async def proxy(request: Request):
     if private:
         headers = [(k, v) for k, v in headers if k.lower() != b'host'] + [(b'host', b'localhost')]
     client = request.app.state.client
-    if request.url.path in {'/deployments', '/deployments/status'}:
+    page = request.url.path[:-len('/status')] if request.url.path.endswith('/status') else request.url.path
+    if page in PAGES:
+        document, data, unavailable = PAGES[page]
         try:
             auth = await client.get(upstream + '/auth/session', headers=headers, timeout=8)
             if auth.status_code != 200 or not auth.json().get('authenticated'):
-                return RedirectResponse('/login', status_code=303) if request.url.path == '/deployments' else JSONResponse({'error': 'Sign-in required'}, status_code=401)
+                return RedirectResponse('/login', status_code=303) if request.url.path == page else JSONResponse({'error': 'Sign-in required'}, status_code=401)
         except (httpx.HTTPError, ValueError):
             return JSONResponse({'error': 'Authorization service unavailable'}, status_code=503)
-        if request.url.path == '/deployments':
-            return FileResponse(state / 'dashboard.html', headers={'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'})
+        if request.url.path == page:
+            return FileResponse(state / document, headers={'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'})
         try:
-            payload = json.loads((state / 'status.json').read_text())
+            payload = json.loads((state / data).read_text())
         except (OSError, ValueError):
-            payload = {'projects': {}, 'error': 'Deployment controller has not reported yet'}
+            payload = unavailable
         return JSONResponse(payload, headers={'Cache-Control': 'no-store'})
     url = upstream + request.scope.get('raw_path', request.url.path.encode()).decode('ascii')
     if request.url.query:
