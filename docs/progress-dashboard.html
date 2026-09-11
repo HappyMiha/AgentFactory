@@ -53,17 +53,17 @@ a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid #83
 <main>
 <p class="eyebrow">Беклоги обох репозиторіїв</p>
 <h1>Що зроблено.<br>Що залишилось.</h1>
-<p>Три окремі шкали. <strong>Докази</strong> — у беклозі записано, що саме зроблено для задачі. <strong>Код у main</strong> — задача згадана в історії репозиторію. <strong>Прийнято</strong> — це заявлено в беклозі проти release gate, і без доказів беклог не може цього заявити. Жодна шкала не виводиться з іншої.</p>
+<p>Три окремі шкали. <strong>Докази</strong> — у беклозі записано, що саме зроблено для задачі. <strong>Згадки в main</strong> — ID задачі згаданий у повідомленні коміту; це не доводить наявність чи завершеність реалізації. <strong>Прийнято</strong> — це заявлено в беклозі проти release gate, і без доказів беклог не може цього заявити. Жодна шкала не виводиться з іншої. Згадка в коміті не знімає залежностей. Готовність у цьому звіті не замінює перевірку релізних умов і дозволів.</p>
 <div class="summary" id="summary" aria-live="polite"></div>
 <p id="notice" class="notice" role="status"></p>
 <div class="filters" id="filters"></div>
 <section id="projects"></section>
 <p><small id="updated"></small> <button id="refresh">Оновити</button></p>
-<p><small>Відсоток зважений за розміром задачі (S=2, M=5, L=10 умовних днів; без мітки — 5). Це охоплення планового беклогу, а не готовий продукт.</small></p>
+<p><small>Відсоток зважений за розміром задачі (S=2, M=5, L=10 умовних одиниць; без мітки — 5). Це охоплення планового беклогу, а не готовий продукт.</small></p>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const STATES={accepted:'Прийнято',merged:'Код у main',in_progress:'В роботі',blocked:'Заблоковано',todo:'Не почато'};
+const STATES={accepted:'Прийнято',merged:'Згадки в main',in_progress:'В роботі',blocked:'Заблоковано',todo:'Не почато'};
 const FILTERS=[['all','Усі задачі'],['remaining','Залишилось'],['blocked','Заблоковані'],['ready','Готові до роботи']];
 const REPOSITORIES=['HappyMiha/Lokvetia-Core','HappyMiha/Lokiravia'];
 let filter='all',data=null,busy=false,timer;
@@ -72,7 +72,7 @@ function figure(value,label){const box=node('div');box.append(node('strong',valu
 function rail(percent,cls){const r=node('div',undefined,'rail'),b=node('div',undefined,'bar'+(cls?' '+cls:''));b.style.width=Math.max(0,Math.min(100,Number(percent)||0))+'%';r.append(b);return r;}
 function trackBar(label,percent,cls){const box=node('div'),head=node('div',undefined,'track');head.append(node('span',label),node('span',(Number(percent)||0).toFixed(0)+'%'));box.append(head,rail(percent,cls));return box;}
 function keep(item){
-  if(filter==='remaining')return !item.merged&&!item.accepted;
+  if(filter==='remaining')return !item.accepted;
   if(filter==='blocked')return item.state==='blocked';
   if(filter==='ready')return item.state==='todo'&&!(item.blocked_by||[]).length;
   return true;}
@@ -116,7 +116,7 @@ function blockRows(project){
     row.append(node('td',String(block.by_state.blocked),'count'));
     row.append(node('td',block.accepted+' / '+block.tasks,'count'));
     const barCell=node('td',undefined,'block-rail');
-    barCell.append(rail(block.percent.merged),node('div',block.percent.merged.toFixed(0)+'% коду · '+block.percent.accepted.toFixed(0)+'% прийнято','small'));
+    barCell.append(rail(block.percent.merged),node('div',block.percent.merged.toFixed(0)+'% згадок · '+block.percent.accepted.toFixed(0)+'% прийнято','small'));
     row.append(barCell);
     body.append(row);
     const detailRow=node('tr'),cell=node('td');cell.colSpan=6;
@@ -133,14 +133,14 @@ function projectCard(project){
   if(/^[0-9a-f]{40}$/.test(project.revision||'')&&REPOSITORIES.includes(project.repository)){
     revision.href='https://github.com/'+project.repository+'/commit/'+project.revision;revision.target='_blank';revision.rel='noreferrer';}
   head.append(revision);box.append(head);
-  box.append(trackBar('Докази записано',project.percent.declared,'declared'),trackBar('Код у main',project.percent.merged),trackBar('Прийнято',project.percent.accepted,'accepted'));
+  box.append(trackBar('Докази записано',project.percent.declared,'declared'),trackBar('Згадки в main',project.percent.merged),trackBar('Прийнято',project.percent.accepted,'accepted'));
   const counts=node('div',undefined,'summary');
-  counts.append(figure(String(project.tasks),'задач у беклозі'),figure(String(project.declared),'мають докази'),figure(String(project.merged),'з кодом у main'),
+  counts.append(figure(String(project.tasks),'задач у беклозі'),figure(String(project.declared),'мають докази'),figure(String(project.merged),'зі згадками в main'),
                 figure(String(project.remaining),'залишилось'),figure(String(project.by_state.blocked),'заблоковано'),
                 figure(String(project.ready_count||0),'готові до роботи'));
   box.append(counts);
   const table=node('table'),head2=node('thead'),headRow=node('tr');
-  ['Блок','Докази','Код у main','Заблоковано','Прийнято','Прогрес'].forEach(label=>headRow.append(node('th',label)));
+  ['Блок','Докази','Згадки в main','Заблоковано','Прийнято','Прогрес'].forEach(label=>headRow.append(node('th',label)));
   head2.append(headRow);table.append(head2,blockRows(project));const scroller=node('div',undefined,'scroller');scroller.append(table);box.append(scroller);
   (project.warnings||[]).forEach(warning=>box.append(node('p',warning,'notice')));
   return box;}
@@ -150,9 +150,9 @@ function render(){
   $('summary').replaceChildren(
     figure(String(totals.tasks),'задач у двох беклогах'),
     figure(totals.percent.declared.toFixed(0)+'%','мають записані докази'),
-    figure(totals.percent.merged.toFixed(0)+'%','мають код у main'),
+    figure(totals.percent.merged.toFixed(0)+'%','мають згадки в main'),
     figure(totals.percent.accepted.toFixed(0)+'%','прийнято за беклогом'),
-    figure(String(totals.remaining),'ще без коду'));
+    figure(String(totals.remaining),'ще не прийнято'));
   $('projects').replaceChildren(...(data.projects||[]).map(projectCard));
   $('notice').textContent=(data.errors||[]).join('; ');
   $('updated').textContent='Звіт сформовано: '+new Date(data.generated_at).toLocaleString('uk-UA');}

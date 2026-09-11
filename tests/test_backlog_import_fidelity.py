@@ -71,10 +71,10 @@ class SplitRequirementsTests(unittest.TestCase):
             ("The cat runs.", "The cat jumps", "The cat scores"),
         )
 
-    def test_a_leading_connective_is_dropped_from_the_stated_requirement(self):
+    def test_a_leading_connective_is_preserved_in_the_stated_requirement(self):
         self.assertEqual(
             split_requirements("A cat collects coins, and it has three lives."),
-            ("A cat collects coins", "it has three lives."),
+            ("A cat collects coins", "and it has three lives."),
         )
 
     def test_a_short_fragment_joins_its_neighbour_rather_than_disappearing(self):
@@ -96,8 +96,8 @@ class SplitRequirementsTests(unittest.TestCase):
         self.assertEqual(split_requirements("   \n  "), ())
 
     def test_a_very_long_document_cannot_produce_unbounded_items(self):
-        stated = split_requirements(" ".join(f"Requirement number {n}." for n in range(MAX_REQUIREMENTS + 50)))
-        self.assertEqual(len(stated), MAX_REQUIREMENTS)
+        with self.assertRaisesRegex(ValueError, "Too many requirements"):
+            split_requirements(" ".join(f"Requirement number {n}." for n in range(MAX_REQUIREMENTS + 50)))
 
 
 class PlainBriefTests(unittest.TestCase):

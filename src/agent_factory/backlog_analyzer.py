@@ -43,10 +43,6 @@ _CONTINUATION_OPENERS = frozenset({
     "що", "котрий", "котра", "котре", "котрі",
     "which", "that", "who", "whom", "whose", "where", "when",
 })
-_LEADING_CONNECTIVE = re.compile(
-    r"^(?:а\s+також|також|та|і|й|або|and|also|plus|or|but)\s+",
-    re.IGNORECASE,
-)
 _WORD_EDGE = re.compile(r"^[^\w]+|[^\w]+$", re.UNICODE)
 _LIST_MARKER = re.compile(r"^\s*(?:[-*\u2022\u2013]|\d+[.)])\s+")
 _HEADING = re.compile(r"^(#{1,6})\s+(.+)$")
@@ -59,8 +55,8 @@ def split_requirements(text: str) -> tuple[str, ...]:
     """Split a plain description into the requirements it actually states.
 
     The split is deterministic and reversible by eye: the caller keeps the full
-    source text, and every returned string is a verbatim span of it apart from a
-    stripped leading connective. A clause that opens with a relative pronoun
+    source text, and every returned string is a verbatim span of it apart from
+    whitespace and list layout. A clause that opens with a relative pronoun
     continues the previous requirement instead of becoming its own.
     """
 
@@ -84,7 +80,7 @@ def split_requirements(text: str) -> tuple[str, ...]:
             else:
                 clauses.append(clause)
         for clause in clauses:
-            stated = _LEADING_CONNECTIVE.sub("", clause).strip()
+            stated = clause.strip()
             if not stated:
                 continue
             substantial = len(stated.split()) >= 2 or any(
@@ -96,7 +92,10 @@ def split_requirements(text: str) -> tuple[str, ...]:
                 requirements.append(stated)
             else:
                 requirements[-1] = f"{requirements[-1]}, {clause}"
-    return tuple(dict.fromkeys(requirements))[:MAX_REQUIREMENTS]
+    unique = tuple(dict.fromkeys(requirements))
+    if len(unique) > MAX_REQUIREMENTS:
+        raise ValueError("Too many requirements in one section; split the source into smaller uploads")
+    return unique
 
 
 def _requirement_title(requirement: str) -> str:

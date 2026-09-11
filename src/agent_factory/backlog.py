@@ -244,8 +244,6 @@ def _strings(value: Any, field_name: str, stable_id: str) -> tuple[str, ...]:
 def _evidence(value: Any, stable_id: str) -> tuple[Evidence, ...]:
     """Validate recorded evidence. Unknown fields are refused, not ignored."""
 
-    if value is None:
-        return ()
     if not isinstance(value, list):
         raise BacklogManifestError(f"Item {stable_id!r} field 'evidence' must be a list")
     if len(value) > MAX_EVIDENCE:
@@ -260,7 +258,9 @@ def _evidence(value: Any, stable_id: str) -> tuple[Evidence, ...]:
         unknown = sorted(set(entry) - EVIDENCE_FIELDS)
         if unknown:
             raise BacklogManifestError(f"{where} has unsupported fields: {unknown}")
-        kind = str(entry.get("kind", "")).strip().lower()
+        if any(not isinstance(entry.get(key, ""), str) for key in EVIDENCE_FIELDS):
+            raise BacklogManifestError(f"{where}: evidence fields must be strings")
+        kind = entry.get("kind", "").strip().lower()
         if kind not in EVIDENCE_KINDS:
             raise BacklogManifestError(
                 f"{where} has unsupported kind {kind!r}; choose one of {sorted(EVIDENCE_KINDS)}"
@@ -398,7 +398,7 @@ def _item(
         expected_artifacts=expected_artifacts,
         definition_of_done=definition_of_done,
         assigned_role=assigned_role,
-        evidence=_evidence(document.get("evidence"), stable_id),
+        evidence=_evidence(document.get("evidence", []), stable_id),
     )
 
 

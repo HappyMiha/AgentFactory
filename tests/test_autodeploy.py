@@ -202,3 +202,18 @@ class ReleaseHistoryTests(unittest.TestCase):
         controller.report(self.project, 'failure', 'failure', commit='a' * 40, rollback='success',
                           finished_at='2026-09-11T10:00:00+00:00', error='health check failed')
         self.assertEqual(self.history(controller)[0]['rollback'], 'success')
+
+
+    def test_repeated_terminal_report_without_timestamp_keeps_one_entry(self):
+        controller = self.controller()
+        with patch.object(deploy, 'now', side_effect=[f'time-{i}' for i in range(20)]):
+            for _ in range(3):
+                controller.report(self.project, 'failure', 'failure', commit='a' * 40)
+        self.assertEqual(len(self.history(controller)), 1)
+
+    def test_two_attempts_of_one_revision_are_retained_even_in_the_same_second(self):
+        controller = self.controller()
+        for attempt in ('first', 'second'):
+            controller.report(self.project, 'failure', 'failure', commit='a' * 40,
+                              attempt_id=attempt, finished_at='same-second')
+        self.assertEqual(len(self.history(controller)), 2)

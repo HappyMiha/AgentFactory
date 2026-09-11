@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Publish the development progress document read by the /progress page.
 
-Every task is reported on two independent tracks. ``merged`` is observed in a
-repository's own history; ``accepted`` is declared by the backlog manifest. A
+Every task carries evidence, commit-reference and acceptance tracks. ``merged``
+means an ID was mentioned in history; ``accepted`` is declared by the manifest. A
 merge never sets acceptance here, and this script neither writes to a
 repository nor contacts an external service.
 """
@@ -60,7 +60,7 @@ def collect(entry: dict) -> object:
             warnings.append(str(error))
             continue
         documents.append((str(relative), document, digest))
-    return build_project(
+    result = build_project(
         project_id=project_id,
         name=str(entry.get("name") or project_id),
         repository=repository,
@@ -69,6 +69,9 @@ def collect(entry: dict) -> object:
         commits=read_commits(repo, ref),
         warnings=warnings,
     )
+    if result.warnings:
+        raise ProgressError("; ".join(result.warnings))
+    return result
 
 
 def main() -> int:
@@ -86,8 +89,8 @@ def main() -> int:
             projects.append(collect(entry))
         except (ProgressError, KeyError, OSError) as error:
             failures.append(f"{entry.get('id', '?')}: {error}")
-    if not projects:
-        print("No project could be read: " + "; ".join(failures) or "empty configuration",
+    if failures or not projects:
+        print("Progress refresh failed: " + ("; ".join(failures) or "empty configuration"),
               file=sys.stderr)
         return 1
 

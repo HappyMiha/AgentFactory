@@ -32,6 +32,11 @@ jobs:
           PYTHONPATH: src:tests
           PYTHONDONTWRITEBYTECODE: "1"
         run: python -m unittest test_autodeploy test_email_auth -v
+      - name: Verify progress, evidence and creator import
+        env:
+          PYTHONPATH: src:tests
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python -m unittest test_progress test_progress_delivery test_backlog_evidence test_backlog_import_fidelity test_backlog_upload test_creator_progress test_credential_canary -v
       - name: Explain release handoff
         run: |
           echo "The HappyDucky02 controller polls main and deploys only this exact revision after these checks succeed." >> "$GITHUB_STEP_SUMMARY"

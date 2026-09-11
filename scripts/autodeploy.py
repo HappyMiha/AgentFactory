@@ -23,9 +23,9 @@ DEFAULT_PROGRESS = {'projects': [
     {'id': 'core', 'name': 'Lokvetia Core', 'repository': 'HappyMiha/Lokvetia-Core',
      'manifests': ['examples/development-backlog.json',
                    'examples/game-creator-backlog.json',
-                   'examples/autonomous-mission-backlog.json']},
+                   'examples/autonomous-mission-backlog.json','docs/evolution/backlog.json']},
     {'id': 'cloud', 'name': 'Lokiravia', 'repository': 'HappyMiha/Lokiravia',
-     'manifests': ['examples/agentfactory-cloud-backlog.json']},
+     'manifests': ['examples/agentfactory-cloud-backlog.json','docs/evolution/backlog.json']},
 ]}
 
 def now():
@@ -132,6 +132,11 @@ class Controller:
 
     def report(self, p, phase, state='in_progress', **extra):
         record = self.status['projects'].setdefault(p['id'], {})
+        if state in {'success', 'failure'} and 'finished_at' not in extra:
+            previous_terminal = record.get('state') in {'success', 'failure'}
+            same_commit = extra.get('commit', record.get('commit')) == record.get('commit')
+            extra['finished_at'] = record.get('finished_at') if previous_terminal and same_commit else None
+            extra['finished_at'] = extra['finished_at'] or now()
         record.update(project=p['name'], repository=p['repository'], host=p['host'],
                       phase=phase, state=state, updated_at=now(), **extra)
         self.status['updated_at'] = now()
@@ -161,6 +166,7 @@ class Controller:
         """
         entries = self.status.setdefault('history', {}).setdefault(p['id'], [])
         entry = {
+            'attempt_id': record.get('attempt_id', ''),
             'commit': record.get('commit', ''),
             'state': record.get('state', ''),
             'phase': record.get('phase', ''),
@@ -170,8 +176,9 @@ class Controller:
         }
         same = [
             index for index, previous in enumerate(entries)
-            if previous.get('commit') == entry['commit']
-            and previous.get('finished_at') == entry['finished_at']
+            if (entry['attempt_id'] and previous.get('attempt_id') == entry['attempt_id'])
+            or (not entry['attempt_id'] and previous.get('commit') == entry['commit']
+                and previous.get('finished_at') == entry['finished_at'])
         ]
         for index in reversed(same):
             entries.pop(index)
@@ -265,7 +272,7 @@ class Controller:
         previous_sha = previous.get('sha', '') if previous else ''
         release_range = previous_sha + '..' + sha if re.fullmatch('[0-9a-f]{7,40}', previous_sha) else sha
         notes = command(['git', '-C', str(checkout), 'log', '-100', '--format=%h %s', release_range])
-        self.status['projects'][p['id']] = dict(previous_route=previous, started_at=now(), backup=str(backup),
+        self.status['projects'][p['id']] = dict(previous_route=previous, attempt_id=attempt, started_at=now(), backup=str(backup),
             commit=sha, release_notes=notes, error='', rollback='not_needed')
         self.report(p, 'backup')
         activated = False
@@ -359,8 +366,7 @@ class Controller:
             if repository not in {'HappyMiha/Lokvetia-Core', 'HappyMiha/Lokiravia'}:
                 raise DeployError('Unapproved repository in the progress configuration')
             repo = self.root / 'repositories' / repository.split('/')[1]
-            if repo.exists():
-                entries.append(dict(entry, repo_path=str(repo), ref='refs/heads/main'))
+            entries.append(dict(entry, repo_path=str(repo), ref='refs/heads/main'))
         if not entries:
             return
         config_path = self.root / 'progress-config.json'

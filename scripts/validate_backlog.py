@@ -29,27 +29,32 @@ class ValidationError(ValueError):
 
 
 def validate_evidence(stable_id: str, item: dict) -> int:
-    """A manifest may record evidence; it may not claim acceptance without it."""
-
+    """Validate the same evidence contract as the Core manifest loader."""
     entries = item.get("evidence", [])
-    if not isinstance(entries, list):
-        raise ValidationError(f"{stable_id}: evidence must be a list")
+    if not isinstance(entries, list) or len(entries) > 20:
+        raise ValidationError(f"{stable_id}: evidence must be a list of at most 20 entries")
+    seen = set()
     for position, entry in enumerate(entries):
         where = f"{stable_id}: evidence entry {position}"
         if not isinstance(entry, dict) or set(entry) - EVIDENCE_FIELDS:
             raise ValidationError(f"{where} must be an object with supported fields only")
-        if str(entry.get("kind", "")).strip().lower() not in EVIDENCE_KINDS:
-            raise ValidationError(f"{where} needs a kind from {sorted(EVIDENCE_KINDS)}")
-        if not str(entry.get("reference", "")).strip():
-            raise ValidationError(f"{where} needs a reference")
-        if not str(entry.get("recorded_by", "")).strip():
+        if any(not isinstance(entry.get(key, ""), str) for key in EVIDENCE_FIELDS):
+            raise ValidationError(f"{where}: evidence fields must be strings")
+        if entry.get("kind", "").strip().lower() not in EVIDENCE_KINDS:
+            raise ValidationError(f"{where} needs a supported kind")
+        reference = entry.get("reference", "").strip()
+        if not reference or len(reference) > 300:
+            raise ValidationError(f"{where} needs a reference of 1 to 300 characters")
+        if reference in seen:
+            raise ValidationError(f"{where}: duplicate evidence reference")
+        seen.add(reference)
+        if not entry.get("recorded_by", "").strip():
             raise ValidationError(f"{where} must name who recorded it")
+        if len(entry.get("note", "").strip()) > 500:
+            raise ValidationError(f"{where}: note exceeds 500 characters")
     labels = {str(value).strip().lower() for value in item.get("labels", [])}
     if labels & ACCEPTED_STATUS_LABELS and not entries:
-        raise ValidationError(
-            f"{stable_id}: marked accepted without evidence; record what was produced "
-            "or leave the status as proposed"
-        )
+        raise ValidationError(f"{stable_id}: marked accepted without evidence; record what was produced or leave the status as proposed")
     return len(entries)
 
 

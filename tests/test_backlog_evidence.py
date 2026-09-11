@@ -189,3 +189,16 @@ class RepositoryValidatorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class EvidenceBoundaryTests(unittest.TestCase):
+    def test_malformed_evidence_is_rejected_before_acceptance(self):
+        invalid = [None, [ENTRY, ENTRY], [ENTRY] * 21,
+                   [{**ENTRY, "reference": None}], [{**ENTRY, "recorded_by": False}],
+                   [{**ENTRY, "note": {}}], [{**ENTRY, "reference": "x" * 301}],
+                   [{**ENTRY, "note": "x" * 501}]]
+        for evidence in invalid:
+            with self.subTest(evidence=evidence):
+                with self.assertRaises(validator.ValidationError):
+                    validator.validate_evidence("AF-001", {"evidence": evidence})
+                with self.assertRaises(BacklogManifestError):
+                    load(item(evidence=evidence))

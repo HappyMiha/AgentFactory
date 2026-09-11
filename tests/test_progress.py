@@ -134,7 +134,7 @@ class TrackSeparationTests(unittest.TestCase):
             commits=[CommitRecord("a" * 40, "AF-001 only")],
         )
         self.assertEqual(tasks_by_id(result)["AF-002"].state, "todo")
-        self.assertEqual(result.to_dict()["remaining"], 1)
+        self.assertEqual(result.to_dict()["remaining"], 2)
 
     def test_an_in_progress_label_is_reported_without_claiming_delivery(self):
         result = project(manifest(item("AF-001", labels=["status:in_progress"])))
@@ -151,15 +151,15 @@ class DependencyTests(unittest.TestCase):
         self.assertEqual(task.blocked_by, ("AF-001",))
         self.assertEqual(task.state, "blocked")
 
-    def test_a_merged_dependency_releases_the_next_task(self):
+    def test_a_commit_reference_cannot_release_the_next_task(self):
         result = project(
             manifest(item("AF-001"), item("AF-002", dependencies=["AF-001"])),
             commits=[CommitRecord("a" * 40, "AF-001 done")],
         )
         task = tasks_by_id(result)["AF-002"]
-        self.assertEqual(task.blocked_by, ())
-        self.assertEqual(task.state, "todo")
-        self.assertIn("AF-002", result.to_dict()["ready"])
+        self.assertEqual(task.blocked_by, ("AF-001",))
+        self.assertEqual(task.state, "blocked")
+        self.assertNotIn("AF-002", result.to_dict()["ready"])
 
     def test_a_dependency_on_an_unknown_identifier_is_refused_by_the_loader(self):
         result = project(manifest(item("AF-002", dependencies=["AF-999"])))
@@ -252,7 +252,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(document["totals"]["tasks"], 2)
         self.assertEqual(document["totals"]["merged"], 1)
         self.assertEqual(document["totals"]["accepted"], 0)
-        self.assertEqual(document["totals"]["remaining"], 1)
+        self.assertEqual(document["totals"]["remaining"], 2)
         self.assertIn("None of them is inferred from another", document["evidence_note"])
 
     def test_a_malformed_manifest_is_reported_and_the_rest_still_loads(self):
@@ -340,3 +340,51 @@ class RepositoryReadTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PortfolioReportingTests(unittest.TestCase):
+    def test_core_default_covers_all_183_executable_cards(self):
+        import importlib.util
+        root = Path(__file__).resolve().parents[1]
+        spec = importlib.util.spec_from_file_location("progress_controller_test", root / "scripts/autodeploy.py")
+        controller = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(controller)
+        paths = controller.DEFAULT_PROGRESS["projects"][0]["manifests"]
+        manifests = [(p, *read_manifest_file(root / p)) for p in paths]
+        result = project(*manifests)
+        self.assertEqual(result.warnings, ())
+        self.assertEqual(len(result.tasks), 183)
+        self.assertEqual(len({t.stable_id for t in result.tasks}), 183)
+
+    def test_cross_product_dependency_requires_acceptance(self):
+        design = {"portfolio_schema_version": 1, "artifact_kind": "design_backlog",
+                  "not_runtime_import": True, "items": [{
+            "stable_id": "AF-LW-001", "title": "World task", "outcome": "A result",
+            "phase": "W0", "status": "proposed", "acceptance_criteria": ["Verified"],
+            "dependencies": ["core:AF-001"]}]}
+        world = project(("docs/evolution/backlog.json", design, "a" * 64),
+                        project_id="cloud", repository="HappyMiha/Lokiravia")
+        for accepted in (False, True):
+            prerequisite = accepted_item("AF-001") if accepted else item("AF-001")
+            core = project(manifest(prerequisite), commits=[CommitRecord("a" * 40, "AF-001 planned")])
+            data = report([core, world])["projects"][1]
+            self.assertEqual(data["ready_count"], int(accepted))
+            self.assertEqual(data["blocks"][0]["items"][0]["blocked_by"],
+                             [] if accepted else ["core:AF-001"])
+
+    def test_an_accepted_task_is_not_counted_as_remaining_without_a_commit(self):
+        self.assertEqual(project(manifest(accepted_item("AF-001"))).to_dict()["remaining"], 0)
+
+    def test_cloud_qualified_dependency_uses_the_canonical_namespace(self):
+        design = {"portfolio_schema_version": 1, "artifact_kind": "design_backlog",
+                  "not_runtime_import": True, "items": [
+            {"stable_id": "AF-LW-001", "title": "First", "outcome": "Result",
+             "phase": "W0", "status": "accepted", "evidence": [EVIDENCE],
+             "acceptance_criteria": ["Verified"], "dependencies": []},
+            {"stable_id": "AF-LW-002", "title": "Second", "outcome": "Result",
+             "phase": "W0", "status": "proposed", "acceptance_criteria": ["Verified"],
+             "dependencies": ["cloud:AF-LW-001"]}]}
+        world = project(("docs/evolution/backlog.json", design, "a" * 64),
+                        project_id="cloud", repository="HappyMiha/Lokiravia")
+        self.assertEqual(world.warnings, ())
+        self.assertEqual(report([world])["projects"][0]["ready"], ["AF-LW-002"])

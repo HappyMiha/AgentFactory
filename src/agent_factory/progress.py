@@ -1,7 +1,7 @@
 """Development progress reporting for the operator progress page.
 
-Merged code and accepted work are separate facts. Every task carries both
-tracks side by side. This module never derives acceptance from a merge, a
+Recorded evidence, commit mentions and accepted work are separate facts.
+The legacy field name ``merged`` only means an ID appears in a commit subject. This module never derives acceptance from a merge, a
 document, a passing simulation, or the existence of a source file: acceptance
 is only what the backlog manifest declares. A percentage published here
 describes coverage of a planning baseline, not a delivered product.
@@ -19,12 +19,12 @@ import json
 import re
 import subprocess
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from .backlog import BacklogManifestError, ProposedItem, proposal_from_document
+from .backlog import BacklogManifestError, ProposedItem, _evidence, proposal_from_document
 
 MAX_COMMITS = 20000
 MAX_SUBJECT = 160
@@ -127,7 +127,7 @@ def _counts(tasks: Sequence[TaskProgress]) -> dict[str, Any]:
         "accepted": sum(1 for task in tasks if task.accepted),
         "merged": sum(1 for task in tasks if task.merged),
         "declared": sum(1 for task in tasks if task.declared),
-        "remaining": sum(1 for task in tasks if not task.merged),
+        "remaining": sum(1 for task in tasks if not task.accepted),
         "by_state": by_state,
         "percent": {
             "accepted": _percent(accepted_weight, weight),
@@ -297,6 +297,35 @@ def commit_index(
     return {stable_id: tuple(records) for stable_id, records in found.items()}
 
 
+def design_items(document: dict) -> tuple[ProposedItem, ...]:
+    """Read portfolio design cards for reporting only; never import a runtime plan."""
+    if document.get("portfolio_schema_version") != 1 or document.get("not_runtime_import") is not True:
+        raise BacklogManifestError("Unsupported design portfolio")
+    result = []
+    seen = set()
+    for card in document.get("items", []):
+        stable_id = card.get("stable_id", "")
+        if not re.fullmatch(r"AF-(?:RSI|LW)-[0-9]{3}", stable_id) or stable_id in seen:
+            raise BacklogManifestError("Missing or duplicate design card identifier")
+        seen.add(stable_id)
+        dependencies = card.get("dependencies", [])
+        if not isinstance(dependencies, list) or any(not isinstance(d, str) or not re.fullmatch(r"(?:core|cloud):AF-[A-Z0-9-]+", d) for d in dependencies):
+            raise BacklogManifestError("Invalid qualified design dependency")
+        evidence = _evidence(card.get("evidence", []), stable_id)
+        status = card.get("status", "proposed")
+        if "status:" + status in ACCEPTED_LABELS and not evidence:
+            raise BacklogManifestError("Design acceptance requires evidence")
+        result.append(ProposedItem(stable_id=stable_id, kind="task",
+            title=card["title"], description=card["outcome"],
+            acceptance_criteria=tuple(card["acceptance_criteria"]),
+            dependencies=tuple(dependencies), evidence=evidence,
+            priority=card.get("priority_within_phase", "P2"),
+            labels=("status:" + status, "release:" + card["phase"])))
+    if not result:
+        raise BacklogManifestError("Empty design portfolio")
+    return tuple(result)
+
+
 def build_project(
     *,
     project_id: str,
@@ -320,28 +349,23 @@ def build_project(
     problems = list(warnings)
     for path, document, digest in manifests:
         try:
-            proposal = proposal_from_document(
-                document,
-                source_path=path,
-                source_sha256=digest,
-                source_name=Path(path).stem,
-            )
+            if isinstance(document, dict) and document.get("artifact_kind") == "design_backlog":
+                loaded_items = design_items(document)
+                track = Path(path).stem + "-evolution"
+                schema = "design:1"
+            else:
+                proposal = proposal_from_document(document, source_path=path,
+                    source_sha256=digest, source_name=Path(path).stem)
+                loaded_items, track, schema = proposal.items, proposal.source_name, proposal.schema_version
         except BacklogManifestError as error:
             problems.append(f"{path}: {error}")
             continue
-        executable = [item for item in proposal.items if item.executable]
-        descriptors.append(
-            {
-                "path": path,
-                "name": proposal.source_name,
-                "sha256": digest,
-                "schema_version": proposal.schema_version,
-                "items": len(executable),
-            }
-        )
-        for item in proposal.items:
+        executable = [item for item in loaded_items if item.executable]
+        descriptors.append({"path": path, "name": track, "sha256": digest,
+                            "schema_version": schema, "items": len(executable)})
+        for item in loaded_items:
             if item.executable:
-                items.append((item, path, proposal.source_name))
+                items.append((item, path, track))
             else:
                 parents.setdefault(item.stable_id, item)
 
@@ -350,7 +374,8 @@ def build_project(
     accepted_ids = {
         item.stable_id for item, _, _ in items if _declared_state(item) == "accepted"
     }
-    merged_ids = {stable_id for stable_id in index if stable_id in known_ids}
+    if len(known_ids) != len(items):
+        problems.append("Duplicate task identifiers across configured manifests")
 
     grouped: dict[str, list[TaskProgress]] = {}
     titles: dict[str, tuple[str, str, str]] = {}
@@ -364,18 +389,17 @@ def build_project(
         blocked_by = tuple(
             dependency
             for dependency in dependencies
-            if dependency in known_ids
-            and dependency not in accepted_ids
-            and dependency not in merged_ids
+            if dependency not in accepted_ids
+
         )
         if accepted:
             state = "accepted"
-        elif merged:
-            state = "merged"
         elif declared == "in_progress":
             state = "in_progress"
         elif declared == "blocked" or blocked_by:
             state = "blocked"
+        elif merged:
+            state = "merged"
         else:
             state = "todo"
         key, block_title, block_kind = _block_of(item, parents, track)
@@ -425,15 +449,39 @@ def build_project(
 
 
 def report(projects: Sequence[ProjectProgress]) -> dict[str, Any]:
-    """Build the published document. Both tracks stay separate at every level."""
+    """Build the published document. All three tracks stay separate at every level."""
 
-    documents = [project.to_dict() for project in projects]
-    every_task = [task for project in projects for task in project.tasks]
+    # Resolve cross-product dependencies only against explicitly accepted cards.
+    qualified = {}
+    for project in projects:
+        namespace = "core" if project.repository.endswith("/Lokvetia-Core") else "cloud"
+        qualified.update({namespace + ":" + t.stable_id: t for t in project.tasks})
+    resolved = []
+    for project in projects:
+        namespace = "core" if project.repository.endswith("/Lokvetia-Core") else "cloud"
+        blocks = []
+        for block in project.blocks:
+            tasks = []
+            for task in block.tasks:
+                blocked = tuple(d for d in task.dependencies
+                    if (qualified.get(d if ":" in d else namespace + ":" + d) is None
+                        or not qualified[d if ":" in d else namespace + ":" + d].accepted))
+                state = task.state
+                if not task.accepted and state != "in_progress":
+                    if blocked:
+                        state = "blocked"
+                    elif task.blocked_by and state == "blocked":
+                        state = "merged" if task.merged else "todo"
+                tasks.append(replace(task, blocked_by=blocked, state=state))
+            blocks.append(replace(block, tasks=tuple(tasks)))
+        resolved.append(replace(project, blocks=tuple(blocks)))
+    documents = [project.to_dict() for project in resolved]
+    every_task = [task for project in resolved for task in project.tasks]
     return {
         "generated_at": _now(),
         "evidence_note": (
             "Three separate facts. Recorded evidence names what was produced. A "
-            "merged commit records engineering delivery. Acceptance is declared by "
+            "commit reference only shows a task ID mentioned in history, not implemented code. Acceptance is declared by "
             "the backlog manifest against its release gate, and a manifest cannot "
             "declare it without evidence. None of them is inferred from another."
         ),

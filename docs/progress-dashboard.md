@@ -10,7 +10,7 @@ no GitHub token reaches the browser.
 | Track | Source | What it proves |
 |---|---|---|
 | Evidence recorded | `evidence` entries on the backlog item | Somebody named what was produced and where to find it |
-| Code in main | A task identifier observed in the repository's own commit history | Engineering delivery of that change |
+| Mentioned in main | A task identifier observed in a commit subject | The ID was mentioned; neither implementation nor completion is established |
 | Accepted | `status:accepted` in the backlog manifest | Owner acceptance against the task's release gate |
 
 A merge never sets acceptance, and recorded evidence is not a verdict — a
@@ -19,7 +19,7 @@ separately at task, block, project, and total level. A published percentage
 describes coverage of a planning baseline. It is not a statement that a build
 runs, a game plays, or a service is deployed.
 
-The merged track only sees identifiers that a commit message cites. Work
+The API retains the field name `merged` for the history-reference track. This track only sees identifiers that a commit message cites. Work
 delivered without citing its task reads as outstanding there, which is exactly
 what the evidence track is for: record the files that prove it and the task
 stops looking untouched.
@@ -50,13 +50,11 @@ reviewer's job.
 
 ## How a task is classified
 
-`accepted` (manifest label) wins, then `merged` (a commit references the exact
-identifier), then `in_progress` (manifest label), then `blocked` (a declared
-label, or a dependency that is neither accepted nor merged), then `todo`.
+`accepted` (manifest label) wins, then `in_progress`, then `blocked` (a declared label or a dependency without recorded acceptance), then `merged` (a commit references the exact identifier), then `todo`. A commit mention never clears a dependency. Cross-product dependencies use qualified `core:` and `cloud:` identifiers; a missing prerequisite remains blocked.
 Identifiers match on token boundaries only, so `AF-CLD-001` is never credited
 with work described by `AF-CLD-0012`.
 
-`ready` lists tasks that nothing blocks and nobody has started.
+`ready` lists unstarted tasks with no unaccepted hard dependencies in the loaded manifests. It does not certify release ordering, reuse receipts, environment qualification, or permission to execute. `remaining` counts all tasks not accepted, whether or not commits mention them.
 
 ## Large blocks
 
@@ -66,9 +64,9 @@ manifest's M0 is never merged into another manifest's M0.
 
 ## Percentages
 
-A percentage is weighted by the `size:` label — S=2, M=5, L=10 nominal engineer
-days, and 5 for an unsized task — so a milestone of large tasks cannot look
-complete because several small ones merged. Counts are published alongside the
+A percentage is weighted by the `size:` label — S=2, M=5, L=10 relative planning
+units, and 5 for an unsized task — so a milestone of large tasks cannot look
+complete because several small tasks were referenced. Counts are published alongside the
 weighted figure; the page shows both.
 
 ## Generating the report
@@ -103,3 +101,18 @@ The manifest is the only place acceptance is recorded, so a task moves to
 `status:accepted` in the same reviewed change that records its evidence — the
 loader now requires it. Marking a task accepted because its code merged defeats
 the separation this page exists to show.
+
+
+## Portfolio coverage and failure handling
+
+The default configuration includes all 280 executable requirements: 183 in Core
+(including 35 RSI cards) and 97 in Lokiravia (including 30 living-world cards).
+`docs/evolution/backlog.json` is read through a reporting adapter; its design-only
+schema is never turned into an executable runtime import. The implementation
+order and release gates remain in the bilingual evolution portfolio.
+
+Any missing or invalid configured manifest fails the refresh and preserves the
+previous report, including its original timestamp. This prevents a partial read
+from silently shrinking the denominator. An operator who overrides the manifest
+list deliberately sees only that configured scope. Historical commit references
+are bounded and may include planning-only or reverted work.

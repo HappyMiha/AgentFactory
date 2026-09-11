@@ -47,8 +47,8 @@ if (-not (Test-Path -LiteralPath "$root/config.json")) {
     $config = @{
         state_root=$root;runtime_bundle="$root/runtime";network='lokvetia-test_default';poll_seconds=60;max_retained_containers_per_project=8
         progress=@{projects=@(
-            @{id='core';name='Lokvetia Core';repository='HappyMiha/Lokvetia-Core';manifests=@('examples/development-backlog.json','examples/game-creator-backlog.json','examples/autonomous-mission-backlog.json')},
-            @{id='cloud';name='Lokiravia';repository='HappyMiha/Lokiravia';manifests=@('examples/agentfactory-cloud-backlog.json')}
+            @{id='core';name='Lokvetia Core';repository='HappyMiha/Lokvetia-Core';manifests=@('examples/development-backlog.json','examples/game-creator-backlog.json','examples/autonomous-mission-backlog.json','docs/evolution/backlog.json')},
+            @{id='cloud';name='Lokiravia';repository='HappyMiha/Lokiravia';manifests=@('examples/agentfactory-cloud-backlog.json','docs/evolution/backlog.json')}
         )}
         initial_routes=@{
             'test.lokvetia.com'=@{container='lokvetia-test-lokvetia-1';sha='e74cb1a';project='core'}
