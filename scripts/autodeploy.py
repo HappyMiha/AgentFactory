@@ -92,6 +92,11 @@ def archive_image(container, inspected, archive):
     atomic_json(archive.with_suffix('.json'), metadata)
     os.replace(partial, archive)
 
+# Bounded so a long-running controller cannot grow its published state forever.
+HISTORY_PER_PROJECT = 20
+HISTORY_ERROR_LIMIT = 2000
+
+
 class Controller:
     def __init__(self, config):
         self.config = config
@@ -103,6 +108,8 @@ class Controller:
         self.routes_path = self.public / 'routes.json'
         self.status_path = self.public / 'status.json'
         self.status = read_json(self.status_path, {'projects': {}, 'updated_at': now()})
+        # Older published state predates the release history.
+        self.status.setdefault('history', {})
         for p in config['projects']:
             if p['repository'] not in {'HappyMiha/Lokvetia-Core', 'HappyMiha/Lokiravia'}:
                 raise DeployError('Unapproved repository')
@@ -116,6 +123,8 @@ class Controller:
         record.update(project=p['name'], repository=p['repository'], host=p['host'],
                       phase=phase, state=state, updated_at=now(), **extra)
         self.status['updated_at'] = now()
+        if state in {'success', 'failure'}:
+            self.remember(p, record)
         atomic_json(self.status_path, self.status)
         print(json.dumps({'project': p['id'], 'phase': phase, 'state': state}), flush=True)
         if record.get('deployment_id') and phase in {'backup', 'activate', 'rollback', 'success', 'failure'}:
@@ -129,6 +138,33 @@ class Controller:
             except (DeployError, subprocess.TimeoutExpired):
                 record['reporting_error'] = 'GitHub status unavailable; local record is authoritative'
                 atomic_json(self.status_path, self.status)
+
+    def remember(self, p, record):
+        """Keep a bounded record of finished attempts so the page shows a trail.
+
+        Only an attempt that ended is remembered, and only the fields the page
+        reads. A repeated report for the same attempt replaces its entry rather
+        than adding another, so a retry of the same revision cannot inflate the
+        list.
+        """
+        entries = self.status.setdefault('history', {}).setdefault(p['id'], [])
+        entry = {
+            'commit': record.get('commit', ''),
+            'state': record.get('state', ''),
+            'phase': record.get('phase', ''),
+            'rollback': record.get('rollback', ''),
+            'error': str(record.get('error') or '')[:HISTORY_ERROR_LIMIT],
+            'finished_at': record.get('finished_at') or now(),
+        }
+        same = [
+            index for index, previous in enumerate(entries)
+            if previous.get('commit') == entry['commit']
+            and previous.get('finished_at') == entry['finished_at']
+        ]
+        for index in reversed(same):
+            entries.pop(index)
+        entries.insert(0, entry)
+        del entries[HISTORY_PER_PROJECT:]
 
     def checkout(self, p):
         repo = self.root / 'repositories' / p['repository'].split('/')[1]
