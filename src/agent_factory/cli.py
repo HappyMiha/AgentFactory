@@ -229,6 +229,37 @@ def parser() -> argparse.ArgumentParser:
     )
     playable_verify.add_argument("--project", required=True)
 
+    assets = sub.add_parser(
+        "assets", help="Asset provenance, safe import, rights and hardware budgets."
+    ).add_subparsers(dest="action", required=True)
+    assets_inspect = assets.add_parser(
+        "inspect", help="Report an archive's members; nothing is extracted."
+    )
+    assets_inspect.add_argument("--archive", required=True)
+    assets_list = assets.add_parser("list", help="List imported assets and their rights.")
+    assets_list.add_argument("--path", required=True)
+    assets_rights = assets.add_parser(
+        "rights", help="Check whether the project may export, share, publish or sell."
+    )
+    assets_rights.add_argument("--path", required=True)
+    assets_rights.add_argument("--operation", default="export")
+    assets_add = assets.add_parser(
+        "add", help="Preview and import one asset with recorded provenance."
+    )
+    assets_add.add_argument("--path", required=True)
+    assets_add.add_argument("--file", required=True)
+    assets_add.add_argument("--name", required=True, help="Project-relative destination.")
+    assets_add.add_argument("--licence", default="unknown")
+    assets_add.add_argument("--source", default="")
+    assets_add.add_argument("--attribution", default="")
+    assets_add.add_argument("--budget", default="baseline-pc")
+    assets_add.add_argument("--approve-overwrite", action="store_true")
+    assets_add.add_argument("--actor", default="")
+    assets_add.add_argument(
+        "--confirm", action="store_true",
+        help="Apply the previewed import; without it only the preview is printed.",
+    )
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -431,6 +462,55 @@ def _godot(args: argparse.Namespace) -> int:
     return 0 if artifact.succeeded else 3
 
 
+def _assets(args: argparse.Namespace) -> int:
+    from .asset_provenance import (
+        AssetCandidate, AssetLibrary, AssetProvenance, inspect_archive,
+    )
+
+    if args.action == "inspect":
+        report = inspect_archive(Path(args.archive).expanduser())
+        print(json.dumps(report.record, indent=2))
+        return 0 if report.safe else 3
+    library = AssetLibrary(
+        Path(args.path).expanduser().resolve(),
+        budget=getattr(args, "budget", "baseline-pc"),
+    )
+    if args.action == "list":
+        print(json.dumps(library.assets(), indent=2, sort_keys=True))
+        return 0
+    if args.action == "rights":
+        verdict = library.rights_check(args.operation)
+        print(json.dumps(verdict.record, indent=2))
+        return 0 if verdict.allowed else 3
+    payload = Path(args.file).expanduser().read_bytes()
+    provenance = (
+        AssetProvenance.unrecorded(note="no licence supplied at import")
+        if args.licence == "unknown" else
+        AssetProvenance.create(
+            source=args.source, licence_id=args.licence, attribution=args.attribution,
+        )
+    )
+    candidate = AssetCandidate(args.name, payload, provenance)
+    plan = library.plan([candidate])
+    if not args.confirm:
+        print(json.dumps({
+            "preview": plan.preview(),
+            "next": "repeat with --confirm to apply",
+        }, indent=2))
+        return 0 if plan.safe and plan.accepted else 3
+    receipt = library.apply(
+        plan, [candidate],
+        approved_overwrites=plan.conflicts if args.approve_overwrite else (),
+        actor=args.actor,
+    )
+    print(json.dumps({
+        "imported": list(receipt.imported), "replaced": list(receipt.replaced),
+        "refused": list(receipt.refused), "backup_id": receipt.backup_id,
+        "rights": library.rights_check("export").record,
+    }, indent=2))
+    return 0 if receipt.imported or receipt.replaced else 3
+
+
 def _execute(args: argparse.Namespace) -> int:
     workspace, db_path = _paths(args)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -464,6 +544,9 @@ def _execute(args: argparse.Namespace) -> int:
 
     if args.command == "godot":
         return _godot(args)
+
+    if args.command == "assets":
+        return _assets(args)
 
     storage = SQLiteStorage(db_path)
     registry = AgentRegistry()
