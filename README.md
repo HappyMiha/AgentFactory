@@ -344,6 +344,7 @@ See:
 - [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
 - [Godot 2D game pack and engine adapter](docs/godot-pack.md)
+- [Latest verified playable version](docs/playable-versions.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)
