@@ -176,5 +176,44 @@ class InstallationExecutionTests(unittest.TestCase):
             self.assertEqual(sentinel.read_bytes(), b'unmanaged')
             self.assertEqual(self.fixture.intents.journal.get(self.record['operation_id']).latest_event.lifecycle.value, 'unknown')
 
+    @unittest.skipUnless(os.name == 'nt', 'Actual Windows published payload lookup')
+    def test_payload_lookup_rehashes_files_and_keeps_paths_relative(self):
+        publications = self.fixture.publications
+        with self.fixture.archive.stage(self.fixture.catalog) as staged:
+            self.publish(staged)
+        self.fixture.now += timedelta(hours=1)  # Historical artifacts do not renew consent.
+        before = self.storage.db.total_changes
+        payload = publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])
+        self.assertEqual(payload['relative_payload'], self.record['relative_target']+'/payload')
+        self.assertEqual(payload['files'], self.record['receipt']['manifest']['files'])
+        self.assertTrue(payload['publication_verified'])
+        self.assertFalse(payload['engine_qualified']); self.assertFalse(payload['execution_eligible'])
+        self.assertEqual(self.storage.db.total_changes, before)
+        # Returned manifests are detached; a caller cannot change journal evidence.
+        payload['files'].clear()
+        self.assertTrue(publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])['files'])
+        root = self.fixture.root/self.record['relative_target']/'payload'
+        victim = root/self.record['receipt']['manifest']['files'][0]['path']
+        victim.write_bytes(b'changed')
+        with self.assertRaisesRegex(InstallationConflict, 'payload_not_verified'):
+            publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])
+
+    @unittest.skipUnless(os.name == 'nt', 'Actual Windows reconciled payload lookup')
+    def test_payload_lookup_requires_reconciliation_and_current_host(self):
+        publications = self.fixture.publications
+        with self.assertRaisesRegex(InstallationConflict, 'not_completed'):
+            publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])
+        with self.fixture.archive.stage(self.fixture.catalog) as staged, \
+             patch.object(self.executor.publications.journal, 'complete', side_effect=OSError('Lost completion')):
+            with self.assertRaises(OSError): self.publish(staged)
+        with self.assertRaisesRegex(InstallationConflict, 'not_completed'):
+            publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])
+        publications.reconcile_unknown(self.fixture.mission, 'Founder', self.record['operation_id'], event_key='lookup-recovery')
+        self.assertTrue(publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])['publication_verified'])
+        with self.assertRaises(KeyError): publications.read_payload(self.fixture.mission, 'Other', self.record['operation_id'])
+        self.fixture.host['workspace'] = 'different'
+        with self.assertRaisesRegex(InstallationConflict, 'payload_not_verified'):
+            publications.read_payload(self.fixture.mission, 'Founder', self.record['operation_id'])
+
 
 if __name__ == '__main__': unittest.main()

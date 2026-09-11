@@ -38,12 +38,6 @@ class InstallationExecutor:
         if not self.storage.db.in_transaction:
             raise RuntimeError('Publication validation requires writer exclusion')
         operation, _, receipt = self.publications._record(mission, actor, publication_id)
-        parent = self.publications.journal.get(operation.request['intent_id'])
-        package = receipt.document()['manifest']['package_id']
-        fields = ('mission_version', 'backlog_revision_id', 'execution_epoch_id', 'checkpoint_id', 'control_fencing_token')
-        if (operation.operation_key != f'installation-publication:{parent.identity}:{package}'
-                or any(getattr(operation, field) != getattr(parent, field) for field in fields)):
-            raise InstallationConflict('publication_journal_scope_mismatch')
         if operation.latest_event.lifecycle.value != state:
             raise InstallationConflict('publication_requires_reconciliation')
         self.intents.current(mission, actor, operation.request['intent_id'])

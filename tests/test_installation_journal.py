@@ -132,6 +132,16 @@ class InstallationJournalTests(unittest.TestCase):
             finally:
                 other.close()
 
+    def test_completed_status_alone_cannot_resolve_absent_payload(self):
+        with self.archive.stage(self.catalog) as staged: record = self.prepare(staged)
+        self.intents.journal.start(record['operation_id'], event_key='fixture-start')
+        self.intents.journal.complete(record['operation_id'], event_key='fixture-complete',
+            result={'publication_verified': True}, evidence={'fixture': 'No files were actually published'})
+        before = self.storage.db.total_changes
+        with self.assertRaisesRegex(InstallationConflict, 'payload_not_verified'):
+            self.publications.read_payload(self.mission, 'Founder', record['operation_id'])
+        self.assertEqual(self.storage.db.total_changes, before)
+
     def test_concurrent_reservations_create_one_publication_operation(self):
         from agent_factory.installation_intent import InstallationIntents
         barrier = threading.Barrier(2)
