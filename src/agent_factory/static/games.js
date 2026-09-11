@@ -22,12 +22,28 @@ async function list(name){
  const container=$(name==='games'?'game-list':'mission-list');container.replaceChildren();
  for(const item of data.items){const card=element('article');card.className='card';card.append(element('h2',item.title));
   card.append(element('p',name==='games'?`Збережено · крок «${labels[item.view_step]}»`:phase(item.phase)));
-  card.append(element('p','Перевірена ігрова версія ще недоступна.'));
+  if(name==='missions'){card.append(element('p',progressText(item)),progressBar(item),element('p',nextAction(item)));}
+  card.append(element('p',workingVersion(item)));
   const button=element('button','Продовжити');button.onclick=()=>action(()=>openItem(name,name==='games'?item.id:item.mission_id));card.append(button);container.append(card);}
  if(!data.items.length)container.append(element('p',query?'За цим пошуком нічого не знайдено.':'Тут з’являться ваші збережені ідеї.'));
  pager(name,data);
 }
-function phase(value){return {DRAFT:'Чернетка: потрібен план',WAITING_FOR_BACKLOG_APPROVAL:'План очікує затвердження',APPROVED:'План затверджено',ENVIRONMENT_DISCOVERY:'Перевірка середовища',ENVIRONMENT_BOOTSTRAP:'Підготовка середовища',DEVELOPMENT:'Створення',VALIDATION:'Перевірка результату',COMPLETED:'Робочий процес завершено'}[value]||'Потрібна перевірка поточного стану';}
+function phase(value){return {DRAFT:'Чернетка: потрібен план',SPECIFICATION_ANALYSIS:'Розбір специфікації',BACKLOG_GENERATION:'Складання плану',WAITING_FOR_BACKLOG_APPROVAL:'План очікує затвердження',APPROVED:'План затверджено',ENVIRONMENT_DISCOVERY:'Перевірка середовища',ENVIRONMENT_BOOTSTRAP:'Підготовка середовища',DEVELOPMENT:'Створення',VALIDATION:'Перевірка результату',INTEGRATION:'Збирання разом',FINAL_VALIDATION:'Підсумкова перевірка',COMPLETED:'Робочий процес завершено'}[value]||'Потрібна перевірка поточного стану';}
+// One wording for the project state, used by the list and by the open project.
+const ACTIONS={prepare_plan:'Наступна дія: підготуйте й затвердьте план у Core.',approve_plan:'Наступна дія: затвердьте план у Core.',inspect_readiness:'Наступна дія: перевірте актуальний стан середовища.',resolve_blocked_work:'Наступна дія: розберіться із задачами, що зупинилися.',review_result:'Наступна дія: перегляньте результат і підтвердьте його.'};
+function nextAction(item){return item?(ACTIONS[item.next_action]||'Наступна дія: перевірте поточний стан проєкту.'):'Наступна дія: збережіть ідею, оберіть модель і підготуйте проєкт.';}
+function progressText(item){const state=item&&item.progress;
+ if(!state||!state.total)return 'Задач у плані ще немає.';
+ const parts=[`прийнято ${state.accepted} з ${state.total}`];
+ if(state.finished)parts.push(`виконано ${state.finished}`);
+ if(state.in_progress)parts.push(`в роботі ${state.in_progress}`);
+ if(state.blocked)parts.push(`зупинено ${state.blocked}`);
+ return parts.join(' · ');}
+function progressBar(item){const state=item&&item.progress,share=state&&state.total?state.accepted_share:0;
+ const rail=element('div');rail.className='rail';const bar=element('div');bar.className='bar';bar.style.width=share+'%';
+ rail.append(bar);rail.setAttribute('role','img');rail.setAttribute('aria-label',`Прийнято ${share}% задач плану`);return rail;}
+// Playability is a separate fact from progress and is never inferred from it.
+function workingVersion(item){return item&&item.working_version&&item.working_version.available?'Є перевірена ігрова версія.':'Перевіреної ігрової версії ще немає.';}
 function values(){return {title:$('title').value,idea:$('idea').value,model_key:$('model').value};}
 function render(fill=true){
  clearTimeout(readinessTimer);++readinessGeneration;
@@ -45,13 +61,12 @@ function render(fill=true){
  $('submit-draft').hidden=!current||Boolean(current.mission_id);$('check-environment').hidden=!project;
  $('history').hidden=!current;$('technical').textContent=JSON.stringify(current||project,null,2);
  $('save-state').textContent=current?`Збережена версія ${current.revision}${dirty?' · є незбережені зміни':''}`:'Наявний проєкт Core';
- const statuses={pending:'очікують',ready:'готові до роботи',running:'в роботі',in_progress:'в роботі',blocked:'заблоковані',done:'завершені',completed:'завершені',failed:'з помилкою',archived:'в архіві',awaiting_review:'очікують перевірки'};
- $('progress-state').textContent=project?`${phase(project.phase)}. Задачі: ${Object.entries(project.task_counts).map(([key,value])=>`${statuses[key]||'інший стан'}: ${value}`).join(', ')||'ще немає'}. Остання зміна проєкту: ${project.updated_at}. Час завершення невідомий.`:'Проєкт ще не передано Core. Поверніться до підготовки.';
+ $('progress-state').textContent=project?`${phase(project.phase)}. ${progressText(project)}. ${workingVersion(project)} Остання зміна проєкту: ${project.updated_at}. Час завершення невідомий.`:'Проєкт ще не передано Core. Поверніться до підготовки.';
  $('preparation-copy').textContent=project?'Вихідна чернетка збережена. Для виконання потрібні затверджений план і актуальний звіт середовища. Перегляньте поточний прогрес на кроці «Створення».':'Збережіть вихідну ідею та обрану модель як чернетку Core. Це не затверджує план або запуск.';
  const previousPlanLink=$('plan-link');if(previousPlanLink)previousPlanLink.remove();
  if(project){const link=element('a','Відкрити чернетку плану гри');link.id='plan-link';link.href='/planning/'+encodeURIComponent(project.mission_id);$('preparation-copy').after(link);}
  $('environment-state').textContent='';
- $('next-action').textContent=project?(project.next_action==='approve_plan'?'Наступна дія: підготуйте й затвердьте план у Core.':'Наступна дія: перевірте актуальний стан середовища.'): 'Наступна дія: збережіть ідею, оберіть модель і підготуйте проєкт.';
+ $('next-action').textContent=nextAction(project);
  if(current&&current.error_code)note(current.error_code);
 }
 async function openItem(kind,id){
