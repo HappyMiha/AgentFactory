@@ -161,6 +161,7 @@ class ParserShapeTests(unittest.TestCase):
             ("assets", "inspect", "--archive", "p.zip"),
             ("playable", "current", "--project", "demo"),
             ("export", "targets"),
+            ("support", "categories"),
             ("state", "check"),
         )
         for arguments in commands:
