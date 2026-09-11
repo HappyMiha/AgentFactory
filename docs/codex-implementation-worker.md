@@ -4,7 +4,7 @@ AF-049 adds a qualified `codex exec` runtime for one mutable implementation atte
 
 The fixed profile sets approval handling to `never` because AF-046 has already consumed the exact human gate. It never uses `--dangerously-bypass-approvals-and-sandbox`, `danger-full-access`, or `--add-dir`. User configuration is ignored for the run so it cannot widen the reviewed profile; authentication still uses Codex's own credential store.
 
-Before launch, Agent Factory verifies the Codex version/help surface, implementation role, live fenced assignment, logical attempt, worktree ownership, immutable context package, and consumed stage approval. Mutable command execution remains inside the Codex native `workspace-write` sandbox rooted at the task worktree. Control Plane state and other worktrees are outside that root, while model-generated commands retain the sandbox's default network restrictions.
+Before launch, Lokvetia Core verifies the Codex version/help surface, implementation role, live fenced assignment, logical attempt, worktree ownership, immutable context package, and consumed stage approval. Mutable command execution remains inside the Codex native `workspace-write` sandbox rooted at the task worktree. Control Plane state and other worktrees are outside that root, while model-generated commands retain the sandbox's default network restrictions.
 
 The driver emits structured Runtime events and stores one immutable `codex_worker_results` record with:
 

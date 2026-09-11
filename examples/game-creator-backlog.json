@@ -2365,6 +2365,20 @@
         "size:m",
         "status:proposed",
         "product:game-creator"
+      ],
+      "evidence": [
+        {
+          "kind": "test",
+          "reference": "tests/test_provider_role_qualification.py",
+          "recorded_by": "Repository maintainer",
+          "note": "shipped profiles by autonomous role IDs, zero subprocess for denied pairs"
+        },
+        {
+          "kind": "document",
+          "reference": "docs/provider-role-qualification.md",
+          "recorded_by": "Repository maintainer",
+          "note": "where the check runs and what it does not prove"
+        }
       ]
     },
     {
@@ -2403,14 +2417,13 @@
       ],
       "definition_of_done": [
         "Acceptance tests pass at the reviewed commit; the documented trust boundary and recovery limits are independently reviewed.",
-        "The protected PR is merged and the owning worker updates the shared task register; deployment readiness remains a separate gate."
+        "The reviewed PR is merged and completion evidence is recorded; deployment readiness remains a separate gate."
       ],
       "source_references": [
-        "docs/worker-admission.md",
-        "docs/team-workflow.md"
+        "docs/worker-admission.md"
       ],
       "review_notes": [
-        "Additive prerequisite agreed by all three workers for Cloud worker admission. Existing stable IDs, dependencies and engine milestones remain intact."
+        "Additive prerequisite for Cloud worker admission. Existing stable IDs, dependencies and engine milestones remain intact."
       ],
       "labels": [
         "priority:p0",

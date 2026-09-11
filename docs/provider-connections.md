@@ -27,7 +27,7 @@ The current official sources were opened and reviewed:
 - [Claude Code authentication](https://code.claude.com/docs/en/authentication):
   official tool login and the distinction between subscription and Console/API
   authentication. The active account and configured credential source determine
-  billing; a saved chat login is not imported by AgentFactory.
+  billing; a saved chat login is not imported by Lokvetia Core.
 
 The official CLI instructions are guidance only. This component does not run a
 login command, launch a browser callback receiver, import cookies/session files,

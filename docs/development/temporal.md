@@ -1,15 +1,15 @@
 # Temporal development guide
 
-AgentFactory uses Temporal as an optional durable execution backbone. With `TEMPORAL_ENABLED=true`, starting a delivery run creates an `AgentFactoryJobWorkflow` and returns immediately. The Windows-host Worker performs the real AgentFactory activities, so it retains access to local PowerShell, Git, Docker, Codex, Claude, Hermes, and project folders. With the flag set to `false`, the existing synchronous workflow engine remains available during migration.
+Lokvetia Core uses Temporal as an optional durable execution backbone. With `TEMPORAL_ENABLED=true`, starting a delivery run creates an `AgentFactoryJobWorkflow` and returns immediately. The Windows-host Worker performs the real Lokvetia Core activities, so it retains access to local PowerShell, Git, Docker, Codex, Claude, Hermes, and project folders. With the flag set to `false`, the existing synchronous workflow engine remains available during migration.
 
 ## Prerequisites
 
 - Windows 10 or 11 with PowerShell 5.1 or newer
 - Docker Desktop using Linux containers
-- Python 3.11 or newer and the existing AgentFactory prerequisites
+- Python 3.11 or newer and the existing Lokvetia Core prerequisites
 - Enough free local Docker storage for PostgreSQL, Temporal Server/Admin Tools, and Temporal UI images
 
-Install AgentFactory and its web dependencies from the repository root:
+Install Lokvetia Core and its web dependencies from the repository root:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -36,7 +36,7 @@ Set the rollout flag for the PowerShell sessions that run the backend and Worker
 $env:TEMPORAL_ENABLED = "true"
 ```
 
-Other defaults are documented in the repository `.env.example`. Environment variables override them. Secret provider credentials must stay in the existing provider CLI profile, OS keyring, or AgentFactory secret mechanism; never put secrets in Workflow input.
+Other defaults are documented in the repository `.env.example`. Environment variables override them. Secret provider credentials must stay in the existing provider CLI profile, OS keyring, or Lokvetia Core secret mechanism; never put secrets in Workflow input.
 
 Autonomous Mission parents use the stable ID prefix `agentfactory-autonomous-mission` by default. A deployment may set `TEMPORAL_AUTONOMOUS_WORKFLOW_ID_PREFIX` before its first mission starts, but must then keep that value stable so later clients attach to the same logical parents.
 
@@ -46,7 +46,7 @@ Autonomous controls use typed `PAUSE`, `RESUME`, `STOP`, and `RETRY_CURRENT_TASK
 
 `restart_from_checkpoint` and `apply_backlog_revision` are distinct typed Signals. They are valid only after the mission owner has persisted the exact handoff command through `MissionCheckpointService` or `BacklogRevisionService`; the Signal is not authority. The Worker reloads that command, stops admission, waits for the active child and all operation leases to reach a safe boundary, appends one replacement epoch plus renewed execution authorization, resumes the fence, and carries the resulting revision/epoch/checkpoint identities into the parent. Duplicate delivery reuses the same immutable handoff result. Git branch/checkpoint materialization is intentionally delegated to AF-AMM-021, and full revision impact/restart planning remains AF-AMM-022.
 
-## Start AgentFactory
+## Start Lokvetia Core
 
 Start the Local Control Center in one PowerShell window:
 
@@ -80,7 +80,7 @@ $env:TEMPORAL_AUTONOMOUS_CONTINUE_AS_NEW_SAFE_BOUNDARY_THRESHOLD = "100"
 
 Temporal recommendation and an enabled Worker Deployment target change can also request rollover, but neither bypasses the safe-boundary check. Each new run carries schema-v2 identifiers and counters, registers immutable SQLite chain evidence, and republishes its memo and typed Search Attributes. OperatorService registration is automatic on the full server. The SDK time-skipping server has no OperatorService or list visibility API, so tests use the same memo plus retained SQLite run IDs for direct discovery.
 
-The Compose namespace defaults to seven-day retention (`TEMPORAL_NAMESPACE_RETENTION=7d` before first namespace creation); SDK-created namespaces use `TEMPORAL_NAMESPACE_RETENTION_DAYS=7`. Changing either variable does not modify an existing namespace. Temporal retention may remove closed Workflow history and visibility rows, but it does not remove AgentFactory's immutable `autonomous_mission_temporal_runs` ledger or domain audit events. Do not use Temporal visibility as the system of record for mission audit.
+The Compose namespace defaults to seven-day retention (`TEMPORAL_NAMESPACE_RETENTION=7d` before first namespace creation); SDK-created namespaces use `TEMPORAL_NAMESPACE_RETENTION_DAYS=7`. Changing either variable does not modify an existing namespace. Temporal retention may remove closed Workflow history and visibility rows, but it does not remove Lokvetia Core's immutable `autonomous_mission_temporal_runs` ledger or domain audit events. Do not use Temporal visibility as the system of record for mission audit.
 
 Every Worker publishes `TEMPORAL_WORKER_BUILD_ID`. Worker Deployment routing is opt-in with `TEMPORAL_WORKER_VERSIONING_ENABLED=true` and the stable `TEMPORAL_WORKER_DEPLOYMENT_NAME=agentfactory-autonomous`. The code configures `PINNED` behavior and lets only a safe continued run request `AUTO_UPGRADE`. Before enabling it or replacing a build, follow [the Worker versioning and replay runbook](temporal-worker-versioning.md).
 
@@ -94,7 +94,7 @@ The API equivalent is `POST /api/work-items/{task_id}/runs`. It creates the exis
 
 ## Inspect and control a Workflow
 
-Open <http://localhost:8080> to inspect Workflow history, activity attempts and retries, timers, failures, and payloads. The AgentFactory run detail shows the Workflow ID, current phase/progress while running, and a direct UI link. Pause, resume, and cancel controls send Temporal Signals.
+Open <http://localhost:8080> to inspect Workflow history, activity attempts and retries, timers, failures, and payloads. The Lokvetia Core run detail shows the Workflow ID, current phase/progress while running, and a direct UI link. Pause, resume, and cancel controls send Temporal Signals.
 
 Pause is a safe scheduling boundary: the current atomic Activity finishes, then the Workflow schedules no new Activity until resume. Cancellation propagates into a running provider/command Activity, requests graceful process-tree termination, and forces cleanup after the configured grace period.
 
@@ -149,7 +149,7 @@ $env:AGENTFACTORY_TEMPORAL_DOCKER_TESTS = "1"
 
 ### Port 7233 is occupied
 
-Use `Get-NetTCPConnection -LocalPort 7233` to identify the listener. Stop the conflicting local service. Do not change only the Compose port: update `TEMPORAL_ADDRESS` consistently for AgentFactory and the Worker.
+Use `Get-NetTCPConnection -LocalPort 7233` to identify the listener. Stop the conflicting local service. Do not change only the Compose port: update `TEMPORAL_ADDRESS` consistently for Lokvetia Core and the Worker.
 
 ### Port 8080 is occupied
 
@@ -173,11 +173,11 @@ Run `start.ps1` again. Compose namespace initialization and SDK startup initiali
 
 ### Workflow already exists
 
-AgentFactory intentionally uses stable job IDs and rejects a second independent execution. Continue, query, signal, or inspect the existing Workflow. Only failed terminal executions may reuse an ID under the configured reuse policy.
+Lokvetia Core intentionally uses stable job IDs and rejects a second independent execution. Continue, query, signal, or inspect the existing Workflow. Only failed terminal executions may reuse an ID under the configured reuse policy.
 
 ### Activity timeout or heartbeat timeout
 
-Inspect the Activity attempt in Temporal UI and the referenced AgentFactory artifact/log. Increase the documented timeout environment variable only after confirming the Activity is healthy. Long-running agent/command Activities heartbeat and detect cancellation; a missing heartbeat indicates a stuck Worker or process.
+Inspect the Activity attempt in Temporal UI and the referenced Lokvetia Core artifact/log. Increase the documented timeout environment variable only after confirming the Activity is healthy. Long-running agent/command Activities heartbeat and detect cancellation; a missing heartbeat indicates a stuck Worker or process.
 
 ### Tests failed but the Activity is shown as successful
 

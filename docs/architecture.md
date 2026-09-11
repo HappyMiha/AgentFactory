@@ -1,6 +1,6 @@
 # Architecture
 
-Agent Factory is a local-first orchestration control plane. It coordinates work; it does not grant an AI provider authority to approve its own output.
+Lokvetia Core is a local-first orchestration control plane. It coordinates work; it does not grant an AI provider authority to approve its own output.
 
 ## Design goals
 
@@ -154,7 +154,7 @@ sequenceDiagram
 
 ## Approval model
 
-Agent Factory deliberately separates three concepts:
+Lokvetia Core deliberately separates three concepts:
 
 1. **Provider execution approval** authorizes one provider, agent, and work item tuple.
 2. **GitHub plan approval** authorizes one immutable repository plan identified by its SHA-256 digest.

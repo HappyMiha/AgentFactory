@@ -1,6 +1,6 @@
 # GitHub integration
 
-Agent Factory uses GitHub Issues for work items and GitHub Projects for prioritization fields. Repository content remains the source of truth for code and reviewed documentation.
+Lokvetia Core uses GitHub Issues for work items and GitHub Projects for prioritization fields. Repository content remains the source of truth for code and reviewed documentation.
 
 The integration is deliberately plan-first and dry-run by default.
 
@@ -83,7 +83,7 @@ The gate is consumed by that apply attempt. A partial or failed apply needs a ne
 
 ## Idempotency
 
-Every operation carries a stable idempotency key. Successful keys are persisted for the repository. If a later approved plan contains a completed key, Agent Factory skips it rather than creating a duplicate.
+Every operation carries a stable idempotency key. Successful keys are persisted for the repository. If a later approved plan contains a completed key, Lokvetia Core skips it rather than creating a duplicate.
 
 An apply report records each result and an overall status:
 
@@ -123,7 +123,7 @@ These values belong in a reviewed mutation plan, not in runtime-generated provid
 
 - Run dry-run sync in CI, but never approve or apply from an untrusted pull request.
 - Protect the default branch independently in repository settings.
-- Require human review for pull requests produced from Agent Factory artifacts.
+- Require human review for pull requests produced from Lokvetia Core artifacts.
 - Keep GitHub CLI authentication outside provider prompts.
 - Use a least-privilege account or token appropriate to the target repository.
 - Back up the local state database before a large apply.

@@ -71,7 +71,9 @@ jobs:
           if-no-files-found: warn
 
       - name: Check CLI installation
-        run: agent-factory --help
+        run: |
+          lokvetia --help
+          agent-factory --help
 
       - name: Run deterministic demo
         run: agent-factory --workspace "${{ runner.temp }}/agent-factory-smoke" demo
@@ -103,7 +105,9 @@ jobs:
           python -m venv "${RUNNER_TEMP}/clean-install"
           "${RUNNER_TEMP}/clean-install/bin/python" -m pip install --disable-pip-version-check --no-input dist/*.whl
           cd "${RUNNER_TEMP}"
+          "${RUNNER_TEMP}/clean-install/bin/lokvetia" --help
           "${RUNNER_TEMP}/clean-install/bin/agent-factory" --help
+          "${RUNNER_TEMP}/clean-install/bin/lokvetia" --workspace "${RUNNER_TEMP}/wheel-smoke" demo
           "${RUNNER_TEMP}/clean-install/bin/agent-factory" --workspace "${RUNNER_TEMP}/wheel-smoke" demo
 
       - name: Verify packaged defaults
@@ -118,6 +122,10 @@ jobs:
           missing = expected - present
           if missing:
               raise SystemExit(f"Missing packaged defaults: {sorted(missing)}")
+          static = files("agent_factory").joinpath("static")
+          for name in ("brand.css", "brand-mark.svg", "brand-wordmark.svg"):
+              if not static.joinpath(name).is_file():
+                  raise SystemExit(f"Missing packaged brand asset: {name}")
           PY
 
       - name: Upload distributions

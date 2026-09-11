@@ -1,0 +1,136 @@
+{
+  "artifact_kind": "unqualified-capability-probe",
+  "checks": [
+    {
+      "detail": "",
+      "expected": "allowed",
+      "id": "C1-write-worktree",
+      "outcome": "allowed",
+      "probe": "write",
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "detail": "Access is denied.",
+      "expected": "denied",
+      "id": "C2-write-outside-worktree",
+      "outcome": "denied",
+      "probe": "write",
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "detail": "",
+      "expected": "allowed",
+      "id": "C3-write-declared-temp",
+      "outcome": "allowed",
+      "probe": "write",
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "detail": "Access is denied.",
+      "expected": "denied",
+      "id": "C4-read-private-file",
+      "outcome": "denied",
+      "probe": "read",
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "detail": "Access is denied.",
+      "expected": "denied",
+      "id": "C5-read-user-profile",
+      "outcome": "denied",
+      "probe": "listdir",
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "detail": "",
+      "expected": "denied",
+      "id": "C6-network-outbound",
+      "outcome": "denied",
+      "probe": "network",
+      "returncode": 7,
+      "timed_out": false
+    },
+    {
+      "detail": "Access is denied.",
+      "expected": "denied",
+      "id": "C7-junction-escape",
+      "junction_created": true,
+      "outcome": "denied",
+      "probe": "write",
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "detail": "",
+      "expected": "allowed-by-design",
+      "id": "C8-appcontainer-own-temp",
+      "outcome": "allowed",
+      "probe": "write",
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "expected": "allowed",
+      "id": "C11-staged-tool-launch",
+      "note": "tool copied into a sandbox-owned directory, then ACL granted",
+      "outcome": "allowed",
+      "returncode": 0
+    },
+    {
+      "expected": "denied-without-grant",
+      "id": "C12-tool-in-user-profile",
+      "note": "interpreter under the user profile with no container ACE",
+      "outcome": "denied",
+      "returncode": 3221225506
+    },
+    {
+      "alive_after_close": false,
+      "alive_before_close": true,
+      "expected": "tree-terminated",
+      "id": "C9-job-close-kills-tree",
+      "outcome": "tree-terminated"
+    },
+    {
+      "expected": "tree-terminated",
+      "id": "C10-timeout-terminates",
+      "outcome": "tree-terminated",
+      "returncode": null,
+      "timed_out": true
+    },
+    {
+      "alive_after_kill": false,
+      "alive_before_kill": true,
+      "expected": "tree-terminated",
+      "id": "C13-supervisor-crash-kills-child",
+      "note": "controlling process force-killed; no graceful teardown ran",
+      "outcome": "tree-terminated"
+    }
+  ],
+  "elapsed_seconds": 17.05,
+  "host": {
+    "elevated": false,
+    "interpreter_ref": "sha256:eda6add8ca04523c",
+    "platform": "win32",
+    "python": "3.11.15",
+    "windows_build": 19045
+  },
+  "mechanism": {
+    "isolation": "AppContainer (SECURITY_CAPABILITIES, zero capabilities)",
+    "process_tree": "Job object with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE",
+    "read_grants": "inheritable (OI)(CI)(RX) ACE on the staged tool tree only",
+    "write_grants": "inheritable (OI)(CI)(M) ACE for the container SID"
+  },
+  "qualification": "not-qualified",
+  "release": "C-PILOT",
+  "schema_version": 1,
+  "task_refs": [
+    "AF-017",
+    "AF-044",
+    "AF-052"
+  ]
+}

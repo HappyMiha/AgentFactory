@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" role="img" aria-labelledby="title desc">
+  <title id="title">Lokvetia Core</title>
+  <desc id="desc">Lokvetia Core · HUMAN AUTHORITY. AGENT CAPABILITY.</desc>
+  <g transform="translate(8 8)">  <rect width="64" height="64" rx="16" fill="#102C35"/>
+  <path d="M17 15h10v29h22v10H17V15Z" fill="#6FE1C7"/>
+  <path d="M37 15h12v12H37V15Z" fill="#F5F9F8"/>
+</g>
+  <text x="90" y="42" fill="#102C35" font-family="Segoe UI, Arial, sans-serif" font-size="31" font-weight="700" letter-spacing="-1">Lokvetia Core</text>
+  <text x="91" y="62" fill="#102C35" font-family="Segoe UI, Arial, sans-serif" font-size="11" letter-spacing="1.5">HUMAN AUTHORITY. AGENT CAPABILITY.</text>
+</svg>

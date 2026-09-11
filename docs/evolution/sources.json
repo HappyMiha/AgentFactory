@@ -1,0 +1,1227 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-10",
+  "purpose": "Source identity and honest reading coverage, not task instructions or redistributed books",
+  "files": [
+    {
+      "filename": "2607.07663v2.pdf",
+      "sha256": "a7622a4816c873ea45d511de909b5cbbf5c8f366a4515ea31e00ef2362e2a3f7",
+      "bytes": 5049523,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "id": "RSI-SURVEY",
+      "title": "Recursive Self-Improvement in AI: From Bounded Self-Refinement to Autonomous Research Loops",
+      "version": "arXiv:2607.07663v2",
+      "pages": 44,
+      "coverage": "Text extracted all pages; main argument pp1–30 read; bibliography pp30–44 targeted; Figure5 p18 visually inspected. No experiment reproduction.",
+      "q04_rereading": {
+        "date": "2026-09-10",
+        "full_text_pages_repeated": [
+          22,
+          23
+        ],
+        "new_full_text_pages": [],
+        "context_reads": [
+          {
+            "page": 22,
+            "read_scope": "full page text",
+            "ranges_zero_based_half_open": [
+              [
+                0,
+                4712
+              ]
+            ],
+            "characters": 4712,
+            "extracted_page_text_sha256": "5899aa09367bd4328b3e672dd3bacb3b85254f918405a339896ff98818337a33"
+          },
+          {
+            "page": 23,
+            "read_scope": "full page text",
+            "ranges_zero_based_half_open": [
+              [
+                0,
+                4712
+              ]
+            ],
+            "characters": 4712,
+            "extracted_page_text_sha256": "96df7428febe74d83d82752762d9c4a31347f31b67412de0bcdff00a4dc0a28f"
+          },
+          {
+            "page": 26,
+            "read_scope": "targeted reference 180 context only; not full page",
+            "ranges_zero_based_half_open": [
+              [
+                803,
+                2558
+              ]
+            ],
+            "characters": 1755,
+            "extracted_page_text_sha256": "3c1d920d6ca0ec5b19840eaa31e387318dab21acb4e9af8175f7a014ac2cbcca"
+          },
+          {
+            "page": 43,
+            "read_scope": "targeted reference 180 context only; not full page",
+            "ranges_zero_based_half_open": [
+              [
+                2285,
+                4040
+              ]
+            ],
+            "characters": 1755,
+            "extracted_page_text_sha256": "eb3427f78bb9f36b916a6d8a1938b943e31fe6f28f052feb9219b5a1a17a363d"
+          },
+          {
+            "page": 1,
+            "read_scope": "metadata prefix only; not full page",
+            "ranges_zero_based_half_open": [
+              [
+                0,
+                1800
+              ]
+            ],
+            "characters": 1800,
+            "extracted_page_text_sha256": "c70ae6f7d4eafd0ea2f4661dabe591a9e21ed14b55670787007d83e268e23cf4"
+          }
+        ],
+        "range_unit": "Unicode codepoint offsets in normalized decoded local page text; zero-based half-open",
+        "lifetime_fragment_overlap": "Unknown for previously targeted bibliography fragments; no unique lifetime gain claimed",
+        "paper_source_hash_unchanged": true
+      }
+    },
+    {
+      "sha256": "5f1047486ee6c79aa404f1ee4a28cd78bee2309b6899163b33b634055eb74fb0",
+      "bytes": 343645,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See literary-b-pass-3.md.",
+      "q02_coverage": {
+        "volume": 2,
+        "chapter": 15,
+        "source_sha256": "5f1047486ee6c79aa404f1ee4a28cd78bee2309b6899163b33b634055eb74fb0",
+        "epub_anchor": "OPS/ch1-15.xhtml#id15",
+        "next_heading_excluded": "OPS/ch1-16.xhtml#id16",
+        "spine_ordinal": 16,
+        "first_paragraph": 1,
+        "last_paragraph": 167,
+        "fully_read_paragraphs": 167,
+        "paragraph_text_characters": 22591,
+        "cache_characters_including_lf": 22757,
+        "interparagraph_lf": 166,
+        "first_documented_complete_read": true,
+        "verified_pass2_overlap": {
+          "paragraphs": 0,
+          "characters": 0
+        },
+        "exact_pass1_overlap": null,
+        "exact_lifetime_new_unique": null,
+        "cumulative_book_coverage": null,
+        "limit": "Pass1 has structural windows without exhaustive paragraph/character ledger; complete-chapter pass is exact, lifetime union is unknown. No full-book claim."
+      },
+      "id": "LIT-B-02",
+      "corpus": "B",
+      "volume": 2,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "63ae0ae93476f6c60019b3715ead71210ce41f3d8208722b7ac5a5758a66c1e1",
+      "bytes": 669799,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-01",
+      "corpus": "B",
+      "volume": 1,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "47bef8f31bd58e098d6126f1c300afa7134b30422719fb304a9f3aa84b4e3364",
+      "bytes": 820223,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-04",
+      "corpus": "B",
+      "volume": 4,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "45860966114d1b4cb1eed25166eef30c9327f6c6055b72f637691401455fa462",
+      "bytes": 1751831,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-06",
+      "corpus": "B",
+      "volume": 6,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "ad7fc32dbc4b814a1d9b49cc14357533c69efdd4210f61e337574c9dc7d31c9c",
+      "bytes": 284040,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Structural pass1 and Q02 complete chapter XV; exact Q02 pass counts known, exact pass1 overlap/lifetime union unknown. Not a full book read. See literary-b-pass-3.md.",
+      "q02_coverage": {
+        "volume": 3,
+        "chapter": 15,
+        "source_sha256": "ad7fc32dbc4b814a1d9b49cc14357533c69efdd4210f61e337574c9dc7d31c9c",
+        "epub_anchor": "OPS/ch1-15.xhtml#id15",
+        "next_heading_excluded": "OPS/ch1-16.xhtml#id16",
+        "spine_ordinal": 16,
+        "first_paragraph": 1,
+        "last_paragraph": 153,
+        "fully_read_paragraphs": 153,
+        "paragraph_text_characters": 20843,
+        "cache_characters_including_lf": 20995,
+        "interparagraph_lf": 152,
+        "first_documented_complete_read": true,
+        "verified_pass2_overlap": {
+          "paragraphs": 0,
+          "characters": 0
+        },
+        "exact_pass1_overlap": null,
+        "exact_lifetime_new_unique": null,
+        "cumulative_book_coverage": null,
+        "limit": "Pass1 has structural windows without exhaustive paragraph/character ledger; complete-chapter pass is exact, lifetime union is unknown. No full-book claim."
+      },
+      "id": "LIT-B-03",
+      "corpus": "B",
+      "volume": 3,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "e09a62ea06b3f9a92ee3b88766cf71ccaa2c16d6a67b91d043b0852ff36a069b",
+      "bytes": 1842520,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Full structural indexing plus targeted thematic scene reads; not a full sequential book read. Exact locators and limits in literary memos.",
+      "id": "LIT-B-05",
+      "corpus": "B",
+      "volume": 5,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "6803936e32f95d61b30f7704438d183a6f3f213e1da5aefad05d8413b3588de4",
+      "bytes": 304056,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in literary-a-pass-2.md.",
+      "q01_coverage": {
+        "source_id": "S1",
+        "sha256": "6803936e32f95d61b30f7704438d183a6f3f213e1da5aefad05d8413b3588de4",
+        "chapter": "внутрішня Глава 3",
+        "ranges": [
+          {
+            "spine": 4,
+            "first_paragraph": 48,
+            "last_paragraph": 174,
+            "member": "OPS/ch1-2.xhtml"
+          }
+        ],
+        "next_heading_excluded": "4:175",
+        "baseline_read": {
+          "paragraphs": 199,
+          "characters": 29116
+        },
+        "pass_read": {
+          "paragraphs": 127,
+          "characters": 15568
+        },
+        "overlap_with_baseline": {
+          "paragraphs": 5,
+          "characters": 234
+        },
+        "new_unique": {
+          "paragraphs": 122,
+          "characters": 15334
+        },
+        "union_with_baseline": {
+          "paragraphs": 321,
+          "characters": 44450
+        },
+        "extracted": {
+          "paragraphs": 2449,
+          "characters": 412749
+        },
+        "full_book_read": false,
+        "union_character_percent": 10.77
+      },
+      "id": "LIT-A-01",
+      "corpus": "A",
+      "volume": 1,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "42153bb45ab515b2180080066b1be6549a9e688ae691a1c1559790455290889f",
+      "bytes": 230982,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in literary-a-pass-2.md.",
+      "q01_coverage": {
+        "source_id": "S3",
+        "sha256": "42153bb45ab515b2180080066b1be6549a9e688ae691a1c1559790455290889f",
+        "chapter": "Глава 1",
+        "ranges": [
+          {
+            "spine": 3,
+            "first_paragraph": 1,
+            "last_paragraph": 324,
+            "member": "OPS/ch1-1.xhtml"
+          },
+          {
+            "spine": 4,
+            "first_paragraph": 1,
+            "last_paragraph": 339,
+            "member": "OPS/ch1-2.xhtml"
+          },
+          {
+            "spine": 5,
+            "first_paragraph": 1,
+            "last_paragraph": 33,
+            "member": "OPS/ch1-3.xhtml"
+          }
+        ],
+        "next_heading_excluded": "6:1",
+        "baseline_read": {
+          "paragraphs": 251,
+          "characters": 34140
+        },
+        "pass_read": {
+          "paragraphs": 696,
+          "characters": 95745
+        },
+        "overlap_with_baseline": {
+          "paragraphs": 13,
+          "characters": 1997
+        },
+        "new_unique": {
+          "paragraphs": 683,
+          "characters": 93748
+        },
+        "union_with_baseline": {
+          "paragraphs": 934,
+          "characters": 127888
+        },
+        "extracted": {
+          "paragraphs": 2353,
+          "characters": 320685
+        },
+        "full_book_read": false,
+        "union_character_percent": 39.88
+      },
+      "id": "LIT-A-03",
+      "corpus": "A",
+      "volume": 3,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    },
+    {
+      "sha256": "21f8a881dbc8f87628ccdb67e17cf30e45962bd05e8e6c531b9ee233a3a54983",
+      "bytes": 311094,
+      "source_kind": "user_supplied",
+      "raw_content_committed": false,
+      "opf_path": "OPS/content.opf",
+      "coverage": "Structural indexing and thematic pass1 plus one complete chapter in Q01; not a full sequential book read. Exact new/overlap/union and limits in literary-a-pass-2.md.",
+      "q01_coverage": {
+        "source_id": "S2",
+        "sha256": "21f8a881dbc8f87628ccdb67e17cf30e45962bd05e8e6c531b9ee233a3a54983",
+        "chapter": "Глава 1",
+        "ranges": [
+          {
+            "spine": 3,
+            "first_paragraph": 1,
+            "last_paragraph": 296,
+            "member": "OPS/ch1-1.xhtml"
+          },
+          {
+            "spine": 4,
+            "first_paragraph": 1,
+            "last_paragraph": 308,
+            "member": "OPS/ch1-2.xhtml"
+          },
+          {
+            "spine": 5,
+            "first_paragraph": 1,
+            "last_paragraph": 120,
+            "member": "OPS/ch1-3.xhtml"
+          }
+        ],
+        "next_heading_excluded": "6:1",
+        "baseline_read": {
+          "paragraphs": 179,
+          "characters": 28308
+        },
+        "pass_read": {
+          "paragraphs": 724,
+          "characters": 107847
+        },
+        "overlap_with_baseline": {
+          "paragraphs": 56,
+          "characters": 7806
+        },
+        "new_unique": {
+          "paragraphs": 668,
+          "characters": 100041
+        },
+        "union_with_baseline": {
+          "paragraphs": 847,
+          "characters": 128349
+        },
+        "extracted": {
+          "paragraphs": 2783,
+          "characters": 441319
+        },
+        "full_book_read": false,
+        "union_character_percent": 29.08
+      },
+      "id": "LIT-A-02",
+      "corpus": "A",
+      "volume": 2,
+      "bibliographic_identity": "private local ledger only",
+      "source_format": "epub"
+    }
+  ],
+  "public_primary_sources": [
+    {
+      "id": "RSI-DGM",
+      "url": "https://arxiv.org/abs/2505.22954v3",
+      "coverage": "Q03: full methods/results/limitations and relevant technical appendices; exact page coverage recorded; experiments not reproduced",
+      "q03_primary_reading": {
+        "review_date": "2026-09-10",
+        "pdf_url": "https://arxiv.org/pdf/2505.22954v3",
+        "version": "2505.22954v3",
+        "pdf_sha256": "13ff4abe0c7ad4a7dd3b4876d19a8bf940e39e70dabbf06065aa774a6c3457de",
+        "bytes": 3825399,
+        "page_count": 72,
+        "extracted_page_count": 72,
+        "full_text_read_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          46,
+          47,
+          48,
+          49,
+          50,
+          69,
+          70,
+          71,
+          72
+        ],
+        "full_text_read_count": 34,
+        "extraction_or_heading_preview_only_pages": [
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68
+        ],
+        "visually_reviewed_pages": [],
+        "full_paper_read": false,
+        "all_figures_reviewed": false,
+        "experiments_reproduced": false,
+        "upstream_code_audited": false,
+        "raw_content_committed": false,
+        "previous_coverage": "metadata/abstract and survey synthesis; no previous full primary-PDF page ledger",
+        "reading_semantics": "Complete extracted page text inspected; repeated reader access counted once; ranges do not imply all code listings/references read.",
+        "evidence_note": "evaluator-succession.md",
+        "claim_anchors": [
+          "DGM-01",
+          "DGM-02",
+          "DGM-03"
+        ]
+      }
+    },
+    {
+      "id": "RSI-RQGM",
+      "url": "https://arxiv.org/abs/2606.26294v2",
+      "coverage": "Q03: full methods/results/limitations and relevant technical appendices; exact page coverage recorded; experiments not reproduced",
+      "q03_primary_reading": {
+        "review_date": "2026-09-10",
+        "pdf_url": "https://arxiv.org/pdf/2606.26294v2",
+        "version": "2606.26294v2",
+        "pdf_sha256": "82a2e260eb119d983542489100db195398128976fa20c97838e11d25b80b84f0",
+        "bytes": 1409257,
+        "page_count": 38,
+        "extracted_page_count": 38,
+        "full_text_read_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38
+        ],
+        "full_text_read_count": 34,
+        "extraction_or_heading_preview_only_pages": [
+          14,
+          15,
+          16,
+          17
+        ],
+        "visually_reviewed_pages": [
+          4,
+          37
+        ],
+        "full_paper_read": false,
+        "all_figures_reviewed": false,
+        "experiments_reproduced": false,
+        "upstream_code_audited": false,
+        "raw_content_committed": false,
+        "previous_coverage": "metadata/abstract and survey synthesis; no previous full primary-PDF page ledger",
+        "reading_semantics": "Complete extracted page text inspected; repeated reader access counted once; ranges do not imply all code listings/references read.",
+        "evidence_note": "evaluator-succession.md",
+        "claim_anchors": [
+          "RQGM-01",
+          "RQGM-02",
+          "RQGM-03"
+        ]
+      }
+    },
+    {
+      "id": "RSI-AEVOLVE",
+      "url": "https://arxiv.org/abs/2606.20657v3",
+      "coverage": "Q04: complete extracted text of versioned v3 (all 12 pages), selected figures/tables checked; methods/budget/limitations compared with survey; experiments not reproduced",
+      "q04_primary_reading": {
+        "review_date": "2026-09-10",
+        "pdf_url": "https://arxiv.org/pdf/2606.20657v3",
+        "version": "2606.20657v3",
+        "pdf_sha256": "6914910acf4267f2d8280eb0371a73b438408b71b44e08ea6b12a16ec3704db7",
+        "bytes": 1770940,
+        "page_count": 12,
+        "extracted_page_count": 12,
+        "full_text_read_pages": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "full_text_read_count": 12,
+        "full_text_read_characters": 33550,
+        "full_text_read": true,
+        "extraction_only_pages": [],
+        "visually_reviewed_pages": [
+          2,
+          6,
+          8,
+          12
+        ],
+        "visual_objects": [
+          "Table 1",
+          "Figure 2",
+          "Figure 3",
+          "Table 2"
+        ],
+        "all_figures_reviewed": false,
+        "experiments_reproduced": false,
+        "upstream_code_audited": false,
+        "raw_content_committed": false,
+        "previous_coverage": "Metadata/abstract and survey only; no earlier full primary-PDF page reading",
+        "reading_semantics": "All extracted page text including references inspected; repeated access by multiple readers counted once; cited papers not thereby read.",
+        "evidence_note": "training-research.md",
+        "claim_anchors": [
+          "AE-01",
+          "AE-02",
+          "AE-03",
+          "AE-04",
+          "AE-05"
+        ],
+        "version_comparison": {
+          "access_date": "2026-09-10",
+          "official_source": "https://arxiv.org/abs/2606.20657",
+          "aevolve_history": [
+            {
+              "version": "v1",
+              "timestamp_utc": "2026-06-09T07:23:11Z"
+            },
+            {
+              "version": "v2",
+              "timestamp_utc": "2026-06-25T04:21:07Z"
+            },
+            {
+              "version": "v3",
+              "timestamp_utc": "2026-09-08T04:06:10Z"
+            }
+          ],
+          "survey_official_source": "https://arxiv.org/abs/2607.07663",
+          "survey_v2_timestamp_utc": "2026-09-06T11:44:06Z",
+          "survey_reference_180_url": "https://arxiv.org/abs/2606.20657",
+          "survey_reference_180_pins_version": false,
+          "older_aevolve_full_pdf_read": false,
+          "old_to_v3_textual_diff_performed": false,
+          "limit": "Chronology and agreement between survey content and current v3 do not establish which older A-Evolve version survey authors read or what changed textually in v3"
+        }
+      }
+    },
+    {
+      "id": "RSI-SOUNDNESS",
+      "url": "https://arxiv.org/abs/2605.30329v1",
+      "coverage": "metadata and abstract; survey synthesis"
+    }
+  ],
+  "literary_a_q01_totals": {
+    "baseline_read": {
+      "paragraphs": 629,
+      "characters": 91564
+    },
+    "pass_read": {
+      "paragraphs": 1547,
+      "characters": 219160
+    },
+    "overlap_with_baseline": {
+      "paragraphs": 74,
+      "characters": 10037
+    },
+    "new_unique": {
+      "paragraphs": 1473,
+      "characters": 209123
+    },
+    "union_with_baseline": {
+      "paragraphs": 2102,
+      "characters": 300687
+    },
+    "extracted": {
+      "paragraphs": 7585,
+      "characters": 1174753
+    },
+    "union_character_percent": 25.6
+  },
+  "literary_b_q02_totals": {
+    "complete_chapters": 2,
+    "fully_read_paragraphs": 320,
+    "paragraph_text_characters": 43434,
+    "cache_characters_including_lf": 43752,
+    "verified_pass2_overlap": {
+      "paragraphs": 0,
+      "characters": 0
+    },
+    "exact_pass1_overlap": null,
+    "exact_lifetime_new_unique": null,
+    "cumulative_corpus_coverage": null
+  },
+  "rsi_q03_totals": {
+    "extracted_pages": 110,
+    "full_text_read_pages": 68,
+    "full_text_read_pages_per_paper": 34,
+    "experiments_reproduced": false,
+    "literary_coverage_changed": false
+  },
+  "rsi_q04_totals": {
+    "primary_pdf_extracted_pages": 12,
+    "primary_pdf_full_text_read_pages": 12,
+    "primary_pdf_unique_new_full_text_pages": 12,
+    "primary_pdf_full_text_characters": 33550,
+    "survey_full_text_pages_repeated": 2,
+    "survey_new_full_text_pages": 0,
+    "literary_coverage_changed": false,
+    "experiments_reproduced": false
+  },
+  "repository_q07_audit": {
+    "date": "2026-09-10",
+    "kind": "targeted static source and test-assertion audit; proposed creator/RSI contract",
+    "note": "creator-evolution.md",
+    "snapshots": {
+      "Lokvetia-Core": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+      "Lokiravia": "c3093b2edb9ccfafaaa0b68fa3681aec87832122"
+    },
+    "consumer_pin": "480849f78957bb6b2fd7ab341300d54955aeabb8",
+    "intake_guide_stale_pin": "7ec9ff33f1c4e7f2980e4b121d05f3c366acedd1",
+    "consumer_pin_comparison": {
+      "paths": [
+        "src/agent_factory/local_games.py",
+        "src/agent_factory/game_planning.py",
+        "src/agent_factory/game_planning_web.py",
+        "src/agent_factory/mission_intake.py",
+        "src/agent_factory/coding_delivery.py",
+        "src/agent_factory/local_recovery.py",
+        "src/agent_factory/mission_checkpoints.py",
+        "src/agent_factory/autonomous_backlog_approval.py",
+        "src/agent_factory/web.py",
+        "src/agent_factory/workforce.py"
+      ],
+      "different_paths": [],
+      "head": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+      "pin": "480849f78957bb6b2fd7ab341300d54955aeabb8",
+      "meaning": "Identical content only for these ten files; not caller/route qualification or all-repository equality"
+    },
+    "cited_source_files": [
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/backlog.md",
+        "line_anchors": [
+          401
+        ],
+        "git_blob": "9ce7c1ce1143ee2f9b350b1be916fec0b8642e3d",
+        "git_content_sha256": "31992ce07b89a9baaff2dd951cf3be8c13232127b552b3db0d5790a01a47096a"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/domain-model.md",
+        "line_anchors": [
+          35
+        ],
+        "git_blob": "25e4ec77f5c2e3d1522bea55a793330521d31d8b",
+        "git_content_sha256": "75cba720f763f9af4e4aefce690cf09de4994a3b7c7127fd64cd2da92ea6dbbb"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/evidence-gates.md",
+        "line_anchors": [
+          79
+        ],
+        "git_blob": "1f592fbc0c7b6f6828cb01c4daaa0c12e866b72d",
+        "git_content_sha256": "e96d3b8d7dd3e6d636774fa8a02ae90ef1e06d76c6b7cac276d739ea6bd3bd9f"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "docs/game-brief-intake.md",
+        "line_anchors": [
+          29
+        ],
+        "git_blob": "3ef2f1fb6eb187570670c01688c34da38e1a2fb0",
+        "git_content_sha256": "2065b2507040590e0876f834ccc67117f949380e80ee5196338a19939a5bcadf"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "prototypes/creator-operator/app.js",
+        "line_anchors": [
+          8
+        ],
+        "git_blob": "88903e4edfbb1837b07fff70a476db49c28e1a22",
+        "git_content_sha256": "5313589baa330d36344c1aa0b22052b6efc6024aae4f798d0dc327f5ade6ec80"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "pyproject.toml",
+        "line_anchors": [
+          11
+        ],
+        "git_blob": "c4dd7a1743fcad92a42de8b7deab663f65d10a03",
+        "git_content_sha256": "9ce358d12b611a70e59d499f1be2969038b9cd1af78bcd2f018ce41208902b0f"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/brief_web.py",
+        "line_anchors": [
+          84
+        ],
+        "git_blob": "97b3cd49c904521164e1001f722516a24d03d717",
+        "git_content_sha256": "6f2c81dd4fa744f6f823d16d39dc99501819b69b988d3df213f5e9abcc9037e1"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/game_briefs.py",
+        "line_anchors": [
+          203
+        ],
+        "git_blob": "d4a7e0e4c95a60b1cd17329aae7b97b1d3e11957",
+        "git_content_sha256": "408787bce7f261cc46658f5a473f0485b624ddec5fd9339786356e2e7267e93a"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/game_team.py",
+        "line_anchors": [
+          78
+        ],
+        "git_blob": "d36f02f0e9bb6217d1ec68ff3e113ba528731b25",
+        "git_content_sha256": "875a34c0665c94ee8db608a7096cd38acd6d5b85550ec03230f89d583fecab16"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/scope_plans.py",
+        "line_anchors": [
+          62
+        ],
+        "git_blob": "28d5a4331985a86acdc917746fb4762b1670f1bb",
+        "git_content_sha256": "d50179e36fc958a796dcbe1d86d4765375fc1d96b3c3ecd38dc8a16164f26784"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/static/brief.js",
+        "line_anchors": [
+          52
+        ],
+        "git_blob": "97eae4c1f12a2464d8490a9ae827c805f39031be",
+        "git_content_sha256": "9b48ce1c5e57f9ebbe16942f89476abe04e6af82c8403fb860bb44ac3ff79085"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "src/agentfactory_cloud/static/scope.js",
+        "line_anchors": [
+          31,
+          36
+        ],
+        "git_blob": "22c90d11507f0ea05d36a45da0b4d38a19f19465",
+        "git_content_sha256": "dc056ff7a674bd21a9cdacd1b1245ae23481a909f179a626974e517ce5e7d7a5"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_creator_flows.py",
+        "line_anchors": [
+          122
+        ],
+        "git_blob": "ad636a3a05e6bc71c44bb792613f169518ddf82b",
+        "git_content_sha256": "ffe53bb2d41a4d4928c334851d62cc7131a4a920a4314e8f3021b57ab1b4062d"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_game_briefs.py",
+        "line_anchors": [
+          44
+        ],
+        "git_blob": "eeecfdeaabeee5848a693056798621dd9d64b80b",
+        "git_content_sha256": "51ddc0157397c9c61f349e4883784ccebb579a937d2ae318a6f1151e329ddccb"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_game_team.py",
+        "line_anchors": [
+          36
+        ],
+        "git_blob": "8d97586a866afc227d8b8bb41cc267ff62929338",
+        "git_content_sha256": "3fbaaa5c6f10a03c0762347f0741e7a8b9ca867219724f403269daca7aca6e73"
+      },
+      {
+        "repository": "Lokiravia",
+        "revision": "c3093b2edb9ccfafaaa0b68fa3681aec87832122",
+        "path": "tests/test_scope_plans.py",
+        "line_anchors": [
+          90
+        ],
+        "git_blob": "999da15e3284c03635565cdc46f91082833e2e09",
+        "git_content_sha256": "429e598a7f3071988ddd68907dcac5c50eeb540aa35230b4716350f60ef7cc20"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/autonomous_backlog_approval.py",
+        "line_anchors": [
+          314
+        ],
+        "git_blob": "aea351dfe2afb5601de05db618240f73508f9c34",
+        "git_content_sha256": "0e4659478b91ab2dc8785296280cace21d81c8b400f895ff902a9396c08a84f8"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/coding_delivery.py",
+        "line_anchors": [
+          1099
+        ],
+        "git_blob": "f835732018fbfb911ef2bb31d1572700c9e7ff35",
+        "git_content_sha256": "458751991edded967cb4085c50e52a260fb011c9458df29526e5a3b7654c19e4"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/game_planning.py",
+        "line_anchors": [
+          143
+        ],
+        "git_blob": "b216e1345b5c8b5b47f82e291b485521cfbd0409",
+        "git_content_sha256": "871be496f70f6e2ce1080d474c916c30ae25da9282fb1f938e16ccf52692e626"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/local_games.py",
+        "line_anchors": [
+          166
+        ],
+        "git_blob": "3fc4f2ad0eda9a26a8087863122f94669b5c58c2",
+        "git_content_sha256": "376b9ff450b20eac2275e38701dacc24766606cfe7cdfe702e481a75b11d0635"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/local_recovery.py",
+        "line_anchors": [
+          573
+        ],
+        "git_blob": "71adb6474a2843bcdb47b34f7ac739f7ea4d7790",
+        "git_content_sha256": "358e12803808987cf163041ebac07705a00cf15a3e38ffd9d8aad8e99146a011"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/mission_checkpoints.py",
+        "line_anchors": [
+          203
+        ],
+        "git_blob": "ffc9e5bc5a23d4c2c99ebbf7d71cabefdc68b091",
+        "git_content_sha256": "bf61d78b82fe0f9850f8af8aa4459ff7b55982784714bde220bb35df858ca8cd"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/orchestration/temporal/activities.py",
+        "line_anchors": [
+          1332
+        ],
+        "git_blob": "a5ac9290e9652c922a2919245a180152476d4153",
+        "git_content_sha256": "8289d6f5b16ae0ea43da4e07800fcb6e64f3c5e4fc64d641824f9cd3afeffa31"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "472b2a45bf0473b7d66a9067ed58ca5967da385c",
+        "path": "src/agent_factory/web.py",
+        "line_anchors": [
+          544
+        ],
+        "git_blob": "cf672c1e27292eb241bdeec5e90c700ef1e58725",
+        "git_content_sha256": "6c5b5d6799d3b0ce2394cd577a28d6d456040646263d79b2c1e6206c7fd0ee48"
+      }
+    ],
+    "source_coverage": "Targeted paths and selected tests only; hashes identify full source files, not a claim of full-file/full-repository reading",
+    "authored_controls": [
+      "Q07-P01",
+      "Q07-P02",
+      "Q07-P03",
+      "Q07-P04",
+      "Q07-P05",
+      "Q07-P06",
+      "Q07-P07",
+      "Q07-P08",
+      "Q07-P09",
+      "Q07-P10"
+    ],
+    "product_runs_performed": false,
+    "runtime_tests_rerun": false,
+    "human_study_performed": false,
+    "literary_pdf_coverage_changed": false,
+    "raw_user_source_committed": false
+  },
+  "repository_q08_audit": {
+    "date": "2026-09-10",
+    "kind": "targeted static source/test/history and non-game evaluation design",
+    "note": "non-game-evaluation.md",
+    "snapshots": {
+      "Lokvetia-Core": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+      "Lokiravia": "23704f316948a50aba724ede5d461ecbd8cdaaea"
+    },
+    "cited_source_files": [
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/candidate_changes.py",
+        "line_anchors": [
+          105
+        ],
+        "git_blob": "7838bef1af1b8e68887dfd67654a8eca6c9fa9cf",
+        "git_content_sha256": "f865482a6b0559a92a18f1da73d8928fbd510bb989a4ce71024433121e35bd71"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/coding_delivery.py",
+        "line_anchors": [
+          481
+        ],
+        "git_blob": "f835732018fbfb911ef2bb31d1572700c9e7ff35",
+        "git_content_sha256": "458751991edded967cb4085c50e52a260fb011c9458df29526e5a3b7654c19e4"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/context_packages.py",
+        "line_anchors": [
+          414
+        ],
+        "git_blob": "def602993218f0d82fd9b2ae3253639e0c42c22b",
+        "git_content_sha256": "ee0cc7b5a0987cddc2488a3620467793baa9bebb2eb55daa18b9cd94c7f18089"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/environment_readiness.py",
+        "line_anchors": [
+          239
+        ],
+        "git_blob": "0f8f1198de0bba8a85fb991d31fb47f8d5eb872c",
+        "git_content_sha256": "6653bce0e9dcbcd257b025620b1e055f2a7d82262f340b4089e2c3504a69d738"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/evaluation.py",
+        "line_anchors": [
+          100
+        ],
+        "git_blob": "b74ac39e771a777297e87e0a56e940d59dac1911",
+        "git_content_sha256": "f94766ced32182184ee71f0d0fbe96280a27430621651fbda47fcff418d4963d"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/mission_intake.py",
+        "line_anchors": [
+          1311
+        ],
+        "git_blob": "56150414aef028b08a2e814a36a20bc398ac48de",
+        "git_content_sha256": "0472133272232733b9e88ec4986fd1ddc22e4d545739fc77adc03fb21e5bc7a5"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "src/agent_factory/worker_runtime.py",
+        "line_anchors": [
+          324,
+          373
+        ],
+        "git_blob": "6c9342ab241252ae6b82d3074e4073173f1d996b",
+        "git_content_sha256": "05e995d1e903134665e861696b12edf022cfc4a819ad8f211d3fad299a46d3ad"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_mission_control.py",
+        "line_anchors": [
+          373
+        ],
+        "git_blob": "44521b8db6210fa459286256991503b3668944fd",
+        "git_content_sha256": "02db23cda6824ec6015d917547b15ba541a525907df995f6bd35864ee8d9a6ec"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_mission_intake.py",
+        "line_anchors": [
+          267
+        ],
+        "git_blob": "813d81eba9952af653daac85472d5e0cdffc0d8a",
+        "git_content_sha256": "079371c06e5124b02d3a40db78c0420a2fe3e6b49422c8ec578fcc9ad762b885"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_mission_recovery.py",
+        "line_anchors": [
+          60
+        ],
+        "git_blob": "db4eec441711284316e74a47e5271d5725224725",
+        "git_content_sha256": "c5f57619b8445bb2fc0fc98bfbf703122be255e6c698d11437280c4c55f10d22"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_autonomous_proposal_verifier.py",
+        "line_anchors": [
+          208,
+          492
+        ],
+        "git_blob": "ad610240e334309dcb808de0733de9233f641a84",
+        "git_content_sha256": "0511f114e7d9c964ef79f5560dfac6b07a75520c8d301b7ae21b5d7c3f47ce5a"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_codex_worker.py",
+        "line_anchors": [
+          289,
+          389
+        ],
+        "git_blob": "6f24522ebec69e96152bba3c18df6ce96e612812",
+        "git_content_sha256": "2217c6e1fe6d7c34d25685ab4376268faad58fa280ae4fa4aaefc5d8ff5f5e26"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_context_packages.py",
+        "line_anchors": [
+          147
+        ],
+        "git_blob": "7451633d90f09a3d50df8e17cd04319c5137bf12",
+        "git_content_sha256": "ef65ea50de421049aa676858ce3f3232338d1cf1c6a7f23f2917bc27df9841dc"
+      },
+      {
+        "repository": "Lokvetia-Core",
+        "revision": "1147d72195d390ac16e15e466ca5f8313d055b8b",
+        "path": "tests/test_environment_readiness.py",
+        "line_anchors": [
+          40
+        ],
+        "git_blob": "09897e586858bcc104347dbec77995724dc7760e",
+        "git_content_sha256": "8f5d757b032e282a914912f1c8d31ede27b2fba4f6c0bae10a1c27f67e40eb55"
+      }
+    ],
+    "historical_change": {
+      "repository": "Lokvetia-Core",
+      "commit": "cf7896b66f202ba537e62b6a15f7ee3f7bc614a0",
+      "committer_time": "2026-09-06T02:35:48+02:00",
+      "subject": "Require current route checks before autonomous development (#12)",
+      "meaning": "gate change inspected; no user incident or reproduction inferred"
+    },
+    "q07_cited_path_overlap": [
+      "src/agent_factory/coding_delivery.py"
+    ],
+    "coverage_note": "Selected source/test regions and one historical change. File hashes identify artifacts, not full-file reading. Cited-path overlap is not an exact lifetime reading-coverage delta.",
+    "families": [
+      "NG-F1",
+      "NG-F2"
+    ],
+    "source_classes": [
+      "NG-D01",
+      "NG-D02",
+      "NG-D03",
+      "NG-D04",
+      "NG-D05",
+      "NG-D06"
+    ],
+    "public_recipes": [
+      "NG-O01",
+      "NG-O02",
+      "NG-O03",
+      "NG-O04",
+      "NG-O05",
+      "NG-O06"
+    ],
+    "authored_controls": [
+      "Q08-N01",
+      "Q08-N02",
+      "Q08-N03",
+      "Q08-N04",
+      "Q08-N05",
+      "Q08-N06",
+      "Q08-N07",
+      "Q08-N08",
+      "Q08-N09",
+      "Q08-N10"
+    ],
+    "actual_task_corpus_created": false,
+    "hidden_final_set_created": false,
+    "product_runs_performed": false,
+    "runtime_tests_rerun": false,
+    "human_study_performed": false,
+    "literary_pdf_coverage_changed": false,
+    "raw_user_source_committed": false
+  },
+  "publication_policy": {
+    "book_titles_published": false,
+    "book_files_published": false,
+    "private_identity_map_committed": false,
+    "source_hashes_and_anonymous_anchors_retained": true,
+    "reading_coverage_unchanged": true,
+    "scope": "Current documentation tree; historical commits not rewritten"
+  }
+}

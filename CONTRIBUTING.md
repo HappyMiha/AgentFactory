@@ -1,12 +1,12 @@
-# Contributing to Agent Factory
+# Contributing to Lokvetia Core
 
 Thank you for helping build a dependable, provider-neutral orchestration layer.
 
-## Three-computer workflow
+## Development workflow
 
-Read [AGENTS.md](AGENTS.md) and [the team workflow](docs/team-workflow.md). Configure this clone with `python scripts/team.py configure --worker <your-worker-name>`, inspect `ready` and `status`, and use `start` to claim a task and create your branch. All Core and Cloud claims use one register on Core's `team-state` branch.
+Read [AGENTS.md](AGENTS.md), inspect the current work and create a focused branch from the current `main`. Preserve unrelated changes and discuss overlapping work through the pull request.
 
-Run `python scripts/team_checks.py` after committing and updating from current `main`. The configured pre-push hook checks task ownership, dependencies, paths, fast-forward history, and exact-commit test evidence. Open a focused PR; merge dependencies first and use `complete` only after the recorded PR merges. Do not force-push, push directly to `main`, or edit another worker's branch.
+Run `python scripts/validate_backlog.py` and the checks appropriate to your change. Open a focused pull request with the actual results and any required upstream changes. Merging a pull request does not establish product acceptance or deployment readiness.
 
 ## Ground rules
 
@@ -16,6 +16,7 @@ Run `python scripts/team_checks.py` after committing and updating from current `
 - Treat provider output, imported backlog data, repository content, and CLI output as untrusted.
 - Add tests for success, denial, replay, timeout, malformed input, and interrupted execution paths.
 - Do not include credentials, personal data, local absolute paths, generated databases, or provider auth profiles.
+- Record backlog evidence when you mark an item accepted. A manifest that declares `status:accepted` without at least one `evidence` entry is refused by the loader and by `scripts/validate_backlog.py`.
 
 ## Development setup
 
@@ -41,6 +42,7 @@ python3.11 -m venv .venv
 
 ```bash
 python -m compileall -q src tests
+python scripts/validate_backlog.py
 python -m unittest discover -s tests -v
 python -m pip install build
 python -m build
@@ -86,4 +88,4 @@ Never rewrite a released migration. Add a new migration and prove upgrade compat
 - [ ] Approval, audit, and dry-run guarantees remain intact.
 - [ ] The wheel and Docker image build successfully when relevant.
 
-Unless explicitly stated otherwise, any contribution intentionally submitted for inclusion in Agent Factory is provided under the [Apache License 2.0](LICENSE), without additional terms or conditions. By submitting a contribution, you confirm that you have the right to provide it under that license.
+Unless explicitly stated otherwise, any contribution intentionally submitted for inclusion in Lokvetia Core is provided under the [Apache License 2.0](LICENSE), without additional terms or conditions. By submitting a contribution, you confirm that you have the right to provide it under that license.

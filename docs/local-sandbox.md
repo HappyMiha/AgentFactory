@@ -12,7 +12,8 @@ Every launch requires a live AF-007 assignment and fencing token. The worker rec
 
 - Linux uses Bubblewrap with a read-only host root, separate process/network namespaces, parent-death tree cleanup, and writable binds only for the worktree and declared temp paths.
 - macOS uses `sandbox-exec` with default deny, read-only host access, denied network operations, and explicit writable subpaths.
-- Hosts without a qualified backend fail before process creation and emit `sandbox.execution.blocked`. The current Windows build therefore keeps writable execution disabled until a separately qualified Windows backend is configured; process groups alone are not treated as a filesystem or network sandbox.
+- Windows uses an AppContainer with zero capabilities, applied by the `agent_factory.windows_sandbox` launcher because the boundary cannot be expressed as an argument vector. A job object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` holds the contained tree, so terminating the launcher is complete teardown. The backend reports itself unavailable until `AGENT_FACTORY_SANDBOX_TOOL_ROOTS` names directories an operator has provisioned for sandboxed tools, and it refuses a command outside them rather than widening the grant to reach it. See [Windows sandbox qualification](windows-sandbox-qualification.md); the Windows profile is not yet qualified for release.
+- Hosts without a qualified backend fail before process creation and emit `sandbox.execution.blocked`. Process groups alone are not treated as a filesystem or network sandbox.
 
 Proxy environment variables point at a closed loopback port as defense in depth. They are not the network boundary; the qualified OS backend is authoritative.
 

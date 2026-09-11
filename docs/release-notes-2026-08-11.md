@@ -1,3 +1,5 @@
+> Brand update, 8 September 2026: AgentFactory Core is now **Lokvetia Core**; AgentFactory Cloud is **Lokiravia**. Historical findings and identifiers below are retained as recorded. See the [brand migration](brand/migration.md).
+
 # Implementation release notes — 2026-08-11
 
 These notes describe the implemented, tested repository state through the AF-027 OpenTelemetry/cost-ledger, AF-054 software-role-pack, and AF-057 local-recovery slices. This is an **unreleased development snapshot**, not a published SemVer tag. The source of truth for remaining work is the [implementation backlog](../examples/development-backlog.json), with readable sequencing in the [development roadmap](development-roadmap.md) and evidence status in the [implementation audit](implementation-audit-2026-08-11.md).

@@ -17,7 +17,7 @@ CATALOG = {
     "planning_policy": {"editor_total_gib": 8, "editor_available_gib": 4, "editor_free_disk_gib": 10,
                         "local_total_gib": 16, "local_available_gib": 8, "local_free_disk_gib": 15},
     "technical_requirements": "Godot Compatibility renderer: verify graphics API/driver and export templates for the target. Local candidate qwen2.5-coder:7b requires effective-model canary and runtime memory measurement. A cloud option requires qualified worker/provider admission. Independent coding/review requires distinct qualified identities.",
-    "policy_basis": "Conservative AgentFactory planning reserves for a small 2D project, not upstream minimum requirements or measured performance.",
+    "policy_basis": "Conservative Lokvetia Core planning reserves for a small 2D project, not upstream minimum requirements or measured performance.",
 }
 
 

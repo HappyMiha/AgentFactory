@@ -1,4 +1,7 @@
-import json
+﻿import json
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -14,6 +17,9 @@ from agent_factory.sandbox import (
     SandboxPolicy,
     SandboxUnavailableError,
     UnavailableSandboxBackend,
+    WindowsAppContainerBackend,
+    configured_tool_roots,
+    platform_sandbox_backend,
 )
 from agent_factory.storage import SQLiteStorage
 
@@ -191,6 +197,117 @@ class LocalSandboxTests(unittest.TestCase):
         self.assertTrue(timeout.timed_out)
         self.assertTrue(timeout.process_tree_contained)
 
+    def test_windows_backend_stays_unavailable_until_tool_roots_are_provisioned(self):
+        backend = WindowsAppContainerBackend()
+        available, reason = backend.availability()
+        self.assertFalse(available)
+        self.assertRegex(reason, "Windows|tool root")
+        with self.assertRaises(SandboxUnavailableError):
+            backend.wrap(self.policy(), (sys.executable, "-c", "pass"), self.workspace)
+
+        missing = WindowsAppContainerBackend([self.workspace / "never-provisioned"])
+        self.assertFalse(missing.availability()[0])
+
+    def test_configured_tool_roots_read_only_an_explicit_operator_setting(self):
+        previous = os.environ.get("AGENT_FACTORY_SANDBOX_TOOL_ROOTS")
+        self.addCleanup(
+            lambda: os.environ.__setitem__("AGENT_FACTORY_SANDBOX_TOOL_ROOTS", previous)
+            if previous is not None
+            else os.environ.pop("AGENT_FACTORY_SANDBOX_TOOL_ROOTS", None)
+        )
+        os.environ.pop("AGENT_FACTORY_SANDBOX_TOOL_ROOTS", None)
+        self.assertEqual(configured_tool_roots(), ())
+        os.environ["AGENT_FACTORY_SANDBOX_TOOL_ROOTS"] = os.pathsep.join(
+            [str(self.workspace), ""]
+        )
+        self.assertEqual(configured_tool_roots(), (self.workspace,))
+
+    @unittest.skipUnless(sys.platform == "win32", "AppContainer isolation is Windows-only")
+    def test_windows_backend_plans_a_launcher_for_commands_inside_a_tool_root(self):
+        tools = self.workspace / "tools"
+        tools.mkdir()
+        shutil.copy2(Path(os.environ["SystemRoot"]) / "System32" / "where.exe", tools)
+        backend = WindowsAppContainerBackend([tools])
+        self.assertTrue(backend.availability()[0])
+
+        with self.assertRaisesRegex(SandboxUnavailableError, "outside every qualified"):
+            backend.wrap(self.policy(), (sys.executable, "-c", "pass"), self.workspace)
+
+        policy = self.policy()
+        control = self.workspace / "control"
+        control.mkdir()
+        command = (str(tools / "where.exe"), "/?")
+        wrapped = backend.wrap(policy, command, control)
+        self.assertEqual(wrapped[:3], [sys.executable, "-m", "agent_factory.windows_sandbox"])
+        specification = json.loads(
+            (control / "appcontainer.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(specification["command"], list(command))
+        self.assertEqual(specification["cwd"], str(policy.worktree))
+        self.assertEqual(specification["tool_roots"], [str(tools)])
+        self.assertEqual(
+            specification["write_roots"], [str(root) for root in policy.write_roots]
+        )
+
+    @unittest.skipUnless(sys.platform == "win32", "AppContainer isolation is Windows-only")
+    def test_windows_container_writes_only_inside_the_declared_roots(self):
+        tools = self.workspace / "tools"
+        tools.mkdir()
+        shutil.copy2(Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe", tools)
+        manager = self.manager(WindowsAppContainerBackend([tools]))
+        shell = str(tools / "cmd.exe")
+        # The NUL device is unreachable inside the container, so copy a real seed.
+        (self.worktree / "seed.txt").write_text("seed", encoding="utf-8")
+
+        allowed = manager.execute(
+            self.claim.assignment_id,
+            self.claim.fencing_token,
+            self.policy(max_seconds=90),
+            [shell, "/c", "copy", "seed.txt", "candidate.txt"],
+        )
+        self.assertEqual(allowed.status, "succeeded")
+        self.assertEqual(allowed.backend, "appcontainer")
+        self.assertIn("candidate.txt", allowed.changed_files)
+
+        outside = self.workspace / "escaped.txt"
+        denied = manager.execute(
+            self.claim.assignment_id,
+            self.claim.fencing_token,
+            self.policy(max_seconds=90),
+            [shell, "/c", "copy", "seed.txt", str(outside)],
+        )
+        self.assertEqual(denied.status, "failed")
+        self.assertFalse(outside.exists())
+
+    @unittest.skipUnless(sys.platform == "win32", "AppContainer isolation is Windows-only")
+    def test_windows_container_grants_do_not_outlive_a_killed_launcher(self):
+        tools = self.workspace / "tools"
+        tools.mkdir()
+        shutil.copy2(Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe", tools)
+        manager = self.manager(WindowsAppContainerBackend([tools]))
+
+        timed_out = manager.execute(
+            self.claim.assignment_id,
+            self.claim.fencing_token,
+            self.policy(max_seconds=2),
+            [str(tools / "cmd.exe"), "/c", "for /l %i in (0,0,1) do @rem"],
+        )
+        self.assertEqual(timed_out.status, "timed_out")
+        for root in (tools, self.worktree):
+            listing = subprocess.run(
+                ["icacls", str(root)], capture_output=True, text=True
+            ).stdout
+            self.assertNotIn("S-1-15-2-", listing)
+
+    def test_platform_backend_never_reports_an_unconfigured_host_as_ready(self):
+        backend = platform_sandbox_backend()
+        if sys.platform == "win32":
+            self.assertIsInstance(backend, WindowsAppContainerBackend)
+            if not configured_tool_roots():
+                self.assertFalse(backend.availability()[0])
+        else:
+            self.assertNotIsInstance(backend, WindowsAppContainerBackend)
+
     def test_os_backend_plans_mount_only_declared_writes_and_denies_network(self):
         policy = self.policy()
         bubblewrap = BubblewrapBackend(sys.executable)
@@ -222,3 +339,4 @@ class LocalSandboxTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -124,12 +124,19 @@ class ValidatorRunner:
                 raise ValueError(f"Validator {category} must map to declared acceptance criteria")
             normalized_mappings[category] = mapped
         worktree_path = Path(str(worktree["path"])).resolve()
-        policy = SandboxPolicy.create(
-            self.workspace, worktree_path,
-            max_seconds=max_seconds, max_output_chars=max_output_chars,
+        scratch = (
+            self.workspace / ".agent-factory" / "sandbox-temp" / "validator"
+            / str(attempt_id) / candidate_digest[:16]
         )
         recorded: list[ValidatorResult] = []
         for category in VALIDATOR_CATEGORIES:
+            # Without a declared scratch path the sandbox points TMP at the candidate
+            # worktree, so a tool's cache write would be read back as the validator
+            # modifying the candidate it is meant to judge.
+            policy = SandboxPolicy.create(
+                self.workspace, worktree_path, [scratch / category],
+                max_seconds=max_seconds, max_output_chars=max_output_chars,
+            )
             command = pack.commands[category]
             result = self.sandbox.execute(
                 assignment_id, fencing_token, policy, command

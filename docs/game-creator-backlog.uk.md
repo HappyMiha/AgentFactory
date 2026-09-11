@@ -1,4 +1,4 @@
-# Беклог AgentFactory: від ідеї до власної гри, 12+
+# Беклог Lokvetia Core: від ідеї до власної гри, 12+
 
 Дата: **5 вересня 2026**. Це активний продуктовий план; [аудит поточного стану](product-audit-2026-09-05.uk.md) пояснює підстави. Машинне джерело — [game-creator-backlog.json](../examples/game-creator-backlog.json), schema v2. Усі нові задачі **запропоновані**, жодна не оголошена реалізованою.
 
@@ -224,7 +224,7 @@ Read-only перевірка до затвердження плану збира
 
 ### AF-GC-014 — Виконувати та відновлювати встановлення програм
 
-AgentFactory сам виконує затверджені установки; людина підключається лише там, де потрібна особиста дія.
+Lokvetia Core сам виконує затверджені установки; людина підключається лише там, де потрібна особиста дія.
 
 - Завантаження/перевірка/встановлення/postcondition журналюються; повтор після обриву не дублює успішні операції.
 - UI веде через потрібний UAC/login/EULA крок і відновлюється після нього; не приймає договір від імені користувача.
@@ -550,7 +550,7 @@ python scripts/validate-game-creator-backlog.py
 python -m agent_factory backlog validate --path examples/game-creator-backlog.json
 ```
 
-Маніфест — план, не автоматичний дозвіл на AI витрати, інсталяцію чи GitHub mutation. Його можна імпортувати чинними засобами AgentFactory після перевірки. Ця зміна комітить документи в Git; не створює десятки GitHub Issues і не запускає беклог на виконання.
+Маніфест — план, не автоматичний дозвіл на AI витрати, інсталяцію чи GitHub mutation. Його можна імпортувати чинними засобами Lokvetia Core після перевірки. Ця зміна комітить документи в Git; не створює десятки GitHub Issues і не запускає беклог на виконання.
 
 ## Первинні джерела для реалізації
 
@@ -560,4 +560,4 @@ python -m agent_factory backlog validate --path examples/game-creator-backlog.js
 - [Unity Editor command line](https://docs.unity3d.com/6000.0/Documentation/Manual/EditorCommandLineArguments.html): аргументи editor automation; Unity adapter і license/setup кваліфікуються окремо у 032–034.
 - [Ollama FAQ](https://docs.ollama.com/faq): memory/context/concurrency та model loading потрібно враховувати у локальному плануванні; 027–031 перевіряють це на реальному ПК.
 
-Зазначені джерела обґрунтовують adapter requirements, а не доводять, що AgentFactory їх уже реалізує. Умови AI accounts, ліцензії та вимоги до віку перевіряються окремо в 025 перед ввімкненням connector.
+Зазначені джерела обґрунтовують adapter requirements, а не доводять, що Lokvetia Core їх уже реалізує. Умови AI accounts, ліцензії та вимоги до віку перевіряються окремо в 025 перед ввімкненням connector.

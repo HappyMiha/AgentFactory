@@ -4,6 +4,8 @@ AF-052 executes project validation from reviewed packs rather than accepting a s
 
 The runner verifies the live fenced assignment, logical attempt, and AF-048 worktree, then executes each allowlisted vector through the AF-017 sandbox with `shell=False`, denied network, bounded time, and combined output limits. The working directory is always the candidate worktree; the main checkout is never a validator target.
 
+Each category runs with its own declared scratch path under `.agent-factory/sandbox-temp/validator`, which the sandbox creates empty and removes once evidence is captured. Tools therefore get somewhere to put caches and intermediate output that is not the candidate worktree. This separation is load-bearing: a validator that changes any file in the worktree is recorded as failed, so without scratch space an ordinary cache write would make a validator condemn the candidate it is meant to judge.
+
 Each immutable result binds the task, attempt, worktree, candidate and pack digests, category, canonical command and command digest, exit state, bounded stdout/stderr, non-secret environment metadata, evidence directory, and one or more exact work-item acceptance criteria. A suite passes only when every category succeeds.
 
 Validators are evidence producers, not implementation workers. If a command leaves any candidate file changed, its effective validation status is failed even when the process exits zero.

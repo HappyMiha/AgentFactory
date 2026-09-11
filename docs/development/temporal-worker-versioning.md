@@ -31,7 +31,7 @@ $env:TEMPORAL_WORKER_BUILD_ID = "agentfactory-0.1.1-<commit>-temporal-sdk-1.31.0
 $env:TEMPORAL_WORKER_VERSIONING_ENABLED = "true"
 ```
 
-AgentFactory creates `WorkerDeploymentConfig` with `PINNED` as the default behavior. Existing runs therefore remain on their assigned version. When Temporal reports that the target deployment changed, the parent still waits for an accepted safe boundary; its next continued run explicitly uses `AUTO_UPGRADE`. No active mutation or child is moved between builds.
+Lokvetia Core creates `WorkerDeploymentConfig` with `PINNED` as the default behavior. Existing runs therefore remain on their assigned version. When Temporal reports that the target deployment changed, the parent still waits for an accepted safe boundary; its next continued run explicitly uses `AUTO_UPGRADE`. No active mutation or child is moved between builds.
 
 ## Workflow code-change policy
 
@@ -60,7 +60,7 @@ Do not remove a patch merely because Temporal visibility no longer lists an old 
 
 The namespace defaults to seven-day retention. Each retained run is indexed by `AgentFactoryMissionId`, `AgentFactoryProjectId`, `AgentFactoryMissionIdentity`, `AgentFactoryMissionKey`, `AgentFactoryChainSequence`, `AgentFactoryMissionPhase`, and `AgentFactoryMissionDisposition`. The compact memo repeats mission/project/chain identity and supports direct description when advanced visibility is unavailable.
 
-Temporal visibility is not the domain audit source. Migration 69's immutable `autonomous_mission_temporal_runs` table records every run ID, predecessor, first run, exact mission scope, Worker build, rollover reason, history/safe-boundary counters, accepted-mutation count, and SHA-256 digest. Use those run IDs for direct history/archive lookup after visibility expiry, subject to the deployment's archival policy. AgentFactory data retention or deletion must treat that ledger and normal audit events explicitly.
+Temporal visibility is not the domain audit source. Migration 69's immutable `autonomous_mission_temporal_runs` table records every run ID, predecessor, first run, exact mission scope, Worker build, rollover reason, history/safe-boundary counters, accepted-mutation count, and SHA-256 digest. Use those run IDs for direct history/archive lookup after visibility expiry, subject to the deployment's archival policy. Lokvetia Core data retention or deletion must treat that ledger and normal audit events explicitly.
 
 ## Rollback
 

@@ -1,6 +1,6 @@
 # Mission epoch branches and worktrees
 
-`WorktreeManager` is the single AgentFactory authority for standard task worktrees
+`WorktreeManager` is the single Lokvetia Core authority for standard task worktrees
 and Autonomous Mission epoch worktrees. Epoch provisioning is additive: the
 standard `agent-factory/task-<task>/lease-<token>` contract and its retention flow
 are unchanged.
