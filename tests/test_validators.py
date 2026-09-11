@@ -111,6 +111,46 @@ class DeterministicValidatorRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(sqlite3.DatabaseError, "immutable"):
             self.storage.db.execute("UPDATE validator_results SET status='failed' WHERE id=?", (rows[0]["id"],))
 
+    def test_validator_scratch_writes_do_not_count_as_modifying_the_candidate(self):
+        commands = {
+            category: (
+                sys.executable, "-c",
+                "import os; from pathlib import Path; "
+                "Path(os.environ['TMP'], 'cache.bin').write_text('scratch'); "
+                f"print('{category}:ok')",
+            )
+            for category in VALIDATOR_CATEGORIES
+        }
+        result = self.runner.run(
+            assignment_id=self.claim.assignment_id,
+            fencing_token=self.claim.fencing_token,
+            attempt_id=self.attempt_id,
+            worktree_id=self.worktree_id,
+            candidate_digest="c" * 64,
+            pack=ValidatorPack.create("scratch-pack", commands),
+            criterion_mappings=self.mappings(),
+            max_seconds=15, max_output_chars=1000,
+        )
+
+        self.assertTrue(result.passed)
+        self.assertEqual(
+            {entry.status for entry in result.results}, {"succeeded"}
+        )
+        self.assertFalse((self.worktree / "cache.bin").exists())
+        self.assertEqual(sorted(path.name for path in self.worktree.iterdir()), [])
+        rows = self.storage.db.execute(
+            "SELECT stderr FROM validator_results ORDER BY id"
+        ).fetchall()
+        for row in rows:
+            self.assertNotIn("modified candidate files", row["stderr"])
+        # The manager removes each declared scratch path once evidence is captured.
+        self.assertFalse(
+            (self.workspace / ".agent-factory" / "sandbox-temp" / "validator").exists()
+            and any(
+                (self.workspace / ".agent-factory" / "sandbox-temp" / "validator").rglob("cache.bin")
+            )
+        )
+
     def test_pack_rejects_shell_strings_and_failed_command_is_bounded_evidence(self):
         default_pack = load_validator_pack(
             Path(__file__).parents[1] / "src" / "agent_factory" / "defaults" / "validator-packs.json",
