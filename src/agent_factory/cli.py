@@ -307,6 +307,30 @@ def parser() -> argparse.ArgumentParser:
     support_bundle.add_argument("--output", required=True)
     support_bundle.add_argument("--actor", required=True)
 
+    update = sub.add_parser(
+        "update", help="Check an application update before anything moves."
+    ).add_subparsers(dest="action", required=True)
+    update_plan = update.add_parser(
+        "plan", help="Verify the signature and compatibility of an update manifest."
+    )
+    update_plan.add_argument("--manifest", required=True)
+    update_plan.add_argument(
+        "--project-pin", action="append",
+        help="key:engine:version[:model:version]; repeatable.",
+    )
+    update_plan.add_argument(
+        "--separate-plan", default="",
+        help="Name of the approved plan that covers moving a pinned engine or model.",
+    )
+    update_plan.add_argument("--trust-key", help="Trust-root key id for verification.")
+    update_plan.add_argument("--trust-secret", help="Trust-root material (testing).")
+    uninstall_command = sub.add_parser(
+        "uninstall", help="Preview what an uninstall would remove. It removes nothing."
+    ).add_subparsers(dest="action", required=True)
+    uninstall_preview = uninstall_command.add_parser("plan")
+    uninstall_preview.add_argument("--project", action="append")
+    uninstall_preview.add_argument("--remove-projects", action="store_true")
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -1047,6 +1071,47 @@ def _execute(args: argparse.Namespace) -> int:
                 "selected": list(result.manifest["selected"]),
                 "not_selected": list(result.manifest["not_selected"]),
                 "redactions_applied": list(result.manifest["redactions_applied"]),
+            }, indent=2))
+        elif args.command == "update":
+            from . import __version__
+            from .application_update import (
+                ApplicationUpdater, load_manifest, parse_project_pin,
+            )
+
+            payload = json.loads(
+                Path(args.manifest).expanduser().read_text(encoding="utf-8")
+            )
+            schema = storage.db.execute(
+                "SELECT MAX(version) AS version FROM schema_migrations"
+            ).fetchone()
+            trust = (
+                {args.trust_key: args.trust_secret.encode("utf-8")}
+                if args.trust_key and args.trust_secret else {}
+            )
+            updater = ApplicationUpdater(
+                current_version=__version__,
+                current_schema=int(schema["version"] or 0),
+                trust_material=trust,
+            )
+            plan = updater.plan(
+                load_manifest(payload),
+                projects=[parse_project_pin(value) for value in (args.project_pin or ())],
+                separate_plan=args.separate_plan,
+            )
+            print(json.dumps(plan.preview(), indent=2))
+            return 0 if plan.allowed else 3
+        elif args.command == "uninstall":
+            from .application_update import uninstall_plan
+
+            plan = uninstall_plan(
+                workspace,
+                project_paths=[Path(value) for value in (args.project or ())],
+                remove_projects=args.remove_projects,
+            )
+            print(json.dumps({
+                **plan.preview(),
+                "performed": False,
+                "note_cli": "This command previews only; it removes nothing.",
             }, indent=2))
         elif args.command == "state":
             if args.action == "check":

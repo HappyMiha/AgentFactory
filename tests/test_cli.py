@@ -162,6 +162,7 @@ class ParserShapeTests(unittest.TestCase):
             ("playable", "current", "--project", "demo"),
             ("export", "targets"),
             ("support", "categories"),
+            ("uninstall", "plan"),
             ("state", "check"),
         )
         for arguments in commands:
