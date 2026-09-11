@@ -343,6 +343,7 @@ See:
 - [Autonomous Mission Mode review](docs/autonomous-mission-mode-review.md), [planning intake contract](docs/autonomous-mission-planning.md), [epoch worktree runbook](docs/development/mission-epoch-worktrees.md), and [implementation backlog](examples/autonomous-mission-backlog.json)
 - [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
+- [Godot 2D game pack and engine adapter](docs/godot-pack.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)
