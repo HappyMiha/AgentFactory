@@ -33,6 +33,80 @@ def extract_text(raw: bytes, source_name: str) -> str:
         raise ValueError("This file format has no safe text extractor yet; upload text, JSON, Markdown, or PDF") from exc
 
 
+# Sentence boundaries are reliable across the languages this product accepts.
+# Clause splitting is deliberately conservative: a comma separates requirements,
+# but "and"/"та" does not, because that conjunction also joins the parts of one
+# noun phrase and splitting on it silently changes what the author asked for.
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?\u2026])\s+|[\n;]+")
+_CONTINUATION_OPENERS = frozenset({
+    "який", "яка", "яке", "які", "якого", "якому", "якій", "якою", "яких", "якими",
+    "що", "котрий", "котра", "котре", "котрі",
+    "which", "that", "who", "whom", "whose", "where", "when",
+})
+_LEADING_CONNECTIVE = re.compile(
+    r"^(?:а\s+також|також|та|і|й|або|and|also|plus|or|but)\s+",
+    re.IGNORECASE,
+)
+_WORD_EDGE = re.compile(r"^[^\w]+|[^\w]+$", re.UNICODE)
+_LIST_MARKER = re.compile(r"^\s*(?:[-*\u2022\u2013]|\d+[.)])\s+")
+_HEADING = re.compile(r"^(#{1,6})\s+(.+)$")
+MAX_REQUIREMENTS = 200
+MAX_REQUIREMENT_TITLE = 80
+MAX_CLARIFICATIONS = 20
+
+
+def split_requirements(text: str) -> tuple[str, ...]:
+    """Split a plain description into the requirements it actually states.
+
+    The split is deterministic and reversible by eye: the caller keeps the full
+    source text, and every returned string is a verbatim span of it apart from a
+    stripped leading connective. A clause that opens with a relative pronoun
+    continues the previous requirement instead of becoming its own.
+    """
+
+    requirements: list[str] = []
+    # A list marker is layout, not wording, and "1." would otherwise read as the
+    # end of a sentence. Remove it per line before anything is split.
+    listed = "\n".join(_LIST_MARKER.sub("", line) for line in (text or "").splitlines())
+    for sentence in _SENTENCE_BOUNDARY.split(listed):
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        clauses: list[str] = []
+        for clause in sentence.split(","):
+            clause = clause.strip()
+            if not clause:
+                continue
+            words = clause.split()
+            opener = _WORD_EDGE.sub("", words[0]).lower()
+            if clauses and (opener in _CONTINUATION_OPENERS or len(words) < 2):
+                clauses[-1] = f"{clauses[-1]}, {clause}"
+            else:
+                clauses.append(clause)
+        for clause in clauses:
+            stated = _LEADING_CONNECTIVE.sub("", clause).strip()
+            if not stated:
+                continue
+            substantial = len(stated.split()) >= 2 or any(
+                character.isdigit() for character in stated
+            )
+            # A one-word line is a requirement of its own; a one-word fragment
+            # inside a longer sentence belongs to the clause beside it.
+            if substantial or len(clauses) == 1 or not requirements:
+                requirements.append(stated)
+            else:
+                requirements[-1] = f"{requirements[-1]}, {clause}"
+    return tuple(dict.fromkeys(requirements))[:MAX_REQUIREMENTS]
+
+
+def _requirement_title(requirement: str) -> str:
+    title = " ".join(requirement.split())
+    if len(title) > MAX_REQUIREMENT_TITLE:
+        cut = title[:MAX_REQUIREMENT_TITLE].rsplit(" ", 1)[0] or title[:MAX_REQUIREMENT_TITLE]
+        title = cut.rstrip(",.;:") + "\u2026"
+    return title[:1].upper() + title[1:]
+
+
 def _slug(value: str, fallback: str) -> str:
     value = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return value[:48] or fallback
@@ -116,7 +190,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
             source_name,
             proposal.items,
             proposal.schema_version,
-            {**proposal.source_metadata, "original_text": text},
+            {**proposal.source_metadata, "original_text": text, "clarifications": [], "plan_ready": True},
             proposal.extension_schema,
             proposal.planning_contract,
             proposal.extensions,
@@ -138,7 +212,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
                 source_name,
                 proposal.items,
                 proposal.schema_version,
-                {**proposal.source_metadata, "original_text": text},
+                {**proposal.source_metadata, "original_text": text, "clarifications": [], "plan_ready": True},
                 proposal.extension_schema,
                 proposal.planning_contract,
                 proposal.extensions,
@@ -157,7 +231,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
             source_name,
             proposal.items,
             proposal.schema_version,
-            {**proposal.source_metadata, "original_text": text},
+            {**proposal.source_metadata, "original_text": text, "clarifications": [], "plan_ready": True},
             proposal.extension_schema,
             proposal.planning_contract,
             proposal.extensions,
@@ -168,7 +242,7 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
     # Keep section bodies verbatim. Headings alone are not the requirements.
     sections: list[tuple[int, str, list[str]]] = []
     for line in text.splitlines():
-        heading = re.match(r"^(#{1,6})\s+(.+)$", line.strip())
+        heading = _HEADING.match(line.strip())
         if heading:
             sections.append((len(heading.group(1)), heading.group(2).strip(), []))
         else:
@@ -199,8 +273,30 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
     # A plain paragraph or a leaf section needs an executable proposal, not an
     # empty filename epic. Preserve its full text instead of inventing mechanics.
     parent_ids = {item.parent_id for item in items}
+    clarifications: list[str] = []
+    derived_title = not any(_HEADING.match(line.strip()) for line in text.splitlines())
     for item in tuple(items):
-        if not item.executable and (item.stable_id not in parent_ids or item.description != item.title):
+        body = item.description if item.description != item.title else ""
+        requirements = split_requirements(body)
+        leaf = item.stable_id not in parent_ids
+        if len(requirements) > 1:
+            # The preview must show the requirements the author stated, not one
+            # block of prose the reader has to decompose again by hand.
+            for number, requirement in enumerate(requirements, 1):
+                items.append(ProposedItem(
+                    stable_id=f"{item.stable_id}:r{number:02d}", kind="task",
+                    title=_requirement_title(requirement), description=requirement,
+                    parent_id=item.stable_id,
+                    acceptance_criteria=(f"Verify the source requirement: {requirement}",),
+                    labels=("uploaded", "needs-review", "deterministic-import"),
+                    source_references=item.source_references,
+                    review_notes=(
+                        "Deterministic split of the source text; no AI analysis was run. "
+                        "Edit or merge these requirements before importing.",
+                    ),
+                ))
+            continue
+        if not item.executable and (leaf or item.description != item.title):
             items.append(ProposedItem(
                 stable_id=item.stable_id + ":implement", kind="task",
                 title=f"Implement: {item.title}", description=item.description,
@@ -208,5 +304,26 @@ def analyze_specification(raw: bytes, source_name: str) -> BacklogProposal:
                 labels=("uploaded", "needs-review"),
                 source_references=item.source_references, review_notes=item.review_notes,
             ))
+        if leaf and not requirements:
+            clarifications.append(
+                f"'{item.title}' states no requirement in the source. "
+                "What has to work for this part to be done?"
+            )
+    if derived_title and items:
+        # First, so a document full of empty sections cannot push it off the list.
+        clarifications.insert(0, (
+            f"The upload states no title; '{items[0].title}' was taken from the file name. "
+            "What should this project be called?"
+        ))
+    if len(clarifications) > MAX_CLARIFICATIONS:
+        remaining = len(clarifications) - MAX_CLARIFICATIONS
+        clarifications = clarifications[:MAX_CLARIFICATIONS]
+        clarifications.append(
+            f"{remaining} further questions are not listed; review the full preview below."
+        )
     return BacklogProposal("uploaded://" + source_name, digest, source_name, tuple(items),
-                           source_metadata={"original_text": text})
+                           source_metadata={
+                               "original_text": text,
+                               "clarifications": clarifications,
+                               "plan_ready": not clarifications,
+                           })

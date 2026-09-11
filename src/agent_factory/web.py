@@ -216,6 +216,11 @@ class UploadedBacklogResponse(BaseModel):
     analysis_status: Literal["completed", "needs_review"]
     source_type: str
     analysis_method: Literal["deterministic_import"] = "deterministic_import"
+    # A deterministic import is never a confirmed plan. plan_ready stays false
+    # while the source leaves a requirement unstated, and the questions below
+    # are what the reviewer has to answer before importing.
+    plan_ready: bool = False
+    clarifications: list[str] = []
     original_path: str
     original_sha256: str
     original_text: str
@@ -787,6 +792,8 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
             original_path=original_path,
             original_sha256=digest,
             original_text=document["source"]["original_text"],
+            plan_ready=bool(document["source"].get("plan_ready", False)),
+            clarifications=[str(question) for question in document["source"].get("clarifications", [])],
             items=document["items"],
         )
 
