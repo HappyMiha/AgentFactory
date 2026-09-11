@@ -388,3 +388,9 @@ class PortfolioReportingTests(unittest.TestCase):
                         project_id="cloud", repository="HappyMiha/Lokiravia")
         self.assertEqual(world.warnings, ())
         self.assertEqual(report([world])["projects"][0]["ready"], ["AF-LW-002"])
+        design["items"][1]["status"] = "blocked"
+        world = project(("docs/evolution/backlog.json", design, "a" * 64),
+                        project_id="cloud", repository="HappyMiha/Lokiravia")
+        document = report([world])["projects"][0]
+        self.assertEqual(document["ready"], [])
+        self.assertEqual(document["blocks"][0]["items"][1]["state"], "blocked")

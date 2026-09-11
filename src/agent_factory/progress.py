@@ -81,6 +81,7 @@ class TaskProgress:
     accepted: bool
     merged: bool
     declared: bool
+    explicitly_blocked: bool
     state: str
     dependencies: tuple[str, ...]
     blocked_by: tuple[str, ...]
@@ -416,6 +417,7 @@ def build_project(
                 accepted=accepted,
                 merged=merged,
                 declared=bool(item.evidence),
+                explicitly_blocked=declared == "blocked",
                 state=state,
                 dependencies=dependencies,
                 blocked_by=blocked_by,
@@ -470,7 +472,7 @@ def report(projects: Sequence[ProjectProgress]) -> dict[str, Any]:
                 if not task.accepted and state != "in_progress":
                     if blocked:
                         state = "blocked"
-                    elif task.blocked_by and state == "blocked":
+                    elif task.blocked_by and state == "blocked" and not task.explicitly_blocked:
                         state = "merged" if task.merged else "todo"
                 tasks.append(replace(task, blocked_by=blocked, state=state))
             blocks.append(replace(block, tasks=tuple(tasks)))
