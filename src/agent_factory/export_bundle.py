@@ -136,6 +136,25 @@ def scan_payload(path: str, payload: bytes) -> tuple[Finding, ...]:
     return tuple(findings)
 
 
+REDACTION_MARK = "[redacted: {rule}]"
+
+
+def redact(text: str) -> tuple[str, tuple[str, ...]]:
+    """Replace secrets and local paths with a named marker, keeping the context.
+
+    Export refuses a package that contains secrets; a support bundle has to keep
+    the surrounding text to be useful, so it redacts instead. Both use the same
+    rules, so a value one refuses is never a value the other ships in the clear.
+    """
+    redacted = str(text)
+    applied: list[str] = []
+    for rule, pattern in (*_SECRET_RULES, *_PATH_RULES):
+        redacted, count = pattern.subn(REDACTION_MARK.format(rule=rule), redacted)
+        if count:
+            applied.append(rule)
+    return redacted, tuple(applied)
+
+
 def _mask(sample: str) -> str:
     trimmed = sample.strip()[:64]
     if len(trimmed) <= 12:

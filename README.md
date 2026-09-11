@@ -347,6 +347,7 @@ See:
 - [Latest verified playable version](docs/playable-versions.md)
 - [Asset provenance and safe import](docs/asset-provenance.md)
 - [Export and sharing](docs/export-and-share.md)
+- [Support bundles](docs/support-bundle.md)
 - [Providers](docs/providers.md)
 - [Workflows](docs/workflows.md)
 - [GitHub integration](docs/github-integration.md)

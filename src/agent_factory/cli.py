@@ -288,6 +288,25 @@ def parser() -> argparse.ArgumentParser:
     export_share.add_argument("--confirm", action="store_true")
     export_share.add_argument("--cancel", action="store_true")
 
+    support = sub.add_parser(
+        "support", help="Diagnostics you can read in full before sending them."
+    ).add_subparsers(dest="action", required=True)
+    support.add_parser("categories", help="What can be collected, and what never is.")
+    support_preview = support.add_parser(
+        "preview", help="Show exactly what a bundle would contain."
+    )
+    support_preview.add_argument(
+        "--include", action="append",
+        help="Opt in to a category; repeatable. Nothing optional is collected without it.",
+    )
+    support_preview.add_argument("--show", help="Print one collected item in full.")
+    support_bundle = support.add_parser(
+        "bundle", help="Package the previewed diagnostics."
+    )
+    support_bundle.add_argument("--include", action="append")
+    support_bundle.add_argument("--output", required=True)
+    support_bundle.add_argument("--actor", required=True)
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -996,6 +1015,38 @@ def _execute(args: argparse.Namespace) -> int:
             print(json.dumps({
                 "package": bundle.path, "checksum": bundle.checksum,
                 "size_bytes": bundle.size_bytes, "manifest": dict(bundle.manifest),
+            }, indent=2))
+        elif args.command == "support":
+            from .support_bundle import (
+                ALWAYS_INCLUDED, NEVER_COLLECTED, OPT_IN_CATEGORIES, SupportBundler,
+            )
+
+            if args.action == "categories":
+                print(json.dumps({
+                    "always_included": list(ALWAYS_INCLUDED),
+                    "opt_in": list(OPT_IN_CATEGORIES),
+                    "never_collected": list(NEVER_COLLECTED),
+                    "note": "Environment variables are collected by name only.",
+                }, indent=2))
+                return 0
+            bundler = SupportBundler(workspace, storage=storage)
+            preview = bundler.preview(include=tuple(args.include or ()))
+            if args.action == "preview":
+                if args.show:
+                    print(preview.read(args.show))
+                else:
+                    print(json.dumps(preview.record(), indent=2))
+                return 0
+            result = bundler.build(
+                preview, output=Path(args.output).expanduser().resolve(),
+                actor=args.actor,
+            )
+            print(json.dumps({
+                "bundle": result.path, "checksum": result.checksum,
+                "size_bytes": result.size_bytes,
+                "selected": list(result.manifest["selected"]),
+                "not_selected": list(result.manifest["not_selected"]),
+                "redactions_applied": list(result.manifest["redactions_applied"]),
             }, indent=2))
         elif args.command == "state":
             if args.action == "check":
