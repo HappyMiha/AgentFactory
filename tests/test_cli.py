@@ -141,3 +141,44 @@ class CLITests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ParserShapeTests(unittest.TestCase):
+    """Guards against a subparser variable shadowing the root parser."""
+
+    def parser(self):
+        sys.path.insert(0, str(ROOT / "src"))
+        from agent_factory.cli import parser
+
+        return parser()
+
+    def test_the_root_parser_accepts_every_top_level_command(self):
+        root = self.parser()
+        commands = (
+            ("init",),
+            ("env", "check"),
+            ("godot", "templates"),
+            ("assets", "inspect", "--archive", "p.zip"),
+            ("playable", "current", "--project", "demo"),
+            ("export", "targets"),
+            ("state", "check"),
+        )
+        for arguments in commands:
+            with self.subTest(command=arguments[0]):
+                parsed = root.parse_args(["--workspace", ".", *arguments])
+                self.assertEqual(parsed.command, arguments[0])
+
+    def test_export_subcommands_keep_their_own_arguments(self):
+        root = self.parser()
+        parsed = root.parse_args([
+            "export", "build", "--project", "demo", "--path", ".",
+            "--target", "linux-x86_64", "--output", "out.zip",
+        ])
+        self.assertEqual((parsed.command, parsed.action), ("export", "build"))
+        self.assertEqual(parsed.output, "out.zip")
+        preflight = root.parse_args([
+            "export", "preflight", "--project", "demo", "--path", ".",
+            "--target", "linux-x86_64",
+        ])
+        self.assertEqual(preflight.action, "preflight")
+        self.assertFalse(hasattr(preflight, "output"))

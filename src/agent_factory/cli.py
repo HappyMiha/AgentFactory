@@ -260,6 +260,34 @@ def parser() -> argparse.ArgumentParser:
         help="Apply the previewed import; without it only the preview is printed.",
     )
 
+    export = sub.add_parser(
+        "export", help="Package a verified version, and share it as a separate act."
+    ).add_subparsers(dest="action", required=True)
+    export.add_parser("targets", help="List export targets and why any are unavailable.")
+    for export_action in ("preflight", "build"):
+        # A distinct name: `command` is the root parser this function returns.
+        export_parser = export.add_parser(
+            export_action,
+            help="Check a package before building." if export_action == "preflight"
+            else "Build the package after a passing check.",
+        )
+        export_parser.add_argument("--project", required=True, help="Playable project key.")
+        export_parser.add_argument("--path", required=True, help="Game project folder.")
+        export_parser.add_argument("--target", required=True)
+        export_parser.add_argument("--exclude", action="append")
+        if export_action == "build":
+            export_parser.add_argument("--output", required=True)
+            export_parser.add_argument("--name", default="Game")
+    export_share = export.add_parser(
+        "share", help="Preview a publication; publishing needs an explicit decision."
+    )
+    export_share.add_argument("--bundle", required=True)
+    export_share.add_argument("--destination", required=True)
+    export_share.add_argument("--visibility", default="private-link")
+    export_share.add_argument("--actor", default="")
+    export_share.add_argument("--confirm", action="store_true")
+    export_share.add_argument("--cancel", action="store_true")
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -902,6 +930,73 @@ def _execute(args: argparse.Namespace) -> int:
                     "version_digest": current.version_digest,
                 }, indent=2))
                 return 0 if verified else 3
+        elif args.command == "export":
+            from .asset_provenance import AssetLibrary
+            from .export_bundle import (
+                TARGETS, ExportBundler, ExportRefused, ShareGate,
+                attributions_from_library, load_bundle,
+            )
+            from .playable_versions import PlayableVersions
+
+            if args.action == "targets":
+                print(json.dumps([
+                    {
+                        "target": target.target_id, "platform": target.platform,
+                        "supported": target.supported,
+                        "launch": target.launch, "reason": target.reason,
+                    }
+                    for target in TARGETS.values()
+                ], indent=2))
+                return 0
+            if args.action == "share":
+                bundle = load_bundle(Path(args.bundle).expanduser())
+                gate = ShareGate()
+                preview = gate.prepare(
+                    bundle, destination=args.destination, visibility=args.visibility,
+                )
+                if not (args.confirm or args.cancel):
+                    print(json.dumps(preview.record, indent=2))
+                    return 0 if preview.allowed else 3
+                decision = gate.decide(
+                    preview, decision="cancel" if args.cancel else "approve",
+                    actor=args.actor, bundle=bundle,
+                )
+                print(json.dumps(decision.record, indent=2))
+                return 0 if decision.outcome in {"published", "cancelled"} else 3
+            project_path = Path(args.path).expanduser().resolve()
+            current = PlayableVersions(storage).current(args.project)
+            if current is None:
+                raise ValueError(
+                    f"{args.project} has no verified playable version to export"
+                )
+            library = AssetLibrary(project_path)
+            bundler = ExportBundler(project_path)
+            preflight = bundler.preflight(
+                target_id=args.target, version=current,
+                artifact=Path(current.artifact_path),
+                rights=library.rights_check("export"),
+                attributions=attributions_from_library(library),
+                extra_excludes=tuple(args.exclude or ()),
+            )
+            if args.action == "preflight":
+                print(json.dumps(preflight.preview(), indent=2))
+                return 0 if preflight.allowed else 3
+            try:
+                bundle = bundler.build(
+                    preflight, artifact=Path(current.artifact_path),
+                    output=Path(args.output).expanduser().resolve(),
+                    version=current, game_name=args.name,
+                )
+            except ExportRefused as exc:
+                print(json.dumps(
+                    {"status": "refused", "reason": str(exc), "preflight": preflight.preview()},
+                    indent=2,
+                ))
+                return 3
+            print(json.dumps({
+                "package": bundle.path, "checksum": bundle.checksum,
+                "size_bytes": bundle.size_bytes, "manifest": dict(bundle.manifest),
+            }, indent=2))
         elif args.command == "state":
             if args.action == "check":
                 print(json.dumps(storage.integrity_check(), indent=2))
