@@ -165,6 +165,35 @@ def parser() -> argparse.ArgumentParser:
     audit_list = audit.add_parser("list")
     audit_list.add_argument("--limit", type=int, default=100)
 
+    godot = sub.add_parser(
+        "godot", help="Godot game pack templates, project preview, and engine build."
+    ).add_subparsers(dest="action", required=True)
+    godot.add_parser("templates", help="List the templates shipped by the Godot pack.")
+    godot_health = godot.add_parser("health", help="Qualify the installed Godot engine.")
+    godot_health.add_argument("--executable", action="append")
+    godot_plan = godot.add_parser("plan", help="Preview the files a template would write.")
+    godot_plan.add_argument("--template", required=True)
+    godot_plan.add_argument("--path", required=True)
+    godot_apply = godot.add_parser("apply", help="Write the previewed template files.")
+    godot_apply.add_argument("--template", required=True)
+    godot_apply.add_argument("--path", required=True)
+    godot_apply.add_argument(
+        "--approve-overwrite",
+        action="append",
+        help="Project-relative file the human approves for overwrite; repeatable.",
+    )
+    godot_apply.add_argument("--actor", help="Human approver recorded for overwrites.")
+    godot_build = godot.add_parser(
+        "build", help="Import, parse, run headless, and export a real artifact."
+    )
+    godot_build.add_argument("--template", required=True)
+    godot_build.add_argument("--path", required=True)
+    godot_build.add_argument("--preset", required=True)
+    godot_build.add_argument("--output", required=True)
+    godot_build.add_argument("--executable", action="append")
+    godot_build.add_argument("--commit", default="unknown")
+    godot_build.add_argument("--frames", type=int, default=180)
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -312,6 +341,61 @@ def _provider_invoke(storage: SQLiteStorage, registry: Any, gate_id: int) -> int
     return 0 if result.ok else 3
 
 
+def _godot(args: argparse.Namespace) -> int:
+    from .godot_engine import GodotAdapter
+    from .godot_pack import GodotPack, PackConflict
+
+    pack = GodotPack()
+    candidates = tuple(getattr(args, "executable", None) or ()) or None
+    if args.action == "templates":
+        print(json.dumps([template.manifest for template in pack.templates()], indent=2))
+        return 0
+    if args.action == "health":
+        adapter = (
+            GodotAdapter(executable_candidates=candidates) if candidates else GodotAdapter()
+        )
+        health = adapter.health()
+        print(json.dumps(asdict(health), indent=2))
+        return 0 if health.healthy else 3
+    target = Path(args.path).expanduser().resolve()
+    if args.action == "plan":
+        print(json.dumps(pack.plan(target, args.template).preview(), indent=2))
+        return 0
+    if args.action == "apply":
+        plan = pack.plan(target, args.template)
+        try:
+            receipt = pack.apply(
+                plan,
+                approved_overwrites=tuple(args.approve_overwrite or ()),
+                actor=args.actor or "",
+            )
+        except PackConflict as exc:
+            print(json.dumps(
+                {"status": "refused", "reason": str(exc), "preview": plan.preview()},
+                indent=2,
+            ))
+            return 3
+        print(json.dumps(asdict(receipt), indent=2))
+        return 0
+    template = pack.template(args.template)
+    adapter = (
+        GodotAdapter(executable_candidates=candidates) if candidates else GodotAdapter()
+    )
+    artifact = adapter.build(
+        target,
+        preset=args.preset,
+        output=Path(args.output).expanduser().resolve(),
+        template_id=template.template_id,
+        template_version=template.version,
+        project_digest=pack.project_digest(target, template.template_id),
+        scripts=[entry.path for entry in template.files if entry.path.endswith(".gd")],
+        source_commit=args.commit,
+        frames=args.frames,
+    )
+    print(json.dumps(artifact.manifest, indent=2))
+    return 0 if artifact.succeeded else 3
+
+
 def _execute(args: argparse.Namespace) -> int:
     workspace, db_path = _paths(args)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -342,6 +426,9 @@ def _execute(args: argparse.Namespace) -> int:
             _schedule_browser_open(url)
         uvicorn.run(create_app(workspace, db_path), host=host, port=args.port)
         return 0
+
+    if args.command == "godot":
+        return _godot(args)
 
     storage = SQLiteStorage(db_path)
     registry = AgentRegistry()
