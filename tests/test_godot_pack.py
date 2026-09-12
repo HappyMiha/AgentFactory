@@ -8,6 +8,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from agent_factory.godot_pack import (
+    BASELINE_ENGINE_VERSION,
+    INSTALLATION_CATALOGUE,
     GODOT_PACK_KEY,
     PACK_STATE_PATH,
     SUPPORTED_ENGINE_VERSIONS,
@@ -71,6 +73,20 @@ class GodotPackTemplateTest(unittest.TestCase):
     def test_unknown_template_is_refused(self) -> None:
         with self.assertRaises(KeyError):
             self.pack.template("unreal-2d")
+
+    def test_the_pack_accepts_the_editor_the_catalogue_installs(self) -> None:
+        """A hard-coded range once made the pack refuse the only editor we ship."""
+        payload = json.loads(INSTALLATION_CATALOGUE.read_text(encoding="utf-8"))
+        installed = str(payload["packages"]["godot-editor"]["version"])
+        series = ".".join(installed.split(".")[:2])
+        self.assertIn(series, SUPPORTED_ENGINE_VERSIONS)
+        self.assertEqual(BASELINE_ENGINE_VERSION, series)
+        self.assertTrue(self.pack.supports(installed))
+        for template in self.pack.templates():
+            self.assertEqual(template.engine_version, series)
+            self.assertIn(
+                f'"{series}"', template.file("project.godot").content,
+            )
 
     def test_supported_engine_range(self) -> None:
         self.assertTrue(self.pack.supports("4.3.stable.official"))
@@ -171,15 +187,17 @@ class GodotPackMaterialisationTest(unittest.TestCase):
             if entry.path == "scripts/player.gd" else entry
             for entry in base.files
         )
+        major, minor, patch = (int(part) for part in base.version.split("."))
+        next_version = f"{major}.{minor + 1}.{patch}"
         upgraded = GodotPack((GameTemplate.create(
             base.template_id, title=base.title, summary=base.summary,
-            version="1.1.0", main_scene=base.main_scene, files=upgraded_files,
+            version=next_version, main_scene=base.main_scene, files=upgraded_files,
         ),))
 
         plan = upgraded.plan(self.target, "collector-2d")
         self.assertEqual(plan.updates, ("scripts/player.gd",))
         self.assertEqual(plan.conflicts, ())
-        self.assertEqual(plan.installed_version, "1.0.0")
+        self.assertEqual(plan.installed_version, base.version)
         upgraded.apply(plan)
         self.assertIn(
             "# pack upgrade",
