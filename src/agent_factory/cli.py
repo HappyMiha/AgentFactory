@@ -395,6 +395,23 @@ def parser() -> argparse.ArgumentParser:
     settings_history.add_argument("--key")
     settings_history.add_argument("--limit", type=int, default=50)
 
+    download = sub.add_parser(
+        "download", help="Check a downloaded release against what was published."
+    ).add_subparsers(dest="action", required=True)
+    download_verify = download.add_parser(
+        "verify", help="Verify every file against its published checksum."
+    )
+    download_verify.add_argument("--manifest", required=True)
+    download_verify.add_argument("--directory", default="")
+    download_verify.add_argument("--language", default="uk", choices=("uk", "en"))
+    download_show = download.add_parser(
+        "show", help="What the release says about itself."
+    )
+    download_show.add_argument("--manifest", required=True)
+    download_show.add_argument(
+        "--platform", default="", choices=("", "windows", "macos", "linux"))
+    download_show.add_argument("--language", default="uk", choices=("uk", "en"))
+
     studio_command = sub.add_parser(
         "studio", help="What the studio decides on its own, and what it still asks."
     ).add_subparsers(dest="action", required=True)
@@ -1503,6 +1520,23 @@ def _execute(args: argparse.Namespace) -> int:
                     [item.record for item in centre.changes(key=args.key, limit=args.limit)],
                     indent=2, ensure_ascii=False,
                 ))
+        elif args.command == "download":
+            from .distribution import describe, load_release, verify_all
+
+            manifest = Path(args.manifest)
+            release = load_release(json.loads(manifest.read_text(encoding="utf-8")))
+            if args.action == "show":
+                print(json.dumps(
+                    describe(release, platform=args.platform, language=args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            else:
+                directory = Path(args.directory) if args.directory else manifest.parent
+                checked = verify_all(release, directory)
+                print(json.dumps({
+                    "version": release.version,
+                    "verified": [item.record(args.language) for item in checked],
+                }, indent=2, ensure_ascii=False))
         elif args.command == "studio":
             from .studio_autonomy import AutonomyJournal, catalogue
 
@@ -1788,8 +1822,18 @@ def _execute(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from .localisation import LocalisedError
+
+    arguments = parser().parse_args(argv)
     try:
-        return _execute(parser().parse_args(argv))
+        return _execute(arguments)
     except (KeyError, ValueError, RuntimeError, OSError, PermissionError) as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        # A refusal that carries its own text is printed in the language the
+        # command was asked in, not in the default one.
+        language = getattr(arguments, "language", None)
+        message = (
+            exc.text(language) if isinstance(exc, LocalisedError) and language
+            else str(exc)
+        )
+        print(f"error: {message}", file=sys.stderr)
         return 2
