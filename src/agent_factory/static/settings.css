@@ -15,7 +15,11 @@
 .page-settings .level-attention { border-color: #b07d1a; background: rgba(176,125,26,.10); }
 .page-settings .level-problem { border-color: #a33a2f; background: rgba(163,58,47,.10); }
 .page-settings .findings .detail { display: block; font-size: .9rem; opacity: .85; margin-top: .2rem; }
-.page-settings .field { border-top: 1px solid var(--line, #d5dee1); padding: .9rem 0; display: grid; gap: .4rem; }
+/* An auto grid column is sized to its content and will happily overflow a narrow
+   screen; minmax(0, 1fr) makes the column fit the container instead. */
+.page-settings .field { border-top: 1px solid var(--line, #d5dee1); padding: .9rem 0;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; min-width: 0; }
+.page-settings .field > * { min-width: 0; max-width: 100%; }
 .page-settings .field:first-of-type { border-top: 0; }
 .page-settings .field-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
 .page-settings .field-head strong { font-size: 1rem; }
@@ -25,18 +29,36 @@
 .page-settings .badge-changed { color: #7a4a12; }
 .page-settings .badge-sensitive { color: #a33a2f; }
 .page-settings .badge-locked { color: #4d6068; }
+/* Setting keys and module paths are long unbreakable tokens; without this they
+   paint past a 320px screen and make the whole page scroll sideways. */
+.page-settings :is(p, li, td, th, .origin, .field-error, .field-ok) {
+  overflow-wrap: anywhere;
+}
 .page-settings .field p { margin: 0; font-size: .92rem; opacity: .9; }
 .page-settings .origin { font-size: .82rem; opacity: .75; }
-.page-settings .controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.page-settings .controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; min-width: 0; }
+.page-settings .controls > * { max-width: 100%; }
 .page-settings .controls input[type="text"], .page-settings .controls input[type="number"],
-.page-settings .controls select { min-width: 14rem; padding: .35rem .5rem; }
-.page-settings .controls input.reason { min-width: 16rem; }
+.page-settings .controls select { flex: 1 1 14rem; min-width: 0; max-width: 100%; padding: .35rem .5rem; }
+.page-settings .controls input.reason { flex: 1 1 16rem; min-width: 0; }
+.page-settings .controls button { flex: 0 0 auto; }
+/* A wide table is the one thing allowed to scroll sideways, inside its own
+   focusable region so a keyboard can reach the scroll. */
+.page-settings .table-scroll { overflow-x: auto; max-width: 100%; }
+.page-settings table { min-width: 34rem; }
 .page-settings .field-error { color: #a33a2f; font-size: .9rem; }
 .page-settings .field-ok { color: #2f7d5b; font-size: .9rem; }
 .page-settings table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.page-settings .table-scroll:focus-visible { outline: 3px solid var(--brand-focus, #a66216); outline-offset: 2px; }
 .page-settings th, .page-settings td { text-align: left; padding: .35rem .5rem;
   border-bottom: 1px solid var(--line, #d5dee1); vertical-align: top; }
 .page-settings dialog { max-width: 34rem; border: 1px solid var(--line, #d5dee1); border-radius: .6rem; }
 .page-settings dialog .consequence { border-left: 4px solid #a33a2f; padding: .6rem .75rem;
   background: rgba(163,58,47,.08); }
-@media (max-width: 42rem) { .page-settings .controls { flex-direction: column; align-items: stretch; } }
+@media (max-width: 42rem) {
+  .page-settings .controls { flex-direction: column; align-items: stretch; }
+  .page-settings .controls input, .page-settings .controls select,
+  .page-settings .controls button { width: 100%; }
+  .page-settings main { padding-inline: .75rem; }
+  .page-settings .section-card { padding: .9rem; }
+}

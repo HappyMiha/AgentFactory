@@ -33,10 +33,12 @@
     <section class="section-card" aria-labelledby="history-title">
       <div class="section-head"><h2 id="history-title">Історія змін</h2><button type="button" id="refresh-history">Оновити</button></div>
       <p>Записи не редагуються й не видаляються — цього не дозволяє сама база.</p>
-      <table>
-        <thead><tr><th>Коли</th><th>Налаштування</th><th>Було → стало</th><th>Хто</th><th>Причина</th></tr></thead>
-        <tbody id="history-rows"></tbody>
-      </table>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Історія змін налаштувань">
+        <table>
+          <thead><tr><th>Коли</th><th>Налаштування</th><th>Було → стало</th><th>Хто</th><th>Причина</th></tr></thead>
+          <tbody id="history-rows"></tbody>
+        </table>
+      </div>
       <p id="history-empty">Змін ще не було: усі значення типові.</p>
     </section>
 
