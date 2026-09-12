@@ -296,6 +296,12 @@ class WebHostTests(unittest.TestCase):
                         "/api/studio/cycles/{mission_key}/pause",
                         "/api/studio/cycles/{mission_key}/comments",
                         "/api/studio/cycles/{mission_key}/resume",
+                        "/api/studio/cost/{mission_key}/limit",
+                        "/api/studio/paid-tools/{mission_key}",
+                        "/api/studio/paid-tools/choices/{choice_id}",
+                        "/api/studio/roster/{mission_key}/{role_id}",
+                        "/api/studio/machines/{machine_key}",
+                        "/api/studio/first-run/{source_key}",
                         "/api/hardware/scan",
                         "/api/configuration-advice",
                         "/api/game-planning/{mission_id}",
@@ -1260,3 +1266,195 @@ class StudioLoopApiTests(unittest.TestCase):
                 ):
                     response = client.post(path, json={"confirmed": False, **body})
                     self.assertEqual(response.status_code, 400, path)
+
+
+class StudioMoneyApiTests(unittest.TestCase):
+    """The limit stops the work by asking, and a paid tool is never a dead end."""
+
+    HEADERS = {"X-Agent-Factory-Confirm": "true"}
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def test_with_no_limit_the_report_says_there_is_nothing_to_stop_at(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                report = client.get("/api/studio/cost/m1?lang=en&next_step=99").json()
+                self.assertFalse(report["over"])
+                self.assertIn("No limit", report["summary"])
+                self.assertFalse(report["forecast"]["known"])
+
+    def test_a_limit_is_recorded_and_a_step_over_it_becomes_a_question(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                client.post(
+                    "/api/studio/cost/m1/limit",
+                    json={"confirmed": True, "amount": 1.0, "actor": "miha"},
+                    headers=self.HEADERS,
+                )
+                report = client.get("/api/studio/cost/m1?lang=en&next_step=2").json()
+                self.assertTrue(report["over"])
+                self.assertEqual(report["question"]["reason"], "over_budget")
+                self.assertEqual(
+                    report["question"]["options"], ["raise_limit", "stop"])
+
+    def test_a_paid_tool_offers_the_ways_out_and_never_asks_for_a_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                choice = client.post(
+                    "/api/studio/paid-tools/m1?lang=en",
+                    json={
+                        "confirmed": True, "tool": "Unity",
+                        "reason_uk": "Потрібен Unity.", "reason_en": "Unity is needed.",
+                        "blocks": ["3D level"],
+                    },
+                    headers=self.HEADERS,
+                ).json()
+                self.assertIn("decline", [way["key"] for way in choice["ways_out"]])
+                self.assertIn("neither ask", choice["credentials"])
+
+                answered = client.post(
+                    f"/api/studio/paid-tools/choices/{choice['choice_id']}?lang=en",
+                    json={"confirmed": True, "choice": "decline", "actor": "miha"},
+                    headers=self.HEADERS,
+                ).json()
+                self.assertEqual(answered["rebuild"]["cut"], ["3D level"])
+                report = client.get("/api/studio/paid-tools/m1?lang=en").json()
+                self.assertEqual(report["cut"], ["3D level"])
+                self.assertEqual(report["blocked"], [])
+
+    def test_an_unknown_choice_is_a_clean_404(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/studio/paid-tools/choices/404",
+                    json={"confirmed": True, "choice": "decline", "actor": "miha"},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.json()["error"]["code"], "unknown_choice")
+
+
+class StudioSetupApiTests(unittest.TestCase):
+    """Who is in the studio, which machine answers, and whether work can start."""
+
+    HEADERS = {"X-Agent-Factory-Confirm": "true"}
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def test_a_new_game_has_two_roles_and_the_rest_switched_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                report = client.get("/api/studio/roster/m1?lang=en").json()
+                self.assertEqual(report["enabled"], ["planner", "developer"])
+                self.assertIn("engine", report["acceptance"])
+
+    def test_the_consequence_of_adding_a_role_is_readable_before_adding_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                consequence = client.get(
+                    "/api/studio/roster/m1/consequence/tester?lang=en&concurrency=parallel"
+                ).json()
+                self.assertTrue(consequence["another_subscription"])
+                self.assertTrue(consequence["acceptance_changes"])
+                self.assertEqual(
+                    client.get("/api/studio/roster/m1").json()["enabled"],
+                    ["planner", "developer"],
+                    "reading a consequence must not enable the role")
+
+    def test_adding_a_tester_moves_acceptance_away_from_the_developer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                added = client.post(
+                    "/api/studio/roster/m1/tester?lang=en",
+                    json={"confirmed": True, "actor": "miha"}, headers=self.HEADERS,
+                ).json()
+                self.assertIn("tester", added["enabled"])
+                self.assertFalse(added["developer_accepts_own_work"])
+                self.assertIn("no longer accepts", added["acceptance"])
+
+    def test_the_minimum_pair_cannot_be_switched_off_over_the_api(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/studio/roster/m1/developer?action=disable&lang=en",
+                    json={"confirmed": True, "actor": "miha"}, headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 409)
+                self.assertIn("minimum", response.json()["error"]["message"])
+
+    def test_the_web_container_is_never_offered_as_a_place_to_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                client.post(
+                    "/api/studio/machines/web",
+                    json={
+                        "confirmed": True, "name": "lokvetia-core-web",
+                        "kind": "web_container",
+                    },
+                    headers=self.HEADERS,
+                )
+                overview = client.get("/api/studio/machines?lang=en").json()
+                self.assertFalse(overview["machines"][0]["builds"])
+                self.assertIn("build", overview["never_on_the_web_container"])
+
+    def test_work_cannot_start_until_a_source_is_checked(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                first = client.get("/api/studio/first-run?lang=en").json()
+                self.assertFalse(first["can_start"])
+                self.assertIn("no source of execution", first["summary"])
+
+                client.post(
+                    "/api/studio/first-run/claude",
+                    json={
+                        "confirmed": True, "kind": "own_subscription",
+                        "name": "Claude",
+                    },
+                    headers=self.HEADERS,
+                )
+                waiting = client.get("/api/studio/first-run?lang=en").json()
+                self.assertFalse(waiting["can_start"])
+                self.assertIn("no source has been checked", waiting["summary"])
+
+                client.post(
+                    "/api/studio/first-run/claude",
+                    json={
+                        "confirmed": True, "kind": "own_subscription",
+                        "name": "Claude", "state": "verified",
+                    },
+                    headers=self.HEADERS,
+                )
+                self.assertTrue(client.get("/api/studio/first-run").json()["can_start"])
+
+    def test_a_local_model_is_refused_when_the_card_will_not_carry_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                client.post(
+                    "/api/studio/machines/pc",
+                    json={
+                        "confirmed": True, "name": "desktop", "kind": "this_pc",
+                        "video_memory_gb": 6,
+                    },
+                    headers=self.HEADERS,
+                )
+                source = client.post(
+                    "/api/studio/first-run/llama?lang=en",
+                    json={
+                        "confirmed": True, "kind": "local_model", "name": "Llama 70B",
+                        "machine_key": "pc", "needed_gb": 40,
+                    },
+                    headers=self.HEADERS,
+                ).json()
+                self.assertFalse(source["usable"])
+                self.assertIn("will not run locally", source["detail"])
+                self.assertFalse(client.get("/api/studio/first-run").json()["can_start"])
