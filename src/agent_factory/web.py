@@ -242,6 +242,57 @@ class SettingChangeCommand(ConfirmedCommand):
     acknowledged_consequence: bool = False
 
 
+class FeedbackAttachmentField(BaseModel):
+    kind: str = Field(max_length=40)
+    name: str = Field(max_length=200)
+    size_bytes: int = Field(default=0, ge=0)
+    digest: str = Field(default="", max_length=64)
+    leaves_machine: bool = False
+
+
+class FeedbackCommand(ConfirmedCommand):
+    played_version: str = Field(min_length=1, max_length=64)
+    wish: str = Field(min_length=1, max_length=2000)
+    steps: list[str] = Field(default_factory=list, max_length=20)
+    attachments: list[FeedbackAttachmentField] = Field(default_factory=list, max_length=10)
+    engine: str = Field(default="", max_length=40)
+    played_at: str = Field(default="", max_length=40)
+
+
+class TranslatedField(BaseModel):
+    uk: str = Field(min_length=1, max_length=400)
+    en: str = Field(min_length=1, max_length=400)
+
+
+class ChangeField(TranslatedField):
+    touches: list[str] = Field(default_factory=list, max_length=20)
+
+
+class ImpactField(TranslatedField):
+    requirement: str = Field(min_length=1, max_length=80)
+    impact: str = Field(min_length=1, max_length=40)
+
+
+class CostField(BaseModel):
+    amount: float = Field(default=0.0, ge=0)
+    unit: str = Field(default="USD", max_length=10)
+    basis: TranslatedField | None = None
+
+
+class ChangePlanCommand(ConfirmedCommand):
+    changes: list[ChangeField] = Field(min_length=1, max_length=20)
+    impacts: list[ImpactField] = Field(default_factory=list, max_length=40)
+    added_scope: list[TranslatedField] = Field(default_factory=list, max_length=20)
+    cost: CostField = Field(default_factory=CostField)
+    current_version: str = Field(default="", max_length=64)
+
+
+class AcceptPlanCommand(ConfirmedCommand):
+    actor: str = Field(min_length=1, max_length=120)
+    accept_cost: bool = False
+    accept_scope: bool = False
+
+
 class SettingResetCommand(ConfirmedCommand):
     actor: str = Field(min_length=1, max_length=120)
     reason: str = Field(default="", max_length=300)
@@ -1245,6 +1296,218 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
             )
         except (KeyError, ValueError, PermissionError) as exc:
             return settings_error(exc, language)
+
+    def feedback_journal(service: Service):
+        from .game_feedback import FeedbackJournal
+
+        return FeedbackJournal(service.storage)
+
+    def feedback_note(project_key: str, command: FeedbackCommand):
+        from .game_feedback import Attachment, Feedback, PlayedBuild
+
+        return Feedback.create(
+            build=PlayedBuild(
+                project_key, command.played_version, command.engine, command.played_at,
+            ),
+            wish=command.wish,
+            steps=command.steps,
+            attachments=[
+                Attachment(
+                    item.kind, item.name, item.size_bytes, item.digest,
+                    item.leaves_machine,
+                )
+                for item in command.attachments
+            ],
+        )
+
+    def feedback_error(exc: Exception, language: str) -> JSONResponse:
+        from .game_feedback import FeedbackRefused
+        from .localisation import LocalisedError
+
+        code = "feedback_refused" if isinstance(exc, FeedbackRefused) else "invalid_feedback"
+        status = 404 if isinstance(exc, KeyError) else 409
+        message = (
+            exc.text(language) if isinstance(exc, LocalisedError)
+            else str(exc).strip("'")
+        )
+        if isinstance(exc, KeyError):
+            code = "unknown_feedback"
+        return JSONResponse(
+            status_code=status, content={"error": {"code": code, "message": message}}
+        )
+
+    @app.post("/api/games/{project_key}/feedback/preview", response_model=dict[str, Any])
+    async def feedback_preview(
+        project_key: str,
+        command: FeedbackCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        """Exactly what would be sent, before anything is stored or sent."""
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            return feedback_note(project_key, command).preview(language)
+        except (ValueError, KeyError) as exc:
+            return feedback_error(exc, language)
+
+    @app.post("/api/games/{project_key}/feedback", response_model=dict[str, Any])
+    async def feedback_record(
+        project_key: str,
+        command: FeedbackCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            note = feedback_note(project_key, command)
+            identifier = feedback_journal(service).record(note)
+        except (ValueError, KeyError) as exc:
+            return feedback_error(exc, language)
+        return {"feedback_id": identifier, **note.preview(language)}
+
+    @app.get("/api/games/{project_key}/feedback", response_model=dict[str, Any])
+    async def feedback_history(
+        project_key: str, service: Service, limit: Limit = 20
+    ) -> Any:
+        return {"feedback": list(feedback_journal(service).history(project_key, limit=limit))}
+
+    @app.get("/api/feedback/{feedback_id}", response_model=dict[str, Any])
+    async def feedback_detail(
+        feedback_id: int,
+        request: Request,
+        service: Service,
+        lang: str | None = None,
+        previous_version: str = "",
+    ) -> Any:
+        language = chosen_language(request, lang)
+        journal = feedback_journal(service)
+        try:
+            note = journal.feedback(feedback_id)
+            verdict = journal.verdict(feedback_id, previous_version=previous_version)
+        except KeyError as exc:
+            return feedback_error(exc, language)
+        rows = service.storage.db.execute(
+            "SELECT id,plan_json,accepted_by,accepted_at FROM game_feedback_plans"
+            " WHERE feedback_id=? ORDER BY id", (int(feedback_id),),
+        ).fetchall()
+        return {
+            "feedback_id": int(feedback_id),
+            **note.preview(language),
+            "plans": [
+                {
+                    "plan_id": int(row["id"]),
+                    "accepted_by": row["accepted_by"],
+                    "accepted_at": row["accepted_at"],
+                    "plan": json.loads(row["plan_json"]),
+                }
+                for row in rows
+            ],
+            "verdict": verdict.record(language),
+        }
+
+    @app.post("/api/feedback/{feedback_id}/plans", response_model=dict[str, Any])
+    async def feedback_plan(
+        feedback_id: int,
+        command: ChangePlanCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        """Record a proposed change. Proposing it is not accepting it."""
+        from .game_feedback import Change, Cost, RequirementImpact, plan_change
+        from .localisation import Message
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        journal = feedback_journal(service)
+        try:
+            note = journal.feedback(feedback_id)
+            plan = plan_change(
+                feedback=note,
+                changes=[
+                    Change(Message(item.uk, item.en), tuple(item.touches))
+                    for item in command.changes
+                ],
+                impacts=[
+                    RequirementImpact(item.requirement, item.impact, Message(item.uk, item.en))
+                    for item in command.impacts
+                ],
+                added_scope=[Message(item.uk, item.en) for item in command.added_scope],
+                cost=Cost(
+                    command.cost.amount, command.cost.unit,
+                    Message(command.cost.basis.uk, command.cost.basis.en)
+                    if command.cost.basis else None,
+                ),
+                current_version=command.current_version,
+            )
+            plan_id = journal.record_plan(feedback_id, plan)
+        except (ValueError, KeyError) as exc:
+            return feedback_error(exc, language)
+        return {"plan_id": plan_id, **plan.record(language)}
+
+    @app.post("/api/feedback/plans/{plan_id}/accept", response_model=dict[str, Any])
+    async def feedback_accept(
+        plan_id: int,
+        command: AcceptPlanCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .game_feedback import ChangePlan, Cost, accept_plan
+        from .localisation import Message
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        row = service.storage.db.execute(
+            "SELECT feedback_id,plan_json,cost_amount,cost_unit,accepted_by"
+            " FROM game_feedback_plans WHERE id=?", (int(plan_id),),
+        ).fetchone()
+        if row is None:
+            return feedback_error(KeyError(f"Unknown plan {plan_id}"), language)
+        stored = json.loads(row["plan_json"])
+        # The stored plan decides what has to be accepted; the request only says
+        # what the person accepted, so a plan cannot talk itself into being free.
+        plan = ChangePlan(
+            feedback_digest=stored["feedback"],
+            changes=(), impacts=(),
+            added_scope=tuple(
+                Message(item, item) for item in stored.get("added_scope", [])
+            ),
+            cost=Cost(float(row["cost_amount"]), row["cost_unit"]),
+            applies_to=stored.get("applies_to", ""),
+            accepted_by=row["accepted_by"],
+        )
+        try:
+            accepted = accept_plan(
+                plan, actor=command.actor,
+                accept_cost=command.accept_cost, accept_scope=command.accept_scope,
+            )
+            feedback_journal(service).accept(
+                plan_id, actor=accepted.accepted_by, at=accepted.accepted_at,
+            )
+        except (ValueError, KeyError) as exc:
+            return feedback_error(exc, language)
+        except sqlite3.IntegrityError:
+            return JSONResponse(
+                status_code=409,
+                content={"error": {
+                    "code": "already_accepted",
+                    "message": "A plan may only gain its acceptance once",
+                }},
+            )
+        return {
+            "plan_id": int(plan_id),
+            "accepted_by": accepted.accepted_by,
+            "accepted_at": accepted.accepted_at,
+        }
 
     def work_reader(service: Service):
         from .work_status_store import WorkStatusReader

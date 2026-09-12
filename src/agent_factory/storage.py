@@ -12,6 +12,7 @@ from typing import Any
 
 from .lifecycle import TRANSITIONS, ensure_transition
 from .models import AssignmentLease, Budget, Status, WorkItem
+from .game_feedback import FEEDBACK_MIGRATION
 from .playable_versions import PLAYABLE_VERSION_MIGRATION
 from .settings_store import SETTINGS_MIGRATION
 from .worker_admission import ADMISSION_MIGRATION
@@ -6604,6 +6605,7 @@ MIGRATIONS: tuple[tuple[int, str], ...] = (
     """),
     (78, PLAYABLE_VERSION_MIGRATION),
     (79, SETTINGS_MIGRATION),
+    (80, FEEDBACK_MIGRATION),
 )
 
 RUN_TRANSITIONS = TRANSITIONS["run"]

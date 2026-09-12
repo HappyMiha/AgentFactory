@@ -287,6 +287,10 @@ class WebHostTests(unittest.TestCase):
                         "/api/settings/values/{key}",
                         "/api/settings/values/{key}/reset",
                         "/api/settings/sections/{section_id}/verify",
+                        "/api/games/{project_key}/feedback",
+                        "/api/games/{project_key}/feedback/preview",
+                        "/api/feedback/{feedback_id}/plans",
+                        "/api/feedback/plans/{plan_id}/accept",
                         "/api/hardware/scan",
                         "/api/configuration-advice",
                         "/api/game-planning/{mission_id}",
@@ -1046,3 +1050,117 @@ class WorkStatusApiTests(unittest.TestCase):
                         if path.startswith("/api/work/")}
                 self.assertTrue(work)
                 self.assertTrue(all(methods == {"get"} for methods in work.values()))
+
+
+class FeedbackApiTests(unittest.TestCase):
+    """Nothing is sent without a preview, and nothing costs money without a yes."""
+
+    HEADERS = {"X-Agent-Factory-Confirm": "true"}
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def note(self, **rest):
+        body = {
+            "confirmed": True,
+            "played_version": "a" * 64,
+            "wish": "зроби стрибок вищим",
+            "steps": ["натиснути пробіл"],
+        }
+        body.update(rest)
+        return body
+
+    def test_a_preview_shows_what_would_be_sent_and_stores_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                preview = client.post(
+                    "/api/games/collector/feedback/preview?lang=en",
+                    json=self.note(attachments=[{
+                        "kind": "screenshot", "name": "jump.png",
+                        "leaves_machine": True,
+                    }]),
+                    headers=self.HEADERS,
+                ).json()
+                self.assertEqual(preview["leaves_machine"], ["jump.png"])
+                self.assertIn("jump.png", preview["transmission"])
+                self.assertEqual(
+                    client.get("/api/games/collector/feedback").json()["feedback"], [])
+
+    def test_a_note_without_confirmation_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/games/collector/feedback", json=self.note(confirmed=False))
+                self.assertEqual(response.status_code, 400)
+
+    def test_an_empty_note_is_refused_in_the_asked_language(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/games/collector/feedback?lang=en",
+                    json=self.note(wish="   "), headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 409)
+                self.assertIn("Say what to change", response.json()["error"]["message"])
+                ukrainian = client.post(
+                    "/api/games/collector/feedback?lang=uk",
+                    json=self.note(wish="   "), headers=self.HEADERS,
+                )
+                self.assertNotEqual(
+                    ukrainian.json()["error"]["message"],
+                    response.json()["error"]["message"],
+                )
+
+    def test_a_plan_that_costs_money_is_not_accepted_without_saying_so(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                feedback_id = client.post(
+                    "/api/games/collector/feedback", json=self.note(),
+                    headers=self.HEADERS,
+                ).json()["feedback_id"]
+                plan = client.post(
+                    f"/api/feedback/{feedback_id}/plans?lang=en",
+                    json={
+                        "confirmed": True,
+                        "changes": [{"uk": "Вищий стрибок", "en": "Higher jump"}],
+                        "cost": {"amount": 0.4, "unit": "USD"},
+                    },
+                    headers=self.HEADERS,
+                ).json()
+                self.assertFalse(plan["accepted"])
+                self.assertTrue(plan["needs_acceptance"])
+                refused = client.post(
+                    f"/api/feedback/plans/{plan['plan_id']}/accept?lang=en",
+                    json={"confirmed": True, "actor": "miha"}, headers=self.HEADERS,
+                )
+                self.assertEqual(refused.status_code, 409)
+                self.assertEqual(refused.json()["error"]["code"], "feedback_refused")
+
+                accepted = client.post(
+                    f"/api/feedback/plans/{plan['plan_id']}/accept",
+                    json={"confirmed": True, "actor": "miha", "accept_cost": True},
+                    headers=self.HEADERS,
+                ).json()
+                self.assertEqual(accepted["accepted_by"], "miha")
+
+    def test_the_verdict_says_unchecked_until_something_checks_the_wish(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                feedback_id = client.post(
+                    "/api/games/collector/feedback", json=self.note(),
+                    headers=self.HEADERS,
+                ).json()["feedback_id"]
+                detail = client.get(f"/api/feedback/{feedback_id}?lang=en").json()
+                self.assertEqual(detail["verdict"]["state"], "not_checked")
+                self.assertIn("not evidence", detail["verdict"]["summary"])
+
+    def test_an_unknown_note_is_a_clean_404(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.get("/api/feedback/404")
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.json()["error"]["code"], "unknown_feedback")

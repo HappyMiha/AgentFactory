@@ -341,6 +341,7 @@ See:
 - [Accessibility judged on the rendered page](docs/accessibility-audit.md)
 - [Two languages, or the catalogue is wrong](docs/localisation.md)
 - [What is happening, and what a stop would stop](docs/work-status.md)
+- ["Make the jump higher" — feedback that becomes the next version](docs/game-feedback.md)
 - [Architecture](docs/architecture.md)
 - [Development roadmap](docs/development-roadmap.md)
 - [Active game-creator backlog (12+)](docs/game-creator-backlog.uk.md) and [product audit (2026-09-05)](docs/product-audit-2026-09-05.uk.md)
