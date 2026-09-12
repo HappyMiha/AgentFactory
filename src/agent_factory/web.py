@@ -1246,6 +1246,61 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         except (KeyError, ValueError, PermissionError) as exc:
             return settings_error(exc, language)
 
+    def work_reader(service: Service):
+        from .work_status_store import WorkStatusReader
+
+        return WorkStatusReader(service.storage)
+
+    @app.get("/api/work/runs", response_model=dict[str, Any])
+    async def work_runs(
+        request: Request, service: Service, lang: str | None = None, limit: Limit = 20
+    ) -> Any:
+        language = chosen_language(request, lang)
+        return {
+            "language": language,
+            "runs": list(work_reader(service).open_runs(limit=limit)),
+        }
+
+    @app.get("/api/work/runs/{run_id}", response_model=dict[str, Any])
+    async def work_run(
+        run_id: int, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        language = chosen_language(request, lang)
+        try:
+            return work_reader(service).report(run_id, language=language)
+        except KeyError as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {"code": "unknown_run", "message": str(exc).strip("'")}},
+            )
+
+    @app.get("/api/work/runs/{run_id}/stop-plan", response_model=dict[str, Any])
+    async def work_stop_plan(
+        run_id: int, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        """What a stop would stop. Reading the plan changes nothing."""
+        language = chosen_language(request, lang)
+        try:
+            return work_reader(service).stop_plan(run_id).record(language)
+        except KeyError as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {"code": "unknown_run", "message": str(exc).strip("'")}},
+            )
+
+    @app.get("/api/work/runs/{run_id}/after-restart", response_model=dict[str, Any])
+    async def work_after_restart(
+        run_id: int, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        language = chosen_language(request, lang)
+        try:
+            return work_reader(service).after_restart(run_id).record(language)
+        except KeyError as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {"code": "unknown_run", "message": str(exc).strip("'")}},
+            )
+
     @app.post("/api/github/preview", response_model=dict[str, Any])
     async def github_preview(
         command: GitHubPreviewCommand,
@@ -1313,6 +1368,20 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         response = FileResponse(static_directory / "settings.html")
         if lang:
             # Remember the explicit choice so the next page opens in it.
+            response.set_cookie(
+                LANGUAGE_COOKIE, normalise(lang), max_age=31_536_000,
+                samesite="lax", httponly=False,
+            )
+        return response
+
+    @app.get("/work", include_in_schema=False)
+    async def work_shell(request: Request, lang: str | None = None) -> FileResponse:
+        from .localisation import LANGUAGE_COOKIE, normalise
+
+        if not request.state.local_principal:
+            return FileResponse(static_directory / "login.html")
+        response = FileResponse(static_directory / "work.html")
+        if lang:
             response.set_cookie(
                 LANGUAGE_COOKIE, normalise(lang), max_age=31_536_000,
                 samesite="lax", httponly=False,

@@ -64,6 +64,20 @@ class Message:
         return {"uk": self.uk, "en": self.en}
 
 
+def verbatim(text: str) -> Message:
+    """A name that comes from data rather than from us.
+
+    A workflow stage, a project or a provider is named by whoever configured
+    it, in one language. Repeating that name in every slot states plainly that
+    it is the same name everywhere; inventing a translation for it would be a
+    guess wearing the clothes of a fact.
+    """
+    value = str(text).strip()
+    if not value:
+        raise MissingTranslation("A name taken from data cannot be empty")
+    return Message(value, value)
+
+
 def normalise(language: str | None) -> str:
     """Reduce a tag to a supported language, or to the default."""
     candidate = str(language or "").strip().casefold().replace("_", "-").split("-")[0]
@@ -217,6 +231,78 @@ CATALOGUE: Mapping[str, Message] = {
     "settings.confirm.ack": Message(
         "Розумію наслідок і беру його на себе",
         "I understand the consequence and accept it",
+    ),
+
+    # Work in progress page
+    "work.title": Message("Хід роботи", "Work in progress"),
+    "work.eyebrow": Message("Що зараз відбувається", "What is happening now"),
+    "work.lead": Message(
+        "Що робиться просто зараз, скільки це вже коштувало, і що саме зупинить "
+        "зупинка. Якщо чогось не знаємо — так і написано.",
+        "What is being done right now, what it has cost so far, and what a stop "
+        "would actually stop. Where something is unknown, it says so.",
+    ),
+    "work.runs.label": Message("Запуск", "Run"),
+    "work.runs.empty": Message(
+        "Немає незавершених запусків.", "No run is in flight.",
+    ),
+    "work.stage": Message("Етап {index} з {total}", "Stage {index} of {total}"),
+    "work.liveness.alive": Message("Працює", "Running"),
+    "work.liveness.quiet": Message("Давно не звітувала", "Quiet for a while"),
+    "work.liveness.stalled": Message("Не подає ознак життя", "Not reporting"),
+    "work.liveness.waiting": Message("Нічого не виконується", "Nothing running"),
+    "work.heartbeat": Message(
+        "Останній сигнал: {age} с тому", "Last sign of life: {age}s ago",
+    ),
+    "work.heartbeat.never": Message(
+        "Сигналу від виконавця ще не було.", "No sign of life from a worker yet.",
+    ),
+    "work.blockers.title": Message("Що заважає", "What is in the way"),
+    "work.blockers.none": Message("Нічого не заважає.", "Nothing is in the way."),
+    "work.next": Message("Що робити далі", "What to do next"),
+    "work.estimate.title": Message("Скільки лишилось", "Time remaining"),
+    "work.estimate.value": Message("Приблизно {minutes} хв", "About {minutes} min"),
+    "work.spend.title": Message("Витрати", "Spending"),
+    "work.spend.spent": Message("Витрачено", "Spent"),
+    "work.spend.reserved": Message("Зарезервовано", "Reserved"),
+    "work.spend.cap": Message("Межа", "Cap"),
+    "work.spend.remaining": Message("Лишилось", "Left"),
+    "work.spend.nocap": Message("Межу не встановлено", "No cap is set"),
+    "work.stop.title": Message("Що зробить зупинка", "What a stop would do"),
+    "work.stop.preview": Message(
+        "Це попередній перегляд. Поки ви не натиснете «Зупинити», нічого не "
+        "зупиняється.",
+        "This is a preview. Nothing stops until you press Stop.",
+    ),
+    "work.stop.now": Message("Зупиниться одразу", "Stops immediately"),
+    "work.stop.anyway": Message("Все одно доробить", "Finishes anyway"),
+    "work.stop.nothing": Message("Зараз нічого не виконується.", "Nothing is running."),
+    "work.stop.wait": Message(
+        "Найдовше очікування: приблизно {seconds} с",
+        "Longest wait: about {seconds}s",
+    ),
+    "work.stop.button": Message("Зупинити запуск", "Stop this run"),
+    "work.stop.confirm": Message(
+        "Розумію, що вже надіслані виклики доробляться і будуть оплачені",
+        "I understand that calls already sent will finish and be paid for",
+    ),
+    "work.stop.reason": Message("Причина зупинки", "Reason for stopping"),
+    "work.stop.done": Message("Запуск зупинено.", "The run was stopped."),
+    "work.pause.button": Message("Призупинити", "Pause"),
+    "work.resume.button": Message("Продовжити", "Resume"),
+    "work.pause.unavailable": Message(
+        "Призупинення доступне лише для запусків під керуванням Temporal. Цей "
+        "запуск ним не керується, тож кнопка нічого не зробить.",
+        "Pausing exists only for runs orchestrated by Temporal. This run is not, "
+        "so the button would do nothing.",
+    ),
+    "work.restart.title": Message("Після перезапуску", "After a restart"),
+    "work.restart.check": Message("Треба перевірити", "Needs checking"),
+    "work.restart.preserved": Message("Збережено", "Kept"),
+    "work.restart.empty": Message("Порожньо.", "Nothing here."),
+    "work.error": Message(
+        "Не вдалося прочитати стан: {message}",
+        "The state could not be read: {message}",
     ),
 
     # Settings errors, phrased as cause and action

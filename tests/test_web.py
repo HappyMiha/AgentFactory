@@ -1000,3 +1000,49 @@ class SettingsApiTests(unittest.TestCase):
                 self.assertEqual(page.status_code, 200)
                 self.assertIn("brand.css", page.text)
                 self.assertIn("settings.js", page.text)
+
+
+class WorkStatusApiTests(unittest.TestCase):
+    """The progress screen's contract: read the truth, and change nothing."""
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def test_an_unknown_run_is_a_clean_404_rather_than_a_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                for path in ("/api/work/runs/77", "/api/work/runs/77/stop-plan",
+                             "/api/work/runs/77/after-restart"):
+                    response = client.get(path)
+                    self.assertEqual(response.status_code, 404, path)
+                    self.assertEqual(
+                        response.json()["error"]["code"], "unknown_run", path)
+
+    def test_with_no_run_in_flight_the_list_is_empty_rather_than_invented(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                payload = client.get("/api/work/runs").json()
+                self.assertEqual(payload["runs"], [])
+                self.assertIn(payload["language"], ("uk", "en"))
+
+    def test_the_page_and_its_answers_follow_the_asked_language(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                english = client.get("/api/work/runs?lang=en").json()
+                self.assertEqual(english["language"], "en")
+                page = client.get("/work?lang=en")
+                self.assertEqual(page.status_code, 200)
+                self.assertIn("<html", page.text.casefold())
+
+    def test_reading_the_status_never_offers_a_way_to_change_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                paths = client.get("/api/openapi.json").json()["paths"]
+                work = {path: set(operations) for path, operations in paths.items()
+                        if path.startswith("/api/work/")}
+                self.assertTrue(work)
+                self.assertTrue(all(methods == {"get"} for methods in work.values()))
