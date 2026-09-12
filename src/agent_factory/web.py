@@ -314,6 +314,54 @@ class CommentCommand(ConfirmedCommand):
     author: str = Field(default="", max_length=120)
 
 
+class SetLimitCommand(ConfirmedCommand):
+    amount: float = Field(ge=0)
+    actor: str = Field(min_length=1, max_length=120)
+    unit: str = Field(default="USD", max_length=10)
+    reason: str = Field(default="", max_length=300)
+
+
+class PaidToolCommand(ConfirmedCommand):
+    tool: str = Field(min_length=1, max_length=120)
+    reason_uk: str = Field(min_length=1, max_length=400)
+    reason_en: str = Field(min_length=1, max_length=400)
+    blocks: list[str] = Field(default_factory=list, max_length=40)
+    alternative_uk: str = Field(default="", max_length=200)
+    alternative_en: str = Field(default="", max_length=200)
+    task_key: str = Field(default="", max_length=120)
+
+
+class PaidToolAnswerCommand(ConfirmedCommand):
+    choice: str = Field(min_length=1, max_length=40)
+    actor: str = Field(min_length=1, max_length=120)
+
+
+class RegisterMachineCommand(ConfirmedCommand):
+    name: str = Field(min_length=1, max_length=200)
+    kind: str = Field(pattern="^(cloud_worker|this_pc|web_container)$")
+    capabilities: list[str] = Field(default_factory=list, max_length=40)
+    video_memory_gb: float = Field(default=0.0, ge=0)
+    registered_by: str = Field(default="", max_length=120)
+
+
+class ConnectSourceCommand(ConfirmedCommand):
+    kind: str = Field(
+        pattern="^(own_subscription|platform_subscription|local_model)$")
+    name: str = Field(min_length=1, max_length=200)
+    state: str = Field(default="unverified", pattern="^(verified|unverified|unavailable)$")
+    machine_key: str = Field(default="", max_length=120)
+    needed_gb: float = Field(default=0.0, ge=0)
+    connected_by: str = Field(default="", max_length=120)
+
+
+class RosterCommand(ConfirmedCommand):
+    actor: str = Field(min_length=1, max_length=120)
+    provider: str = Field(default="", max_length=60)
+    model: str = Field(default="", max_length=120)
+    concurrency: str = Field(default="sequential", pattern="^(sequential|parallel)$")
+    reason: str = Field(default="", max_length=300)
+
+
 class AnswerQuestionCommand(ConfirmedCommand):
     answer: str = Field(min_length=1, max_length=40)
     actor: str = Field(min_length=1, max_length=120)
@@ -1355,6 +1403,274 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         return JSONResponse(
             status_code=409, content={"error": {"code": code, "message": message}}
         )
+
+    def studio_costs(service: Service):
+        from .studio_cost import StudioCosts
+
+        return StudioCosts(service.storage)
+
+    def paid_tools(service: Service):
+        from .studio_paid_tools import PaidTools
+
+        return PaidTools(service.storage)
+
+    def studio_machines(service: Service):
+        from .studio_workers import StudioMachines
+
+        return StudioMachines(service.storage)
+
+    def studio_first_run(service: Service):
+        from .studio_first_run import FirstRun
+
+        return FirstRun(service.storage)
+
+    @app.get("/api/studio/machines", response_model=dict[str, Any])
+    async def studio_machine_list(
+        request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        """Every machine, and what the web container is never allowed to answer."""
+        return studio_machines(service).overview(
+            language=chosen_language(request, lang),
+        )
+
+    @app.post("/api/studio/machines/{machine_key}", response_model=dict[str, Any])
+    async def studio_register_machine(
+        machine_key: str,
+        command: RegisterMachineCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .studio_workers import WorkerRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            machine = studio_machines(service).register(
+                machine_key, name=command.name, kind=command.kind,
+                capabilities=command.capabilities,
+                video_memory_gb=command.video_memory_gb,
+                registered_by=command.registered_by,
+            )
+        except WorkerRefused as exc:
+            return studio_error(exc, language, "machine_refused")
+        return machine.record(language)
+
+    @app.get("/api/studio/first-run", response_model=dict[str, Any])
+    async def studio_first_run_state(
+        request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        """Whether work can start at all, and what is missing when it cannot."""
+        return studio_first_run(service).report(
+            language=chosen_language(request, lang),
+        )
+
+    @app.post("/api/studio/first-run/{source_key}", response_model=dict[str, Any])
+    async def studio_connect_source(
+        source_key: str,
+        command: ConnectSourceCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        """Connect a way of getting work done. A local model is checked first."""
+        from .studio_first_run import FirstRunRefused
+        from .studio_workers import WorkerRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        wizard = studio_first_run(service)
+        try:
+            if command.kind == "local_model":
+                source = wizard.offer_local_model(
+                    source_key, name=command.name,
+                    machines=studio_machines(service),
+                    machine_key=command.machine_key, needed_gb=command.needed_gb,
+                )
+            else:
+                source = wizard.connect(
+                    source_key, kind=command.kind, name=command.name,
+                    state=command.state, connected_by=command.connected_by,
+                )
+        except (FirstRunRefused, WorkerRefused) as exc:
+            return studio_error(exc, language, "source_refused")
+        return source.record(language)
+
+    def studio_roster(service: Service):
+        from .studio_roster import StudioRoster
+
+        return StudioRoster(service.storage)
+
+    @app.get("/api/studio/roster/{mission_key}", response_model=dict[str, Any])
+    async def studio_roster_state(
+        mission_key: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        return studio_roster(service).report(
+            mission_key, language=chosen_language(request, lang),
+        )
+
+    @app.get("/api/studio/roster/{mission_key}/consequence/{role_id}",
+             response_model=dict[str, Any])
+    async def studio_role_consequence(
+        mission_key: str,
+        role_id: str,
+        request: Request,
+        service: Service,
+        lang: str | None = None,
+        concurrency: str = "sequential",
+    ) -> Any:
+        """What turning this role on would mean. Reading it turns nothing on."""
+        from .studio_roster import RosterRefused
+
+        language = chosen_language(request, lang)
+        try:
+            return studio_roster(service).consequence(
+                mission_key, role_id, concurrency=concurrency,
+            ).record(language)
+        except (RosterRefused, ValueError) as exc:
+            return studio_error(exc, language, "role_refused")
+
+    @app.post("/api/studio/roster/{mission_key}/{role_id}", response_model=dict[str, Any])
+    async def studio_change_role(
+        mission_key: str,
+        role_id: str,
+        command: RosterCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+        action: str = "enable",
+    ) -> Any:
+        from .studio_roster import RosterRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        roster = studio_roster(service)
+        try:
+            if action == "disable":
+                roster.disable(mission_key, role_id, actor=command.actor,
+                               reason=command.reason)
+                return roster.report(mission_key, language=language)
+            if action == "model":
+                return roster.assign_model(
+                    mission_key, role_id, provider=command.provider,
+                    model=command.model, actor=command.actor, reason=command.reason,
+                ).record(language)
+            consequence = roster.enable(
+                mission_key, role_id, actor=command.actor, provider=command.provider,
+                model=command.model, concurrency=command.concurrency,
+                reason=command.reason,
+            )
+        except (RosterRefused, ValueError) as exc:
+            return studio_error(exc, language, "role_refused")
+        return {
+            "consequence": consequence.record(language),
+            **roster.report(mission_key, language=language),
+        }
+
+    @app.get("/api/studio/cost/{mission_key}", response_model=dict[str, Any])
+    async def studio_cost(
+        request: Request,
+        service: Service,
+        mission_key: str,
+        lang: str | None = None,
+        remaining_tasks: int = 0,
+        stage: str = "",
+        next_step: float = 0.0,
+    ) -> Any:
+        """Spent, reserved, the limit, and a forecast only where one is earned."""
+        return studio_costs(service).report(
+            mission_key, language=chosen_language(request, lang),
+            remaining_tasks=remaining_tasks, stage_key=stage, next_step=next_step,
+        )
+
+    @app.post("/api/studio/cost/{mission_key}/limit", response_model=dict[str, Any])
+    async def studio_set_limit(
+        mission_key: str,
+        command: SetLimitCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .studio_cost import CostRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            limit = studio_costs(service).set_limit(
+                mission_key, amount=command.amount, actor=command.actor,
+                unit=command.unit, reason=command.reason,
+            )
+        except CostRefused as exc:
+            return studio_error(exc, language, "limit_refused")
+        return limit.record()
+
+    @app.get("/api/studio/paid-tools/{mission_key}", response_model=dict[str, Any])
+    async def studio_paid_tools(
+        mission_key: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        return paid_tools(service).report(
+            mission_key, language=chosen_language(request, lang),
+        )
+
+    @app.post("/api/studio/paid-tools/{mission_key}", response_model=dict[str, Any])
+    async def studio_ask_paid_tool(
+        mission_key: str,
+        command: PaidToolCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .localisation import Message
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        alternative = (
+            Message(command.alternative_uk, command.alternative_en)
+            if command.alternative_uk and command.alternative_en else None
+        )
+        choice = paid_tools(service).ask(
+            mission_key, command.tool,
+            reason=Message(command.reason_uk, command.reason_en),
+            blocks=command.blocks, alternative=alternative, task_key=command.task_key,
+        )
+        return choice.record(language)
+
+    @app.post("/api/studio/paid-tools/choices/{choice_id}", response_model=dict[str, Any])
+    async def studio_answer_paid_tool(
+        choice_id: int,
+        command: PaidToolAnswerCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        """Take one of the four ways out. Declining says what it removes."""
+        from .studio_paid_tools import PaidToolRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            answered, rebuild = paid_tools(service).answer(
+                choice_id, choice=command.choice, actor=command.actor,
+            )
+        except KeyError as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {
+                    "code": "unknown_choice", "message": str(exc).strip("'"),
+                }},
+            )
+        except PaidToolRefused as exc:
+            return studio_error(exc, language, "choice_refused")
+        return {
+            **answered.record(language),
+            "rebuild": rebuild.record(language) if rebuild else None,
+        }
 
     @app.get("/api/studio/slices/{mission_key}", response_model=dict[str, Any])
     async def studio_slices(

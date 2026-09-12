@@ -443,6 +443,98 @@ def parser() -> argparse.ArgumentParser:
     studio_history = studio_command.add_parser("cycles", help="Every cycle and its comments.")
     studio_history.add_argument("--mission", required=True)
     studio_history.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_cost = studio_command.add_parser(
+        "cost", help="Spent, reserved, the limit and an earned forecast."
+    )
+    studio_cost.add_argument("--mission", required=True)
+    studio_cost.add_argument("--remaining-tasks", type=int, default=0)
+    studio_cost.add_argument("--stage", default="")
+    studio_cost.add_argument("--next-step", type=float, default=0.0)
+    studio_cost.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_limit = studio_command.add_parser("limit", help="Set the spending limit.")
+    studio_limit.add_argument("--mission", required=True)
+    studio_limit.add_argument("--amount", type=float, required=True)
+    studio_limit.add_argument("--actor", required=True)
+    studio_limit.add_argument("--unit", default="USD")
+    studio_limit.add_argument("--reason", default="")
+    studio_paid = studio_command.add_parser(
+        "paid-tools", help="Paid tools in the way, and what was decided."
+    )
+    studio_paid.add_argument("--mission", required=True)
+    studio_paid.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_choose = studio_command.add_parser(
+        "choose", help="Take one of the four ways past a paid tool."
+    )
+    studio_choose.add_argument("--choice", type=int, required=True)
+    studio_choose.add_argument(
+        "--way", required=True,
+        choices=("own_subscription", "buy_through_platform", "free_alternative", "decline"),
+    )
+    studio_choose.add_argument("--actor", required=True)
+    studio_choose.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_team = studio_command.add_parser("team", help="Who is in the studio.")
+    studio_team.add_argument("--mission", required=True)
+    studio_team.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_add = studio_command.add_parser(
+        "add-role", help="Turn a role on, after seeing what it costs."
+    )
+    studio_add.add_argument("--mission", required=True)
+    studio_add.add_argument("--role", required=True)
+    studio_add.add_argument("--actor", required=True)
+    studio_add.add_argument("--provider", default="")
+    studio_add.add_argument("--model", default="")
+    studio_add.add_argument("--concurrency", default="sequential",
+                            choices=("sequential", "parallel"))
+    studio_add.add_argument("--reason", default="")
+    studio_add.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_drop = studio_command.add_parser("drop-role", help="Turn a role off.")
+    studio_drop.add_argument("--mission", required=True)
+    studio_drop.add_argument("--role", required=True)
+    studio_drop.add_argument("--actor", required=True)
+    studio_drop.add_argument("--reason", default="")
+    studio_drop.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_model = studio_command.add_parser(
+        "role-model", help="Give one role its own provider and model."
+    )
+    studio_model.add_argument("--mission", required=True)
+    studio_model.add_argument("--role", required=True)
+    studio_model.add_argument("--provider", required=True)
+    studio_model.add_argument("--model", required=True)
+    studio_model.add_argument("--actor", required=True)
+    studio_model.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_machines = studio_command.add_parser(
+        "machines", help="Which machines exist, and what each may answer for."
+    )
+    studio_machines.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_register = studio_command.add_parser(
+        "register-machine", help="Offer a machine for builds."
+    )
+    studio_register.add_argument("--machine", required=True)
+    studio_register.add_argument("--name", required=True)
+    studio_register.add_argument(
+        "--kind", required=True, choices=("cloud_worker", "this_pc", "web_container"))
+    studio_register.add_argument("--can", action="append", default=[])
+    studio_register.add_argument("--video-memory-gb", type=float, default=0.0)
+    studio_register.add_argument("--actor", default="")
+    studio_register.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_start = studio_command.add_parser(
+        "first-run", help="Whether development can start, and what is missing."
+    )
+    studio_start.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_connect = studio_command.add_parser(
+        "connect", help="Connect a subscription, or offer a local model."
+    )
+    studio_connect.add_argument("--source", required=True)
+    studio_connect.add_argument(
+        "--kind", required=True,
+        choices=("own_subscription", "platform_subscription", "local_model"))
+    studio_connect.add_argument("--name", required=True)
+    studio_connect.add_argument(
+        "--state", default="unverified",
+        choices=("verified", "unverified", "unavailable"))
+    studio_connect.add_argument("--machine", default="")
+    studio_connect.add_argument("--needed-gb", type=float, default=0.0)
+    studio_connect.add_argument("--language", default="uk", choices=("uk", "en"))
     studio_answer = studio_command.add_parser("answer", help="Answer one open question.")
     studio_answer.add_argument("--question", type=int, required=True)
     studio_answer.add_argument("--answer", required=True)
@@ -1472,6 +1564,108 @@ def _execute(args: argparse.Namespace) -> int:
                 print(json.dumps(StudioCycles(storage).resume(
                     args.mission, actor=args.actor,
                 ).record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "machines":
+                from .studio_workers import StudioMachines
+
+                print(json.dumps(
+                    StudioMachines(storage).overview(language=args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "register-machine":
+                from .studio_workers import StudioMachines
+
+                print(json.dumps(StudioMachines(storage).register(
+                    args.machine, name=args.name, kind=args.kind,
+                    capabilities=args.can, video_memory_gb=args.video_memory_gb,
+                    registered_by=args.actor,
+                ).record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "first-run":
+                from .studio_first_run import FirstRun
+
+                report = FirstRun(storage).report(language=args.language)
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+                # Nothing can start without a source, and the exit code says so.
+                return 0 if report["can_start"] else 3
+            elif args.action == "connect":
+                from .studio_first_run import FirstRun
+                from .studio_workers import StudioMachines
+
+                wizard = FirstRun(storage)
+                if args.kind == "local_model":
+                    source = wizard.offer_local_model(
+                        args.source, name=args.name,
+                        machines=StudioMachines(storage),
+                        machine_key=args.machine, needed_gb=args.needed_gb,
+                    )
+                else:
+                    source = wizard.connect(
+                        args.source, kind=args.kind, name=args.name, state=args.state,
+                    )
+                print(json.dumps(source.record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "team":
+                from .studio_roster import StudioRoster
+
+                print(json.dumps(
+                    StudioRoster(storage).report(args.mission, language=args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "add-role":
+                from .studio_roster import StudioRoster
+
+                print(json.dumps(StudioRoster(storage).enable(
+                    args.mission, args.role, actor=args.actor, provider=args.provider,
+                    model=args.model, concurrency=args.concurrency, reason=args.reason,
+                ).record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "drop-role":
+                from .studio_roster import StudioRoster
+
+                roster = StudioRoster(storage)
+                roster.disable(args.mission, args.role, actor=args.actor, reason=args.reason)
+                print(json.dumps(
+                    roster.report(args.mission, language=args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "role-model":
+                from .studio_roster import StudioRoster
+
+                print(json.dumps(StudioRoster(storage).assign_model(
+                    args.mission, args.role, provider=args.provider, model=args.model,
+                    actor=args.actor,
+                ).record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "cost":
+                from .studio_cost import StudioCosts
+
+                report = StudioCosts(storage).report(
+                    args.mission, language=args.language,
+                    remaining_tasks=args.remaining_tasks, stage_key=args.stage,
+                    next_step=args.next_step,
+                )
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+                # Going over the limit is the one thing a person must answer.
+                return 3 if report["over"] else 0
+            elif args.action == "limit":
+                from .studio_cost import StudioCosts
+
+                print(json.dumps(StudioCosts(storage).set_limit(
+                    args.mission, amount=args.amount, actor=args.actor,
+                    unit=args.unit, reason=args.reason,
+                ).record(), indent=2, ensure_ascii=False))
+            elif args.action == "paid-tools":
+                from .studio_paid_tools import PaidTools
+
+                report = PaidTools(storage).report(args.mission, language=args.language)
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+                return 3 if report["open"] else 0
+            elif args.action == "choose":
+                from .studio_paid_tools import PaidTools
+
+                answered, rebuild = PaidTools(storage).answer(
+                    args.choice, choice=args.way, actor=args.actor,
+                )
+                print(json.dumps({
+                    **answered.record(args.language),
+                    "rebuild": rebuild.record(args.language) if rebuild else None,
+                }, indent=2, ensure_ascii=False))
             elif args.action == "cycles":
                 from .studio_cycles import StudioCycles
 

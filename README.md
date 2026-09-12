@@ -341,6 +341,8 @@ See:
 - [The checks stay, the clicking goes](docs/studio-autonomy.md)
 - [The plan, in the words of the person who asked for the game](docs/studio-backlog.md)
 - [Play it, say what you want, continue](docs/studio-loop.md)
+- [What it costs, and what to do when a tool costs money](docs/studio-money.md)
+- [Who is in the studio, which machine answers, and when work can start](docs/studio-setup.md)
 - [Налаштування без редагування файлів](docs/settings.md)
 - [Accessibility judged on the rendered page](docs/accessibility-audit.md)
 - [Two languages, or the catalogue is wrong](docs/localisation.md)
