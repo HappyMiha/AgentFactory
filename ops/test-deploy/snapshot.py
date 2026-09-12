@@ -25,11 +25,19 @@ def databases(root):
 
 
 def schemas(root):
+    """Signature every stored object separately, so additions stay visible as additions.
+
+    One hash for a whole database cannot tell a new table apart from a changed
+    one. Per-object signatures let the controller allow a release that only adds
+    tables while still refusing one that rewrites or drops what already holds
+    client data.
+    """
     result = {}
     for path in databases(root):
         with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True, timeout=15)) as db:
             rows = db.execute("SELECT type,name,tbl_name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name").fetchall()
-            result[str(path.relative_to(root))] = hashlib.sha256(json.dumps(rows).encode()).hexdigest()
+            result[str(path.relative_to(root))] = {
+                row[1]: hashlib.sha256(json.dumps(row).encode()).hexdigest() for row in rows}
     return result
 
 

@@ -45,7 +45,7 @@ if (-not (Test-Path -LiteralPath "$root/config.json")) {
     $coreEnv = $common.Clone(); $coreEnv.LOKVETIA_SSO_CLIENT='core'; $coreEnv.LOKVETIA_SSO_ORIGIN='https://test.lokvetia.com'
     $cloudEnv = $common.Clone(); $cloudEnv.LOKVETIA_SSO_CLIENT='cloud'; $cloudEnv.LOKVETIA_SSO_ORIGIN='https://test.lokiravia.com'
     $config = @{
-        state_root=$root;runtime_bundle="$root/runtime";network='lokvetia-test_default';poll_seconds=60;max_retained_containers_per_project=8
+        state_root=$root;runtime_bundle="$root/runtime";network='lokvetia-test_default';poll_seconds=60;max_retained_containers_per_project=8;keep_releases=2
         progress=@{projects=@(
             @{id='core';name='Lokvetia Core';repository='HappyMiha/Lokvetia-Core';manifests=@('examples/development-backlog.json','examples/game-creator-backlog.json','examples/autonomous-mission-backlog.json','docs/evolution/backlog.json')},
             @{id='cloud';name='Lokiravia';repository='HappyMiha/Lokiravia';manifests=@('examples/agentfactory-cloud-backlog.json','docs/evolution/backlog.json')}
