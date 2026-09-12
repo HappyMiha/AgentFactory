@@ -235,6 +235,19 @@ class RunDetail(BaseModel):
     approval: ApprovalView | None
     stopped_reason: str
 
+class SettingChangeCommand(ConfirmedCommand):
+    value: str = Field(default="", max_length=1000)
+    actor: str = Field(min_length=1, max_length=120)
+    reason: str = Field(default="", max_length=300)
+    acknowledged_consequence: bool = False
+
+
+class SettingResetCommand(ConfirmedCommand):
+    actor: str = Field(min_length=1, max_length=120)
+    reason: str = Field(default="", max_length=300)
+    acknowledged_consequence: bool = False
+
+
 class ControlActionCommand(ConfirmedCommand):
     tenant_id: str
     actor: str
@@ -1107,6 +1120,90 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         _require_confirmation(command, confirmation)
         return service.update_runtime_setting(key, command.value)
 
+    def settings_centre(service: Service):
+        from .settings_store import SettingsCentre
+
+        return SettingsCentre(service.storage)
+
+    def settings_error(exc: Exception) -> JSONResponse:
+        from .settings_store import ConfirmationRequired, NotReconfigurable
+
+        codes = {
+            ConfirmationRequired: (409, "confirmation_required"),
+            NotReconfigurable: (409, "not_reconfigurable"),
+            KeyError: (404, "unknown_setting"),
+        }
+        status, code = codes.get(type(exc), (400, "invalid_setting"))
+        message = str(exc).strip("'")
+        return JSONResponse(
+            status_code=status, content={"error": {"code": code, "message": message}}
+        )
+
+    @app.get("/api/settings/sections", response_model=dict[str, Any])
+    async def settings_sections(service: Service) -> Any:
+        return settings_centre(service).overview()
+
+    @app.get("/api/settings/sections/{section_id}", response_model=dict[str, Any])
+    async def settings_section(section_id: str, service: Service) -> Any:
+        try:
+            return settings_centre(service).section_view(section_id)
+        except KeyError as exc:
+            return settings_error(exc)
+
+    @app.post("/api/settings/sections/{section_id}/verify", response_model=dict[str, Any])
+    async def settings_verify(section_id: str, service: Service) -> Any:
+        centre = settings_centre(service)
+        try:
+            findings = centre.verify_section(section_id)
+        except KeyError as exc:
+            return settings_error(exc)
+        return {
+            "section": section_id,
+            "findings": [finding.record for finding in findings],
+        }
+
+    @app.get("/api/settings/changes", response_model=dict[str, Any])
+    async def settings_changes(
+        service: Service, key: str | None = None, limit: Limit = 50
+    ) -> Any:
+        try:
+            history = settings_centre(service).changes(key=key, limit=limit)
+        except (KeyError, ValueError) as exc:
+            return settings_error(exc)
+        return {"changes": [item.record for item in history]}
+
+    @app.post("/api/settings/values/{key}", response_model=dict[str, Any])
+    async def settings_set(
+        key: str,
+        command: SettingChangeCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> Any:
+        _require_confirmation(command, confirmation)
+        try:
+            return settings_centre(service).set(
+                key, command.value, actor=command.actor, reason=command.reason,
+                acknowledged_consequence=command.acknowledged_consequence,
+            )
+        except (KeyError, ValueError, PermissionError) as exc:
+            return settings_error(exc)
+
+    @app.post("/api/settings/values/{key}/reset", response_model=dict[str, Any])
+    async def settings_reset(
+        key: str,
+        command: SettingResetCommand,
+        service: Service,
+        confirmation: Confirmation = None,
+    ) -> Any:
+        _require_confirmation(command, confirmation)
+        try:
+            return settings_centre(service).reset(
+                key, actor=command.actor, reason=command.reason,
+                acknowledged_consequence=command.acknowledged_consequence,
+            )
+        except (KeyError, ValueError, PermissionError) as exc:
+            return settings_error(exc)
+
     @app.post("/api/github/preview", response_model=dict[str, Any])
     async def github_preview(
         command: GitHubPreviewCommand,
@@ -1164,6 +1261,12 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         if request.state.local_principal is None and isinstance(access, SsoAccess):
             return await login_shell()
         return FileResponse(static_directory / ('operations.html' if request.state.local_principal else 'login.html'))
+
+    @app.get("/settings", include_in_schema=False)
+    async def settings_shell(request: Request) -> FileResponse:
+        if not request.state.local_principal:
+            return FileResponse(static_directory / "login.html")
+        return FileResponse(static_directory / "settings.html")
 
     @app.get("/", include_in_schema=False)
     async def dashboard_shell(request: Request) -> FileResponse:

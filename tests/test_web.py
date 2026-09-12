@@ -284,6 +284,9 @@ class WebHostTests(unittest.TestCase):
                     mutation_routes,
                     {
                         "/api/credential-connections",
+                        "/api/settings/values/{key}",
+                        "/api/settings/values/{key}/reset",
+                        "/api/settings/sections/{section_id}/verify",
                         "/api/hardware/scan",
                         "/api/configuration-advice",
                         "/api/game-planning/{mission_id}",
@@ -794,3 +797,144 @@ class WebHostTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SettingsApiTests(unittest.TestCase):
+    """The settings page's contract: see it, check it, change it, undo it."""
+
+    HEADERS = {"X-Agent-Factory-Confirm": "true"}
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def test_sections_describe_every_value_and_its_origin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                payload = client.get("/api/settings/sections").json()
+                self.assertEqual(payload["changed_total"], 0)
+                sections = payload["sections"]
+                self.assertGreaterEqual(len(sections), 8)
+                fields = [field for item in sections for field in item["fields"]]
+                self.assertTrue(all(field["origin"] == "default" for field in fields))
+                self.assertTrue(all(field["default_source"] for field in fields))
+                self.assertTrue(any(not field["reconfigurable"] for field in fields))
+                self.assertTrue(any(field["risk"] == "sensitive" for field in fields))
+                for field in fields:
+                    if field["risk"] == "sensitive":
+                        self.assertTrue(field["consequence"])
+
+    def test_a_safe_change_is_applied_and_can_be_undone(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/settings/values/godot.max_seconds",
+                    json={"confirmed": True, "value": "300", "actor": "miha",
+                          "reason": "повільний ПК"},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["value"], "300")
+                self.assertEqual(response.json()["origin"], "override")
+
+                history = client.get("/api/settings/changes").json()["changes"]
+                self.assertEqual(history[0]["key"], "godot.max_seconds")
+                self.assertEqual(history[0]["actor"], "miha")
+
+                undo = client.post(
+                    "/api/settings/values/godot.max_seconds/reset",
+                    json={"confirmed": True, "actor": "miha"}, headers=self.HEADERS,
+                )
+                self.assertEqual(undo.json()["origin"], "default")
+                self.assertEqual(
+                    client.get("/api/settings/sections").json()["changed_total"], 0,
+                )
+
+    def test_a_change_without_the_confirmation_header_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/settings/values/godot.max_seconds",
+                    json={"confirmed": True, "value": "300", "actor": "miha"},
+                )
+                self.assertGreaterEqual(response.status_code, 400)
+                self.assertEqual(
+                    client.get("/api/settings/sections").json()["changed_total"], 0,
+                )
+
+    def test_a_sensitive_change_is_refused_until_the_consequence_is_acknowledged(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                body = {"confirmed": True, "value": "false", "actor": "miha"}
+                refused = client.post(
+                    "/api/settings/values/updates.protect_pins",
+                    json=body, headers=self.HEADERS,
+                )
+                self.assertEqual(refused.status_code, 409)
+                self.assertEqual(
+                    refused.json()["error"]["code"], "confirmation_required",
+                )
+
+                applied = client.post(
+                    "/api/settings/values/updates.protect_pins",
+                    json={**body, "acknowledged_consequence": True,
+                          "reason": "міграція"},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(applied.status_code, 200)
+                self.assertEqual(applied.json()["value"], "false")
+
+                verified = client.post(
+                    "/api/settings/sections/updates/verify", json={},
+                    headers=self.HEADERS,
+                ).json()
+                self.assertIn(
+                    "problem", {item["level"] for item in verified["findings"]},
+                )
+
+    def test_a_derived_value_cannot_be_changed_through_the_api(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/settings/values/godot.baseline_series",
+                    json={"confirmed": True, "value": "1.0", "actor": "miha"},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(
+                    response.json()["error"]["code"], "not_reconfigurable",
+                )
+
+    def test_invalid_values_and_unknown_keys_are_reported_readably(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                invalid = client.post(
+                    "/api/settings/values/godot.max_seconds",
+                    json={"confirmed": True, "value": "2", "actor": "miha"},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(invalid.status_code, 400)
+                self.assertTrue(invalid.json()["error"]["message"])
+
+                unknown = client.post(
+                    "/api/settings/values/nope.nope",
+                    json={"confirmed": True, "value": "1", "actor": "miha"},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(unknown.status_code, 404)
+                self.assertEqual(unknown.json()["error"]["code"], "unknown_setting")
+
+                self.assertEqual(
+                    client.get("/api/settings/sections/nowhere").status_code, 404,
+                )
+
+    def test_the_settings_page_is_served_and_carries_the_brand(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                page = client.get("/settings")
+                self.assertEqual(page.status_code, 200)
+                self.assertIn("brand.css", page.text)
+                self.assertIn("settings.js", page.text)

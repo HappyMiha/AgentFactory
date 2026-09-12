@@ -337,6 +337,7 @@ The configuration format is JSON-compatible YAML: valid JSON stored with a `.yam
 See:
 
 - [Getting started](docs/getting-started.md)
+- [Налаштування без редагування файлів](docs/settings.md)
 - [Architecture](docs/architecture.md)
 - [Development roadmap](docs/development-roadmap.md)
 - [Active game-creator backlog (12+)](docs/game-creator-backlog.uk.md) and [product audit (2026-09-05)](docs/product-audit-2026-09-05.uk.md)

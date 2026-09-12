@@ -368,6 +368,31 @@ def parser() -> argparse.ArgumentParser:
         help="active|inactive|expired|unknown, as Unity Hub reports it to you.",
     )
 
+    settings_command = sub.add_parser(
+        "settings", help="See, check and change every setting without editing files."
+    ).add_subparsers(dest="action", required=True)
+    settings_show = settings_command.add_parser("show", help="Current values and origins.")
+    settings_show.add_argument("--section")
+    settings_verify = settings_command.add_parser("verify", help="Check a section.")
+    settings_verify.add_argument("--section")
+    settings_set = settings_command.add_parser("set", help="Change one setting.")
+    settings_set.add_argument("--key", required=True)
+    settings_set.add_argument("--value", required=True)
+    settings_set.add_argument("--actor", required=True)
+    settings_set.add_argument("--reason", default="")
+    settings_set.add_argument(
+        "--acknowledge", action="store_true",
+        help="Confirm the declared consequence of a sensitive setting.",
+    )
+    settings_reset = settings_command.add_parser("reset", help="Return one setting to its default.")
+    settings_reset.add_argument("--key", required=True)
+    settings_reset.add_argument("--actor", required=True)
+    settings_reset.add_argument("--reason", default="")
+    settings_reset.add_argument("--acknowledge", action="store_true")
+    settings_history = settings_command.add_parser("history", help="Who changed what.")
+    settings_history.add_argument("--key")
+    settings_history.add_argument("--limit", type=int, default=50)
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -1235,6 +1260,44 @@ def _execute(args: argparse.Namespace) -> int:
                 "performed": False,
                 "note_cli": "This command previews only; it removes nothing.",
             }, indent=2))
+        elif args.command == "settings":
+            from .settings_store import SettingsCentre
+
+            centre = SettingsCentre(storage)
+            if args.action == "show":
+                if args.section:
+                    print(json.dumps(centre.section_view(args.section), indent=2, ensure_ascii=False))
+                else:
+                    print(json.dumps(centre.overview(), indent=2, ensure_ascii=False))
+            elif args.action == "verify":
+                sections = (
+                    [args.section] if args.section
+                    else [item["section"] for item in centre.overview()["sections"]]
+                )
+                report = {
+                    name: [finding.record for finding in centre.verify_section(name)]
+                    for name in sections
+                }
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+                worst = {
+                    finding["level"] for findings in report.values() for finding in findings
+                }
+                return 3 if "problem" in worst else 0
+            elif args.action == "set":
+                print(json.dumps(centre.set(
+                    args.key, args.value, actor=args.actor, reason=args.reason,
+                    acknowledged_consequence=args.acknowledge,
+                ), indent=2, ensure_ascii=False))
+            elif args.action == "reset":
+                print(json.dumps(centre.reset(
+                    args.key, actor=args.actor, reason=args.reason,
+                    acknowledged_consequence=args.acknowledge,
+                ), indent=2, ensure_ascii=False))
+            else:
+                print(json.dumps(
+                    [item.record for item in centre.changes(key=args.key, limit=args.limit)],
+                    indent=2, ensure_ascii=False,
+                ))
         elif args.command == "state":
             if args.action == "check":
                 print(json.dumps(storage.integrity_check(), indent=2))
@@ -1253,6 +1316,6 @@ def _execute(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return _execute(parser().parse_args(argv))
-    except (KeyError, ValueError, RuntimeError, OSError) as exc:
+    except (KeyError, ValueError, RuntimeError, OSError, PermissionError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
