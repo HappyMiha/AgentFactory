@@ -309,6 +309,60 @@ CATALOGUE: Mapping[str, Message] = {
         "The state could not be read: {message}",
     ),
 
+    # AI-studio screen
+    "studio.title": Message("Студія", "The studio"),
+    "studio.eyebrow": Message("Ваша гра", "Your game"),
+    "studio.lead": Message(
+        "Що студія робить зараз, що вже можна зіграти, і що вирішуєте ви.",
+        "What the studio is doing now, what you can already play, and what is "
+        "yours to decide.",
+    ),
+    "studio.mission.label": Message("Гра", "Game"),
+    "studio.mission.none": Message(
+        "Тут ще немає жодної гри.", "There is no game here yet.",
+    ),
+    "studio.start.blocked": Message(
+        "Розробка не почнеться, поки немає перевіреного джерела виконання.",
+        "Development will not start until there is a checked source of execution.",
+    ),
+    "studio.plan.title": Message("План роботи", "The plan of work"),
+    "studio.plan.next": Message("Далі", "Next"),
+    "studio.plan.empty": Message("Плану ще немає.", "There is no plan yet."),
+    "studio.play": Message("Грати", "Play"),
+    "studio.questions.title": Message("Що вирішуєте ви", "Yours to decide"),
+    "studio.questions.none": Message(
+        "Зараз нічого вирішувати не треба.", "Nothing needs deciding right now.",
+    ),
+    "studio.money.title": Message("Гроші", "Money"),
+    "studio.money.spent": Message("Витрачено", "Spent"),
+    "studio.money.reserved": Message("Зарезервовано", "Reserved"),
+    "studio.money.limit": Message("Ліміт", "Limit"),
+    "studio.money.forecast": Message("Прогноз до кінця етапу", "Forecast for the stage"),
+    "studio.team.title": Message("Хто працює", "Who is working"),
+    "studio.team.add": Message("Додати роль", "Add a role"),
+    "studio.team.off": Message("Вимкнена", "Off"),
+    "studio.loop.title": Message("Пауза й правки", "Pause and edits"),
+    "studio.loop.pause": Message("Пауза", "Pause"),
+    "studio.loop.resume": Message("Продовжити", "Continue"),
+    "studio.loop.comment": Message("Що змінити", "What to change"),
+    "studio.loop.send": Message("Надіслати", "Send"),
+    "studio.loop.who": Message("Ваше імʼя", "Your name"),
+    "studio.loop.paused": Message("На паузі", "Paused"),
+    "studio.loop.running": Message("Працює", "Running"),
+    "studio.loop.cycle": Message("Цикл {number}", "Cycle {number}"),
+    "studio.machines.title": Message("Де це виконується", "Where this runs"),
+    "studio.machines.nobuild": Message(
+        "тут ігри не збираються", "games are not built here",
+    ),
+    "studio.loop.need-name": Message(
+        "Вкажіть імʼя, щоб цю дію було на кого записати.",
+        "Enter a name, so this can be recorded against someone.",
+    ),
+    "studio.error": Message(
+        "Не вдалося прочитати стан: {message}",
+        "The state could not be read: {message}",
+    ),
+
     # Settings errors, phrased as cause and action
     "error.actor_required": Message(
         "Зміна налаштування записується на конкретну людину. Вкажіть імʼя.",

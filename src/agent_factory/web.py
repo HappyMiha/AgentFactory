@@ -2192,6 +2192,20 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
             )
         return response
 
+    @app.get("/studio", include_in_schema=False)
+    async def studio_shell(request: Request, lang: str | None = None) -> FileResponse:
+        from .localisation import LANGUAGE_COOKIE, normalise
+
+        if not request.state.local_principal:
+            return FileResponse(static_directory / "login.html")
+        response = FileResponse(static_directory / "studio.html")
+        if lang:
+            response.set_cookie(
+                LANGUAGE_COOKIE, normalise(lang), max_age=31_536_000,
+                samesite="lax", httponly=False,
+            )
+        return response
+
     @app.get("/work", include_in_schema=False)
     async def work_shell(request: Request, lang: str | None = None) -> FileResponse:
         from .localisation import LANGUAGE_COOKIE, normalise

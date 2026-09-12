@@ -1,0 +1,64 @@
+.page-studio main { max-width: 68rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.page-studio .intro { margin-bottom: 1.5rem; }
+.page-studio .languages { display: flex; gap: .75rem; margin: .5rem 0 0; }
+.page-studio .languages a[aria-current="true"] { font-weight: 700; text-decoration: none; }
+.page-studio .picker { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end;
+  padding: 1rem; border: 1px solid var(--line, #d5dee1); border-radius: .6rem; margin: 0 0 1.25rem; }
+.page-studio .picker input { flex: 1 1 18rem; min-width: 0; max-width: 100%; padding: .35rem .5rem; }
+.page-studio .card { border: 1px solid var(--line, #d5dee1); border-radius: .6rem;
+  padding: 1.25rem; margin-bottom: 1.25rem; }
+.page-studio .card h2 { margin: 0 0 .5rem; }
+.page-studio .card h3 { margin: 1rem 0 .35rem; font-size: 1rem; }
+.page-studio .card-head { display: flex; flex-wrap: wrap; gap: .5rem 1rem;
+  align-items: baseline; justify-content: space-between; }
+.page-studio .card-head .next { margin: 0; }
+/* Names of games, roles and machines are long unbreakable tokens on a phone. */
+.page-studio :is(p, li, dd, dt, td, th) { overflow-wrap: anywhere; }
+.page-studio .warn { padding: .7rem .85rem; border-radius: .4rem;
+  border-left: 4px solid #a33a2f; background: rgba(163,58,47,.10); }
+.page-studio .stage { border-top: 1px solid var(--line, #d5dee1); padding: .9rem 0; }
+.page-studio .stage:first-of-type { border-top: 0; }
+.page-studio .stage-head { display: flex; flex-wrap: wrap; gap: .5rem;
+  align-items: baseline; justify-content: space-between; }
+.page-studio .stage-head h3 { margin: 0; }
+.page-studio .boundary { font-size: .9rem; opacity: .85; margin: .2rem 0 .4rem; }
+.page-studio .tasks { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; }
+.page-studio .tasks li { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.page-studio .state { font-size: .75rem; padding: .1rem .5rem; border-radius: .8rem;
+  border: 1px solid currentColor; flex: 0 0 auto; }
+.page-studio .state-planned { color: #4d6068; }
+.page-studio .state-in_progress { color: #7a4a12; }
+.page-studio .state-done { color: #2f7d5b; }
+.page-studio .state-blocked { color: #a33a2f; }
+.page-studio .note { font-size: .88rem; opacity: .85; flex: 1 1 100%; margin: 0; }
+.page-studio .questions, .page-studio .team, .page-studio .machines,
+.page-studio .comments { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+.page-studio .questions li { padding: .6rem .75rem; border-radius: .4rem;
+  border-left: 4px solid #7a4a12; background: rgba(176,125,26,.10); }
+.page-studio .questions li.clear { border-color: #2f7d5b; background: rgba(47,125,91,.08); }
+.page-studio .questions .options { display: block; font-size: .9rem; margin-top: .2rem; }
+.page-studio .money { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: .3rem .75rem; margin: 0 0 .6rem; }
+.page-studio .money dt { font-weight: 600; }
+.page-studio .money dd { margin: 0; }
+.page-studio .table-scroll { overflow-x: auto; max-width: 100%; }
+.page-studio table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 24rem; }
+.page-studio th, .page-studio td { text-align: left; padding: .35rem .5rem;
+  border-bottom: 1px solid var(--line, #d5dee1); vertical-align: top; }
+.page-studio .table-scroll:focus-visible { outline: 3px solid var(--brand-focus, #a66216); outline-offset: 2px; }
+.page-studio .team li { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.page-studio .team .off { opacity: .7; }
+.page-studio .loop { margin-top: .6rem; display: grid; gap: .6rem; }
+.page-studio .loop label { display: flex; flex-direction: column; gap: .25rem; }
+.page-studio .loop input { padding: .35rem .5rem; max-width: 100%; }
+.page-studio .loop-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.page-studio .result:empty { display: none; }
+.page-studio .comments li { font-size: .92rem; padding: .4rem .6rem; border-radius: .4rem;
+  background: rgba(16,44,53,.05); }
+@media (max-width: 42rem) {
+  .page-studio main { padding-inline: .75rem; }
+  .page-studio .card { padding: .9rem; }
+  .page-studio .picker input, .page-studio .picker button { width: 100%; }
+  .page-studio .money { grid-template-columns: minmax(0, 1fr); }
+  .page-studio .loop-actions button { width: 100%; }
+}
