@@ -345,6 +345,7 @@ See:
 - [Who is in the studio, which machine answers, and when work can start](docs/studio-setup.md)
 - [One screen for the person whose game it is](docs/studio-screen.md)
 - [What you downloaded, and whether it is what we published](docs/distribution.md)
+- [Whose hardware is this?](docs/machine-identity.md)
 - [Налаштування без редагування файлів](docs/settings.md)
 - [Accessibility judged on the rendered page](docs/accessibility-audit.md)
 - [Two languages, or the catalogue is wrong](docs/localisation.md)

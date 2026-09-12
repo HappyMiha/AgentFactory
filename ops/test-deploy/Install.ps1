@@ -41,7 +41,9 @@ if (-not (Test-Path -LiteralPath "$root/secrets/clients.json")) {
     [IO.File]::WriteAllText("$root/secrets/clients.json", ($clients | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
 }
 if (-not (Test-Path -LiteralPath "$root/config.json")) {
-    $common = @{LOKVETIA_IDENTITY_ORIGIN='https://id.lokvetia.com';LOKVETIA_IDENTITY_INTERNAL='http://lokvetia-deploy-gateway:8080';LOKVETIA_ORGANIZATION='lokvetia';LOKVETIA_SSO_SECRET_FILE='/run/secrets/sso_client'}
+    # The application runs in a container here, and says so in every report:
+    # a hardware scan from this process describes the container, not a user's PC.
+    $common = @{LOKVETIA_IDENTITY_ORIGIN='https://id.lokvetia.com';LOKVETIA_IDENTITY_INTERNAL='http://lokvetia-deploy-gateway:8080';LOKVETIA_ORGANIZATION='lokvetia';LOKVETIA_SSO_SECRET_FILE='/run/secrets/sso_client';LOKVETIA_MACHINE_KIND='web_container';LOKVETIA_MACHINE_NAME='test.lokvetia.com'}
     $coreEnv = $common.Clone(); $coreEnv.LOKVETIA_SSO_CLIENT='core'; $coreEnv.LOKVETIA_SSO_ORIGIN='https://test.lokvetia.com'
     $cloudEnv = $common.Clone(); $cloudEnv.LOKVETIA_SSO_CLIENT='cloud'; $cloudEnv.LOKVETIA_SSO_ORIGIN='https://test.lokiravia.com'
     $config = @{

@@ -262,7 +262,13 @@ class WebHostTests(unittest.TestCase):
                 collect.assert_not_called()
                 result = client.post("/api/hardware/scan", json={})
                 self.assertEqual(result.status_code, 200, result.text)
-                self.assertEqual(result.json(), report)
+                # The collector's own fields are passed through untouched, and
+                # the report says which machine produced them.
+                answered = result.json()
+                machine = answered.pop("machine")
+                self.assertEqual(answered, report)
+                self.assertIn(machine["kind"], ("this_pc", "web_container", "cloud_worker"))
+                self.assertTrue(machine["caveat"])
                 collect.assert_called_once_with(root.resolve())
                 self.assertFalse((root / "state.db").exists())
 

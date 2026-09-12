@@ -38,6 +38,11 @@
   }
   function render(report) {
     byId('hardware-cards').replaceChildren();
+    // Whose hardware this is, said on the report itself: in a container these
+    // are the container's numbers, and the reader must not have to guess.
+    const machine = report.machine;
+    byId('machine-note').textContent = machine
+      ? `${machine.label} — ${machine.caveat}` : '';
     const stamp = byId('observed-at'), date = new Date(report.observed_at);
     stamp.dateTime = report.observed_at;
     stamp.textContent = Number.isNaN(date.getTime()) ? unknown : new Intl.DateTimeFormat('uk-UA', {dateStyle: 'medium', timeStyle: 'medium'}).format(date);
