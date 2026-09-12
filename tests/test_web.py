@@ -292,6 +292,10 @@ class WebHostTests(unittest.TestCase):
                         "/api/feedback/{feedback_id}/plans",
                         "/api/feedback/plans/{plan_id}/accept",
                         "/api/studio/questions/{question_id}/answer",
+                        "/api/studio/slices/{mission_key}/{stage_key}",
+                        "/api/studio/cycles/{mission_key}/pause",
+                        "/api/studio/cycles/{mission_key}/comments",
+                        "/api/studio/cycles/{mission_key}/resume",
                         "/api/hardware/scan",
                         "/api/configuration-advice",
                         "/api/game-planning/{mission_id}",
@@ -1165,3 +1169,94 @@ class FeedbackApiTests(unittest.TestCase):
                 response = client.get("/api/feedback/404")
                 self.assertEqual(response.status_code, 404)
                 self.assertEqual(response.json()["error"]["code"], "unknown_feedback")
+
+
+class StudioLoopApiTests(unittest.TestCase):
+    """Pause, comment, continue - and a slice that has to exist to be offered."""
+
+    HEADERS = {"X-Agent-Factory-Confirm": "true"}
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def test_a_slice_with_no_build_behind_it_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/studio/slices/m1/base?lang=en",
+                    json={
+                        "confirmed": True, "outcome": "playable",
+                        "project_key": "collector", "version_digest": "a" * 64,
+                    },
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.json()["error"]["code"], "slice_refused")
+                self.assertIn("no such built version", response.json()["error"]["message"])
+
+    def test_a_stage_may_say_there_is_nothing_to_test(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                declared = client.post(
+                    "/api/studio/slices/m1/setup?lang=en",
+                    json={
+                        "confirmed": True, "outcome": "nothing_to_test",
+                        "reason_uk": "Лише підготовка середовища.",
+                        "reason_en": "Only the environment was prepared.",
+                    },
+                    headers=self.HEADERS,
+                ).json()
+                self.assertFalse(declared["playable"])
+                report = client.get("/api/studio/slices/m1?lang=en").json()
+                self.assertEqual(report["playable"], [])
+                self.assertIn("environment", report["stages"]["setup"]["reason"])
+
+    def test_the_loop_pauses_takes_a_comment_and_continues(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                paused = client.post(
+                    "/api/studio/cycles/m1/pause?lang=en",
+                    json={"confirmed": True, "actor": "miha", "finishing": ["build"]},
+                    headers=self.HEADERS,
+                ).json()
+                self.assertIn("No new task", paused["summary"])
+                client.post(
+                    "/api/studio/cycles/m1/comments",
+                    json={"confirmed": True, "text": "хочу подвійний стрибок"},
+                    headers=self.HEADERS,
+                )
+                resumed = client.post(
+                    "/api/studio/cycles/m1/resume?lang=en",
+                    json={"confirmed": True, "actor": "miha"},
+                    headers=self.HEADERS,
+                ).json()
+                self.assertEqual(
+                    [item["text"] for item in resumed["comments"]],
+                    ["хочу подвійний стрибок"])
+                self.assertIn("Until it replans", resumed["note"])
+                self.assertEqual(
+                    client.get("/api/studio/cycles/m1").json()["cycle"], 2)
+
+    def test_continuing_a_mission_that_is_not_paused_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                response = client.post(
+                    "/api/studio/cycles/m1/resume?lang=en",
+                    json={"confirmed": True, "actor": "miha"}, headers=self.HEADERS,
+                )
+                self.assertEqual(response.status_code, 409)
+                self.assertIn("not paused", response.json()["error"]["message"])
+
+    def test_every_studio_change_needs_the_confirmation_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                for path, body in (
+                    ("/api/studio/cycles/m1/pause", {"actor": "miha"}),
+                    ("/api/studio/cycles/m1/comments", {"text": "щось"}),
+                ):
+                    response = client.post(path, json={"confirmed": False, **body})
+                    self.assertEqual(response.status_code, 400, path)

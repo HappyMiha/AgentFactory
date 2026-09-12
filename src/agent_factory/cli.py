@@ -409,6 +409,40 @@ def parser() -> argparse.ArgumentParser:
     )
     studio_plan.add_argument("--mission", required=True)
     studio_plan.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_slice = studio_command.add_parser(
+        "slice", help="Declare how a stage ended: playable, or nothing to test."
+    )
+    studio_slice.add_argument("--mission", required=True)
+    studio_slice.add_argument("--stage", required=True)
+    studio_slice.add_argument("--project")
+    studio_slice.add_argument("--version")
+    studio_slice.add_argument("--nothing-uk", help="Why there is nothing to test yet.")
+    studio_slice.add_argument("--nothing-en", help="The same reason in English.")
+    studio_slice.add_argument("--actor", default="")
+    studio_slice.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_slices = studio_command.add_parser("slices", help="What is playable, and when.")
+    studio_slices.add_argument("--mission", required=True)
+    studio_slices.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_pause = studio_command.add_parser(
+        "pause", help="Stop handing out new tasks. Work in flight finishes."
+    )
+    studio_pause.add_argument("--mission", required=True)
+    studio_pause.add_argument("--actor", required=True)
+    studio_pause.add_argument("--finishing", action="append", default=[])
+    studio_pause.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_comment = studio_command.add_parser("comment", help="Say what you want changed.")
+    studio_comment.add_argument("--mission", required=True)
+    studio_comment.add_argument("--text", required=True)
+    studio_comment.add_argument("--scope", default="game", choices=("game", "stage", "task"))
+    studio_comment.add_argument("--subject", default="")
+    studio_comment.add_argument("--author", default="")
+    studio_resume = studio_command.add_parser("resume", help="Continue, with the comments.")
+    studio_resume.add_argument("--mission", required=True)
+    studio_resume.add_argument("--actor", required=True)
+    studio_resume.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_history = studio_command.add_parser("cycles", help="Every cycle and its comments.")
+    studio_history.add_argument("--mission", required=True)
+    studio_history.add_argument("--language", default="uk", choices=("uk", "en"))
     studio_answer = studio_command.add_parser("answer", help="Answer one open question.")
     studio_answer.add_argument("--question", type=int, required=True)
     studio_answer.add_argument("--answer", required=True)
@@ -1385,9 +1419,64 @@ def _execute(args: argparse.Namespace) -> int:
                 print(json.dumps(catalogue(args.language), indent=2, ensure_ascii=False))
             elif args.action == "plan":
                 from .studio_backlog import from_mission
+                from .studio_slices import StageBoundaries
 
                 print(json.dumps(
-                    from_mission(storage, args.mission).record(args.language),
+                    from_mission(
+                        storage, args.mission,
+                        playable=StageBoundaries(storage).playable_map(args.mission),
+                    ).record(args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "slice":
+                from .localisation import Message
+                from .studio_slices import StageBoundaries
+
+                boundaries = StageBoundaries(storage)
+                if args.version:
+                    boundary = boundaries.playable(
+                        args.mission, args.stage,
+                        project_key=args.project or "", version_digest=args.version,
+                        declared_by=args.actor,
+                    )
+                else:
+                    boundary = boundaries.nothing_to_test(
+                        args.mission, args.stage,
+                        reason=Message(args.nothing_uk or "", args.nothing_en or ""),
+                        declared_by=args.actor,
+                    )
+                print(json.dumps(boundary.record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "slices":
+                from .studio_slices import StageBoundaries
+
+                print(json.dumps(
+                    StageBoundaries(storage).report(args.mission, language=args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "pause":
+                from .studio_cycles import StudioCycles
+
+                print(json.dumps(StudioCycles(storage).pause(
+                    args.mission, actor=args.actor, finishing=args.finishing,
+                ).record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "comment":
+                from .studio_cycles import StudioCycles
+
+                print(json.dumps(StudioCycles(storage).comment(
+                    args.mission, args.text, scope=args.scope,
+                    subject=args.subject, author=args.author,
+                ).record(), indent=2, ensure_ascii=False))
+            elif args.action == "resume":
+                from .studio_cycles import StudioCycles
+
+                print(json.dumps(StudioCycles(storage).resume(
+                    args.mission, actor=args.actor,
+                ).record(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "cycles":
+                from .studio_cycles import StudioCycles
+
+                print(json.dumps(
+                    StudioCycles(storage).report(args.mission, language=args.language),
                     indent=2, ensure_ascii=False,
                 ))
             elif args.action == "decisions":

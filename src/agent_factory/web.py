@@ -293,6 +293,27 @@ class AcceptPlanCommand(ConfirmedCommand):
     accept_scope: bool = False
 
 
+class DeclareSliceCommand(ConfirmedCommand):
+    outcome: str = Field(pattern="^(playable|nothing_to_test)$")
+    project_key: str = Field(default="", max_length=120)
+    version_digest: str = Field(default="", max_length=64)
+    reason_uk: str = Field(default="", max_length=400)
+    reason_en: str = Field(default="", max_length=400)
+    declared_by: str = Field(default="", max_length=120)
+
+
+class PauseCommand(ConfirmedCommand):
+    actor: str = Field(min_length=1, max_length=120)
+    finishing: list[str] = Field(default_factory=list, max_length=20)
+
+
+class CommentCommand(ConfirmedCommand):
+    text: str = Field(min_length=1, max_length=2000)
+    scope: str = Field(default="game", pattern="^(game|stage|task)$")
+    subject: str = Field(default="", max_length=200)
+    author: str = Field(default="", max_length=120)
+
+
 class AnswerQuestionCommand(ConfirmedCommand):
     answer: str = Field(min_length=1, max_length=40)
     actor: str = Field(min_length=1, max_length=120)
@@ -1314,6 +1335,140 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
 
         return catalogue(chosen_language(request, lang))
 
+    def stage_boundaries(service: Service):
+        from .studio_slices import StageBoundaries
+
+        return StageBoundaries(service.storage)
+
+    def studio_cycles(service: Service):
+        from .studio_cycles import StudioCycles
+
+        return StudioCycles(service.storage)
+
+    def studio_error(exc: Exception, language: str, code: str) -> JSONResponse:
+        from .localisation import LocalisedError
+
+        message = (
+            exc.text(language) if isinstance(exc, LocalisedError)
+            else str(exc).strip("'")
+        )
+        return JSONResponse(
+            status_code=409, content={"error": {"code": code, "message": message}}
+        )
+
+    @app.get("/api/studio/slices/{mission_key}", response_model=dict[str, Any])
+    async def studio_slices(
+        mission_key: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        return stage_boundaries(service).report(
+            mission_key, language=chosen_language(request, lang),
+        )
+
+    @app.post("/api/studio/slices/{mission_key}/{stage_key}", response_model=dict[str, Any])
+    async def studio_declare_slice(
+        mission_key: str,
+        stage_key: str,
+        command: DeclareSliceCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        """Declare how a stage ended: a slice that exists, or an honest reason."""
+        from .localisation import Message
+        from .studio_slices import SliceRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        boundaries = stage_boundaries(service)
+        try:
+            if command.outcome == "playable":
+                boundary = boundaries.playable(
+                    mission_key, stage_key,
+                    project_key=command.project_key,
+                    version_digest=command.version_digest,
+                    declared_by=command.declared_by,
+                )
+            else:
+                boundary = boundaries.nothing_to_test(
+                    mission_key, stage_key,
+                    reason=Message(command.reason_uk, command.reason_en),
+                    declared_by=command.declared_by,
+                )
+        except (SliceRefused, ValueError) as exc:
+            return studio_error(exc, language, "slice_refused")
+        return boundary.record(language)
+
+    @app.get("/api/studio/cycles/{mission_key}", response_model=dict[str, Any])
+    async def studio_cycle_state(
+        mission_key: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        return studio_cycles(service).report(
+            mission_key, language=chosen_language(request, lang),
+        )
+
+    @app.post("/api/studio/cycles/{mission_key}/pause", response_model=dict[str, Any])
+    async def studio_pause(
+        mission_key: str,
+        command: PauseCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .studio_cycles import CycleRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            paused = studio_cycles(service).pause(
+                mission_key, actor=command.actor, finishing=command.finishing,
+            )
+        except CycleRefused as exc:
+            return studio_error(exc, language, "pause_refused")
+        return paused.record(language)
+
+    @app.post("/api/studio/cycles/{mission_key}/comments", response_model=dict[str, Any])
+    async def studio_comment(
+        mission_key: str,
+        command: CommentCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .studio_cycles import CycleRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            comment = studio_cycles(service).comment(
+                mission_key, command.text, scope=command.scope,
+                subject=command.subject, author=command.author,
+            )
+        except CycleRefused as exc:
+            return studio_error(exc, language, "comment_refused")
+        return comment.record()
+
+    @app.post("/api/studio/cycles/{mission_key}/resume", response_model=dict[str, Any])
+    async def studio_resume(
+        mission_key: str,
+        command: PauseCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .studio_cycles import CycleRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            resumed = studio_cycles(service).resume(mission_key, actor=command.actor)
+        except CycleRefused as exc:
+            return studio_error(exc, language, "resume_refused")
+        return resumed.record(language)
+
     @app.get("/api/studio/plan/{mission_key}", response_model=dict[str, Any])
     async def studio_plan(
         mission_key: str, request: Request, service: Service, lang: str | None = None
@@ -1323,7 +1478,10 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
 
         language = chosen_language(request, lang)
         try:
-            return from_mission(service.storage, mission_key).record(language)
+            return from_mission(
+                service.storage, mission_key,
+                playable=stage_boundaries(service).playable_map(mission_key),
+            ).record(language)
         except BacklogRefused as exc:
             return JSONResponse(
                 status_code=404,
