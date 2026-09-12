@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from agent_factory import asset_provenance, godot_pack, unity_setup
+from agent_factory.localisation import LANGUAGES, Message
 from agent_factory.settings_registry import (
     BY_SECTION,
     DEFINITIONS,
@@ -30,8 +31,9 @@ class DeclarationTest(unittest.TestCase):
             with self.subTest(key=item.key):
                 self.assertIn(item.section, known)
                 self.assertIn(item.kind, KINDS)
-                self.assertTrue(item.label.strip())
-                self.assertTrue(item.help.strip())
+                for language in LANGUAGES:
+                    self.assertTrue(getattr(item.label, language).strip())
+                    self.assertTrue(getattr(item.help, language).strip())
                 self.assertTrue(item.source.strip())
 
     def test_no_section_is_empty_and_keys_are_unique(self) -> None:
@@ -49,10 +51,14 @@ class DeclarationTest(unittest.TestCase):
         for item in DEFINITIONS:
             if item.risk == "sensitive":
                 with self.subTest(key=item.key):
-                    self.assertTrue(item.consequence.strip())
+                    self.assertIsNotNone(item.consequence)
+                    for language in LANGUAGES:
+                        self.assertTrue(getattr(item.consequence, language).strip())
         with self.assertRaises(ValueError):
             Setting(
-                "x.y", "runtime", "L", "H", "boolean", "true", "src", risk="sensitive",
+                "x.y", "runtime", Message("Мітка", "Label"),
+                Message("Довідка", "Help"), "boolean", "true", "src",
+                risk="sensitive",
             )
 
     def test_derived_values_are_read_only_and_match_their_source(self) -> None:
@@ -85,7 +91,8 @@ class DeclarationTest(unittest.TestCase):
 class ParsingTest(unittest.TestCase):
     def field(self, **overrides) -> Setting:
         base = dict(
-            key="t.key", section="runtime", label="Поле", help="Довідка",
+            key="t.key", section="runtime", label=Message("Поле", "Field"),
+            help=Message("Довідка", "Help"),
             kind="integer", default="10", source="test", minimum=1, maximum=100,
         )
         base.update(overrides)
@@ -142,6 +149,11 @@ class ParsingTest(unittest.TestCase):
     def test_describe_reports_origin_and_change(self) -> None:
         item = self.field()
         described = item.describe(value="10", origin="default")
+        self.assertEqual(described["label"], "Поле")
+        self.assertEqual(
+            item.describe(value="10", origin="default", language="en")["label"],
+            "Field",
+        )
         self.assertFalse(described["changed"])
         self.assertEqual(described["default_source"], "test")
         self.assertTrue(item.describe(value="11", origin="override")["changed"])
@@ -157,7 +169,7 @@ class CheckTest(unittest.TestCase):
 
     def test_the_godot_check_names_unverified_series(self) -> None:
         findings = verify("engine-godot", defaults())
-        summaries = " ".join(finding.summary for finding in findings)
+        summaries = " ".join(finding.summary.uk for finding in findings)
         self.assertIn(godot_pack.BASELINE_ENGINE_VERSION, summaries)
         self.assertIn("без підтвердженого запуску", summaries)
 
@@ -189,11 +201,12 @@ class CheckTest(unittest.TestCase):
 
     def test_the_support_check_states_what_is_never_collected(self) -> None:
         findings = verify("support", defaults())
-        self.assertIn("Облікові дані", findings[0].summary)
+        self.assertIn("Облікові дані", findings[0].summary.uk)
+        self.assertIn("Credentials", findings[0].summary.en)
 
     def test_the_unity_check_says_the_licence_is_not_read_here(self) -> None:
         summaries = " ".join(
-            finding.summary for finding in verify("engine-unity", defaults())
+            finding.summary.uk for finding in verify("engine-unity", defaults())
         )
         self.assertIn("ліцензії тут не читається", summaries)
 
@@ -203,9 +216,15 @@ class CheckTest(unittest.TestCase):
         levels = {finding.level for finding in verify("export", values)}
         self.assertIn("attention", levels)
 
-    def test_findings_serialise(self) -> None:
-        record = Finding("ok", "s", "d").record
-        self.assertEqual(record, {"level": "ok", "summary": "s", "detail": "d"})
+    def test_findings_serialise_in_the_asked_language(self) -> None:
+        finding = Finding("ok", Message("так", "yes"), Message("бо", "because"))
+        self.assertEqual(
+            finding.record("uk"), {"level": "ok", "summary": "так", "detail": "бо"},
+        )
+        self.assertEqual(
+            finding.record("en"),
+            {"level": "ok", "summary": "yes", "detail": "because"},
+        )
 
 
 if __name__ == "__main__":

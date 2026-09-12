@@ -931,6 +931,68 @@ class SettingsApiTests(unittest.TestCase):
                     client.get("/api/settings/sections/nowhere").status_code, 404,
                 )
 
+    def test_the_interface_speaks_both_languages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                ukrainian = client.get("/api/i18n").json()
+                english = client.get("/api/i18n?lang=en").json()
+                self.assertEqual(ukrainian["language"], "uk")
+                self.assertEqual(english["language"], "en")
+                self.assertEqual(set(ukrainian["messages"]), set(english["messages"]))
+                self.assertNotEqual(
+                    ukrainian["messages"]["settings.title"],
+                    english["messages"]["settings.title"],
+                )
+                self.assertEqual(english["available"], ["uk", "en"])
+
+    def test_the_browser_preference_chooses_the_language(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                asked = client.get(
+                    "/api/settings/sections",
+                    headers={"Accept-Language": "en-GB,en;q=0.9,uk;q=0.4"},
+                ).json()
+                self.assertEqual(asked["language"], "en")
+                self.assertEqual(asked["sections"][0]["title"], "Godot engine")
+                default = client.get("/api/settings/sections").json()
+                self.assertEqual(default["language"], "uk")
+                self.assertEqual(default["sections"][0]["title"], "Рушій Godot")
+
+    def test_an_explicit_choice_beats_the_browser_preference(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                payload = client.get(
+                    "/api/settings/sections?lang=uk",
+                    headers={"Accept-Language": "en"},
+                ).json()
+                self.assertEqual(payload["language"], "uk")
+
+    def test_a_refusal_reaches_the_person_in_their_language(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                body = {"confirmed": True, "value": "false", "actor": "miha"}
+                ukrainian = client.post(
+                    "/api/settings/values/updates.protect_pins",
+                    json=body, headers=self.HEADERS,
+                ).json()["error"]["message"]
+                english = client.post(
+                    "/api/settings/values/updates.protect_pins?lang=en",
+                    json=body, headers=self.HEADERS,
+                ).json()["error"]["message"]
+                self.assertIn("Підтвердьте наслідок", ukrainian)
+                self.assertIn("Acknowledge the consequence", english)
+
+                nameless = client.post(
+                    "/api/settings/values/godot.max_seconds?lang=en",
+                    json={"confirmed": True, "value": "300", "actor": " "},
+                    headers=self.HEADERS,
+                )
+                self.assertEqual(nameless.status_code, 400)
+                self.assertEqual(
+                    nameless.json()["error"]["code"], "actor_required",
+                )
+                self.assertIn("named person", nameless.json()["error"]["message"])
+
     def test_the_settings_page_is_served_and_carries_the_brand(self):
         with tempfile.TemporaryDirectory() as tmp:
             with self.client(tmp) as client:
@@ -938,3 +1000,49 @@ class SettingsApiTests(unittest.TestCase):
                 self.assertEqual(page.status_code, 200)
                 self.assertIn("brand.css", page.text)
                 self.assertIn("settings.js", page.text)
+
+
+class WorkStatusApiTests(unittest.TestCase):
+    """The progress screen's contract: read the truth, and change nothing."""
+
+    def client(self, workspace: str):
+        root = Path(workspace)
+        return TestClient(
+            create_app(root, root / ".agent-factory" / "state.db"),
+            base_url="http://localhost",
+        )
+
+    def test_an_unknown_run_is_a_clean_404_rather_than_a_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                for path in ("/api/work/runs/77", "/api/work/runs/77/stop-plan",
+                             "/api/work/runs/77/after-restart"):
+                    response = client.get(path)
+                    self.assertEqual(response.status_code, 404, path)
+                    self.assertEqual(
+                        response.json()["error"]["code"], "unknown_run", path)
+
+    def test_with_no_run_in_flight_the_list_is_empty_rather_than_invented(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                payload = client.get("/api/work/runs").json()
+                self.assertEqual(payload["runs"], [])
+                self.assertIn(payload["language"], ("uk", "en"))
+
+    def test_the_page_and_its_answers_follow_the_asked_language(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                english = client.get("/api/work/runs?lang=en").json()
+                self.assertEqual(english["language"], "en")
+                page = client.get("/work?lang=en")
+                self.assertEqual(page.status_code, 200)
+                self.assertIn("<html", page.text.casefold())
+
+    def test_reading_the_status_never_offers_a_way_to_change_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.client(tmp) as client:
+                paths = client.get("/api/openapi.json").json()["paths"]
+                work = {path: set(operations) for path, operations in paths.items()
+                        if path.startswith("/api/work/")}
+                self.assertTrue(work)
+                self.assertTrue(all(methods == {"get"} for methods in work.values()))

@@ -79,7 +79,24 @@ def command(args, *, cwd=None, input=None, timeout=900):
     return result.stdout.strip()
 
 def compatible(before, after):
-    return all(after.get(path) == signature for path, signature in before.items())
+    """A release may add storage; it may not change or drop storage that holds data.
+
+    Objects are compared one by one, so a migration that only creates new tables
+    passes while any rewrite or removal of an existing table, index or trigger
+    still blocks the rollout. A signature recorded before per-object snapshots
+    existed is a single string and is still compared whole.
+    """
+    for path, objects in before.items():
+        current = after.get(path)
+        if current is None:
+            return False
+        if isinstance(objects, str) or isinstance(current, str):
+            if objects != current:
+                return False
+            continue
+        if any(current.get(name) != signature for name, signature in objects.items()):
+            return False
+    return True
 
 def release_image(p, attempt):
     repository = 'lokiravia' if p['service'] == 'lokiravia' else 'lokvetia-core'
@@ -237,6 +254,60 @@ class Controller:
             args += ['--mount', 'type=bind,source=' + str(Path(mount['source']).resolve()) + ',target=' + mount['target'] + ',readonly']
         command(args + [image, p['service']], timeout=60)
 
+    def protected(self, p):
+        """Containers no cleanup may remove: anything routed, plus the rollback target."""
+        names = {(route or {}).get('container') for route in read_json(self.routes_path, {}).values()}
+        record = self.status['projects'].get(p['id'], {})
+        names.add((record.get('previous_route') or {}).get('container'))
+        return {name for name in names if name}
+
+    # A test-runtime container runs no background workers, so the only work it can
+    # still hold is an HTTP call the gateway started before routing moved on.
+    IDLE_PROBE = ("from pathlib import Path;"
+                  "print(sum(1 for name in ('/proc/net/tcp', '/proc/net/tcp6')"
+                  " for line in Path(name).read_text().splitlines()[1:]"
+                  " if line.split()[3] != '0A'))")
+
+    def idle(self, container):
+        """True only when a running container has no connection left but its listener."""
+        try:
+            return command(['docker', 'exec', container, 'python', '-c', self.IDLE_PROBE], timeout=20).strip() == '0'
+        except (DeployError, subprocess.TimeoutExpired):
+            return False
+
+    def retire(self, p, protected):
+        """Remove superseded releases once their last call has finished.
+
+        Routed containers, the rollback target and the newest few releases are
+        never touched. A container that still holds a connection is left for a
+        later cycle instead of being cut off, so this reclaims resources without
+        ending work that is still running. Reclaiming is housekeeping, so a
+        failure here is reported by returning less, never by failing a rollout
+        that already succeeded.
+        """
+        keep = max(1, int(self.config.get('keep_releases', 2)))
+        try:
+            listed = command(['docker', 'ps', '-a', '--filter', 'label=lokvetia.deploy.project=' + p['id'],
+                              '--format', '{{.Names}}\t{{.State}}\t{{.CreatedAt}}']).splitlines()
+        except (DeployError, subprocess.TimeoutExpired):
+            return []
+        entries = sorted((line.split('\t') for line in listed if line.strip()),
+                         key=lambda entry: entry[2][:19], reverse=True)
+        retired = []
+        for name, state, _ in entries[keep:]:
+            if name in protected:
+                continue
+            # Only a container that cannot be serving anything skips the probe; a paused
+            # or restarting one is left alone rather than assumed finished.
+            if state not in {'exited', 'created', 'dead'} and not self.idle(name):
+                continue
+            try:
+                command(['docker', 'rm', '-f', name], timeout=60)
+                retired.append(name)
+            except (DeployError, subprocess.TimeoutExpired):
+                continue
+        return retired
+
     def rollback_route(self, p, previous):
         routes = read_json(self.routes_path)
         if previous is None:
@@ -260,6 +331,7 @@ class Controller:
         if not self.checks_passed(p, sha):
             self.report(p, 'waiting_for_ci', 'queued', commit=sha, error='Waiting for successful Auto Deploy checks on this exact main revision')
             return
+        self.retire(p, self.protected(p))
         managed = command(['docker', 'ps', '-a', '--filter', 'label=lokvetia.deploy.project=' + p['id'], '--format', '{{.Names}}']).splitlines()
         if len(managed) >= self.config.get('max_retained_containers_per_project', 8):
             self.report(p, 'capacity', 'failure', commit=sha, error='Retained-release limit reached; confirm old jobs finished before retiring containers')
@@ -329,6 +401,7 @@ class Controller:
             self.report(p, 'health')
             self.health(candidate, p)
             self.report(p, 'success', 'success', finished_at=now(), error='', retry_after=0)
+            self.retire(p, self.protected(p))
         except Exception as error:
             rollback = 'not_needed'
             if activated:

@@ -73,13 +73,16 @@ class WriteTest(SettingsFixture):
     def test_an_invalid_value_is_refused_with_a_readable_reason(self) -> None:
         with self.assertRaises(SettingError) as caught:
             self.centre.set("godot.max_seconds", 2, actor="miha")
-        self.assertIn("нижче", str(caught.exception).casefold().replace("below", "нижче"))
+        self.assertIn("менше за мінімум", caught.exception.text("uk"))
+        self.assertIn("below the minimum", caught.exception.text("en"))
         self.assertEqual(self.centre.value("godot.max_seconds"), 120)
 
     def test_a_sensitive_change_needs_the_consequence_acknowledged(self) -> None:
+        consequence = setting("updates.protect_pins").consequence
         with self.assertRaises(ConfirmationRequired) as caught:
             self.centre.set("updates.protect_pins", False, actor="miha")
-        self.assertIn(setting("updates.protect_pins").consequence, str(caught.exception))
+        self.assertIn(consequence.uk, caught.exception.text("uk"))
+        self.assertIn(consequence.en, caught.exception.text("en"))
         self.assertTrue(self.centre.value("updates.protect_pins"))
 
         self.centre.set(

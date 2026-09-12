@@ -13,17 +13,23 @@ repositories every 60 seconds and performs the actual Docker deployment.
 - Each SQLite snapshot is transaction-consistent. Multiple databases and files are
   not a single global transaction; disaster recovery needs explicit reconciliation.
 - A candidate starts on a disposable snapshot with networking disabled. An authenticated
-  read exercises database initialization. Any change to an existing database schema
-  blocks automatic deployment.
+  read exercises database initialization. Stored objects are compared one by one: a
+  release may create new tables, and any change or removal of a table, index or trigger
+  that already holds client data blocks automatic deployment.
 - A stable streaming gateway reads routing atomically for each new request.
   Existing calls retain their original upstream. Old application containers and all
   game/AI workers remain running. There is no compose stop/restart/down or volume prune.
 - Failed activation switches new requests back to the previous running image.
   New client writes remain in the same live volume. Controller crash recovery also
   restores routing only. Failed releases are retained for investigation.
-- Retained containers are bounded. At the configured limit, deployment blocks until
-  an operator has verified that older jobs are finished and retires those releases.
-  This favors preserving work over automatic resource reclamation.
+- Superseded releases are retired after a successful rollout and again before the next
+  one. The routed container, the rollback target and the newest `keep_releases`
+  releases (two by default) are never removed, and a container that still holds an
+  open call is left running for a later cycle rather than cut off. Preserving work
+  still wins: nothing is reclaimed while it is in use.
+- Retained containers remain bounded. If releases cannot drain, the limit is still
+  reached and deployment blocks until an operator has verified that older jobs are
+  finished and retires those releases.
 - Automatic schema migrations, destructive data rollback and worker restarts are not supported.
   These require an application-specific compatibility and drain plan.
 

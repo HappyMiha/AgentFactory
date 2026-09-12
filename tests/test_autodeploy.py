@@ -50,6 +50,54 @@ class DeploymentSafetyTests(unittest.TestCase):
         self.assertFalse(deploy.compatible({'state.db': 'old'}, {'state.db': 'new'}))
         self.assertTrue(deploy.compatible({'state.db': 'old'}, {'state.db': 'old', 'new.db': 'new'}))
 
+    def test_a_release_that_only_adds_tables_can_roll_out(self):
+        before = {'state.db': {'runs': 'runs-signature'}}
+        after = {'state.db': {'runs': 'runs-signature', 'setting_overrides': 'settings-signature'}}
+        self.assertTrue(deploy.compatible(before, after))
+
+    def test_a_rewritten_table_is_still_blocked(self):
+        self.assertFalse(deploy.compatible({'state.db': {'runs': 'before'}}, {'state.db': {'runs': 'after'}}))
+
+    def test_a_dropped_table_is_still_blocked(self):
+        self.assertFalse(deploy.compatible({'state.db': {'runs': 'a', 'leases': 'b'}}, {'state.db': {'runs': 'a'}}))
+
+    def test_a_missing_database_is_still_blocked(self):
+        self.assertFalse(deploy.compatible({'state.db': {'runs': 'a'}}, {'other.db': {'runs': 'a'}}))
+
+    def test_adding_a_table_leaves_existing_signatures_untouched(self):
+        snapshot = self.snapshot_module()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with closing(sqlite3.connect(root / 'state.db')) as db, db:
+                db.execute('CREATE TABLE runs(value TEXT)')
+            before = snapshot.schemas(root)
+            with closing(sqlite3.connect(root / 'state.db')) as db, db:
+                db.execute('CREATE TABLE setting_overrides(key TEXT PRIMARY KEY)')
+            after = snapshot.schemas(root)
+            self.assertEqual(before['state.db']['runs'], after['state.db']['runs'])
+            self.assertIn('setting_overrides', after['state.db'])
+            self.assertTrue(deploy.compatible(before, after))
+
+    def test_rewriting_a_table_changes_its_signature(self):
+        snapshot = self.snapshot_module()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with closing(sqlite3.connect(root / 'state.db')) as db, db:
+                db.execute('CREATE TABLE runs(value TEXT)')
+            before = snapshot.schemas(root)
+            with closing(sqlite3.connect(root / 'state.db')) as db, db:
+                db.execute('ALTER TABLE runs ADD COLUMN added TEXT')
+            self.assertFalse(deploy.compatible(before, snapshot.schemas(root)))
+
+    def snapshot_module(self):
+        snapshot_file = ROOT / 'ops' / 'test-deploy' / 'snapshot.py'
+        if not snapshot_file.exists():
+            self.skipTest('Snapshot implementation is owned by Core')
+        module_spec = importlib.util.spec_from_file_location('snapshot', snapshot_file)
+        module = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(module)
+        return module
+
     def test_atomic_publication_does_not_touch_client_data(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -217,3 +265,77 @@ class ReleaseHistoryTests(unittest.TestCase):
             controller.report(self.project, 'failure', 'failure', commit='a' * 40,
                               attempt_id=attempt, finished_at='same-second')
         self.assertEqual(len(self.history(controller)), 2)
+
+
+class ReleaseRetirementTests(unittest.TestCase):
+    """Superseded releases are reclaimed, and only after their work has finished."""
+
+    LISTING = ('lokvetia-release-core-new\trunning\t2026-09-12 15:02:21 +0200 CEST\n'
+               'lokvetia-release-core-busy\trunning\t2026-09-11 09:00:00 +0200 CEST\n'
+               'lokvetia-release-core-quiet\trunning\t2026-09-10 09:00:00 +0200 CEST\n'
+               'lokvetia-release-core-stopped\texited\t2026-09-09 09:00:00 +0200 CEST\n'
+               'lokvetia-release-core-previous\trunning\t2026-09-08 09:00:00 +0200 CEST\n')
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = Path(self.folder.name)
+        self.project = {'id': 'core', 'name': 'Lokvetia Core', 'service': 'lokvetia',
+                        'repository': 'HappyMiha/Lokvetia-Core', 'host': 'test.lokvetia.com'}
+        self.controller = deploy.Controller({'state_root': str(self.root), 'runtime_bundle': str(self.root),
+                                             'projects': [self.project], 'keep_releases': 2})
+        deploy.atomic_json(self.controller.routes_path,
+                           {'test.lokvetia.com': {'container': 'lokvetia-release-core-new'}})
+        self.controller.status['projects']['core'] = {
+            'previous_route': {'container': 'lokvetia-release-core-previous'}}
+        self.connections = {'lokvetia-release-core-busy': '4', 'lokvetia-release-core-quiet': '0'}
+        self.removed = []
+
+    def docker(self, args, **kwargs):
+        if args[:3] == ['docker', 'ps', '-a']:
+            return self.LISTING
+        if args[:2] == ['docker', 'exec']:
+            return self.connections[args[2]]
+        if args[:3] == ['docker', 'rm', '-f']:
+            self.removed.append(args[3])
+            return ''
+        raise AssertionError(args)
+
+    def retire(self):
+        with patch.object(deploy, 'command', side_effect=self.docker):
+            return self.controller.retire(self.project, self.controller.protected(self.project))
+
+    def test_the_newest_releases_and_the_routed_one_are_kept(self):
+        self.retire()
+        self.assertNotIn('lokvetia-release-core-new', self.removed)
+        self.assertNotIn('lokvetia-release-core-busy', self.removed)
+
+    def test_a_release_still_serving_a_call_is_not_cut_off(self):
+        self.connections['lokvetia-release-core-quiet'] = '2'
+        self.assertNotIn('lokvetia-release-core-quiet', self.retire())
+
+    def test_a_drained_release_is_reclaimed(self):
+        self.assertIn('lokvetia-release-core-quiet', self.retire())
+
+    def test_a_stopped_release_needs_no_probe(self):
+        self.assertIn('lokvetia-release-core-stopped', self.retire())
+
+    def test_the_rollback_target_is_never_reclaimed(self):
+        self.assertNotIn('lokvetia-release-core-previous', self.retire())
+
+    def test_housekeeping_never_fails_a_finished_rollout(self):
+        with patch.object(deploy, 'command', side_effect=deploy.DeployError('docker daemon is busy')):
+            self.assertEqual(self.controller.retire(self.project, set()), [])
+
+    def test_an_unreachable_container_is_treated_as_busy(self):
+        with patch.object(deploy, 'command', side_effect=deploy.DeployError('container is gone')):
+            self.assertFalse(self.controller.idle('lokvetia-release-core-quiet'))
+
+    def test_a_removal_that_fails_does_not_stop_the_rest(self):
+        def docker(args, **kwargs):
+            if args[:3] == ['docker', 'rm', '-f'] and args[3] == 'lokvetia-release-core-quiet':
+                raise deploy.DeployError('removal in progress')
+            return self.docker(args, **kwargs)
+        with patch.object(deploy, 'command', side_effect=docker):
+            retired = self.controller.retire(self.project, self.controller.protected(self.project))
+        self.assertEqual(retired, ['lokvetia-release-core-stopped'])

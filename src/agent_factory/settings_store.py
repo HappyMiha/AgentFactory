@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping, Sequence, TYPE_CHECKING
 
+from .localisation import DEFAULT_LANGUAGE, LocalisedError, Message, translate
 from .settings_registry import (
     BY_SECTION,
     DEFINITIONS,
@@ -62,12 +63,16 @@ ORIGINS = ("default", "override")
 MAX_REASON = 300
 
 
-class ConfirmationRequired(PermissionError):
+class ConfirmationRequired(LocalisedError, PermissionError):
     """Raised when a sensitive setting is changed without acknowledging its cost."""
 
 
-class NotReconfigurable(PermissionError):
+class NotReconfigurable(LocalisedError, PermissionError):
     """Raised when a derived, read-only value is changed through the interface."""
+
+
+class ActorRequired(LocalisedError):
+    """Raised when a change is offered without the person making it."""
 
 
 def _stamp() -> str:
@@ -138,10 +143,10 @@ class SettingsCentre:
         )
         return {item.key: self.value(item.key) for item in chosen}
 
-    def field(self, key: str) -> dict[str, Any]:
+    def field(self, key: str, language: str = DEFAULT_LANGUAGE) -> dict[str, Any]:
         definition = setting(key)
         value, origin = self.raw(definition.key)
-        described = definition.describe(value=value, origin=origin)
+        described = definition.describe(value=value, origin=origin, language=language)
         if origin == "override":
             row = self.storage.db.execute(
                 "SELECT actor,reason,updated_at FROM setting_overrides WHERE key=?",
@@ -152,33 +157,32 @@ class SettingsCentre:
             described["changed_at"] = str(row["updated_at"]) if row else ""
         return described
 
-    def section_view(self, section_id: str) -> dict[str, Any]:
+    def section_view(
+        self, section_id: str, language: str = DEFAULT_LANGUAGE
+    ) -> dict[str, Any]:
         item = section(section_id)
-        fields = [self.field(entry.key) for entry in BY_SECTION[item.section_id]]
+        fields = [
+            self.field(entry.key, language) for entry in BY_SECTION[item.section_id]
+        ]
         findings = verify(item.section_id, self.values(item.section_id))
         return {
-            "section": item.section_id,
-            "title": item.title,
-            "summary": item.summary,
-            "order": item.order,
+            **item.record(language),
             "fields": fields,
             "changed_count": sum(1 for field in fields if field["origin"] == "override"),
-            "findings": [finding.record for finding in findings],
+            "findings": [finding.record(language) for finding in findings],
             "worst_level": _worst(findings),
         }
 
-    def overview(self) -> dict[str, Any]:
+    def overview(self, language: str = DEFAULT_LANGUAGE) -> dict[str, Any]:
         sections = [
-            self.section_view(item.section_id)
+            self.section_view(item.section_id, language)
             for item in sorted(SECTIONS, key=lambda value: value.order)
         ]
         return {
+            "language": language,
             "sections": sections,
             "changed_total": sum(item["changed_count"] for item in sections),
-            "note": (
-                "Значення показані такими, якими їх бачить система. «Типове» — те, "
-                "що постачається; «змінено» — те, що хтось задав тут."
-            ),
+            "note": _NOTE.text(language),
         }
 
     def changes(self, *, key: str | None = None, limit: int = 50) -> tuple[SettingChange, ...]:
@@ -215,6 +219,7 @@ class SettingsCentre:
         actor: str,
         reason: str = "",
         acknowledged_consequence: bool = False,
+        language: str = DEFAULT_LANGUAGE,
     ) -> dict[str, Any]:
         definition = self._writable(key)
         who = _person(actor)
@@ -223,11 +228,11 @@ class SettingsCentre:
         self._acknowledge(definition, acknowledged_consequence)
         current, origin = self.raw(definition.key)
         if text == current and origin == "override":
-            return {**self.field(definition.key), "changed": False}
+            return {**self.field(definition.key, language), "changed": False}
         if text == definition.default:
             return self.reset(
-                definition.key, actor=who, reason=reason or "повернуто до типового",
-                acknowledged_consequence=acknowledged_consequence,
+                definition.key, actor=who, reason=reason or "reset to default",
+                acknowledged_consequence=acknowledged_consequence, language=language,
             )
         with self.storage.db:
             self.storage.db.execute(
@@ -239,7 +244,7 @@ class SettingsCentre:
                 (definition.key, text, who, _reason(reason), _stamp()),
             )
             self._record(definition, "set", current, text, who, reason)
-        return {**self.field(definition.key), "changed": True}
+        return {**self.field(definition.key, language), "changed": True}
 
     def reset(
         self,
@@ -248,12 +253,13 @@ class SettingsCentre:
         actor: str,
         reason: str = "",
         acknowledged_consequence: bool = False,
+        language: str = DEFAULT_LANGUAGE,
     ) -> dict[str, Any]:
         definition = self._writable(key)
         who = _person(actor)
         current, origin = self.raw(definition.key)
         if origin == "default":
-            return {**self.field(definition.key), "changed": False}
+            return {**self.field(definition.key, language), "changed": False}
         self._acknowledge(definition, acknowledged_consequence)
         with self.storage.db:
             self.storage.db.execute(
@@ -262,7 +268,7 @@ class SettingsCentre:
             self._record(
                 definition, "reset", current, definition.default, who, reason,
             )
-        return {**self.field(definition.key), "changed": True}
+        return {**self.field(definition.key, language), "changed": True}
 
     # ------------------------------------------------------------- helpers
 
@@ -270,19 +276,34 @@ class SettingsCentre:
     def _writable(key: str) -> Setting:
         definition = setting(key)
         if not definition.reconfigurable:
-            raise NotReconfigurable(
-                f"{definition.label} походить із {definition.source} і змінюється "
-                "там, а не тут."
-            )
+            raise NotReconfigurable(Message(
+                translate(
+                    "error.not_reconfigurable", "uk",
+                    label=definition.label.uk, source=definition.source,
+                ),
+                translate(
+                    "error.not_reconfigurable", "en",
+                    label=definition.label.en, source=definition.source,
+                ),
+            ))
         return definition
 
     @staticmethod
     def _acknowledge(definition: Setting, acknowledged: bool) -> None:
         if definition.risk == "sensitive" and not acknowledged:
-            raise ConfirmationRequired(
-                f"{definition.label}: {definition.consequence} Підтвердьте наслідок, "
-                "щоб застосувати зміну."
-            )
+            consequence = definition.consequence
+            raise ConfirmationRequired(Message(
+                translate(
+                    "error.confirmation_required", "uk",
+                    label=definition.label.uk,
+                    consequence=consequence.uk if consequence else "",
+                ),
+                translate(
+                    "error.confirmation_required", "en",
+                    label=definition.label.en,
+                    consequence=consequence.en if consequence else "",
+                ),
+            ))
 
     def _record(
         self,
@@ -312,10 +333,21 @@ class SettingsCentre:
         )
 
 
+_NOTE = Message(
+    "Значення показані такими, якими їх бачить система. «Типове» — те, що "
+    "постачається; «змінено» — те, що хтось задав тут.",
+    "Values are shown as the system sees them. \"Default\" is what ships; "
+    "\"changed\" is what somebody set here.",
+)
+
+
 def _person(actor: str) -> str:
     cleaned = str(actor or "").strip()
     if not cleaned or len(cleaned) > 120:
-        raise ValueError("Зміна налаштування записується на конкретну людину")
+        raise ActorRequired(Message(
+            translate("error.actor_required", "uk"),
+            translate("error.actor_required", "en"),
+        ))
     return cleaned
 
 

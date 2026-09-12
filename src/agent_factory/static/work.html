@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Хід роботи · Lokvetia Core</title>
+  <link rel="stylesheet" href="/assets/work.css">
+  <script src="/assets/work.js" defer></script>
+<meta name="theme-color" content="#102C35"><meta name="description" content="Lokvetia Core — local AI agent orchestration with human control."><link rel="icon" href="/assets/brand-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/brand.css"></head>
+<body class="brand-core page-work">
+  <a class="skip" href="#main" data-i18n="nav.skip">До вмісту</a>
+  <header>
+    <a class="brand" href="/" aria-label="Lokvetia Core"><img class="brand-symbol" src="/assets/brand-mark.svg" alt="" width="40" height="40"><span class="brand-name">Lokvetia Core</span></a>
+    <nav data-i18n-attr="aria-label:nav.aria" aria-label="Навігація"><a href="/" data-i18n="nav.games">Мої ігри</a><a href="/settings" data-i18n="nav.settings">Налаштування</a><a href="/hardware" data-i18n="nav.hardware">Перевірити ПК</a><a href="/operations" data-i18n="nav.operations">Панель оператора</a><a href="/login" data-i18n="nav.login">Доступ і вихід</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="title">
+      <p class="eyebrow" data-i18n="work.eyebrow">Що зараз відбувається</p>
+      <h1 id="title" data-i18n="work.title">Хід роботи</h1>
+      <p class="lead" data-i18n="work.lead">Що робиться просто зараз.</p>
+      <p id="summary" role="status" aria-live="polite" data-i18n="common.loading">Завантаження…</p>
+      <nav class="languages" data-i18n-attr="aria-label:language.label" aria-label="Мова">
+        <a href="?lang=uk" data-lang="uk" data-i18n="language.uk">Українська</a>
+        <a href="?lang=en" data-lang="en" data-i18n="language.en">Англійська</a>
+      </nav>
+    </section>
+
+    <form class="picker" id="picker-form" autocomplete="off">
+      <label for="run"><span data-i18n="work.runs.label">Запуск</span></label>
+      <select id="run"></select>
+      <button type="button" id="refresh" data-i18n="common.refresh">Оновити</button>
+    </form>
+
+    <p id="empty" class="empty" hidden data-i18n="work.runs.empty">Немає незавершених запусків.</p>
+
+    <div id="detail" hidden>
+      <section class="card" aria-labelledby="stage-title">
+        <h2 id="stage-title" data-i18n="work.title">Хід роботи</h2>
+        <p class="stage" id="stage"></p>
+        <div class="bar"><div class="bar-fill" id="bar"></div></div>
+        <p class="liveness" id="liveness"></p>
+        <p class="heartbeat" id="heartbeat"></p>
+      </section>
+
+      <section class="card" aria-labelledby="blockers-title">
+        <h2 id="blockers-title" data-i18n="work.blockers.title">Що заважає</h2>
+        <ul class="blockers" id="blockers"></ul>
+        <p class="next"><strong data-i18n="work.next">Що робити далі</strong>: <span id="next"></span></p>
+      </section>
+
+      <section class="card" aria-labelledby="money-title">
+        <h2 id="money-title" data-i18n="work.spend.title">Витрати</h2>
+        <dl class="money" id="money"></dl>
+        <h3 data-i18n="work.estimate.title">Скільки лишилось</h3>
+        <p id="estimate"></p>
+      </section>
+
+      <section class="card" aria-labelledby="stop-title">
+        <h2 id="stop-title" data-i18n="work.stop.title">Що зробить зупинка</h2>
+        <p class="preview-note" data-i18n="work.stop.preview">Це попередній перегляд.</p>
+        <h3 data-i18n="work.stop.now">Зупиниться одразу</h3>
+        <ul id="stops-now"></ul>
+        <h3 data-i18n="work.stop.anyway">Все одно доробить</h3>
+        <ul id="finishes"></ul>
+        <p class="spending" id="spending"></p>
+        <p id="wait"></p>
+        <ul class="warnings" id="stop-warnings"></ul>
+        <form class="stop-form" id="stop-form" autocomplete="off">
+          <label><span data-i18n="work.stop.reason">Причина зупинки</span>
+            <input id="stop-reason" type="text" maxlength="300">
+          </label>
+          <label class="ack"><input id="stop-ack" type="checkbox">
+            <span data-i18n="work.stop.confirm">Розумію наслідки</span>
+          </label>
+          <div class="stop-actions">
+            <button type="button" id="stop" class="danger" data-i18n="work.stop.button">Зупинити запуск</button>
+            <button type="button" id="pause" data-i18n="work.pause.button">Призупинити</button>
+            <button type="button" id="resume" data-i18n="work.resume.button">Продовжити</button>
+          </div>
+          <p class="pause-note" id="pause-note" data-i18n="work.pause.unavailable">Призупинення доступне лише під Temporal.</p>
+          <p class="result" id="stop-result" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="restart-title">
+        <h2 id="restart-title" data-i18n="work.restart.title">Після перезапуску</h2>
+        <p id="restart-note"></p>
+        <h3 data-i18n="work.restart.check">Треба перевірити</h3>
+        <ul id="restart-check"></ul>
+        <h3 data-i18n="work.restart.preserved">Збережено</h3>
+        <ul id="restart-kept"></ul>
+      </section>
+    </div>
+
+    <footer class="brand-footer"><span data-i18n="app.workspace">Lokvetia Core · Локальний робочий простір</span><a href="http://lokvetia.com/" target="_blank" rel="noopener noreferrer">lokvetia.com <span aria-hidden="true">↗</span></a></footer>
+  </main>
+</body>
+</html>

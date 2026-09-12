@@ -373,8 +373,10 @@ def parser() -> argparse.ArgumentParser:
     ).add_subparsers(dest="action", required=True)
     settings_show = settings_command.add_parser("show", help="Current values and origins.")
     settings_show.add_argument("--section")
+    settings_show.add_argument("--language", default="uk", choices=("uk", "en"))
     settings_verify = settings_command.add_parser("verify", help="Check a section.")
     settings_verify.add_argument("--section")
+    settings_verify.add_argument("--language", default="uk", choices=("uk", "en"))
     settings_set = settings_command.add_parser("set", help="Change one setting.")
     settings_set.add_argument("--key", required=True)
     settings_set.add_argument("--value", required=True)
@@ -392,6 +394,25 @@ def parser() -> argparse.ArgumentParser:
     settings_history = settings_command.add_parser("history", help="Who changed what.")
     settings_history.add_argument("--key")
     settings_history.add_argument("--limit", type=int, default=50)
+
+    work_command = sub.add_parser(
+        "work", help="What a run is doing, what it costs, and what a stop would stop."
+    ).add_subparsers(dest="action", required=True)
+    work_runs = work_command.add_parser("runs", help="Runs that have not finished.")
+    work_runs.add_argument("--limit", type=int, default=20)
+    work_show = work_command.add_parser("status", help="One truthful account of a run.")
+    work_show.add_argument("--run", type=int, required=True)
+    work_show.add_argument("--language", default="uk", choices=("uk", "en"))
+    work_stop = work_command.add_parser(
+        "stop-plan", help="What stopping would stop, and what would finish anyway."
+    )
+    work_stop.add_argument("--run", type=int, required=True)
+    work_stop.add_argument("--language", default="uk", choices=("uk", "en"))
+    work_restart = work_command.add_parser(
+        "after-restart", help="What survived a restart, and what needs checking."
+    )
+    work_restart.add_argument("--run", type=int, required=True)
+    work_restart.add_argument("--language", default="uk", choices=("uk", "en"))
 
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
@@ -1266,16 +1287,24 @@ def _execute(args: argparse.Namespace) -> int:
             centre = SettingsCentre(storage)
             if args.action == "show":
                 if args.section:
-                    print(json.dumps(centre.section_view(args.section), indent=2, ensure_ascii=False))
+                    print(json.dumps(
+                        centre.section_view(args.section, args.language),
+                        indent=2, ensure_ascii=False,
+                    ))
                 else:
-                    print(json.dumps(centre.overview(), indent=2, ensure_ascii=False))
+                    print(json.dumps(
+                        centre.overview(args.language), indent=2, ensure_ascii=False,
+                    ))
             elif args.action == "verify":
                 sections = (
                     [args.section] if args.section
                     else [item["section"] for item in centre.overview()["sections"]]
                 )
                 report = {
-                    name: [finding.record for finding in centre.verify_section(name)]
+                    name: [
+                        finding.record(args.language)
+                        for finding in centre.verify_section(name)
+                    ]
                     for name in sections
                 }
                 print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -1296,6 +1325,31 @@ def _execute(args: argparse.Namespace) -> int:
             else:
                 print(json.dumps(
                     [item.record for item in centre.changes(key=args.key, limit=args.limit)],
+                    indent=2, ensure_ascii=False,
+                ))
+        elif args.command == "work":
+            from .work_status_store import WorkStatusReader
+
+            reader = WorkStatusReader(storage)
+            if args.action == "runs":
+                print(json.dumps(
+                    {"runs": list(reader.open_runs(limit=args.limit))},
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "status":
+                report = reader.report(args.run, language=args.language)
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+                # A blocker is the one thing a person has to act on, so say so
+                # in the exit code as well as in the output.
+                return 3 if report["blockers"] else 0
+            elif args.action == "stop-plan":
+                print(json.dumps(
+                    reader.stop_plan(args.run).record(args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            else:
+                print(json.dumps(
+                    reader.after_restart(args.run).record(args.language),
                     indent=2, ensure_ascii=False,
                 ))
         elif args.command == "state":

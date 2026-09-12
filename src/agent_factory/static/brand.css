@@ -95,6 +95,14 @@
   background: #fff;
   border-bottom: 1px solid var(--brand-line);
 }
+/* Header links are inline-flex for their 24px target height, which leaves no
+   space between them; without a gap the navigation paints as one run-on word. */
+.brand-core > header nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem 1.15rem;
+  min-width: 0;
+}
 .brand-core > header > span { color: var(--brand-muted); font-size: .82rem; }
 .brand-core:not(.brand-dark) p { color: var(--brand-muted); }
 .brand-core:not(.brand-dark) a:not(.brand) { color: var(--brand-accent); }
