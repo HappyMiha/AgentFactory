@@ -345,6 +345,7 @@ See:
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
 - [Godot 2D game pack and engine adapter](docs/godot-pack.md)
 - [Support levels and honest scoping](docs/capability-levels.md)
+- [Unity setup and build adapter](docs/unity-setup.md)
 - [Latest verified playable version](docs/playable-versions.md)
 - [Asset provenance and safe import](docs/asset-provenance.md)
 - [Export and sharing](docs/export-and-share.md)
