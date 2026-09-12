@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "document_kind": "capability-evidence",
+  "note": "Each entry records one reference project that was built, played and reviewed at a level. An entry is added only after a real run: the level stays proposed until then, and this file ships empty on purpose.",
+  "entry_shape": {
+    "level_id": "simple-2d | multi-level-2d | small-3d",
+    "reference_project": "the project the evidence came from",
+    "version_digest": "the playable version digest the run was taken from",
+    "checks": {"<acceptance criterion id>": "true or false"},
+    "gameplay_reviewer": "the person who played it",
+    "recorded_at": "RFC3339 timestamp",
+    "notes": "optional"
+  },
+  "evidence": []
+}
