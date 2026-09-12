@@ -337,7 +337,9 @@ The configuration format is JSON-compatible YAML: valid JSON stored with a `.yam
 See:
 
 - [Getting started](docs/getting-started.md)
-- [Режим «AI-студія»: від ідеї до гри без ручних воріт](docs/ai-studio.uk.md)
+- [Режим «AI-студія»: від ідеї до гри без ручних воріт](docs/ai-studio.uk.md) ([English](docs/ai-studio.en.md))
+- [The checks stay, the clicking goes](docs/studio-autonomy.md)
+- [The plan, in the words of the person who asked for the game](docs/studio-backlog.md)
 - [Налаштування без редагування файлів](docs/settings.md)
 - [Accessibility judged on the rendered page](docs/accessibility-audit.md)
 - [Two languages, or the catalogue is wrong](docs/localisation.md)

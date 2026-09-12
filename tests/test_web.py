@@ -291,6 +291,7 @@ class WebHostTests(unittest.TestCase):
                         "/api/games/{project_key}/feedback/preview",
                         "/api/feedback/{feedback_id}/plans",
                         "/api/feedback/plans/{plan_id}/accept",
+                        "/api/studio/questions/{question_id}/answer",
                         "/api/hardware/scan",
                         "/api/configuration-advice",
                         "/api/game-planning/{mission_id}",
