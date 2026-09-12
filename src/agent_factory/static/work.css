@@ -1,0 +1,53 @@
+.page-work main { max-width: 68rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.page-work .intro { margin-bottom: 1.5rem; }
+.page-work .languages { display: flex; gap: .75rem; margin: .5rem 0 0; }
+.page-work .languages a[aria-current="true"] { font-weight: 700; text-decoration: none; }
+.page-work .picker { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end;
+  padding: 1rem; border: 1px solid var(--line, #d5dee1); border-radius: .6rem; margin: 0 0 1.5rem; }
+.page-work .picker select { flex: 1 1 20rem; min-width: 0; max-width: 100%; padding: .35rem .5rem; }
+.page-work .card { border: 1px solid var(--line, #d5dee1); border-radius: .6rem;
+  padding: 1.25rem; margin-bottom: 1.25rem; }
+.page-work .card h2 { margin: 0 0 .5rem; }
+.page-work .card h3 { margin: 1rem 0 .35rem; font-size: 1rem; }
+/* Long identifiers (providers, stage keys, run titles) must wrap rather than
+   push the page sideways on a narrow screen. */
+.page-work :is(p, li, dd, dt) { overflow-wrap: anywhere; }
+.page-work .stage { font-size: 1.1rem; margin: 0 0 .5rem; }
+.page-work .bar { height: .6rem; border-radius: .3rem; background: rgba(16,44,53,.12); overflow: hidden; }
+.page-work .bar-fill { height: 100%; background: #2f7d5b; width: 0; }
+.page-work .liveness { margin: .6rem 0 0; font-weight: 600; }
+.page-work .liveness[data-state="stalled"] { color: #a33a2f; }
+.page-work .liveness[data-state="quiet"] { color: #7a4a12; }
+.page-work .liveness[data-state="waiting"] { color: #4d6068; }
+.page-work .heartbeat { margin: .2rem 0 0; font-size: .9rem; opacity: .85; }
+.page-work .blockers { list-style: none; padding: 0; margin: 0; display: grid; gap: .5rem; }
+.page-work .blockers li { padding: .6rem .75rem; border-radius: .4rem;
+  border-left: 4px solid #a33a2f; background: rgba(163,58,47,.10); }
+/* Nothing in the way is good news and must not be painted as a problem. */
+.page-work .blockers li.clear { border-color: #2f7d5b; background: rgba(47,125,91,.08); }
+.page-work .none { font-size: .92rem; opacity: .85; margin: .2rem 0 0; }
+.page-work .blockers .action { display: block; font-size: .9rem; margin-top: .2rem; }
+.page-work .next { margin: .9rem 0 0; }
+.page-work .money { display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: .3rem .75rem; margin: 0; }
+.page-work .money dt { font-weight: 600; }
+.page-work .money dd { margin: 0; }
+.page-work .preview-note { font-size: .9rem; opacity: .85; }
+.page-work .spending { border-left: 4px solid #7a4a12; background: rgba(176,125,26,.10);
+  padding: .6rem .75rem; border-radius: .4rem; }
+.page-work .warnings { list-style: none; padding: 0; margin: .5rem 0 0; font-size: .9rem; }
+.page-work .stop-form { margin-top: 1rem; display: grid; gap: .6rem; }
+.page-work .stop-form label { display: flex; flex-direction: column; gap: .25rem; }
+.page-work .stop-form label.ack { flex-direction: row; align-items: flex-start; gap: .5rem; }
+.page-work .stop-form input[type="text"] { padding: .35rem .5rem; max-width: 100%; }
+.page-work .stop-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.page-work .danger { border-color: #a33a2f; color: #a33a2f; }
+.page-work .pause-note { font-size: .9rem; opacity: .85; margin: 0; }
+.page-work .result:empty { display: none; }
+.page-work .empty { padding: 1rem; border: 1px dashed var(--line, #d5dee1); border-radius: .6rem; }
+@media (max-width: 42rem) {
+  .page-work main { padding-inline: .75rem; }
+  .page-work .card { padding: .9rem; }
+  .page-work .picker select, .page-work .picker button { width: 100%; }
+  .page-work .money { grid-template-columns: minmax(0, 1fr); }
+}
