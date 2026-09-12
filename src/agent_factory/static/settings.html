@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Налаштування · Lokvetia Core</title>
+  <link rel="stylesheet" href="/assets/settings.css">
+  <script src="/assets/settings.js" defer></script>
+<meta name="theme-color" content="#102C35"><meta name="description" content="Lokvetia Core — local AI agent orchestration with human control."><link rel="icon" href="/assets/brand-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/brand.css"></head>
+<body class="brand-core page-settings">
+  <a class="skip" href="#main">До вмісту</a>
+  <header>
+    <a class="brand" href="/" aria-label="Lokvetia Core"><img class="brand-symbol" src="/assets/brand-mark.svg" alt="" width="40" height="40"><span class="brand-name">Lokvetia Core</span></a>
+    <nav aria-label="Навігація"><a href="/">Мої ігри</a><a href="/hardware">Перевірити ПК</a><a href="/settings/credentials">Доступ до AI</a><a href="/operations">Панель оператора</a><a href="/login">Доступ і вихід</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="title">
+      <p class="eyebrow">Робочий простір</p>
+      <h1 id="title">Налаштування</h1>
+      <p class="lead">Усе, що впливає на роботу, зібране тут: чинне значення, звідки воно взялося, і що зміниться, якщо його змінити. Файли редагувати не потрібно.</p>
+      <p id="summary" role="status" aria-live="polite">Завантаження…</p>
+    </section>
+
+    <form class="who" id="who-form" autocomplete="off">
+      <label>Хто змінює
+        <input id="actor" type="text" maxlength="120" placeholder="Ваше імʼя" required>
+      </label>
+      <p>Кожна зміна записується на конкретну людину й лишається в незмінній історії внизу сторінки. Без імені зміна не зберігається.</p>
+    </form>
+
+    <div id="sections"></div>
+
+    <section class="section-card" aria-labelledby="history-title">
+      <div class="section-head"><h2 id="history-title">Історія змін</h2><button type="button" id="refresh-history">Оновити</button></div>
+      <p>Записи не редагуються й не видаляються — цього не дозволяє сама база.</p>
+      <table>
+        <thead><tr><th>Коли</th><th>Налаштування</th><th>Було → стало</th><th>Хто</th><th>Причина</th></tr></thead>
+        <tbody id="history-rows"></tbody>
+      </table>
+      <p id="history-empty">Змін ще не було: усі значення типові.</p>
+    </section>
+
+    <footer class="brand-footer"><span>Lokvetia Core · Локальний робочий простір</span><a href="http://lokvetia.com/" target="_blank" rel="noopener noreferrer">lokvetia.com <span aria-hidden="true">↗</span></a></footer>
+  </main>
+
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">Підтвердьте наслідок</h2>
+      <p id="confirm-setting"></p>
+      <p class="consequence" id="confirm-consequence"></p>
+      <label>Причина зміни<input id="confirm-reason" type="text" maxlength="300"></label>
+      <label><input id="confirm-ack" type="checkbox"> Розумію наслідок і беру його на себе</label>
+      <div class="actions"><button value="cancel">Скасувати</button><button value="confirm" class="primary" id="confirm-apply">Застосувати</button></div>
+    </form>
+  </dialog>
+</body>
+</html>

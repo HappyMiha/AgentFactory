@@ -165,6 +165,7 @@ class ParserShapeTests(unittest.TestCase):
             ("uninstall", "plan"),
             ("levels", "list"),
             ("unity", "catalogue"),
+            ("settings", "show"),
             ("state", "check"),
         )
         for arguments in commands:

@@ -1,0 +1,42 @@
+.page-settings main { max-width: 68rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+.page-settings .intro { margin-bottom: 1.5rem; }
+.page-settings .who { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end;
+  padding: 1rem; border: 1px solid var(--line, #d5dee1); border-radius: .6rem; margin: 1rem 0 1.5rem; }
+.page-settings .who label { display: flex; flex-direction: column; gap: .25rem; flex: 1 1 16rem; }
+.page-settings .who p { flex: 1 1 100%; margin: 0; font-size: .9rem; opacity: .8; }
+.page-settings .section-card { border: 1px solid var(--line, #d5dee1); border-radius: .6rem;
+  padding: 1.25rem; margin-bottom: 1.25rem; }
+.page-settings .section-head { display: flex; flex-wrap: wrap; gap: .75rem;
+  align-items: baseline; justify-content: space-between; }
+.page-settings .section-head h2 { margin: 0; }
+.page-settings .findings { list-style: none; padding: 0; margin: .75rem 0 0; display: grid; gap: .5rem; }
+.page-settings .findings li { padding: .6rem .75rem; border-radius: .4rem; border-left: 4px solid; }
+.page-settings .level-ok { border-color: #2f7d5b; background: rgba(47,125,91,.08); }
+.page-settings .level-attention { border-color: #b07d1a; background: rgba(176,125,26,.10); }
+.page-settings .level-problem { border-color: #a33a2f; background: rgba(163,58,47,.10); }
+.page-settings .findings .detail { display: block; font-size: .9rem; opacity: .85; margin-top: .2rem; }
+.page-settings .field { border-top: 1px solid var(--line, #d5dee1); padding: .9rem 0; display: grid; gap: .4rem; }
+.page-settings .field:first-of-type { border-top: 0; }
+.page-settings .field-head { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.page-settings .field-head strong { font-size: 1rem; }
+.page-settings .badge { font-size: .75rem; padding: .1rem .45rem; border-radius: .8rem;
+  border: 1px solid currentColor; }
+.page-settings .badge-default { color: #4d6068; }
+.page-settings .badge-changed { color: #7a4a12; }
+.page-settings .badge-sensitive { color: #a33a2f; }
+.page-settings .badge-locked { color: #4d6068; }
+.page-settings .field p { margin: 0; font-size: .92rem; opacity: .9; }
+.page-settings .origin { font-size: .82rem; opacity: .75; }
+.page-settings .controls { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.page-settings .controls input[type="text"], .page-settings .controls input[type="number"],
+.page-settings .controls select { min-width: 14rem; padding: .35rem .5rem; }
+.page-settings .controls input.reason { min-width: 16rem; }
+.page-settings .field-error { color: #a33a2f; font-size: .9rem; }
+.page-settings .field-ok { color: #2f7d5b; font-size: .9rem; }
+.page-settings table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.page-settings th, .page-settings td { text-align: left; padding: .35rem .5rem;
+  border-bottom: 1px solid var(--line, #d5dee1); vertical-align: top; }
+.page-settings dialog { max-width: 34rem; border: 1px solid var(--line, #d5dee1); border-radius: .6rem; }
+.page-settings dialog .consequence { border-left: 4px solid #a33a2f; padding: .6rem .75rem;
+  background: rgba(163,58,47,.08); }
+@media (max-width: 42rem) { .page-settings .controls { flex-direction: column; align-items: stretch; } }
