@@ -146,8 +146,15 @@ class HardwareBrowserTests(unittest.TestCase):
         self.screenshot('hardware-desktop.png')
         with self.page.expect_download() as download:
             self.page.locator('#download-report').click()
-        self.assertEqual(download.value.suggested_filename, 'agentfactory-hardware.json')
-        self.assertEqual(json.loads(Path(download.value.path()).read_text(encoding='utf-8')), self.report)
+        self.assertEqual(download.value.suggested_filename, 'lokvetia-core-hardware.json')
+        downloaded = json.loads(Path(download.value.path()).read_text(encoding='utf-8'))
+        # A saved report keeps its signature: which machine these numbers describe
+        # is part of the report, not decoration on the page.
+        machine = downloaded.pop('machine')
+        self.assertIn(machine['kind'], ('this_pc', 'web_container', 'cloud_worker'))
+        self.assertTrue(machine['caveat'])
+        self.assertEqual(downloaded, self.report)
+        self.assertIn(machine['caveat'], self.page.locator('#machine-note').inner_text())
         self.assertEqual(self.calls, [self.root], 'Downloading must not trigger another scan')
         self.assertTrue(all(url.startswith(self.url + '/') or url.startswith('blob:') for url in requests))
         self.assertEqual(self.page.evaluate('[localStorage.length, sessionStorage.length]'), [0, 0])

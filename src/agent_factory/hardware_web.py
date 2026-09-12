@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .hardware_inventory import collect_inventory
 from .http_auth import LocalAccess, LocalHTTPBoundary
+from .machine_identity import sign
 
 
 # The machine is shared even when multiple workspaces have HTTP applications.
@@ -58,7 +59,13 @@ def install_routes(
         if not _SCAN_LOCK.acquire(blocking=False):
             return JSONResponse({"error": {"code": "hardware_scan_in_progress"}}, status_code=409)
         try:
-            report = scan(root)
+            # A hardware report is only worth reading if it says whose hardware
+            # it describes. In a container it says so, instead of being read as
+            # the user's own PC.
+            report = sign(
+                scan(root),
+                language=request.headers.get("accept-language", "") or "uk",
+            )
             return JSONResponse(report, headers={"Cache-Control": "no-store"})
         except Exception:
             # Driver errors can contain machine paths or other private text.
