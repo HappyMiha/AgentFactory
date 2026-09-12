@@ -1,7 +1,55 @@
 'use strict';
 (() => {
   const byId = id => document.getElementById(id);
-  const state = {sections: [], pending: null};
+  const state = {sections: [], pending: null, language: 'uk', messages: {}};
+  const query = new URLSearchParams(location.search);
+
+  // Every visible string comes from the server's catalogue, so a missing
+  // translation shows up as a missing key rather than as silent Ukrainian.
+  function say(key, parameters) {
+    let text = state.messages[key];
+    if (text === undefined) return key;
+    if (parameters) {
+      for (const [name, value] of Object.entries(parameters)) {
+        text = text.split(`{${name}}`).join(String(value));
+      }
+    }
+    return text;
+  }
+
+  function applyTranslations() {
+    document.documentElement.lang = state.language;
+    document.title = `${say('settings.title')} · ${say('app.name')}`;
+    for (const node of document.querySelectorAll('[data-i18n]')) {
+      node.textContent = say(node.dataset.i18n);
+    }
+    for (const node of document.querySelectorAll('[data-i18n-attr]')) {
+      for (const pair of node.dataset.i18nAttr.split(';')) {
+        const [attribute, key] = pair.split(':');
+        if (attribute && key) node.setAttribute(attribute.trim(), say(key.trim()));
+      }
+    }
+    for (const node of document.querySelectorAll('[data-lang]')) {
+      node.setAttribute('aria-current', String(node.dataset.lang === state.language));
+    }
+  }
+
+  async function loadMessages() {
+    const chosen = query.get('lang');
+    const response = await fetch(
+      `/api/i18n${chosen ? `?lang=${encodeURIComponent(chosen)}` : ''}`,
+      {cache: 'no-store'},
+    );
+    if (!response.ok) return;
+    const payload = await response.json();
+    state.language = payload.language;
+    state.messages = payload.messages;
+    applyTranslations();
+  }
+
+  function withLanguage(url) {
+    return `${url}${url.includes('?') ? '&' : '?'}lang=${encodeURIComponent(state.language)}`;
+  }
 
   function element(tag, text, className) {
     const node = document.createElement(tag);
@@ -19,7 +67,7 @@
   }
 
   async function post(url, body) {
-    const response = await fetch(url, {
+    const response = await fetch(withLanguage(url), {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-Agent-Factory-Confirm': 'true'},
       body: JSON.stringify(Object.assign({confirmed: true}, body)),
@@ -65,7 +113,7 @@
     input.value = field.value;
     input.dataset.read = 'value';
     input.setAttribute('aria-label', field.label);
-    if (field.kind === 'list') input.placeholder = 'через кому';
+    if (field.kind === 'list') input.placeholder = say('settings.reason.placeholder');
     return input;
   }
 
@@ -75,19 +123,30 @@
 
   function badges(field) {
     const wrap = element('span');
-    wrap.append(element('span', field.origin === 'override' ? 'змінено' : 'типове',
+    wrap.append(element('span',
+      say(field.origin === 'override' ? 'settings.badge.changed' : 'settings.badge.default'),
       field.origin === 'override' ? 'badge badge-changed' : 'badge badge-default'));
-    if (field.risk === 'sensitive') wrap.append(' ', element('span', 'важливе', 'badge badge-sensitive'));
-    if (!field.reconfigurable) wrap.append(' ', element('span', 'лише перегляд', 'badge badge-locked'));
+    if (field.risk === 'sensitive') {
+      wrap.append(' ', element('span', say('settings.badge.sensitive'), 'badge badge-sensitive'));
+    }
+    if (!field.reconfigurable) {
+      wrap.append(' ', element('span', say('settings.badge.locked'), 'badge badge-locked'));
+    }
     return wrap;
   }
 
   function originLine(field) {
-    const parts = [`Типове: ${field.default || '—'}`, `Джерело типового: ${field.default_source}`];
-    if (field.unit) parts.push(`Одиниці: ${field.unit}`);
+    const parts = [
+      say('settings.origin.default', {value: field.default || '—'}),
+      say('settings.origin.source', {source: field.default_source}),
+    ];
+    if (field.unit) parts.push(say('settings.origin.unit', {unit: field.unit}));
     if (field.origin === 'override' && field.changed_by) {
-      parts.push(`Змінив(ла) ${field.changed_by}${field.changed_at ? ` · ${field.changed_at}` : ''}`);
-      if (field.changed_reason) parts.push(`Причина: ${field.changed_reason}`);
+      parts.push(say('settings.origin.changed_by', {actor: field.changed_by})
+        + (field.changed_at ? ` · ${field.changed_at}` : ''));
+      if (field.changed_reason) {
+        parts.push(say('settings.origin.reason', {reason: field.changed_reason}));
+      }
     }
     return element('p', parts.join(' · '), 'origin');
   }
@@ -98,13 +157,15 @@
     head.append(element('strong', field.label), badges(field));
     node.append(head, element('p', field.help));
     if (field.risk === 'sensitive' && field.consequence) {
-      node.append(element('p', `Якщо змінити: ${field.consequence}`, 'origin'));
+      node.append(element(
+        'p', say('settings.consequence', {consequence: field.consequence}), 'origin',
+      ));
     }
     node.append(originLine(field));
 
     const status = element('p', '', 'field-ok');
     if (!field.reconfigurable) {
-      const shown = element('p', `Чинне значення: ${field.value}`);
+      const shown = element('p', say('settings.current', {value: field.value}));
       node.append(shown);
       return node;
     }
@@ -115,14 +176,14 @@
     reason.type = 'text';
     reason.className = 'reason';
     reason.maxLength = 300;
-    reason.placeholder = 'Причина (необовʼязково)';
-    reason.setAttribute('aria-label', `Причина зміни: ${field.label}`);
-    const save = element('button', 'Зберегти');
+    reason.placeholder = say('settings.reason.placeholder');
+    reason.setAttribute('aria-label', say('settings.reason.label', {label: field.label}));
+    const save = element('button', say('settings.save'));
     save.type = 'button';
-    save.setAttribute('aria-label', `Зберегти: ${field.label}`);
-    const reset = element('button', 'Повернути типове');
+    save.setAttribute('aria-label', say('settings.save.label', {label: field.label}));
+    const reset = element('button', say('settings.reset'));
     reset.type = 'button';
-    reset.setAttribute('aria-label', `Повернути типове: ${field.label}`);
+    reset.setAttribute('aria-label', say('settings.reset.label', {label: field.label}));
     reset.disabled = field.origin !== 'override';
     controls.append(input, reason, save, reset);
     node.append(controls, status);
@@ -133,12 +194,12 @@
     };
 
     save.addEventListener('click', async () => {
-      if (!actor()) { report('Спершу вкажіть, хто змінює.', false); byId('actor').focus(); return; }
+      if (!actor()) { report(say('settings.need_actor'), false); byId('actor').focus(); return; }
       const value = readControl(input);
       const body = {value, actor: actor(), reason: reason.value.trim(), acknowledged_consequence: false};
       try {
         await post(`/api/settings/values/${encodeURIComponent(field.key)}`, body);
-        await load(`Збережено: ${field.label}.`);
+        await load(say('settings.saved', {label: field.label}));
       } catch (error) {
         if (error.code === 'confirmation_required') {
           askConsequence(field, () => post(
@@ -152,11 +213,11 @@
     });
 
     reset.addEventListener('click', async () => {
-      if (!actor()) { report('Спершу вкажіть, хто змінює.', false); byId('actor').focus(); return; }
+      if (!actor()) { report(say('settings.need_actor'), false); byId('actor').focus(); return; }
       const body = {actor: actor(), reason: reason.value.trim(), acknowledged_consequence: false};
       try {
         await post(`/api/settings/values/${encodeURIComponent(field.key)}/reset`, body);
-        await load(`Повернуто типове: ${field.label}.`);
+        await load(say('settings.restored', {label: field.label}));
       } catch (error) {
         if (error.code === 'confirmation_required') {
           askConsequence(field, () => post(
@@ -196,13 +257,15 @@
     const node = element('section', undefined, 'section-card');
     const head = element('div', undefined, 'section-head');
     const title = element('h2', section.title);
-    const verify = element('button', 'Перевірити розділ');
+    const verify = element('button', say('settings.verify'));
     verify.type = 'button';
-    verify.setAttribute('aria-label', `Перевірити розділ: ${section.title}`);
+    verify.setAttribute('aria-label', say('settings.verify.label', {title: section.title}));
     head.append(title, verify);
     node.append(head, element('p', section.summary));
     if (section.changed_count) {
-      node.append(element('p', `Змінено від типового: ${section.changed_count}`, 'origin'));
+      node.append(element(
+        'p', say('settings.changed_count', {count: section.changed_count}), 'origin',
+      ));
     }
     const findings = findingList(section.findings);
     node.append(findings);
@@ -237,9 +300,9 @@
   }
 
   async function load(message) {
-    const response = await fetch('/api/settings/sections', {cache: 'no-store'});
+    const response = await fetch(withLanguage('/api/settings/sections'), {cache: 'no-store'});
     if (!response.ok) {
-      byId('summary').textContent = `Не вдалося прочитати налаштування (${response.status}).`;
+      byId('summary').textContent = say('settings.read_failed', {status: response.status});
       return;
     }
     const payload = await response.json();
@@ -250,13 +313,13 @@
     const changed = payload.changed_total;
     byId('summary').textContent = (message ? `${message} ` : '')
       + (changed
-        ? `Значень, змінених від типового: ${changed}.`
-        : 'Усі значення типові — нічого не перевизначено.');
+        ? say('settings.summary.changed', {count: changed})
+        : say('settings.summary.clean'));
     await loadHistory();
   }
 
   async function loadHistory() {
-    const response = await fetch('/api/settings/changes?limit=50', {cache: 'no-store'});
+    const response = await fetch(withLanguage('/api/settings/changes?limit=50'), {cache: 'no-store'});
     if (!response.ok) return;
     const payload = await response.json();
     renderHistory(payload.changes || []);
@@ -268,14 +331,14 @@
     state.pending = null;
     if (dialog.returnValue !== 'confirm' || !pending) return;
     if (!byId('confirm-ack').checked) {
-      byId('summary').textContent = 'Зміну не застосовано: наслідок не підтверджено.';
+      byId('summary').textContent = say('settings.not_applied');
       return;
     }
     pending.reason = byId('confirm-reason').value.trim();
     state.pending = pending;
     try {
       await pending.apply();
-      await load('Зміну застосовано з підтвердженням наслідку.');
+      await load(say('settings.applied'));
     } catch (error) {
       byId('summary').textContent = error.message;
     } finally {
@@ -285,5 +348,5 @@
 
   byId('who-form').addEventListener('submit', event => event.preventDefault());
   byId('refresh-history').addEventListener('click', loadHistory);
-  load();
+  loadMessages().then(load);
 })();

@@ -373,8 +373,10 @@ def parser() -> argparse.ArgumentParser:
     ).add_subparsers(dest="action", required=True)
     settings_show = settings_command.add_parser("show", help="Current values and origins.")
     settings_show.add_argument("--section")
+    settings_show.add_argument("--language", default="uk", choices=("uk", "en"))
     settings_verify = settings_command.add_parser("verify", help="Check a section.")
     settings_verify.add_argument("--section")
+    settings_verify.add_argument("--language", default="uk", choices=("uk", "en"))
     settings_set = settings_command.add_parser("set", help="Change one setting.")
     settings_set.add_argument("--key", required=True)
     settings_set.add_argument("--value", required=True)
@@ -1266,16 +1268,24 @@ def _execute(args: argparse.Namespace) -> int:
             centre = SettingsCentre(storage)
             if args.action == "show":
                 if args.section:
-                    print(json.dumps(centre.section_view(args.section), indent=2, ensure_ascii=False))
+                    print(json.dumps(
+                        centre.section_view(args.section, args.language),
+                        indent=2, ensure_ascii=False,
+                    ))
                 else:
-                    print(json.dumps(centre.overview(), indent=2, ensure_ascii=False))
+                    print(json.dumps(
+                        centre.overview(args.language), indent=2, ensure_ascii=False,
+                    ))
             elif args.action == "verify":
                 sections = (
                     [args.section] if args.section
                     else [item["section"] for item in centre.overview()["sections"]]
                 )
                 report = {
-                    name: [finding.record for finding in centre.verify_section(name)]
+                    name: [
+                        finding.record(args.language)
+                        for finding in centre.verify_section(name)
+                    ]
                     for name in sections
                 }
                 print(json.dumps(report, indent=2, ensure_ascii=False))

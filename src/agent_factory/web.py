@@ -1125,41 +1125,75 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
 
         return SettingsCentre(service.storage)
 
-    def settings_error(exc: Exception) -> JSONResponse:
-        from .settings_store import ConfirmationRequired, NotReconfigurable
+    def chosen_language(request: Request, explicit: str | None = None) -> str:
+        from .localisation import LANGUAGE_COOKIE, negotiate
+
+        return negotiate(
+            explicit=explicit,
+            stored=request.cookies.get(LANGUAGE_COOKIE),
+            accept_language=request.headers.get("accept-language"),
+        )
+
+    def settings_error(exc: Exception, language: str = "uk") -> JSONResponse:
+        from .localisation import LocalisedError
+        from .settings_store import ActorRequired, ConfirmationRequired, NotReconfigurable
 
         codes = {
             ConfirmationRequired: (409, "confirmation_required"),
             NotReconfigurable: (409, "not_reconfigurable"),
+            ActorRequired: (400, "actor_required"),
             KeyError: (404, "unknown_setting"),
         }
         status, code = codes.get(type(exc), (400, "invalid_setting"))
-        message = str(exc).strip("'")
+        message = (
+            exc.text(language) if isinstance(exc, LocalisedError)
+            else str(exc).strip("'")
+        )
         return JSONResponse(
             status_code=status, content={"error": {"code": code, "message": message}}
         )
 
+    @app.get("/api/i18n", response_model=dict[str, Any])
+    async def interface_messages(request: Request, lang: str | None = None) -> Any:
+        from .localisation import LANGUAGES, bundle
+
+        language = chosen_language(request, lang)
+        return {
+            "language": language,
+            "available": list(LANGUAGES),
+            "messages": bundle(language),
+        }
+
     @app.get("/api/settings/sections", response_model=dict[str, Any])
-    async def settings_sections(service: Service) -> Any:
-        return settings_centre(service).overview()
+    async def settings_sections(
+        request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        return settings_centre(service).overview(chosen_language(request, lang))
 
     @app.get("/api/settings/sections/{section_id}", response_model=dict[str, Any])
-    async def settings_section(section_id: str, service: Service) -> Any:
+    async def settings_section(
+        section_id: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        language = chosen_language(request, lang)
         try:
-            return settings_centre(service).section_view(section_id)
+            return settings_centre(service).section_view(section_id, language)
         except KeyError as exc:
-            return settings_error(exc)
+            return settings_error(exc, language)
 
     @app.post("/api/settings/sections/{section_id}/verify", response_model=dict[str, Any])
-    async def settings_verify(section_id: str, service: Service) -> Any:
+    async def settings_verify(
+        section_id: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
         centre = settings_centre(service)
+        language = chosen_language(request, lang)
         try:
             findings = centre.verify_section(section_id)
         except KeyError as exc:
-            return settings_error(exc)
+            return settings_error(exc, language)
         return {
             "section": section_id,
-            "findings": [finding.record for finding in findings],
+            "language": language,
+            "findings": [finding.record(language) for finding in findings],
         }
 
     @app.get("/api/settings/changes", response_model=dict[str, Any])
@@ -1176,33 +1210,41 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
     async def settings_set(
         key: str,
         command: SettingChangeCommand,
+        request: Request,
         service: Service,
         confirmation: Confirmation = None,
+        lang: str | None = None,
     ) -> Any:
         _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
         try:
             return settings_centre(service).set(
                 key, command.value, actor=command.actor, reason=command.reason,
                 acknowledged_consequence=command.acknowledged_consequence,
+                language=language,
             )
         except (KeyError, ValueError, PermissionError) as exc:
-            return settings_error(exc)
+            return settings_error(exc, language)
 
     @app.post("/api/settings/values/{key}/reset", response_model=dict[str, Any])
     async def settings_reset(
         key: str,
         command: SettingResetCommand,
+        request: Request,
         service: Service,
         confirmation: Confirmation = None,
+        lang: str | None = None,
     ) -> Any:
         _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
         try:
             return settings_centre(service).reset(
                 key, actor=command.actor, reason=command.reason,
                 acknowledged_consequence=command.acknowledged_consequence,
+                language=language,
             )
         except (KeyError, ValueError, PermissionError) as exc:
-            return settings_error(exc)
+            return settings_error(exc, language)
 
     @app.post("/api/github/preview", response_model=dict[str, Any])
     async def github_preview(
@@ -1263,10 +1305,19 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
         return FileResponse(static_directory / ('operations.html' if request.state.local_principal else 'login.html'))
 
     @app.get("/settings", include_in_schema=False)
-    async def settings_shell(request: Request) -> FileResponse:
+    async def settings_shell(request: Request, lang: str | None = None) -> FileResponse:
+        from .localisation import LANGUAGE_COOKIE, normalise
+
         if not request.state.local_principal:
             return FileResponse(static_directory / "login.html")
-        return FileResponse(static_directory / "settings.html")
+        response = FileResponse(static_directory / "settings.html")
+        if lang:
+            # Remember the explicit choice so the next page opens in it.
+            response.set_cookie(
+                LANGUAGE_COOKIE, normalise(lang), max_age=31_536_000,
+                samesite="lax", httponly=False,
+            )
+        return response
 
     @app.get("/", include_in_schema=False)
     async def dashboard_shell(request: Request) -> FileResponse:

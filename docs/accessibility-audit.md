@@ -76,8 +76,8 @@ walk treated as a group to descend into.
 ## What is still open
 
 `AF-GC-024` also requires the main journey to be localised in Ukrainian **and**
-English, with errors that explain cause and action. The interface is Ukrainian
-only; the language rule accepts both and flags anything else, but no
-localisation layer exists yet. A manual screen-reader walkthrough is also part
+English, with errors that explain cause and action. The settings area and the
+shared chrome now are — see [two languages](localisation.md) — but the creator
+journey, the operator console and the hardware pages are still Ukrainian only. A manual screen-reader walkthrough is also part
 of the card's acceptance and has not been done — an automated check cannot
 replace someone listening to the page.

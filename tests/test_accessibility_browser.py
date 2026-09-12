@@ -22,7 +22,7 @@ try:
 except ImportError:  # pragma: no cover - the suite skips without a browser
     sync_playwright = None
 
-PAGES = ("/", "/settings", "/hardware", "/login")
+PAGES = ("/", "/settings", "/settings?lang=en", "/hardware", "/login")
 VIEWPORTS = (
     ("phone", 320, 720),
     ("laptop", 1280, 800),
@@ -88,6 +88,24 @@ class AccessibilityBrowserTests(unittest.TestCase):
         self.assertTrue(summary["passed"])
         self.assertEqual(summary["problems"], 0)
         self.assertGreaterEqual(len(summary["pages"]), len(PAGES) * len(VIEWPORTS))
+
+    def test_the_settings_page_is_accessible_in_english_too(self) -> None:
+        page = self.browser.new_page(viewport={"width": 1280, "height": 900})
+        try:
+            page.goto(f"{self.url}/settings?lang=en", wait_until="networkidle")
+            page.wait_for_selector(".section-card")
+            page.wait_for_timeout(250)
+            self.assertEqual(page.evaluate("document.documentElement.lang"), "en")
+            self.assertEqual(page.locator("h1").inner_text(), "Settings")
+            self.assertEqual(
+                page.locator(".section-card h2").first.inner_text(), "Godot engine",
+            )
+            payload = page.evaluate(COLLECTOR_SCRIPT)
+            payload["url"] = "/settings?lang=en"
+            result = audit(payload)
+            self.assertTrue(result.passed, result.report())
+        finally:
+            page.close()
 
     def test_the_settings_page_can_be_operated_from_the_keyboard(self) -> None:
         page = self.browser.new_page(viewport={"width": 1280, "height": 900})
