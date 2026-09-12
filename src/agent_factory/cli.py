@@ -395,6 +395,37 @@ def parser() -> argparse.ArgumentParser:
     settings_history.add_argument("--key")
     settings_history.add_argument("--limit", type=int, default=50)
 
+    feedback_command = sub.add_parser(
+        "feedback", help="Turn a sentence after playing into the next version."
+    ).add_subparsers(dest="action", required=True)
+    feedback_preview = feedback_command.add_parser(
+        "preview", help="Show exactly what would be sent. Sends nothing."
+    )
+    feedback_add = feedback_command.add_parser("add", help="Record a note about a build.")
+    for parser_with_note in (feedback_preview, feedback_add):
+        parser_with_note.add_argument("--project", required=True)
+        parser_with_note.add_argument("--version", required=True)
+        parser_with_note.add_argument("--wish", required=True)
+        parser_with_note.add_argument("--step", action="append", default=[])
+        parser_with_note.add_argument(
+            "--send-file", action="append", default=[],
+            help="A file that WOULD leave this computer, named in the preview.",
+        )
+        parser_with_note.add_argument("--language", default="uk", choices=("uk", "en"))
+    feedback_show = feedback_command.add_parser("show", help="A note, its plans and the verdict.")
+    feedback_show.add_argument("--id", type=int, required=True)
+    feedback_show.add_argument("--previous-version", default="")
+    feedback_show.add_argument("--language", default="uk", choices=("uk", "en"))
+    feedback_accept = feedback_command.add_parser("accept", help="Accept a proposed change.")
+    feedback_accept.add_argument("--plan", type=int, required=True)
+    feedback_accept.add_argument("--actor", required=True)
+    feedback_accept.add_argument("--accept-cost", action="store_true")
+    feedback_accept.add_argument("--accept-scope", action="store_true")
+    feedback_accept.add_argument("--language", default="uk", choices=("uk", "en"))
+    feedback_history = feedback_command.add_parser("history", help="Notes for a project.")
+    feedback_history.add_argument("--project", required=True)
+    feedback_history.add_argument("--limit", type=int, default=20)
+
     work_command = sub.add_parser(
         "work", help="What a run is doing, what it costs, and what a stop would stop."
     ).add_subparsers(dest="action", required=True)
@@ -1325,6 +1356,69 @@ def _execute(args: argparse.Namespace) -> int:
             else:
                 print(json.dumps(
                     [item.record for item in centre.changes(key=args.key, limit=args.limit)],
+                    indent=2, ensure_ascii=False,
+                ))
+        elif args.command == "feedback":
+            from .game_feedback import (
+                Attachment, ChangePlan, Cost, Feedback, FeedbackJournal,
+                PlayedBuild, accept_plan,
+            )
+            from .localisation import Message
+
+            journal = FeedbackJournal(storage)
+            if args.action in ("preview", "add"):
+                note = Feedback.create(
+                    build=PlayedBuild(args.project, args.version),
+                    wish=args.wish,
+                    steps=args.step,
+                    attachments=[
+                        Attachment("screenshot", name, leaves_machine=True)
+                        for name in args.send_file
+                    ],
+                )
+                preview = note.preview(args.language)
+                if args.action == "add":
+                    preview["feedback_id"] = journal.record(note)
+                print(json.dumps(preview, indent=2, ensure_ascii=False))
+            elif args.action == "show":
+                note = journal.feedback(args.id)
+                print(json.dumps({
+                    **note.preview(args.language),
+                    "verdict": journal.verdict(
+                        args.id, previous_version=args.previous_version,
+                    ).record(args.language),
+                }, indent=2, ensure_ascii=False))
+            elif args.action == "accept":
+                row = storage.db.execute(
+                    "SELECT plan_json,cost_amount,cost_unit,accepted_by"
+                    " FROM game_feedback_plans WHERE id=?", (args.plan,),
+                ).fetchone()
+                if row is None:
+                    raise KeyError(f"Unknown plan {args.plan}")
+                stored = json.loads(row["plan_json"])
+                plan = ChangePlan(
+                    feedback_digest=stored["feedback"], changes=(), impacts=(),
+                    added_scope=tuple(
+                        Message(item, item) for item in stored.get("added_scope", [])
+                    ),
+                    cost=Cost(float(row["cost_amount"]), row["cost_unit"]),
+                    applies_to=stored.get("applies_to", ""),
+                    accepted_by=row["accepted_by"],
+                )
+                accepted = accept_plan(
+                    plan, actor=args.actor,
+                    accept_cost=args.accept_cost, accept_scope=args.accept_scope,
+                )
+                journal.accept(
+                    args.plan, actor=accepted.accepted_by, at=accepted.accepted_at,
+                )
+                print(json.dumps({
+                    "plan_id": args.plan, "accepted_by": accepted.accepted_by,
+                    "accepted_at": accepted.accepted_at,
+                }, indent=2, ensure_ascii=False))
+            else:
+                print(json.dumps(
+                    {"feedback": list(journal.history(args.project, limit=args.limit))},
                     indent=2, ensure_ascii=False,
                 ))
         elif args.command == "work":

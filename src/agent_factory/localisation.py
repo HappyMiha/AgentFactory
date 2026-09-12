@@ -30,12 +30,16 @@ class LocalisedError(ValueError):
     it. str() gives Ukrainian so a log line still reads.
     """
 
-    def __init__(self, message: "Message"):
+    def __init__(self, message: "Message", **parameters: Any):
         self.message = message
-        super().__init__(message.text(DEFAULT_LANGUAGE))
+        # The values that make the message specific travel with it, so the
+        # boundary can render the same error in either language without having
+        # to know what went wrong.
+        self.parameters = parameters
+        super().__init__(message.text(DEFAULT_LANGUAGE, **parameters))
 
     def text(self, language: str = DEFAULT_LANGUAGE) -> str:
-        return self.message.text(language)
+        return self.message.text(language, **self.parameters)
 
 
 class MissingTranslation(ValueError):

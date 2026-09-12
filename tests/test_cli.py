@@ -187,3 +187,41 @@ class ParserShapeTests(unittest.TestCase):
         ])
         self.assertEqual(preflight.action, "preflight")
         self.assertFalse(hasattr(preflight, "output"))
+
+
+class FeedbackCommandTests(CLITests):
+    """The command line follows the same rules the API does."""
+
+    def test_a_preview_sends_nothing_and_stores_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            self.run_cli(workspace, "init")
+            previewed = self.run_cli(
+                workspace, "feedback", "preview", "--project", "collector",
+                "--version", "a" * 64, "--wish", "make the jump higher",
+                "--send-file", "jump.png", "--language", "en",
+            )
+            self.assertEqual(previewed.returncode, 0, previewed.stderr)
+            payload = json.loads(previewed.stdout)
+            self.assertEqual(payload["leaves_machine"], ["jump.png"])
+            listed = self.run_cli(
+                workspace, "feedback", "history", "--project", "collector")
+            self.assertEqual(json.loads(listed.stdout)["feedback"], [])
+
+    def test_a_recorded_note_comes_back_with_an_unchecked_verdict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            self.run_cli(workspace, "init")
+            added = self.run_cli(
+                workspace, "feedback", "add", "--project", "collector",
+                "--version", "a" * 64, "--wish", "make the jump higher",
+            )
+            self.assertEqual(added.returncode, 0, added.stderr)
+            identifier = json.loads(added.stdout)["feedback_id"]
+            shown = self.run_cli(
+                workspace, "feedback", "show", "--id", str(identifier),
+                "--language", "en",
+            )
+            verdict = json.loads(shown.stdout)["verdict"]
+            self.assertEqual(verdict["state"], "not_checked")
+            self.assertFalse(verdict["confirmed"])
