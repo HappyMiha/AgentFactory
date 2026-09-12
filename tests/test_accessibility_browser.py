@@ -22,7 +22,8 @@ try:
 except ImportError:  # pragma: no cover - the suite skips without a browser
     sync_playwright = None
 
-PAGES = ("/", "/settings", "/settings?lang=en", "/work", "/work?lang=en", "/hardware", "/login")
+PAGES = ("/", "/settings", "/settings?lang=en", "/work", "/work?lang=en",
+         "/studio", "/studio?lang=en", "/hardware", "/login")
 VIEWPORTS = (
     ("phone", 320, 720),
     ("laptop", 1280, 800),

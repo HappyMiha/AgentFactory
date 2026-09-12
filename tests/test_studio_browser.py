@@ -1,0 +1,258 @@
+"""The studio screen, judged on what a person actually sees.
+
+A mission with a plan, a paused cycle, a spending limit and a machine is seeded
+into a real database, the page is opened in a real browser, and the claims on
+the screen are compared with what the data supports.
+"""
+
+from __future__ import annotations
+
+import tempfile
+import threading
+import time
+import unittest
+from pathlib import Path
+
+from agent_factory.accessibility import COLLECTOR_SCRIPT, audit
+from agent_factory.localisation import Message
+from agent_factory.storage import SQLiteStorage
+from agent_factory.studio_cost import StudioCosts
+from agent_factory.studio_cycles import StudioCycles
+from agent_factory.studio_paid_tools import PaidTools
+from agent_factory.studio_roster import StudioRoster
+from agent_factory.studio_workers import StudioMachines
+from agent_factory.web import create_app
+
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:  # pragma: no cover - the suite skips without a browser
+    sync_playwright = None
+
+MISSION = "cat-coins"
+
+
+def seed(database: Path) -> None:
+    storage = SQLiteStorage(database)
+    try:
+        db = storage.db
+        with db:
+            db.execute("INSERT INTO projects(id,name,description) VALUES(1,'Кіт і монети','')")
+            db.execute(
+                """INSERT INTO autonomous_missions
+                   (id,identity,mission_key,project_id,name,mission_owner,phase,
+                    disposition,configuration_json,configuration_digest)
+                   VALUES(1,'mission-1',?,1,'Кіт і монети','miha','DEVELOPMENT',
+                          'RUNNING','{}',?)""",
+                (MISSION, "c" * 64))
+            db.execute(
+                """INSERT INTO autonomous_backlog_revisions
+                   (id,identity,mission_id,revision_number,origin,created_by,rationale,
+                    schema_version,source_sha256,snapshot_json,revision_digest,item_count)
+                   VALUES(1,'rev-1',1,1,'HUMAN','miha','first',2,?,'{}',?,3)""",
+                ("a" * 64, "b" * 64))
+            items = (
+                (1, "AF-M-E1", "База гри", "epic", 0, None, None),
+                (2, "AF-M-001", "Кіт стрибає", "task", 1, "AF-M-E1", "DONE"),
+                (3, "AF-M-002", "Монети рахуються", "task", 1, "AF-M-E1", "RUNNING"),
+                (4, "AF-M-003", "Другий рівень", "task", 1, "AF-M-E1", "BLOCKED"),
+            )
+            for item_id, stable_id, title, kind, executable, parent, status in items:
+                db.execute(
+                    """INSERT INTO autonomous_backlog_items
+                       (id,identity,revision_id,stable_id,kind,executable,title,description,
+                        parent_stable_id,dependencies_json,priority,acceptance_criteria_json,
+                        validation_method_json,required_components_json,
+                        required_infrastructure_json,expected_artifacts_json,
+                        definition_of_done_json,assigned_role,source_references_json,
+                        review_notes_json,labels_json,item_digest)
+                       VALUES(?,?,1,?,?,?,?,'',?,'[]','P1','[]','[]','[]','[]','[]','[]',
+                              'developer','[]','[]','[]',?)""",
+                    (item_id, f"item-{item_id}", stable_id, kind, executable, title,
+                     parent, f"{item_id:064d}"))
+                if status:
+                    db.execute(
+                        """INSERT INTO autonomous_backlog_item_states
+                           (identity,item_id,sequence,status,actor,command_id,reason)
+                           VALUES(?,?,1,?,'system','cmd','seeded')""",
+                        (f"state-{item_id}", item_id, status))
+        costs = StudioCosts(storage)
+        costs.set_limit(MISSION, amount=5.0, actor="miha")
+        costs.record(MISSION, amount=0.8, task_key="t1", role="developer",
+                     provider="claude", model="opus")
+        costs.record(MISSION, amount=0.3, kind="estimated", task_key="t2",
+                     role="planner")
+        StudioRoster(storage).enable(MISSION, "tester", actor="miha")
+        cycles = StudioCycles(storage)
+        cycles.pause(MISSION, actor="miha", finishing=["збірка рівня"])
+        cycles.comment(MISSION, "хочу подвійний стрибок", author="miha")
+        PaidTools(storage).ask(
+            MISSION, "Unity",
+            reason=Message("Потрібен Unity для 3D.", "Unity is needed for 3D."),
+            blocks=["3D level"])
+        machines = StudioMachines(storage)
+        machines.register("web", name="lokvetia-core-web", kind="web_container")
+        machines.register(
+            "pc", name="desktop-tefqhlo", kind="this_pc",
+            capabilities=["godot"], video_memory_gb=8.0)
+    finally:
+        storage.db.close()
+
+
+@unittest.skipIf(sync_playwright is None, "Playwright is not installed")
+class StudioPageTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        import uvicorn
+
+        cls.directory = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.directory.name)
+        database = cls.root / "state.db"
+        seed(database)
+        cls.app = create_app(cls.root, database)
+        cls.server = uvicorn.Server(uvicorn.Config(
+            cls.app, host="127.0.0.1", port=0, log_level="error", access_log=False,
+        ))
+        cls.thread = threading.Thread(target=cls.server.run, daemon=True)
+        cls.thread.start()
+        deadline = time.monotonic() + 20
+        while not cls.server.started and time.monotonic() < deadline:
+            time.sleep(0.01)
+        if not cls.server.started:
+            raise RuntimeError("The studio server did not start")
+        port = cls.server.servers[0].sockets[0].getsockname()[1]
+        cls.url = f"http://127.0.0.1:{port}"
+        cls.playwright = sync_playwright().start()
+        cls.browser = cls.playwright.chromium.launch()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.browser.close()
+        cls.playwright.stop()
+        cls.server.should_exit = True
+        cls.thread.join(10)
+        cls.directory.cleanup()
+
+    def open(self, path: str = "/studio", width: int = 1280, height: int = 900):
+        page = self.browser.new_page(viewport={"width": width, "height": height})
+        page.goto(f"{self.url}{path}", wait_until="networkidle")
+        page.wait_for_selector(".stage")
+        page.wait_for_timeout(200)
+        return page
+
+    def test_the_whole_plan_is_on_the_screen_with_its_states(self):
+        page = self.open("/studio?lang=en")
+        try:
+            plan = page.inner_text("#stages")
+            self.assertIn("Кіт стрибає", plan)
+            self.assertIn("Done", plan)
+            self.assertIn("In progress", plan)
+            self.assertIn("Blocked", plan)
+        finally:
+            page.close()
+
+    def test_no_internal_code_reaches_the_screen(self):
+        page = self.open("/studio?lang=en")
+        try:
+            self.assertNotRegex(page.inner_text("#main"), r"AF-[A-Z]{1,3}-\d")
+        finally:
+            page.close()
+
+    def test_a_stage_with_no_build_offers_no_play_button(self):
+        page = self.open("/studio?lang=en")
+        try:
+            self.assertIn("nothing to test", page.inner_text(".boundary"))
+            self.assertEqual(page.locator(".stage-head a").count(), 0)
+        finally:
+            page.close()
+
+    def test_the_open_questions_are_the_ones_a_person_must_answer(self):
+        page = self.open("/studio?lang=en")
+        try:
+            questions = page.inner_text("#questions")
+            self.assertIn("Unity", questions)
+            self.assertIn("Decline", questions)
+        finally:
+            page.close()
+
+    def test_money_shows_spent_reserved_and_an_unearned_forecast_as_unknown(self):
+        page = self.open("/studio?lang=en")
+        try:
+            money = page.inner_text("#money")
+            self.assertIn("0.80 USD", money)
+            self.assertIn("0.30 USD", money)
+            self.assertIn("No forecast", page.inner_text("#forecast"))
+            self.assertIn("developer", page.inner_text("#by-role"))
+        finally:
+            page.close()
+
+    def test_the_team_shows_who_accepts_the_work(self):
+        page = self.open("/studio?lang=en")
+        try:
+            self.assertIn("no longer accepts", page.inner_text("#acceptance"))
+            self.assertIn("Tester", page.inner_text("#team"))
+        finally:
+            page.close()
+
+    def test_the_loop_shows_the_pause_and_what_was_asked_for(self):
+        page = self.open("/studio?lang=en")
+        try:
+            self.assertIn("Paused", page.inner_text("#cycle-state"))
+            self.assertIn("подвійний стрибок", page.inner_text("#comments"))
+        finally:
+            page.close()
+
+    def test_continuing_needs_a_name_and_changes_nothing_without_one(self):
+        page = self.open("/studio?lang=en")
+        try:
+            page.click("#resume")
+            page.wait_for_timeout(200)
+            self.assertIn("Enter a name", page.inner_text("#loop-result"))
+            self.assertIn("Paused", page.inner_text("#cycle-state"))
+        finally:
+            page.close()
+
+    def test_pausing_and_continuing_moves_a_game_to_the_next_cycle(self):
+        # A game of its own, so mutating the loop cannot disturb the other tests.
+        page = self.browser.new_page(viewport={"width": 1280, "height": 900})
+        try:
+            page.goto(f"{self.url}/studio?lang=en", wait_until="networkidle")
+            page.wait_for_selector("#cycle-state:not(:empty)")
+            page.fill("#mission", "loop-demo")
+            page.dispatch_event("#mission", "change")
+            page.wait_for_timeout(400)
+            page.fill("#actor", "miha")
+            page.click("#pause")
+            page.wait_for_timeout(400)
+            self.assertIn("Paused", page.inner_text("#cycle-state"))
+            page.click("#resume")
+            page.wait_for_timeout(400)
+            self.assertIn("Running", page.inner_text("#cycle-state"))
+            self.assertIn("Cycle 2", page.inner_text("#cycle-state"))
+        finally:
+            page.close()
+
+    def test_the_machines_are_named_and_the_container_is_marked(self):
+        page = self.open("/studio?lang=en")
+        try:
+            machines = page.inner_text("#machines")
+            self.assertIn("your PC: desktop-tefqhlo", machines)
+            self.assertIn("games are not built here", machines)
+        finally:
+            page.close()
+
+    def test_the_page_meets_the_accessibility_criteria_in_both_languages(self):
+        for path in ("/studio", "/studio?lang=en"):
+            for width, height in ((320, 720), (1280, 900)):
+                with self.subTest(page=path, width=width):
+                    page = self.open(path, width, height)
+                    try:
+                        payload = page.evaluate(COLLECTOR_SCRIPT)
+                        payload["url"] = path
+                        result = audit(payload)
+                        self.assertTrue(result.passed, result.report())
+                    finally:
+                        page.close()
+
+
+if __name__ == "__main__":
+    unittest.main()

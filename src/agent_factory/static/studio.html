@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Студія · Lokvetia Core</title>
+  <link rel="stylesheet" href="/assets/studio.css">
+  <script src="/assets/studio.js" defer></script>
+<meta name="theme-color" content="#102C35"><meta name="description" content="Lokvetia Core — local AI agent orchestration with human control."><link rel="icon" href="/assets/brand-mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/assets/brand.css"></head>
+<body class="brand-core page-studio">
+  <a class="skip" href="#main" data-i18n="nav.skip">До вмісту</a>
+  <header>
+    <a class="brand" href="/" aria-label="Lokvetia Core"><img class="brand-symbol" src="/assets/brand-mark.svg" alt="" width="40" height="40"><span class="brand-name">Lokvetia Core</span></a>
+    <nav data-i18n-attr="aria-label:nav.aria" aria-label="Навігація"><a href="/" data-i18n="nav.games">Мої ігри</a><a href="/work" data-i18n="nav.progress">Хід роботи</a><a href="/settings" data-i18n="nav.settings">Налаштування</a><a href="/operations" data-i18n="nav.operations">Панель оператора</a><a href="/login" data-i18n="nav.login">Доступ і вихід</a></nav>
+  </header>
+  <main id="main">
+    <section class="intro" aria-labelledby="title">
+      <p class="eyebrow" data-i18n="studio.eyebrow">Ваша гра</p>
+      <h1 id="title" data-i18n="studio.title">Студія</h1>
+      <p class="lead" data-i18n="studio.lead">Що студія робить зараз.</p>
+      <p id="summary" role="status" aria-live="polite" data-i18n="common.loading">Завантаження…</p>
+      <nav class="languages" data-i18n-attr="aria-label:language.label" aria-label="Мова">
+        <a href="?lang=uk" data-lang="uk" data-i18n="language.uk">Українська</a>
+        <a href="?lang=en" data-lang="en" data-i18n="language.en">Англійська</a>
+      </nav>
+    </section>
+
+    <form class="picker" id="picker-form" autocomplete="off">
+      <label for="mission"><span data-i18n="studio.mission.label">Гра</span></label>
+      <input id="mission" type="text" maxlength="120" value="cat-coins">
+      <button type="button" id="refresh" data-i18n="common.refresh">Оновити</button>
+    </form>
+
+    <p id="start-blocked" class="warn" hidden data-i18n="studio.start.blocked">Розробка не почнеться без джерела.</p>
+
+    <section class="card" aria-labelledby="plan-title">
+      <div class="card-head">
+        <h2 id="plan-title" data-i18n="studio.plan.title">План роботи</h2>
+        <p class="next"><strong data-i18n="studio.plan.next">Далі</strong>: <span id="next"></span></p>
+      </div>
+      <div id="stages"></div>
+      <p id="plan-empty" hidden data-i18n="studio.plan.empty">Плану ще немає.</p>
+    </section>
+
+    <section class="card" aria-labelledby="questions-title">
+      <h2 id="questions-title" data-i18n="studio.questions.title">Що вирішуєте ви</h2>
+      <ul class="questions" id="questions"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="money-title">
+      <h2 id="money-title" data-i18n="studio.money.title">Гроші</h2>
+      <dl class="money" id="money"></dl>
+      <p id="forecast"></p>
+      <div class="table-scroll" tabindex="0" role="region" data-i18n-attr="aria-label:studio.money.title" aria-label="Гроші">
+        <table>
+          <thead><tr><th data-i18n="studio.team.title">Хто працює</th><th data-i18n="studio.money.spent">Витрачено</th><th data-i18n="studio.money.reserved">Зарезервовано</th></tr></thead>
+          <tbody id="by-role"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="team-title">
+      <h2 id="team-title" data-i18n="studio.team.title">Хто працює</h2>
+      <p id="acceptance"></p>
+      <ul class="team" id="team"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="loop-title">
+      <h2 id="loop-title" data-i18n="studio.loop.title">Пауза й правки</h2>
+      <p id="cycle-state"></p>
+      <form class="loop" id="loop-form" autocomplete="off">
+        <label><span data-i18n="studio.loop.who">Ваше імʼя</span>
+          <input id="actor" type="text" maxlength="120" required>
+        </label>
+        <label><span data-i18n="studio.loop.comment">Що змінити</span>
+          <input id="comment" type="text" maxlength="2000">
+        </label>
+        <div class="loop-actions">
+          <button type="button" id="pause" data-i18n="studio.loop.pause">Пауза</button>
+          <button type="button" id="send" data-i18n="studio.loop.send">Надіслати</button>
+          <button type="button" id="resume" class="primary" data-i18n="studio.loop.resume">Продовжити</button>
+        </div>
+        <p class="result" id="loop-result" role="status" aria-live="polite"></p>
+      </form>
+      <ul class="comments" id="comments"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="machines-title">
+      <h2 id="machines-title" data-i18n="studio.machines.title">Де це виконується</h2>
+      <ul class="machines" id="machines"></ul>
+    </section>
+
+    <footer class="brand-footer"><span data-i18n="app.workspace">Lokvetia Core · Локальний робочий простір</span><a href="http://lokvetia.com/" target="_blank" rel="noopener noreferrer">lokvetia.com <span aria-hidden="true">↗</span></a></footer>
+  </main>
+</body>
+</html>
