@@ -163,6 +163,7 @@ class ParserShapeTests(unittest.TestCase):
             ("export", "targets"),
             ("support", "categories"),
             ("uninstall", "plan"),
+            ("levels", "list"),
             ("state", "check"),
         )
         for arguments in commands:

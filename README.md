@@ -344,6 +344,7 @@ See:
 - [Implementation audit (2026-08-11)](docs/implementation-audit-2026-08-11.md)
 - [Implementation release notes (2026-08-11)](docs/release-notes-2026-08-11.md)
 - [Godot 2D game pack and engine adapter](docs/godot-pack.md)
+- [Support levels and honest scoping](docs/capability-levels.md)
 - [Latest verified playable version](docs/playable-versions.md)
 - [Asset provenance and safe import](docs/asset-provenance.md)
 - [Export and sharing](docs/export-and-share.md)

@@ -331,6 +331,22 @@ def parser() -> argparse.ArgumentParser:
     uninstall_preview.add_argument("--project", action="append")
     uninstall_preview.add_argument("--remove-projects", action="store_true")
 
+    levels = sub.add_parser(
+        "levels", help="Declared support levels and what the evidence permits saying."
+    ).add_subparsers(dest="action", required=True)
+    for levels_action in ("list", "show", "scope"):
+        levels_parser = levels.add_parser(levels_action)
+        levels_parser.add_argument(
+            "--evidence", help="Path to a capability evidence document."
+        )
+        if levels_action == "show":
+            levels_parser.add_argument("--level", required=True)
+        if levels_action == "scope":
+            levels_parser.add_argument("--feature", action="append", required=True)
+            levels_parser.add_argument("--dimension", default="2d")
+            levels_parser.add_argument("--engine", default="godot")
+            levels_parser.add_argument("--description", default="a game")
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -582,6 +598,34 @@ def _assets(args: argparse.Namespace) -> int:
     return 0 if receipt.imported or receipt.replaced else 3
 
 
+def _levels(args: argparse.Namespace) -> int:
+    from .capability_levels import CapabilityCatalogue, ScopeRequest, load_evidence
+
+    evidence = ()
+    if getattr(args, "evidence", None):
+        evidence = load_evidence(
+            json.loads(Path(args.evidence).expanduser().read_text(encoding="utf-8"))
+        )
+    catalogue = CapabilityCatalogue(evidence)
+    if args.action == "list":
+        print(json.dumps(catalogue.record, indent=2))
+        return 0
+    if args.action == "show":
+        status = catalogue.status(args.level)
+        print(json.dumps(
+            {"level": status.level.record, "status": status.record}, indent=2
+        ))
+        return 0 if status.supported else 3
+    answer = catalogue.scope(ScopeRequest.create(
+        args.description, features=args.feature,
+        dimension=args.dimension, engine=args.engine,
+    ))
+    print(json.dumps(answer.record, indent=2))
+    # Anything short of a guarantee exits non-zero, so a caller cannot read a
+    # scoped prototype as a promise.
+    return 0 if answer.guarantee else 3
+
+
 def _execute(args: argparse.Namespace) -> int:
     workspace, db_path = _paths(args)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -618,6 +662,9 @@ def _execute(args: argparse.Namespace) -> int:
 
     if args.command == "assets":
         return _assets(args)
+
+    if args.command == "levels":
+        return _levels(args)
 
     storage = SQLiteStorage(db_path)
     registry = AgentRegistry()
