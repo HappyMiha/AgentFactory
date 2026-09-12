@@ -35,15 +35,19 @@
   }
 
   function control(field) {
+    // Every generated control carries its own accessible name; the visible
+    // heading above it is not programmatically associated with it.
     if (field.kind === 'boolean') {
       const input = element('input');
       input.type = 'checkbox';
       input.checked = field.value === 'true';
       input.dataset.read = 'checkbox';
+      input.setAttribute('aria-label', field.label);
       return input;
     }
     if (field.kind === 'choice') {
       const select = element('select');
+      select.setAttribute('aria-label', field.label);
       for (const option of field.choices) {
         const node = element('option', option);
         node.value = option;
@@ -60,6 +64,7 @@
     if (field.kind === 'decimal') input.step = 'any';
     input.value = field.value;
     input.dataset.read = 'value';
+    input.setAttribute('aria-label', field.label);
     if (field.kind === 'list') input.placeholder = 'через кому';
     return input;
   }
@@ -111,10 +116,13 @@
     reason.className = 'reason';
     reason.maxLength = 300;
     reason.placeholder = 'Причина (необовʼязково)';
+    reason.setAttribute('aria-label', `Причина зміни: ${field.label}`);
     const save = element('button', 'Зберегти');
     save.type = 'button';
+    save.setAttribute('aria-label', `Зберегти: ${field.label}`);
     const reset = element('button', 'Повернути типове');
     reset.type = 'button';
+    reset.setAttribute('aria-label', `Повернути типове: ${field.label}`);
     reset.disabled = field.origin !== 'override';
     controls.append(input, reason, save, reset);
     node.append(controls, status);
@@ -190,6 +198,7 @@
     const title = element('h2', section.title);
     const verify = element('button', 'Перевірити розділ');
     verify.type = 'button';
+    verify.setAttribute('aria-label', `Перевірити розділ: ${section.title}`);
     head.append(title, verify);
     node.append(head, element('p', section.summary));
     if (section.changed_count) {

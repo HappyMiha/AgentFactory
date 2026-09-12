@@ -4,6 +4,12 @@ AF-043 qualifies the loopback MVP against this keyboard and screen-reader baseli
 
 ## Automated baseline
 
+Since AF-GC-024 these claims are checked against the **rendered** page rather
+than the markup: see [accessibility judged on the rendered page](accessibility-audit.md)
+and `tests/test_accessibility_browser.py`. The list below is the intent; that
+suite is the evidence, and it is what fails when the intent stops being true.
+
+
 - The document declares its language, has a unique title, a skip link, one main landmark, labelled primary navigation, and semantic sections.
 - Every input, select, and textarea is nested in or referenced by a label; icon-only controls are not used.
 - Dialogs have programmatic names, status changes use polite live regions, and loading/detail workspaces announce updates without stealing focus.

@@ -49,6 +49,27 @@
   accent-color: var(--brand-accent);
   vertical-align: middle;
 }
+/* WCAG 2.2 AA 2.5.8 Target Size (Minimum): every control a person points at or
+   taps is at least 24x24 CSS px. Declared once here so a new page inherits it
+   instead of rediscovering the rule. */
+.brand-core :is(button, select, summary),
+.brand-core input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.brand-core textarea {
+  min-height: 24px;
+  padding-block: max(.25rem, 2px);
+}
+.brand-core input:is([type="checkbox"], [type="radio"]) {
+  min-width: 24px;
+  min-height: 24px;
+}
+.brand-core :is(header, nav, footer, .brand-footer) a,
+.brand-core a.skip,
+.brand-core details > summary + a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding-block: 2px;
+}
 .brand-core button { transition: background-color 150ms ease, border-color 150ms ease; }
 .brand-core button:disabled { cursor: not-allowed; }
 .brand-core .brand-footer {
