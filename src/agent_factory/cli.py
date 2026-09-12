@@ -395,6 +395,25 @@ def parser() -> argparse.ArgumentParser:
     settings_history.add_argument("--key")
     settings_history.add_argument("--limit", type=int, default=50)
 
+    studio_command = sub.add_parser(
+        "studio", help="What the studio decides on its own, and what it still asks."
+    ).add_subparsers(dest="action", required=True)
+    studio_gates = studio_command.add_parser("gates", help="Every gate and who answers it.")
+    studio_gates.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_log = studio_command.add_parser("decisions", help="What was decided, and why.")
+    studio_log.add_argument("--mission", default="")
+    studio_log.add_argument("--limit", type=int, default=50)
+    studio_log.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_plan = studio_command.add_parser(
+        "plan", help="The whole plan of a game, by stage, in human words."
+    )
+    studio_plan.add_argument("--mission", required=True)
+    studio_plan.add_argument("--language", default="uk", choices=("uk", "en"))
+    studio_answer = studio_command.add_parser("answer", help="Answer one open question.")
+    studio_answer.add_argument("--question", type=int, required=True)
+    studio_answer.add_argument("--answer", required=True)
+    studio_answer.add_argument("--actor", required=True)
+
     feedback_command = sub.add_parser(
         "feedback", help="Turn a sentence after playing into the next version."
     ).add_subparsers(dest="action", required=True)
@@ -1358,6 +1377,30 @@ def _execute(args: argparse.Namespace) -> int:
                     [item.record for item in centre.changes(key=args.key, limit=args.limit)],
                     indent=2, ensure_ascii=False,
                 ))
+        elif args.command == "studio":
+            from .studio_autonomy import AutonomyJournal, catalogue
+
+            journal = AutonomyJournal(storage)
+            if args.action == "gates":
+                print(json.dumps(catalogue(args.language), indent=2, ensure_ascii=False))
+            elif args.action == "plan":
+                from .studio_backlog import from_mission
+
+                print(json.dumps(
+                    from_mission(storage, args.mission).record(args.language),
+                    indent=2, ensure_ascii=False,
+                ))
+            elif args.action == "decisions":
+                report = journal.report(
+                    mission=args.mission, language=args.language, limit=args.limit,
+                )
+                print(json.dumps(report, indent=2, ensure_ascii=False))
+                # An open question is the one thing waiting on a person.
+                return 3 if report["questions"] else 0
+            else:
+                print(json.dumps(journal.answer(
+                    args.question, answer=args.answer, actor=args.actor,
+                ), indent=2, ensure_ascii=False))
         elif args.command == "feedback":
             from .game_feedback import (
                 Attachment, ChangePlan, Cost, Feedback, FeedbackJournal,

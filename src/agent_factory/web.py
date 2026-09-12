@@ -293,6 +293,11 @@ class AcceptPlanCommand(ConfirmedCommand):
     accept_scope: bool = False
 
 
+class AnswerQuestionCommand(ConfirmedCommand):
+    answer: str = Field(min_length=1, max_length=40)
+    actor: str = Field(min_length=1, max_length=120)
+
+
 class SettingResetCommand(ConfirmedCommand):
     actor: str = Field(min_length=1, max_length=120)
     reason: str = Field(default="", max_length=300)
@@ -1296,6 +1301,82 @@ def create_app(workspace: Path, database: Path, *, environment_probes=None, cred
             )
         except (KeyError, ValueError, PermissionError) as exc:
             return settings_error(exc, language)
+
+    def autonomy_journal(service: Service):
+        from .studio_autonomy import AutonomyJournal
+
+        return AutonomyJournal(service.storage)
+
+    @app.get("/api/studio/gates", response_model=dict[str, Any])
+    async def studio_gates(request: Request, lang: str | None = None) -> Any:
+        """What is decided automatically, and the only three things still asked."""
+        from .studio_autonomy import catalogue
+
+        return catalogue(chosen_language(request, lang))
+
+    @app.get("/api/studio/plan/{mission_key}", response_model=dict[str, Any])
+    async def studio_plan(
+        mission_key: str, request: Request, service: Service, lang: str | None = None
+    ) -> Any:
+        """The whole plan, by stage, in the words of the person who asked."""
+        from .studio_backlog import BacklogRefused, from_mission
+
+        language = chosen_language(request, lang)
+        try:
+            return from_mission(service.storage, mission_key).record(language)
+        except BacklogRefused as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {
+                    "code": "unknown_mission", "message": exc.text(language),
+                }},
+            )
+
+    @app.get("/api/studio/decisions", response_model=dict[str, Any])
+    async def studio_decisions(
+        request: Request,
+        service: Service,
+        mission: str = "",
+        lang: str | None = None,
+        limit: Limit = 50,
+    ) -> Any:
+        language = chosen_language(request, lang)
+        return autonomy_journal(service).report(
+            mission=mission, language=language, limit=limit,
+        )
+
+    @app.post("/api/studio/questions/{question_id}/answer", response_model=dict[str, Any])
+    async def studio_answer(
+        question_id: int,
+        command: AnswerQuestionCommand,
+        request: Request,
+        service: Service,
+        confirmation: Confirmation = None,
+        lang: str | None = None,
+    ) -> Any:
+        from .localisation import LocalisedError
+        from .studio_autonomy import AutonomyRefused
+
+        _require_confirmation(command, confirmation)
+        language = chosen_language(request, lang)
+        try:
+            return autonomy_journal(service).answer(
+                question_id, answer=command.answer, actor=command.actor,
+            )
+        except KeyError as exc:
+            return JSONResponse(
+                status_code=404,
+                content={"error": {
+                    "code": "unknown_question", "message": str(exc).strip("'"),
+                }},
+            )
+        except AutonomyRefused as exc:
+            return JSONResponse(
+                status_code=409,
+                content={"error": {
+                    "code": "answer_refused", "message": exc.text(language),
+                }},
+            )
 
     def feedback_journal(service: Service):
         from .game_feedback import FeedbackJournal
