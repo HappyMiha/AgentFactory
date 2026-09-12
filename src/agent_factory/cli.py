@@ -347,6 +347,27 @@ def parser() -> argparse.ArgumentParser:
             levels_parser.add_argument("--engine", default="godot")
             levels_parser.add_argument("--description", default="a game")
 
+    unity = sub.add_parser(
+        "unity", help="Unity setup, project compatibility and editor qualification."
+    ).add_subparsers(dest="action", required=True)
+    unity.add_parser(
+        "catalogue", help="Pinned editors and modules, and the steps that are yours."
+    )
+    unity_project = unity.add_parser(
+        "project", help="Read what a Unity project on disk needs. No editor is run."
+    )
+    unity_project.add_argument("--path", required=True)
+    unity_project.add_argument("--target", default="StandaloneWindows64")
+    unity_project.add_argument("--editor", default="")
+    unity_health = unity.add_parser(
+        "health", help="Qualify an installed editor. The licence state is yours to give."
+    )
+    unity_health.add_argument("--executable", action="append")
+    unity_health.add_argument(
+        "--licence", default="unknown",
+        help="active|inactive|expired|unknown, as Unity Hub reports it to you.",
+    )
+
     state = sub.add_parser("state").add_subparsers(dest="action", required=True)
     state.add_parser("check")
     backup = state.add_parser("backup")
@@ -626,6 +647,57 @@ def _levels(args: argparse.Namespace) -> int:
     return 0 if answer.guarantee else 3
 
 
+def _unity(args: argparse.Namespace) -> int:
+    from .unity_engine import UnityAdapter
+    from .unity_setup import (
+        DEFAULT_EDITOR, Installation, UnitySetup, read_project_requirement,
+    )
+
+    if args.action == "catalogue":
+        print(json.dumps(UnitySetup().catalogue(), indent=2))
+        return 0
+    if args.action == "health":
+        adapter = UnityAdapter(
+            executable_candidates=tuple(args.executable) if args.executable
+            else ("Unity", "unity"),
+            licence_probe=lambda: args.licence,
+        )
+        health = adapter.health()
+        print(json.dumps(asdict(health), indent=2))
+        return 0 if health.healthy else 3
+    setup = UnitySetup(editor_version=args.editor or DEFAULT_EDITOR)
+    project = Path(args.path).expanduser().resolve()
+    requirement = read_project_requirement(project)
+    # No installation is probed here: the factory does not read Unity's own
+    # licence or Hub state. The status describes what the project needs.
+    status = setup.status(
+        Installation(licence_state="unknown"), target=args.target, project=project,
+    )
+    project_actions = [
+        action.record for action in status.actions
+        if action.code.startswith("project_")
+    ]
+    print(json.dumps({
+        "project": {
+            "path": str(project),
+            "editor_version": requirement.editor_version,
+            "packages_lock_digest": requirement.packages_lock_digest,
+            "found": requirement.found,
+            "detail": requirement.detail,
+        },
+        "selected_editor": setup.editor_version,
+        "target": args.target,
+        "actions": project_actions,
+        "installation_probed": False,
+        "note": (
+            "Nothing about your machine was inspected here. Run "
+            "'lokvetia unity health' for the editor, and Unity Hub reports the "
+            "licence - this tool never reads it."
+        ),
+    }, indent=2))
+    return 0 if requirement.found and not project_actions else 3
+
+
 def _execute(args: argparse.Namespace) -> int:
     workspace, db_path = _paths(args)
     workspace.mkdir(parents=True, exist_ok=True)
@@ -665,6 +737,9 @@ def _execute(args: argparse.Namespace) -> int:
 
     if args.command == "levels":
         return _levels(args)
+
+    if args.command == "unity":
+        return _unity(args)
 
     storage = SQLiteStorage(db_path)
     registry = AgentRegistry()
