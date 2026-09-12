@@ -19,9 +19,12 @@ from typing import Iterable, Mapping, Sequence
 
 
 GODOT_PACK_KEY = "godot-2d"
-GODOT_PACK_VERSION = "1.0.0"
-SUPPORTED_ENGINE_VERSIONS = ("4.3", "4.4")
-BASELINE_ENGINE_VERSION = "4.3"
+GODOT_PACK_VERSION = "1.1.0"
+INSTALLATION_CATALOGUE = Path(__file__).resolve().parent / "defaults" / "installation-catalog.json"
+# Extra 4.x series this pack still accepts for an already-installed editor. The
+# baseline always comes from the installation catalogue, so a project is created
+# for the editor the factory actually installs.
+ADDITIONAL_ENGINE_VERSIONS = ("4.3", "4.4")
 BASELINE_RENDERER = "gl_compatibility"
 PACK_LANGUAGE = "gdscript"
 PACK_STATE_PATH = ".lokvetia/godot-pack.json"
@@ -31,6 +34,30 @@ MAX_TEMPLATE_FILES = 64
 
 class PackConflict(PermissionError):
     """Raised when an upgrade would overwrite unapproved authored files."""
+
+
+def _catalogue_engine_series(path: Path = INSTALLATION_CATALOGUE) -> str:
+    """The editor series the installation catalogue actually installs.
+
+    Hard-coding a supported range in this module let it drift from the catalogue
+    that installs the editor, which made the pack refuse the only editor the
+    factory ships. The catalogue is the single source of truth; the constant
+    below is derived from it.
+    """
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        version = str(payload["packages"]["godot-editor"]["version"])
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return ADDITIONAL_ENGINE_VERSIONS[-1]
+    parts = version.split(".")
+    return f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else version
+
+
+BASELINE_ENGINE_VERSION = _catalogue_engine_series()
+SUPPORTED_ENGINE_VERSIONS = tuple(sorted(
+    {BASELINE_ENGINE_VERSION, *ADDITIONAL_ENGINE_VERSIONS},
+    key=lambda value: tuple(int(part) for part in value.split(".")),
+))
 
 
 def _digest(value: str) -> str:
@@ -846,12 +873,12 @@ def _collector_template() -> GameTemplate:
         "collector-2d",
         title="Collector starter",
         summary="Collect every marker on an open field before the round timer ends.",
-        version="1.0.0",
+        version="1.1.0",
         main_scene="scenes/main.tscn",
         files=_template_files(
             name="Collector Starter", slug="collector-starter",
             summary="Collect every marker before the timer ends.",
-            template_id="collector-2d", version="1.0.0",
+            template_id="collector-2d", version="1.1.0",
             engine=BASELINE_ENGINE_VERSION,
             main_script=_COLLECTOR_MAIN, player_script=_COLLECTOR_PLAYER,
             start=(576.0, 324.0),
@@ -864,12 +891,12 @@ def _platformer_template() -> GameTemplate:
         "platformer-2d",
         title="Platformer starter",
         summary="Run and jump across four platforms to reach the goal marker.",
-        version="1.0.0",
+        version="1.1.0",
         main_scene="scenes/main.tscn",
         files=_template_files(
             name="Platformer Starter", slug="platformer-starter",
             summary="Reach the goal marker without falling off the map.",
-            template_id="platformer-2d", version="1.0.0",
+            template_id="platformer-2d", version="1.1.0",
             engine=BASELINE_ENGINE_VERSION,
             main_script=_PLATFORMER_MAIN, player_script=_PLATFORMER_PLAYER,
             start=(96.0, 520.0),

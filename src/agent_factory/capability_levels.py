@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
 from .asset_provenance import BUDGETS
+from .godot_pack import SUPPORTED_ENGINE_VERSIONS
 
 FEATURES = (
     "input", "ui", "audio", "save_load", "multi_level", "three_d",
@@ -444,7 +445,7 @@ def default_levels() -> tuple[Level, ...]:
             "simple-2d",
             title="Simple 2D game",
             summary="One screen, one goal, keyboard input and an on-screen result.",
-            dimension="2d", engine="godot", engine_versions=("4.3", "4.4"),
+            dimension="2d", engine="godot", engine_versions=SUPPORTED_ENGINE_VERSIONS,
             features={"input", "ui"},
             budget_profile="handheld",
             performance=PerformanceTarget(60, "1152x648", 3.0, 5.0),
@@ -460,7 +461,7 @@ def default_levels() -> tuple[Level, ...]:
             "multi-level-2d",
             title="Multi-level 2D game",
             summary="Several levels with progress that survives closing the game.",
-            dimension="2d", engine="godot", engine_versions=("4.3", "4.4"),
+            dimension="2d", engine="godot", engine_versions=SUPPORTED_ENGINE_VERSIONS,
             features={"input", "ui", "audio", "save_load", "multi_level"},
             budget_profile="low-end-laptop",
             performance=PerformanceTarget(60, "1920x1080", 5.0, 10.0),
@@ -479,7 +480,7 @@ def default_levels() -> tuple[Level, ...]:
             "small-3d",
             title="Small 3D game",
             summary="A small 3D space with movement, a goal and saved progress.",
-            dimension="3d", engine="godot", engine_versions=("4.3", "4.4"),
+            dimension="3d", engine="godot", engine_versions=SUPPORTED_ENGINE_VERSIONS,
             features={"input", "ui", "audio", "save_load", "three_d"},
             budget_profile="baseline-pc",
             performance=PerformanceTarget(60, "1920x1080", 10.0, 20.0),

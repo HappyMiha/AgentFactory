@@ -103,6 +103,13 @@ class GodotHealthTest(GodotAdapterTestCase):
         self.assertTrue(health.interface_qualified)
         self.assertEqual(health.missing_flags, ())
 
+    def test_the_installed_editor_version_qualifies(self) -> None:
+        from agent_factory.godot_pack import BASELINE_ENGINE_VERSION
+
+        health = self.adapter({"version": f"{BASELINE_ENGINE_VERSION}.2.stable.official"}).health()
+        self.assertTrue(health.healthy, health.reason)
+        self.assertTrue(health.version_supported)
+
     def test_unsupported_engine_series_is_refused(self) -> None:
         health = self.adapter({"version": "3.5.3.stable.official"}).health()
         self.assertFalse(health.healthy)

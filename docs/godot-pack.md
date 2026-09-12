@@ -18,9 +18,14 @@ machine.
 
 Both templates:
 
-- pin Godot **4.3** (4.3 and 4.4 are the supported series) and the
-  `gl_compatibility` renderer, so a baseline PC without a modern GPU still runs
-  the project;
+- target the Godot series the **installation catalogue actually installs**
+  (`defaults/installation-catalog.json`), and additionally accept 4.3 and 4.4
+  for an editor that is already there. The baseline is derived from the
+  catalogue rather than written here twice, because the two drifted once and the
+  pack ended up refusing the only editor the factory ships; a test now fails if
+  they diverge again;
+- use the `gl_compatibility` renderer, so a baseline PC without a modern GPU
+  still runs the project;
 - use GDScript and the `scenes/`, `scripts/` layout with `project.godot`,
   `export_presets.cfg` and a `README.md`;
 - bind movement, jump and restart to the built-in `ui_*` actions, so no input
