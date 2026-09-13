@@ -341,6 +341,20 @@ CATALOGUE: Mapping[str, Message] = {
     "studio.team.title": Message("Хто працює", "Who is working"),
     "studio.team.add": Message("Додати роль", "Add a role"),
     "studio.team.off": Message("Вимкнена", "Off"),
+    "studio.team.enable": Message("Увімкнути", "Turn on"),
+    "studio.team.disable": Message("Вимкнути", "Turn off"),
+    "studio.team.confirm": Message("Увімкнути попри це", "Turn it on anyway"),
+    "studio.team.cost.unknown": Message(
+        "Скільки це додасть — невідомо.", "How much this adds is unknown.",
+    ),
+    "studio.team.cost": Message(
+        "Приблизно +{amount} {unit} за етап.",
+        "About +{amount} {unit} per stage.",
+    ),
+    "studio.team.acceptance.changes": Message(
+        "Після цього розробник більше не прийматиме власну роботу.",
+        "After this the developer will no longer accept their own work.",
+    ),
     "studio.loop.title": Message("Пауза й правки", "Pause and edits"),
     "studio.loop.pause": Message("Пауза", "Pause"),
     "studio.loop.resume": Message("Продовжити", "Continue"),

@@ -1,7 +1,10 @@
 'use strict';
 (() => {
   const byId = id => document.getElementById(id);
-  const state = {language: 'uk', messages: {}, mission: 'cat-coins'};
+  const state = {
+    language: 'uk', messages: {}, mission: 'cat-coins',
+    generation: 0, roster: {roles: []}, offering: null,
+  };
   const query = new URLSearchParams(location.search);
 
   // Every visible string comes from the server's catalogue, so a missing
@@ -183,14 +186,99 @@
     }));
   }
 
+  function money2(value, unit) {
+    return `${Number(value).toFixed(2)} ${unit}`;
+  }
+
+  // Turning a role on is two steps on purpose: the first shows what it would
+  // cost and what it changes, and only the second switches anything. The
+  // pending offer lives in state, so a refresh of the list does not silently
+  // throw away what the person is in the middle of reading.
+  async function offerRole(role) {
+    state.offering = {role, consequence: null, error: ''};
+    showTeam(state.roster);
+    try {
+      state.offering = {
+        role,
+        consequence: await get(
+          `/api/studio/roster/${encodeURIComponent(state.mission)}/consequence/${role}`),
+        error: '',
+      };
+    } catch (error) {
+      state.offering = {role, consequence: null, error: error.message};
+    }
+    showTeam(state.roster);
+  }
+
+  function consequenceLines(offer) {
+    if (offer.error) return say('studio.error', {message: offer.error});
+    if (!offer.consequence) return say('common.loading');
+    const consequence = offer.consequence;
+    const lines = [
+      consequence.added_cost === null
+        ? say('studio.team.cost.unknown')
+        : say('studio.team.cost', {
+            amount: Number(consequence.added_cost).toFixed(2),
+            unit: consequence.unit,
+          }),
+      consequence.subscription_note,
+    ];
+    if (consequence.acceptance_changes) lines.push(say('studio.team.acceptance.changes'));
+    return lines.join(' ');
+  }
+
+  async function changeRole(role, action) {
+    const result = byId('loop-result');
+    if (!actor()) {
+      result.textContent = say('studio.loop.need-name');
+      byId('actor').focus();
+      return;
+    }
+    try {
+      const suffix = action === 'disable' ? '?action=disable' : '';
+      await post(
+        `/api/studio/roster/${encodeURIComponent(state.mission)}/${role}${suffix}`,
+        {actor: actor()});
+      state.offering = null;
+      await load();
+    } catch (error) {
+      result.textContent = say('studio.error', {message: error.message});
+    }
+  }
+
+  function button(label, handler) {
+    const node = element('button', label);
+    node.type = 'button';
+    node.addEventListener('click', handler);
+    return node;
+  }
+
   function showTeam(roster) {
-    byId('acceptance').textContent = roster.acceptance || '';
-    replace(byId('team'), (roster.roles || []).map(role => {
+    state.roster = roster || {roles: []};
+    byId('acceptance').textContent = state.roster.acceptance || '';
+    const offering = state.offering;
+    replace(byId('team'), (state.roster.roles || []).map(role => {
       const entry = element('li', undefined, role.enabled ? '' : 'off');
       entry.append(element('strong', role.title));
       entry.append(element('span', role.duty));
-      if (!role.enabled) entry.append(element('span', `— ${say('studio.team.off')}`));
-      else if (role.model) entry.append(element('span', `· ${role.provider} ${role.model}`));
+      if (role.enabled) {
+        if (role.model) entry.append(element('span', `· ${role.provider} ${role.model}`));
+        if (!role.core) {
+          entry.append(button(
+            say('studio.team.disable'), () => changeRole(role.role, 'disable')));
+        }
+        return entry;
+      }
+      entry.append(element('span', `— ${say('studio.team.off')}`));
+      if (offering && offering.role === role.role) {
+        entry.append(element('p', consequenceLines(offering), 'note'));
+        if (offering.consequence) {
+          entry.append(button(
+            say('studio.team.confirm'), () => changeRole(role.role, 'enable')));
+        }
+      } else {
+        entry.append(button(say('studio.team.enable'), () => offerRole(role.role)));
+      }
       return entry;
     }));
   }
@@ -220,6 +308,10 @@
 
   async function load() {
     state.mission = byId('mission').value.trim() || state.mission;
+    // Two loads can overlap - switching game while the first is still in
+    // flight. Only the newest one may paint, or a slow answer about the old
+    // game quietly replaces what is on the screen.
+    const generation = ++state.generation;
     try {
       const [first, plan, decisions, tools, money, roster, cycles, machines] =
         await Promise.all([
@@ -232,6 +324,7 @@
           maybe(`/api/studio/cycles/${encodeURIComponent(state.mission)}`, {cycle: 1, state: 'running'}),
           maybe('/api/studio/machines', {machines: []}),
         ]);
+      if (generation !== state.generation) return;
       byId('start-blocked').hidden = Boolean(first.can_start);
       showPlan(plan);
       showQuestions(decisions, tools, money);
@@ -243,7 +336,9 @@
         ? (plan.next || say('studio.plan.empty'))
         : first.summary;
     } catch (error) {
-      byId('summary').textContent = say('studio.error', {message: error.message});
+      if (generation === state.generation) {
+        byId('summary').textContent = say('studio.error', {message: error.message});
+      }
     }
   }
 
@@ -278,7 +373,10 @@
 
   function start() {
     byId('refresh').addEventListener('click', () => load());
-    byId('mission').addEventListener('change', () => load());
+    byId('mission').addEventListener('change', () => {
+      state.offering = null;
+      load();
+    });
     byId('pause').addEventListener('click', () => act('pause'));
     byId('resume').addEventListener('click', () => act('resume'));
     byId('send').addEventListener('click', () => act('send'));

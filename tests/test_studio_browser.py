@@ -240,6 +240,55 @@ class StudioPageTests(unittest.TestCase):
         finally:
             page.close()
 
+    def test_adding_a_role_shows_what_it_costs_before_it_changes_anything(self):
+        # A game of its own: this test switches a role on.
+        page = self.browser.new_page(viewport={"width": 1280, "height": 900})
+        try:
+            page.goto(f"{self.url}/studio?lang=en", wait_until="networkidle")
+            page.wait_for_selector("#team li")
+            page.fill("#mission", "roster-demo")
+            page.dispatch_event("#mission", "change")
+            # The switch is done when the empty plan of the new game is showing;
+            # clicking before that would be clicking on the old game's list.
+            page.wait_for_selector("#plan-empty:not([hidden])")
+            page.fill("#actor", "miha")
+
+            artist = page.locator("#team li", has_text="Artist")
+            artist.get_by_role("button", name="Turn on").click()
+            artist.locator(".note").wait_for()
+            page.wait_for_timeout(200)
+            note = artist.locator(".note").inner_text()
+            self.assertIn("unknown", note)
+            self.assertIn("one subscription is enough", note)
+            self.assertIn(
+                "Off", artist.inner_text(),
+                "showing the consequence must not enable the role")
+
+            artist.get_by_role("button", name="Turn it on anyway").click()
+            page.wait_for_timeout(600)
+            self.assertNotIn(
+                "Off", page.locator("#team li", has_text="Artist").inner_text())
+        finally:
+            page.close()
+
+    def test_a_role_cannot_be_added_without_a_name(self):
+        page = self.browser.new_page(viewport={"width": 1280, "height": 900})
+        try:
+            page.goto(f"{self.url}/studio?lang=en", wait_until="networkidle")
+            page.wait_for_selector("#team li")
+            page.fill("#mission", "roster-unnamed")
+            page.dispatch_event("#mission", "change")
+            page.wait_for_selector("#plan-empty:not([hidden])")
+            sound = page.locator("#team li", has_text="Sound designer")
+            sound.get_by_role("button", name="Turn on").click()
+            sound.locator(".note").wait_for()
+            sound.get_by_role("button", name="Turn it on anyway").click()
+            page.wait_for_timeout(400)
+            self.assertIn("Enter a name", page.inner_text("#loop-result"))
+            self.assertIn("Off", page.locator("#team li", has_text="Sound designer").inner_text())
+        finally:
+            page.close()
+
     def test_the_page_meets_the_accessibility_criteria_in_both_languages(self):
         for path in ("/studio", "/studio?lang=en"):
             for width, height in ((320, 720), (1280, 900)):

@@ -21,7 +21,11 @@ accepted here.
   Where the forecast is not earned, the page prints the reason instead of a
   number.
 - **Who is working** — the roster with each role's duty, which are off, which
-  model a role carries, and the sentence about who accepts the work.
+  model a role carries, and the sentence about who accepts the work. Turning a
+  role on takes two clicks on purpose: the first shows what it would add and
+  whether it needs another subscription, and only the second switches it on.
+  The pending offer survives a refresh of the list, so a background reload
+  cannot throw away what the person is in the middle of reading.
 - **Pause and edits** — the cycle and its state, a name, a comment box, and
   Pause / Send / Continue. Nothing happens without a name, because every one of
   these is recorded against a person.
@@ -52,8 +56,8 @@ laptop width, alongside the other pages.
 
 - **The page reads and asks; it does not plan.** Continuing hands the comments
   to whoever replans, and says so.
-- **Adding or removing a role is not on the screen yet.** The roster is shown
-  and the consequence is readable over the API; the switch itself is the
-  command line for now.
+- **A model is still assigned from the command line.** The screen turns roles
+  on and off; giving one role its own provider and model is `lokvetia studio
+  role-model`.
 - **The Play link points at the local games page** with the version digest; the
   page that runs a specific slice is separate work.
