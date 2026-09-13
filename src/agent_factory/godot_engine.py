@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 from .godot_pack import SUPPORTED_ENGINE_VERSIONS, export_presets
+from .machine_identity import require_a_build_machine
 
 
 REQUIRED_FLAGS = (
@@ -230,6 +231,11 @@ class GodotAdapter:
     ) -> EngineRun:
         if operation not in OPERATIONS:
             raise ValueError(f"Unknown engine operation: {operation}")
+        # Every engine command goes through here, so this is where the wrong
+        # machine is refused: the site's web container holds neither the engine
+        # nor the person's hardware, and an answer from it would describe
+        # neither.
+        require_a_build_machine("A Godot command")
         evidence = EVIDENCE_KINDS[operation]
         executable = self.executable()
         if executable is None:
@@ -272,6 +278,9 @@ class GodotAdapter:
         )
 
     def health(self) -> EngineHealth:
+        # "Not installed here" from the web container is a statement about
+        # the wrong machine, so the question is refused rather than answered.
+        require_a_build_machine("A Godot command")
         executable = self.executable()
         if executable is None:
             return EngineHealth(

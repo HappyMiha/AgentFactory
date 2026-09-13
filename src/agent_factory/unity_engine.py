@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from .machine_identity import require_a_build_machine
 from .unity_setup import (
     PACKAGES_LOCK_FILE,
     PROJECT_VERSION_FILE,
@@ -254,6 +255,9 @@ class UnityAdapter:
     ) -> UnityRun:
         if operation not in OPERATIONS:
             raise ValueError(f"Unknown Unity operation: {operation}")
+        # Every editor command goes through here, and the site's web container
+        # has neither the editor nor a licence.
+        require_a_build_machine("A Unity command")
         evidence = EVIDENCE_KINDS[operation]
         executable = self.executable()
         if executable is None:
@@ -296,6 +300,9 @@ class UnityAdapter:
         )
 
     def health(self) -> UnityHealth:
+        # "Not installed here" from the web container is a statement about
+        # the wrong machine, so the question is refused rather than answered.
+        require_a_build_machine("A Unity command")
         executable = self.executable()
         if executable is None:
             return UnityHealth(

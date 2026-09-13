@@ -28,9 +28,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .localisation import DEFAULT_LANGUAGE, Message, normalise
+from .localisation import DEFAULT_LANGUAGE, LocalisedError, Message, normalise
 
-KINDS = ("this_pc", "web_container", "cloud_worker")
+KINDS = ("this_pc", "web_container", "cloud_worker", "container")
+# A declared web container must never build. An undeclared container may be a
+# perfectly good cloud worker - cloud workers are containers - so a marker is
+# enough to label a report and not enough to refuse work.
+NEVER_BUILDS = ("web_container",)
 DECLARED_KIND = "LOKVETIA_MACHINE_KIND"
 DECLARED_NAME = "LOKVETIA_MACHINE_NAME"
 CONTAINER_MARKERS = ("/.dockerenv", "/run/.containerenv")
@@ -41,13 +45,14 @@ KIND_LABELS = {
     "this_pc": Message("цей комп'ютер", "this computer"),
     "web_container": Message("вебконтейнер сайту", "the site's web container"),
     "cloud_worker": Message("хмарний воркер", "a cloud worker"),
+    "container": Message("якийсь контейнер", "some container"),
 }
 BASIS_DECLARED = Message(
     "Так оголошено при розгортанні.", "Declared this way by the deployment.",
 )
 BASIS_CONTAINER = Message(
-    "Знайдено ознаки контейнера, тож це не комп'ютер користувача.",
-    "Container markers were found, so this is not the user's own computer.",
+    "Знайдено ознаки контейнера, але який саме — не оголошено.",
+    "Container markers were found, but nobody declared which container this is.",
 )
 BASIS_LOCAL = Message(
     "Ознак контейнера немає, тож це комп'ютер, на якому встановлено Core.",
@@ -123,8 +128,35 @@ def describe_this_machine() -> ThisMachine:
         kind, name = declared
         return ThisMachine(kind, name, BASIS_DECLARED)
     if _in_container():
-        return ThisMachine("web_container", "", BASIS_CONTAINER)
+        # Which container this is was not declared, and guessing "the web
+        # container" would refuse work on a perfectly good cloud worker.
+        return ThisMachine("container", "", BASIS_CONTAINER)
     return ThisMachine("this_pc", "", BASIS_LOCAL)
+
+
+NOT_A_BUILD_MACHINE = Message(
+    "{what} не виконується у вебконтейнері сайту: тут немає ні рушія, ні "
+    "заліза користувача. Це робить воркер.",
+    "{what} does not run in the site's web container: neither the engine nor the "
+    "user's hardware is here. A worker does this.",
+)
+
+
+class WrongMachine(LocalisedError):
+    """Raised when this machine must not be the one doing this."""
+
+
+def builds_here() -> bool:
+    """Whether work that produces a game may run in this process at all."""
+    return describe_this_machine().kind not in NEVER_BUILDS
+
+
+def require_a_build_machine(what: str) -> ThisMachine:
+    """Refuse, by name, when a declared web container is asked to build."""
+    machine = describe_this_machine()
+    if machine.kind in NEVER_BUILDS:
+        raise WrongMachine(NOT_A_BUILD_MACHINE, what=what)
+    return machine
 
 
 def sign(report: dict[str, Any], *, language: str = DEFAULT_LANGUAGE) -> dict[str, Any]:

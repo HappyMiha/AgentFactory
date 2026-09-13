@@ -39,6 +39,19 @@ The caveat is printed on the hardware page next to the report, and it travels
 with the downloaded JSON — a saved report that loses whose machine it described
 is worth nothing later.
 
+## The engine never runs on the wrong machine
+
+Every Godot and Unity command — a build, a test run, even a health probe — asks
+first. In a **declared** web container it is refused by name: *"A Godot command
+does not run in the site's web container: neither the engine nor the user's
+hardware is here. A worker does this."* Answering "the engine is not installed
+here" would be a statement about the wrong machine.
+
+Only a **declared** web container is refused. An undeclared container is
+labelled a container in reports but still allowed to build, because cloud build
+workers are containers: guessing from a marker would refuse the very machines
+that are supposed to do the work.
+
 ## What it deliberately does not do
 
 - **No host name.** A hardware report omits host names and paths on purpose;
