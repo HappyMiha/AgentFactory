@@ -47,6 +47,8 @@
   border-bottom: 1px solid var(--line, #d5dee1); vertical-align: top; }
 .page-studio .table-scroll:focus-visible { outline: 3px solid var(--brand-focus, #a66216); outline-offset: 2px; }
 .page-studio .team li { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; }
+.page-studio .team button { flex: 0 0 auto; }
+.page-studio .team .note { flex: 1 1 100%; margin: .2rem 0 0; font-size: .9rem; opacity: .9; }
 .page-studio .team .off { opacity: .7; }
 .page-studio .loop { margin-top: .6rem; display: grid; gap: .6rem; }
 .page-studio .loop label { display: flex; flex-direction: column; gap: .25rem; }
